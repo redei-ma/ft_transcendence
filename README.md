@@ -1,129 +1,141 @@
-# ft_transcendence
-**Team Assignments & Module Breakdown**
+# 🏛️ ft_transcendence - Clash of Olympus
 
-## 🏆 Team Roles Overview
+> A real-time multiplayer isometric brawler built with Microservices, WebSockets, and 3D WebGL graphics.
 
-| Member | Emoji | Role | Primary Focus | Key Responsibilities |
-| :--- | :---: | :--- | :--- | :--- |
-| **Giovanni** | 🧜🏿‍♂️ | **The Game Server** | Game Backend (Microservice) | WebSocket Gateway, Server-side Physics, 1v1 Logic, Lag Compensation. |
-| **Francesco** | 😈 | **The Game Client** | Game Frontend & UI | React Three Fiber, Shaders, Avatar Visuals, Customization UI, Stats Graphs. |
-| **Leonardo** | 🍤 | **The Logic Master** | Tournament & AI (Microservice) | AI Algorithms, Tournament Backend Logic, Match History (DB). |
-| **Renato** | 💆‍♂️ | **The Data & Chain** | Blockchain & Data (Microservice) | Smart Contracts, Blockchain Integration, GDPR, User DB Schema. |
-| **Ale** | 💤 | **SysAdmin & Security** | Auth & Infrastructure (Microservice) | Login, OAuth, 2FA, WAF (ModSecurity), Vault, Docker Orchestration. |
+![Project Status](https://img.shields.io/badge/Status-In%20Development-orange)
+![42 Project](https://img.shields.io/badge/School-42-black)
+![License](https://img.shields.io/badge/License-MIT-blue)
 
 ---
 
-## 📋 Detailed Module Requirements
+## 👥 The Team
+
+| Member | Role | Focus Area | Key Responsibilities |
+| :--- | :--- | :--- | :--- |
+| **Giovanni** 🧜🏿‍♂️ | **Game Server** | Backend & Physics | WebSocket Gateway, Physics Engine, Lag Compensation, Game Logic. |
+| **Francesco** 😈 | **Game Client** | Frontend & 3D | React Three Fiber, Shaders, UI/UX, Visual Effects. |
+| **Leonardo** 🍤 | **Logic Master** | AI & Tournaments | AI Algorithms, Tournament Brackets, Matchmaking System. |
+| **Renato** 💆‍♂️ | **Data & Chain** | Data & Blockchain | DB Schema, Public API, Smart Contracts, Friend System. |
+| **Ale** 💤 | **SysAdmin** | Auth & DevOps | Docker Orchestration, WAF, Vault, OAuth, 2FA. |
+
+---
+
+## 🛠️ Tech Stack
+
+* **Frontend:** ![React](https://img.shields.io/badge/-React-61DAFB?logo=react&logoColor=white) ![Vite](https://img.shields.io/badge/-Vite-646CFF?logo=vite&logoColor=white) ![Three.js](https://img.shields.io/badge/-Three.js-black?logo=three.js&logoColor=white) ![Tailwind](https://img.shields.io/badge/-Tailwind-06B6D4?logo=tailwindcss&logoColor=white)
+* **Backend:** ![NestJS](https://img.shields.io/badge/-NestJS-E0234E?logo=nestjs&logoColor=white) ![Node.js](https://img.shields.io/badge/-Node.js-339933?logo=node.js&logoColor=white) ![Socket.io](https://img.shields.io/badge/-Socket.io-010101?logo=socket.io&logoColor=white)
+* **Database:** ![PostgreSQL](https://img.shields.io/badge/-PostgreSQL-336791?logo=postgresql&logoColor=white)
+* **DevOps:** ![Docker](https://img.shields.io/badge/-Docker-2496ED?logo=docker&logoColor=white) ![Nginx](https://img.shields.io/badge/-Nginx-009639?logo=nginx&logoColor=white) ![Vault](https://img.shields.io/badge/-Vault-FF7E79?logo=vault&logoColor=white)
+* **Blockchain:** ![Solidity](https://img.shields.io/badge/-Solidity-363636?logo=solidity&logoColor=white)
+
+---
+
+## 🎮 Game Design: "Clash of Olympus"
+
+An **Isometric Low-Poly Brawler** where players control mythological avatars.
+
+* **View:** Fixed Isometric Camera (Top-Down).
+* **Characters:**
+    * ⚡ **Zeus:** Uses lightning-based AoE attacks.
+    * 🔥 **Ade:** Uses fire-based AoE attacks.
+* **Mechanics:**
+    * **Movement:** Vector-based movement on a 2D plane.
+    * **Attack:** Area of Effect (AoE) burst (Spacebar).
+    * **Defense:** Damage reduction stance (Shift).
+* **Modes:** 1v1 Local, 1v1 Online, 1v1 vs AI.
+
+---
+
+## 📋 Project Modules & Assignments
 
 ### IV.1 Web
-
-#### 🔴 Major Modules
-* **Real-time Features** 🧜🏿‍♂️
-    * Implement real-time features using WebSockets or similar technology.
-    * Real-time updates across clients.
-    * Handle connection/disconnection gracefully.
-    * Efficient message broadcasting.
-
-#### 🟢 Minor Modules
-* **Frontend Framework** 😈 🍤 💤
-    * Use a frontend framework (React, Vue, Angular, Svelte, etc.).
-* **Backend Framework** 🧜🏿‍♂️ 💆‍♂️ 💤
-    * Use a backend framework (Express, Fastify, NestJS, Django, etc.).
-
----
+| Feature | Description | Assignee |
+| :--- | :--- | :--- |
+| **Real-time** | WebSockets for live game updates (60fps) & graceful disconnect handling. | 🧜🏿‍♂️ **Giovanni** |
+| **Public API** | REST API with Swagger docs, API Key security, and Rate Limiting. | 💆‍♂️ **Renato** (Dev) + 💤 **Ale** (Sec) |
+| **Frameworks** | React (Frontend) & NestJS (Backend). | 😈 **Francesco** + 💤 **Ale** |
 
 ### IV.3 User Management
-
-#### 🔴 Major Modules
-* **Standard User Management and Authentication** (Split Task)
-    * **Backend Auth (JWT):** 💤
-    * **Database Schema (Users Table):** 💆‍♂️
-    * **Frontend Profile & Avatar UI:** 😈
-    * *Requirements:* Users can update profile info, upload avatars (default if none), manage friends, and view online status.
-
-#### 🟢 Minor Modules
-* **Remote Authentication** 💤
-    * Implement remote authentication with OAuth 2.0 (Google, GitHub, 42, etc.).
-* **2FA (Two-Factor Authentication)** 💤
-    * Implement a complete 2FA system for the users.
-* **Game Statistics and Match History** (Split Task)
-    * **Backend Logic/Storage:** 🍤
-    * **Frontend Visualization:** 😈
-    * *Requirements:* Track wins/losses/ranking, display match history (1v1), show achievements, leaderboard integration.
-
----
+| Feature | Description | Assignee |
+| :--- | :--- | :--- |
+| **Auth** | JWT Authentication, Login, Register. | 💤 **Ale** |
+| **User Data** | DB Schema, Friend System, Status (Online/Offline), Profile API. | 💆‍♂️ **Renato** |
+| **Profile UI** | Avatar upload, Stats view, Character selection. | 😈 **Francesco** |
+| **Remote Auth** | OAuth 2.0 (42 Intra, Google). | 💤 **Ale** |
+| **2FA** | Two-Factor Authentication (Google Authenticator). | 💤 **Ale** |
+| **Stats** | Match history logging & Win/Loss visualization. | 🍤 **Leonardo** (Back) + 😈 **Francesco** (Front) |
 
 ### IV.4 Artificial Intelligence
-
-#### 🔴 Major Modules
-* **AI Opponent** 🍤
-    * The AI must be challenging and able to win occasionally.
-    * The AI should simulate human-like behavior (not perfect play).
-    * If game customization is implemented, the AI must use it.
-    * Explain implementation during evaluation.
-
----
+| Feature | Description | Assignee |
+| :--- | :--- | :--- |
+| **AI Opponent** | Server-side bot simulating human behavior (chase & attack). | 🍤 **Leonardo** |
 
 ### IV.5 Cybersecurity
+| Feature | Description | Assignee |
+| :--- | :--- | :--- |
+| **Security** | WAF (ModSecurity) & HashiCorp Vault for secrets management. | 💤 **Ale** |
 
-#### 🔴 Major Modules
-* **WAF/ModSecurity & HashiCorp Vault** 💤
-    * Configure strict ModSecurity/WAF (Hardened).
-    * Manage secrets in Vault (API keys, credentials, env vars), encrypted and isolated.
-
----
-
-### IV.6 Gaming and User Experience
-
-#### 🔴 Major Modules
-* **Complete Web-based Game** 🧜🏿‍♂️
-    * Real-time multiplayer (e.g., Isometric Brawler/Pong).
-    * Live matches with clear win/loss conditions.
-* **Remote Players (1v1)** 🧜🏿‍♂️
-    * Enable two players on separate computers in real-time.
-    * Handle network latency and disconnections gracefully.
-    * Reconnection logic.
-* **Advanced 3D Graphics** 😈
-    * Use Three.js / React Three Fiber.
-    * Immersive 3D environment with advanced rendering.
-    * Smooth performance.
-
-#### 🟢 Minor Modules
-* **Game Customization Options** 😈
-    * Power-ups, attacks, special abilities, or maps.
-    * Customizable game settings (with defaults).
-* **Tournament System** 🍤
-    * Clear matchup order and bracket system.
-    * Matchmaking system.
-    * Tournament registration and management.
-
----
+### IV.6 Gaming & UX
+| Feature | Description | Assignee |
+| :--- | :--- | :--- |
+| **Game Logic** | Server-Authoritative physics, collisions, and state management. | 🧜🏿‍♂️ **Giovanni** |
+| **Netcode** | Lag compensation, interpolation, and reconnection logic. | 🧜🏿‍♂️ **Giovanni** |
+| **Graphics** | Advanced 3D Scene (Three.js), Isometric setup, VFX, Lighting. | 😈 **Francesco** |
+| **Tournament** | Matchmaking queue, bracket generation, round advancement. | 🍤 **Leonardo** |
 
 ### IV.7 DevOps
-
-#### 🔴 Major Modules
-* **Backend as Microservices** 🧜🏿‍♂️ 😈 🍤 💆‍♂️ 💤
-    * *Architect:* 💤 (Initial Docker Compose setup).
-    * *Implementation:* All members implement their specific microservices.
-    * Design loosely-coupled services with clear interfaces.
-    * Use REST APIs or message queues (Redis) for communication.
-
----
-
-### IV.8 Data and Analytics
-
-#### 🟢 Minor Modules
-* **GDPR Compliance** 💆‍♂️
-    * Allow users to request their data.
-    * Data deletion with confirmation.
-    * Export user data in a readable format.
-    * Confirmation emails for data operations.
-
----
+| Feature | Description | Assignee |
+| :--- | :--- | :--- |
+| **Microservices** | Docker Compose orchestration, Nginx Gateway, Service isolation. | 💤 **Ale** (Arch) + **All** |
 
 ### IV.9 Blockchain
+| Feature | Description | Assignee |
+| :--- | :--- | :--- |
+| **Score Chain** | Saving tournament results on Solidity Smart Contracts. | 💆‍♂️ **Renato** |
 
-#### 🔴 Major Modules
-* **Blockchain Integration** 💆‍♂️
-    * Store tournament scores on the Blockchain (Avalanche/Solidity).
-    * Ensure data integrity and immutability.
+---
+
+## 🚀 How to Run
+
+### Prerequisites
+* Docker & Docker Compose installed.
+* Node.js (for local development).
+
+### Installation
+
+1.  **Clone the repository:**
+    ```bash
+    git clone [https://github.com/your-org/ft_transcendence.git](https://github.com/your-org/ft_transcendence.git)
+    cd ft_transcendence
+    ```
+
+2.  **Environment Setup:**
+    ```bash
+    # Generate .env file from example
+    cp .env.example .env
+    ```
+
+3.  **Launch via Docker:**
+    ```bash
+    docker-compose up --build
+    ```
+
+4.  **Access the App:**
+    * Frontend: `http://localhost:3000`
+    * API Docs (Swagger): `http://localhost:3000/api/docs`
+
+---
+
+## 📂 Project Structure
+
+```bash
+.
+├── backend/            # NestJS Microservices
+│   ├── auth-service/   # JWT, 42API, Google Auth
+│   ├── game-service/   # Socket.io, Physics Engine
+│   ├── user-service/   # DB, Friends, Profile API
+│   └── logic-service/  # AI, Tournament Brackets
+├── frontend/           # React + Vite + Three.js
+├── database/           # PostgreSQL Init scripts
+├── nginx/              # Reverse Proxy Configuration
+└── docker-compose.yml  # Orchestration

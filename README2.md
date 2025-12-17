@@ -113,12 +113,6 @@
     * Customizable game settings (with defaults).
 > ➤ **Assigned to:** 😈 **Francesco** (Selection UI) + 🧜🏿‍♂️ **Giovanni** (Power-up Backend Logic).
 
-* **Tournament System**
-    * Clear matchup order and bracket system.
-    * Matchmaking system.
-    * Tournament registration and management.
-> ➤ **Assigned to:** 🍤 **Leonardo** (Bracket Management, Round advancement logic).
-
 ---
 
 ## IV.7 DevOps
