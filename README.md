@@ -128,3 +128,13 @@ An **Isometric Low-Poly Brawler** where players control mythological avatars.
 ├── database/           # PostgreSQL Init scripts
 ├── nginx/              # Reverse Proxy Configuration
 └── docker-compose.yml  # Orchestration
+```
+
+### 📂 Roles & Responsibilities
+
+| Role | Member(s) | Key Responsibilities |
+| :--- | :--- | :--- |
+| **Product Owner (PO)** | 😈 **Francesco** | • Defines product vision & priorities.<br>• Maintains the product backlog.<br>• Validates completed work (UI/UX).<br>• Communicates with stakeholders. |
+| **Project Manager (PM)** | 💆‍♂️ **Renato** | • Facilitates team coordination.<br>• Organizes meetings & planning sessions.<br>• Tracks progress, deadlines, and blockers.<br>• Manages team communication. |
+| **Tech Lead / Architect** | 🧜🏿‍♂️ **Giovanni**<br>💤 **Ale** | • Oversees technical decisions & architecture.<br>• Defines the technology stack.<br>• Ensures code quality & best practices.<br>• Reviews critical code changes. |
+| **Developers** | 👥 **All Members** | • Implement features and modules.<br>• Write code for assigned features.<br>• Participate in code reviews.<br>• Test implementations & Document work. |
