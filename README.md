@@ -14,7 +14,7 @@
 | :--- | :--- | :--- | :--- |
 | **Giovanni** 🧜🏿‍♂️ | **Game Server** | Backend & Physics | WebSocket Gateway, Physics Engine, Lag Compensation, Game Logic. |
 | **Francesco** 😈 | **Game Client** | Frontend & 3D | React Three Fiber, Shaders, UI/UX, Visual Effects. |
-| **Leonardo** 🍤 | **Logic Master** | AI & Stats | AI Algorithms, Matchmaking Logic, Stats Calculation. |
+| **Leonardo** 🍤 | **Logic Master** | AI & Stats | AI Algorithms, Matchmaking Logic, Game State Management. |
 | **Renato** 💆‍♂️ | **Data Architect** | Data & API | DB Schema, Public API, Friend System, Notifications. |
 | **Ale** 💤 | **SysAdmin** | Auth & DevOps | Docker Orchestration, Auth (JWT/OAuth), Gateway Config. |
 
@@ -73,7 +73,7 @@ An **Isometric Low-Poly Brawler** where players control mythological avatars.
 ### IV.6 Gaming & UX
 | Feature | Description | Assignee |
 | :--- | :--- | :--- |
-| **Game Logic** | Server-Authoritative physics, collisions, and state management. | 🧜🏿‍♂️ **Giovanni** |
+| **Game Logic** | Physics & Collisions (Giovanni) + Game State/Rules (Leonardo). | 🧜🏿‍♂️ **Giovanni** + 🍤 **Leonardo** |
 | **Netcode** | Lag compensation, interpolation, and reconnection logic. | 🧜🏿‍♂️ **Giovanni** |
 | **Graphics** | Advanced 3D Scene (Three.js), Isometric setup, VFX, Lighting. | 😈 **Francesco** |
 
