@@ -68,7 +68,7 @@ An **Isometric Low-Poly Brawler** where players control mythological avatars.
 ### IV.4 Artificial Intelligence
 | Feature | Description | Assignee |
 | :--- | :--- | :--- |
-| **AI Opponent** | Server-side bot simulating human behavior (chase & attack). | 🍤 **Leonardo** |
+| **AI Opponent** | Server-side bot simulating human behavior (chase & attack). | 🍤 **Leonardo** (forse) |
 
 ### IV.6 Gaming & UX
 | Feature | Description | Assignee |
