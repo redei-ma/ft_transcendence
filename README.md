@@ -138,3 +138,12 @@ An **Isometric Low-Poly Brawler** where players control mythological avatars.
 | **Project Manager (PM)** | 💆‍♂️ **Renato** | • Facilitates team coordination.<br>• Organizes meetings & planning sessions.<br>• Tracks progress, deadlines, and blockers.<br>• Manages team communication. |
 | **Tech Lead / Architect** | 🧜🏿‍♂️ **Giovanni**<br>💤 **Ale** | • Oversees technical decisions & architecture.<br>• Defines the technology stack.<br>• Ensures code quality & best practices.<br>• Reviews critical code changes. |
 | **Developers** | 👥 **All Members** | • Implement features and modules.<br>• Write code for assigned features.<br>• Participate in code reviews.<br>• Test implementations & Document work. |
+
+
+|              | 26/01 - 01/02<br><br><br> | 02/02 - 08/02<br><br><br> | 09/02 - 15/02<br><br><br> | 16/02 - 22/02<br><br><br> | 23/02 - 01/03<br><br><br> |
+|--------------|--------------------------|--------------------------|--------------------------|--------------------------|--------------------------|
+| Alessandro   | finire di fare auth di base<br><br><br>        | iniziare a fare Google Auth e 2FA<br><br><br>        | finire Google Auth e 2FA<br><br><br>        | sistemare dettagli<br><br><br>        | integrare con gli altri<br><br><br>    |
+| Giovanni     | task1<br><br><br>        | task2<br><br><br>        | task3<br><br><br>        | task4<br><br><br>        | task5<br><br><br>        |
+| Renato       | task1<br><br><br>        | task2<br><br><br>        | task3<br><br><br>        | task4<br><br><br>        | task5<br><br><br>        |
+| Francesco    | task1<br><br><br>        | task2<br><br><br>        | task3<br><br><br>        | task4<br><br><br>        | task5<br><br><br>        |
+| Leonardo     | task1<br><br><br>        | task2<br><br><br>        | task3<br><br><br>        | task4<br><br><br>        | task5<br><br><br>        |
