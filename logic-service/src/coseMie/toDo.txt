@@ -1,0 +1,31 @@
+1. 🤖 Intelligenza Artificiale (Il Bot)
+Questa è una delle parti più divertenti e tecniche del tuo ruolo.
+
+Obiettivo: Creare un bot che simuli un comportamento umano in un ambiente isometrico.
+
+Cosa deve fare: Il bot deve essere in grado di "vedere" il giocatore umano, inseguirlo sul piano 2D e decidere quando sferrare l'attacco AoE (Spacebar) o quando mettersi in difesa (Shift).
+
+Logica: Dovrai implementare algoritmi di Pathfinding (per muoversi senza incastrarsi) e di Decision Making (es: "Se la distanza < 3 metri e ho l'energia, allora attacca").
+
+2. 📊 Gestione delle Statistiche (Stats & History)
+Mentre Renato gestisce il database, tu decidi cosa scriverci.
+
+Logica Post-Partita: Alla fine di ogni match (sia contro umani che contro bot), devi calcolare i risultati.
+
+Calcolo Rank: Se usate un sistema tipo ELO, devi calcolare quanti punti ha vinto il vincitore e quanti ne ha persi lo sconfitto in base alla loro differenza di rank iniziale.
+
+Data Logging: Devi inviare a Renato i dati puliti: durata del match, colpi messi a segno, precisione degli attacchi AoE, ecc.
+
+3. ⚖️ Game State & Rules (Il Regolamento)
+Giovanni gestisce la fisica (collisioni, velocità), ma tu gestisci le regole del gioco.
+
+Bilanciamento: Devi decidere (e codificare) quanto danno fa Zeus rispetto ad Ade. Quanta energia consuma lo scudo? Quanto dura il cooldown del fulmine?
+
+Stato della Partita: Sei tu che dichiari il "GAME OVER". Quando la vita di un player scende a zero, il tuo servizio deve fermare la logica, comunicare il vincitore e avviare la procedura di salvataggio statistiche.
+
+4. ⚔️ Modalità Torneo
+Il README menziona il progetto 42, che spesso richiede una modalità torneo.
+
+Tabellone: Se 4 o 8 persone si iscrivono, tu devi generare il tabellone degli scontri.
+
+Progressione: Devi gestire il passaggio del turno. Chi vince la semifinale A deve aspettare il vincitore della semifinale B per la finale. Il tuo servizio deve "tenere a mente" questi stati.

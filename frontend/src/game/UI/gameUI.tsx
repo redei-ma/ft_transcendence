@@ -1,17 +1,15 @@
-
-// GameUI: UI di debug/status.
-
-
-import React from 'react';
-import { MapData } from '../../types/game.types';
+import { CharacterName, GameStatePayload, MapEmitPayload } from '../../types/game.types';
+import { theme } from '../../configs/theme';
+import HPBar from './components/HPBar';
 
 interface GameUIProps {
   character: string;
   isConnected: boolean;
-  mapData: MapData | null;
+  mapData: MapEmitPayload | null;
   playersCount: number;
   maxPlayers: number;
-  gameOver: { winnerId: string; winnerKills: number; loserKills: number } | null;
+  gameOver: any;
+  gameState: GameStatePayload | null;
 }
 
 export default function GameUI({
@@ -21,100 +19,115 @@ export default function GameUI({
   playersCount,
   maxPlayers,
   gameOver,
+  gameState,
 }: GameUIProps) {
   return (
-    <div style={styles.container}>
-      {/* Header */}
-      <div style={styles.header}>
-        🎮 CLASH OF OLYMPUS
-      </div>
+    <>
+      {/* HP Bars */}
+      {gameState?.players.map((player) => (
+        <HPBar
+          key={player.id}
+          characterName={player.characterName}
+          currentHP={player.hp}
+          maxHP={100}
+          isDisconnected={player.isDisconnected}
+          disconnectionTimer={player.disconnectionTimer}
+          playerPosition={player.position}
+        />
+      ))}
 
-      {/* Connection Status */}
-      <div style={styles.row}>
-        🔗 Connection: {isConnected ? (
-          <span style={styles.success}>✅ Connected</span>
-        ) : (
-          <span style={styles.warning}>⏳ Connecting...</span>
-        )}
-      </div>
+      {/* Death Overlays + Respawn Timer */}
+      {gameState?.players.map((player) => {
+        if (!player.isDead) return null;
 
-      {/* Map Status */}
-      <div style={styles.row}>
-        🗺️ Map: {mapData ? (
-          <span style={styles.success}>✅ {mapData.meta.name}</span>
-        ) : (
-          <span style={styles.warning}>⏳ Waiting for 2nd player...</span>
-        )}
-      </div>
+        const displayName = player.characterName.charAt(0).toUpperCase() + player.characterName.slice(1);
+        const playerColor = player.characterName === 'zeus'
+          ? theme.colors.zeus
+          : theme.colors.ade;
 
-      {/* Players Count */}
-      <div style={styles.row}>
-        👥 Players: {playersCount}/{maxPlayers}
-      </div>
+        return (
+          <div
+            key={`death-${player.id}`}
+            style={{
+              position: 'absolute',
+              top: player.characterName === 'zeus' ? '60px' : 'auto',
+              bottom: player.characterName === 'ade' ? '60px' : 'auto',
+              left: '20px',
+              pointerEvents: 'none',
+              zIndex: 1001,
+              fontFamily: theme.fonts.mono,
+            }}
+          >
+            <div style={{
+              color: theme.colors.dead,
+              fontSize: '20px',
+              fontWeight: 'bold',
+              textShadow: '2px 2px 6px rgba(0,0,0,1)',
+              animation: 'pulse 1s infinite',
+              marginBottom: '4px',
+            }}>
+              {displayName} DEAD
+            </div>
 
-      {/* Game Over */}
-      {gameOver && (
-        <div style={styles.gameOver}>
-          <div style={styles.gameOverTitle}>
-            🏆 GAME OVER
+            <div style={{
+              color: theme.colors.afk,
+              fontSize: '14px',
+              fontWeight: 'bold',
+              textShadow: '2px 2px 4px rgba(0,0,0,1)',
+              textAlign: 'center',
+            }}>
+              Respawn in: {Math.ceil(5 - player.respawnTimer)}s
+            </div>
           </div>
-          <div style={styles.gameOverText}>
-            Winner: {gameOver.winnerId}
-          </div>
-          <div style={styles.gameOverText}>
-            Score: {gameOver.winnerKills} - {gameOver.loserKills}
-          </div>
+        );
+      })}
+
+      {/* Info Box */}
+      <div style={{
+        position: 'absolute',
+        top: 20,
+        left: 20,
+        color: theme.colors.textPrimary,
+        fontFamily: theme.fonts.mono,
+        fontSize: '13px',
+        backgroundColor: theme.colors.bgPanel,
+        padding: '14px',
+        borderRadius: '8px',
+        border: `1px solid ${theme.colors.border}`,
+        minWidth: '220px',
+        zIndex: 100,
+      }}>
+        <div style={{
+          fontSize: '16px',
+          fontWeight: 'bold',
+          fontFamily: theme.fonts.heading,
+          marginBottom: '10px',
+          color: theme.colors.textPrimary,
+        }}>
+          CLASH OF OLYMPUS
         </div>
-      )}
-    </div>
+        <div style={{ color: isConnected ? theme.colors.hpHigh : theme.colors.afk, marginBottom: '4px' }}>
+          Connection: {isConnected ? 'Connected' : 'Connecting...'}
+        </div>
+        <div style={{ color: mapData ? theme.colors.hpHigh : theme.colors.afk, marginBottom: '4px' }}>
+          Map: {mapData ? 'Loaded' : 'Waiting...'}
+        </div>
+        <div style={{ marginBottom: '4px' }}>
+          Players: {playersCount}/{maxPlayers}
+        </div>
+        {gameOver && (
+          <div style={{ marginTop: '8px', color: theme.colors.dead, fontWeight: 'bold' }}>
+            GAME OVER
+          </div>
+        )}
+      </div>
+
+      <style>{`
+        @keyframes pulse {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.5; }
+        }
+      `}</style>
+    </>
   );
 }
-
-// Styles (inline per semplicità, puoi spostare in CSS)
-const styles = {
-  container: {
-    position: 'absolute' as const,
-    top: 10,
-    left: 10,
-    background: 'rgba(0, 0, 0, 0.85)',
-    color: 'white',
-    padding: '16px',
-    borderRadius: '8px',
-    fontFamily: 'monospace',
-    fontSize: '14px',
-    lineHeight: '1.8',
-    minWidth: '250px',
-  },
-  header: {
-    marginBottom: '12px',
-    fontWeight: 'bold',
-    fontSize: '16px',
-    borderBottom: '1px solid #444',
-    paddingBottom: '8px',
-  },
-  row: {
-    marginBottom: '6px',
-  },
-  success: {
-    color: '#0f0',
-  },
-  warning: {
-    color: '#f80',
-  },
-  gameOver: {
-    marginTop: '12px',
-    padding: '12px',
-    background: '#00ff0022',
-    border: '2px solid #0f0',
-    borderRadius: '4px',
-  },
-  gameOverTitle: {
-    color: '#0f0',
-    fontWeight: 'bold',
-    fontSize: '16px',
-    marginBottom: '4px',
-  },
-  gameOverText: {
-    fontSize: '12px',
-  },
-};

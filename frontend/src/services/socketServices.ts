@@ -5,6 +5,9 @@ export class SocketService {
     
     private socket: Socket | null = null;
 
+    public getSocket(): Socket | null {
+        return this.socket;
+    }
     connect(url:string): Socket{
         if (this.socket?.connected){
             console.log('Already connected.');

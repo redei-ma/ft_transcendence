@@ -1,24 +1,12 @@
-import { MapData, PlayerSnapshot, BulletSnapshot, Vector } from './game.types';
-
-export enum GameEvents {
-  // Client → Server
-  JOIN_LOBBY = 'join-lobby',
-  INPUT = 'game-input',
-  ATTACK = 'attack',
-  
-  // Server → Client
-  GAME_STATE = 'game-state',
-  GAME_OVER = 'game-over',
-  MAP_EMIT = 'map-emit',
-}
+import { PlayerSnapshot, BulletSnapshot, WinnerData } from './game.types';
 
 export interface JoinLobbyPayload {
   characterName: 'Zeus' | 'Ade';
 }
 
 export interface GameInputPayload {
-  x: number; // -1 a 1
-  z: number; // -1 a 1
+  x: number;  // -1 a 1
+  z: number;  // -1 a 1
 }
 
 export interface AttackPayload {
@@ -31,6 +19,6 @@ export interface GameStatePayload {
 }
 
 export interface GameOverPayload {
-  winnerData: any;
+  winnerData: WinnerData;
   time: number;
 }

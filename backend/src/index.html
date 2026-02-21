@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <title>Arena - Dev Sandbox</title>
+    <style>
+        body { 
+            background: #0a0a0c; color: #fff; margin: 0; display: flex; 
+            justify-content: center; align-items: center; height: 100vh; 
+            font-family: 'Segoe UI', Tahoma, sans-serif; overflow: hidden;
+        }
+        
+        #ui-panel { 
+            position: absolute; top: 20px; left: 20px; 
+            background: rgba(15, 15, 20, 0.95); padding: 20px; 
+            border-radius: 10px; border: 1px solid #333; 
+            box-shadow: 0 4px 20px rgba(0,0,0,0.8); z-index: 10; width: 320px;
+        }
+
+        #data-panel {
+            position: absolute; top: 20px; right: 20px; 
+            background: rgba(10, 10, 15, 0.9); padding: 15px; 
+            border-radius: 8px; border: 1px dashed #555;
+            color: #00ffcc; font-family: monospace; font-size: 13px; z-index: 10;
+            width: 300px;
+        }
+
+        h3 { margin-top: 0; color: #00e5ff; border-bottom: 1px solid #333; padding-bottom: 10px; }
+        .form-group { margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center; }
+        input[type="number"] { width: 60px; padding: 5px; background: #000; border: 1px solid #555; color: #fff; text-align: center; border-radius: 4px; }
+        
+        .btn-group { display: flex; flex-direction: column; gap: 10px; }
+        button { border: none; padding: 12px; color: white; font-weight: bold; cursor: pointer; border-radius: 6px; transition: 0.2s; font-size: 14px; }
+        .btn-ai { background: #9c27b0; } .btn-ai:hover { background: #7b1fa2; }
+        .btn-local { background: #2196F3; } .btn-local:hover { background: #1976D2; }
+        
+        #connStatus { margin-top: 15px; font-weight: bold; text-align: center; color: #ff5252; background: #111; padding: 8px; border-radius: 4px; border: 1px solid #222; }
+        
+        canvas { background: #121215; border-radius: 8px; box-shadow: 0 0 40px rgba(0,0,0,0.9); border: 2px solid #222;}
+    </style>
+</head>
+<body>
+
+    <div id="ui-panel">
+        <h3>Dev Sandbox</h3>
+        <div class="form-group">
+            <label>ID Utente (DB):</label>
+            <input type="number" id="userId" value="1">
+        </div>
+        <div class="btn-group">
+            <button class="btn-local" onclick="joinLobby(false)">🎮 Avvia Locale (Spawna P1 e P2)</button>
+            <button class="btn-ai" onclick="joinLobby(true)">🤖 Avvia vs AI (Spawna SOLO P1)</button>
+        </div>
+        <div id="connStatus">Disconnesso</div>
+        
+        <div style="margin-top: 20px; font-size: 11px; color: #777;">
+            <strong>P1 (Blu):</strong> WASD + J, K, L<br>
+            <strong>P2 (Rosso):</strong> Frecce + 1, 2, 3
+        </div>
+    </div>
+
+    <div id="data-panel">
+        <div style="color: #fff; margin-bottom: 5px; font-weight: bold;">Dati Ricevuti dal Server:</div>
+        <div id="debugMap">Mappa: Non ricevuta</div>
+        <div id="debugPlayers">Giocatori in array: 0</div>
+        <div id="debugCoords" style="margin-top: 10px; font-size: 11px; color: #ffeb3b;">Nessuna coordinata</div>
+    </div>
+
+    <canvas id="gameCanvas" width="900" height="900"></canvas>
+
+    <script src="https://cdn.socket.io/4.7.4/socket.io.min.js"></script>
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const statusEl = document.getElementById('connStatus');
+        const debugMap = document.getElementById('debugMap');
+        const debugPlayers = document.getElementById('debugPlayers');
+        const debugCoords = document.getElementById('debugCoords');
+        
+        let socket = null;
+        let mapData = null;      
+        let playersArray = []; 
+        let bulletsArray = [];
+        let SCALE = 6;           
+
+        function joinLobby(isAi) {
+            if (socket) socket.disconnect();
+            
+            const userId = parseInt(document.getElementById('userId').value) || 1;
+            statusEl.style.color = '#ffeb3b';
+            statusEl.innerText = "Connessione in corso...";
+
+            socket = io('http://localhost:3000', {
+                query: { userId: userId },
+                transports: ['websocket']
+            });
+
+            socket.on('connect', () => {
+                statusEl.style.color = '#4CAF50';
+                statusEl.innerText = "Connesso! " + (isAi ? "(Modalità AI: Attesa Bot...)" : "(Modalità Locale)");
+                
+                const payload = {
+                    characterName: ['ade', 'zeus'], 
+                    isLocalGame: !isAi,
+                    isAiGame: isAi,
+                    matchType: 'ffa'
+                };
+                
+                if (!isNaN(userId) && userId > 0) payload.userDbId = userId;
+                socket.emit('join-lobby', payload);
+            });
+
+            socket.on('disconnect', () => {
+                statusEl.style.color = '#ff5252';
+                statusEl.innerText = "Disconnesso.";
+                playersArray = [];
+                mapData = null;
+            });
+
+            // Ricezione della MAPPA
+            socket.on('map-emit', (payload) => {
+                if (payload && payload.map) {
+                    mapData = payload.map;
+                    const maxMapSize = Math.max(mapData.width || 130, mapData.depth || 130);
+                    SCALE = (canvas.width * 0.95) / maxMapSize; 
+                    debugMap.innerText = `Mappa: ${mapData.width}x${mapData.depth} (Scala: ${SCALE.toFixed(1)})`;
+                }
+            });
+
+            // Ricezione degli ENTITY EVENTS (Cattura bruta di ogni possibile formato)
+            socket.on('game-state', (payload) => {
+                if (!payload) return;
+                
+                // Estrae l'array dei giocatori ovunque si trovi
+                if (payload.players) playersArray = payload.players;
+                else if (payload.data && payload.data.players) playersArray = payload.data.players;
+                else if (payload.entities && payload.entities.players) playersArray = payload.entities.players;
+
+                // Estrae i proiettili
+                if (payload.bullets) bulletsArray = payload.bullets;
+                else if (payload.data && payload.data.bullets) bulletsArray = payload.data.bullets;
+                else if (payload.entities && payload.entities.bullets) bulletsArray = payload.entities.bullets;
+
+                // Aggiorna il pannello diagnostico
+                debugPlayers.innerText = `Giocatori in array: ${playersArray.length}`;
+                if (playersArray.length > 0) {
+                    debugCoords.innerHTML = playersArray.map(p => 
+                        `T${p.teamId}: X=${Math.round(p.position?.x)}, Z=${Math.round(p.position?.z)} (HP:${p.hp})`
+                    ).join('<br>');
+                } else {
+                    debugCoords.innerText = "Nessuna coordinata";
+                }
+            });
+
+            socket.on('game-over', (payload) => {
+                statusEl.style.color = '#ff9800';
+                statusEl.innerText = "Partita Terminata!";
+                setTimeout(() => socket.disconnect(), 2000);
+            });
+        }
+
+        // --- RENDER LOOP 60FPS ---
+        function renderLoop() {
+            // Sfondo esterno
+            ctx.fillStyle = '#0f0f13';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            ctx.save();
+            ctx.translate(canvas.width / 2, canvas.height / 2); // Centro dello schermo
+
+            if (mapData) {
+                // Traslazione per centrare l'area 0->130
+                const mapHalfWidth = (mapData.width || 130) / 2;
+                const mapHalfDepth = (mapData.depth || 130) / 2;
+                ctx.translate(-mapHalfWidth * SCALE, -mapHalfDepth * SCALE);
+
+                // Pavimento grigio scuro
+                ctx.fillStyle = '#16161c';
+                ctx.fillRect(0, 0, mapData.width * SCALE, mapData.depth * SCALE);
+                
+                // Muri (Calcolo corretto in stile Three.js centrato)
+                if (mapData.walls) {
+                    ctx.fillStyle = '#333';
+                    mapData.walls.forEach(wall => {
+                        ctx.fillRect(
+                            (wall.position.x - wall.width / 2) * SCALE, 
+                            (wall.position.z - wall.depth / 2) * SCALE, 
+                            wall.width * SCALE, 
+                            wall.depth * SCALE
+                        );
+                    });
+                }
+
+                // Pilastri
+                if (mapData.pillars) {
+                    ctx.fillStyle = '#555';
+                    mapData.pillars.forEach(pillar => {
+                        ctx.beginPath();
+                        ctx.arc(pillar.position.x * SCALE, pillar.position.z * SCALE, pillar.radius * SCALE, 0, Math.PI * 2);
+                        ctx.fill();
+                    });
+                }
+            }
+
+            // DISEGNO GIOCATORI A PROVA DI BOMBA
+            playersArray.forEach(p => {
+                if (!p || !p.position) return; 
+                
+                const sx = p.position.x * SCALE;
+                const sz = p.position.z * SCALE; 
+                const isDead = p.isDead || p.hp <= 0;
+
+                // 1. GIGANTESCO alone luminoso sotto al giocatore (impossibile da non vedere)
+                ctx.beginPath(); 
+                ctx.arc(sx, sz, 35, 0, Math.PI * 2);
+                ctx.fillStyle = p.teamId === 0 ? 'rgba(0, 229, 255, 0.3)' : 'rgba(255, 23, 68, 0.3)';
+                ctx.fill();
+
+                // 2. Corpo del giocatore (Grigio se è morto, altrimenti colore del team)
+                ctx.beginPath(); 
+                ctx.arc(sx, sz, 12, 0, Math.PI * 2);
+                ctx.fillStyle = isDead ? '#666' : (p.teamId === 0 ? '#00e5ff' : '#ff1744');
+                ctx.fill(); 
+                ctx.lineWidth = 3; 
+                ctx.strokeStyle = '#fff'; 
+                ctx.stroke();
+
+                // 3. Direzione sguardo
+                ctx.beginPath(); ctx.moveTo(sx, sz);
+                ctx.lineTo(sx + Math.cos(p.rotation || 0) * 25, sz + Math.sin(p.rotation || 0) * 25);
+                ctx.strokeStyle = '#fff'; ctx.lineWidth = 4; ctx.stroke();
+            });
+
+            // DISEGNO PROIETTILI
+            bulletsArray.forEach(b => {
+                if (!b.position) return;
+                ctx.beginPath();
+                ctx.arc(b.position.x * SCALE, b.position.z * SCALE, 6, 0, Math.PI * 2);
+                ctx.fillStyle = '#ffeb3b'; ctx.fill();
+            });
+
+            ctx.restore();
+            requestAnimationFrame(renderLoop);
+        }
+        requestAnimationFrame(renderLoop);
+
+        // --- INPUT LOOP 60HZ ---
+        const keys = { 0: { x: 0, z: 0, a: null }, 1: { x: 0, z: 0, a: null } };
+
+        setInterval(() => {
+            if (!socket || !socket.connected) return;
+            const p1 = { x: keys[0].x, z: keys[0].z, playerIndex: 0 };
+            if (keys[0].a) p1.attackType = keys[0].a;
+            socket.emit('game-input', p1);
+
+            const p2 = { x: keys[1].x, z: keys[1].z, playerIndex: 1 };
+            if (keys[1].a) p2.attackType = keys[1].a;
+            socket.emit('game-input', p2);
+        }, 16);
+
+        window.onkeydown = (e) => handleInput(e.key.toLowerCase(), true);
+        window.onkeyup = (e) => handleInput(e.key.toLowerCase(), false);
+
+        function handleInput(k, isDown) {
+            if (k === 'w') keys[0].z = isDown ? -1 : 0;
+            if (k === 's') keys[0].z = isDown ? 1 : 0;
+            if (k === 'a') keys[0].x = isDown ? -1 : 0;
+            if (k === 'd') keys[0].x = isDown ? 1 : 0;
+            if (k === 'j') keys[0].a = isDown ? 'melee-attack' : null;
+            if (k === 'k') keys[0].a = isDown ? 'spell-attack' : null;
+            if (k === 'l') keys[0].a = isDown ? 'defence-attack' : null;
+
+            if (k === 'arrowup') keys[1].z = isDown ? -1 : 0;
+            if (k === 'arrowdown') keys[1].z = isDown ? 1 : 0;
+            if (k === 'arrowleft') keys[1].x = isDown ? -1 : 0;
+            if (k === 'arrowright') keys[1].x = isDown ? 1 : 0;
+            if (k === '1') keys[1].a = isDown ? 'melee-attack' : null;
+            if (k === '2') keys[1].a = isDown ? 'spell-attack' : null;
+            if (k === '3') keys[1].a = isDown ? 'defence-attack' : null;
+        }
+    </script>
+</body>
+</html>

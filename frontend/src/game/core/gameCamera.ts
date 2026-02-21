@@ -1,9 +1,5 @@
-
-// GameCamera: Configurazione camera isometrica.
-
-
 import * as THREE from 'three';
-import { GameConfig } from '../../utils/config';
+import { GameConfig } from '../../configs/config';
 
 export class GameCamera {
   public camera: THREE.OrthographicCamera;
@@ -32,9 +28,7 @@ export class GameCamera {
     this.camera.updateProjectionMatrix();
   }
 
-  
   // Aggiorna camera su resize.
-  
   public updateAspect(): void {
     const aspect = window.innerWidth / window.innerHeight;
     const frustumSize = 120;

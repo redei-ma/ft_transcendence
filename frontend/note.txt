@@ -1,0 +1,24 @@
+Personaggio ADE: 
+
+ - testa aatrox
+ - Corpo Brand
+ - Fuoco Brand
+ - Stazza Kassadin, Karthus, Mordekaiser
+
+Personaggio ZEUS:
+
+ - Pantheon
+ - corona quinn 
+ - corona galio
+ - energia xerath
+ - Vestiti yone
+ - Testa Zilean
+
+Installato:
+
+ - npom install @react-three/postprocessing
+ - npm install @react-three/drei
+
+RICORDA:
+
+ - posso capire da quanto tempo sono in coda, dovro' ogni tot invio tempo in coda del player a leo per riaggiornare aumentando rank_tolerance.

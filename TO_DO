@@ -1,0 +1,16 @@
+GIOVANNI
+Implementare classe per error handling
+correggere implementazione di redis per partite in locale(riconnessione adesso non funziona)
+Capire insieme a fra come fare per la mappa
+
+ACE
+Fare AI
+Parlare con francesco per capire come devono interagire
+Se un player e' in stato ingame, non rifiutare subito perche' magari si sta provando a riconnettere ad una partita in cui e' crashato, fai lo stesso create match
+
+FRA
+Parlare con ace per capire come devono interagire
+Fare scelta per utente tra RANKED-UNRANKED-AI-LOCAL (VEDI ENUM)
+Capire se per match locali e vs Ai e' possibile far scegliere il personaggio
+Fare differenziazione tra partite FFA-TEAM(DA CAPIRE SE SI PUO'/DEVE FARE)
+Capire insieme a gio come fare per la mappa

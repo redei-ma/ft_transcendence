@@ -1,0 +1,52 @@
+services:
+  redis:
+    image: redis:alpine
+    container_name: redis
+    ports:
+      - "6380:6379"
+    networks:
+      - transcendence_net
+  backend:
+    build: ./backend
+    container_name: game_server
+    ports:
+      - "3000:3000"
+    depends_on:
+      - redis
+    networks:
+      - transcendence_net
+    volumes:
+      - ./backend:/usr/src/app/
+      - /usr/src/app/node_modules
+    environment:
+      - NODE_ENV=development
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+  logic-service:
+    build: ./logic-service
+    container_name: matchmaking-container
+    ports:
+      - "3001:3001"
+    depends_on:
+      - redis
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    networks:
+      - transcendence_net
+  frontend:
+     build: ./frontend
+     container_name: game_client
+     ports:
+     - "5173:5173"
+     volumes:
+     - ./frontend:/usr/src/app/
+     - /usr/src/app/node_modules
+     environment:
+     - VITE_API_URL=http://localhost:3000
+     networks:
+     - transcendence_net
+
+networks:
+  transcendence_net:
+    driver: bridge

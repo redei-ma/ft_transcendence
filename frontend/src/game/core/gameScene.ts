@@ -8,7 +8,7 @@
  */
 
 import * as THREE from 'three';
-import { GameConfig } from '../../utils/config';
+import { GameConfig } from '../../configs/config';
 
 export class GameScene {
   public scene: THREE.Scene;
@@ -17,13 +17,12 @@ export class GameScene {
   private animationId: number | null = null;
 
   constructor(canvas: HTMLDivElement) {
-    // -------------------- SCENE --------------------
 
+    // -------------------- SCENE --------------------
     this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color(0x1a1a2e);
 
     // -------------------- RENDERER --------------------
-
     this.renderer = new THREE.WebGLRenderer({ antialias: true });
     this.renderer.setSize(window.innerWidth, window.innerHeight);
     this.renderer.setPixelRatio(window.devicePixelRatio);
@@ -39,9 +38,7 @@ export class GameScene {
     window.addEventListener('resize', this.handleResize);
   }
 
-  
   // Setup luci della scena.
-  
   private setupLights(): void {
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
     this.scene.add(ambientLight);
@@ -52,7 +49,6 @@ export class GameScene {
   }
   
   // Aggiunge griglia helper (placeholder arena).
-  
   private addGrid(): void {
     const centerX = GameConfig.MAP.WIDTH / 2;
     const centerZ = GameConfig.MAP.DEPTH / 2;
@@ -66,18 +62,14 @@ export class GameScene {
     grid.position.set(centerX, 0, centerZ);
     this.scene.add(grid);
   }
-
   
   // Gestisce resize finestra.
-  
   private handleResize = (): void => {
     this.renderer.setSize(window.innerWidth, window.innerHeight);
   };
 
-  
   // Avvia game loop.
   // @param callback - Funzione chiamata ogni frame (per update logica)
-  
   public startLoop(callback: (delta: number) => void): void {
     let lastTime = performance.now();
 
@@ -93,9 +85,7 @@ export class GameScene {
     animate(performance.now());
   }
 
-  
   // Ferma game loop.
-  
   public stopLoop(): void {
     if (this.animationId !== null) {
       cancelAnimationFrame(this.animationId);
@@ -103,9 +93,7 @@ export class GameScene {
     }
   }
 
-  
   // Cleanup (chiamato quando esci dal gioco).
-  
   public dispose(): void {
     this.stopLoop();
     window.removeEventListener('resize', this.handleResize);
