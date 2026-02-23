@@ -1,68 +1,13 @@
-// import { useState, useEffect } from 'react';
-// import { socketService } from './services/socketServices';
-// import WelcomeScene from './scenes/welcomeScene';
-// import CharacterSelectScene from './scenes/characterSelectScene';
-// import Game from './game/Game';
-
-// type Scene = 'welcome' | 'character-select' | 'game';
-
-// function App() {
-//   const [currentScene, setCurrentScene] = useState<Scene>('welcome');
-//   const [selectedCharacter, setSelectedCharacter] = useState<'zeus' | 'ade' | null>(null);
-//   const [isSocketReady, setIsSocketReady] = useState(false);
-
-//   useEffect(() => {
-//     const SERVER_URL = 'http://localhost:3000';
-//     const socket = socketService.connect(SERVER_URL);
-
-//     const handleConnect = () => {
-//       console.log('Socket ready in App');
-//       setIsSocketReady(true);
-//     };
-
-//     socket.on('connect', handleConnect);
-
-//     return () => {
-//       socket.off('connect', handleConnect);
-//       socketService.disconnect();
-//     };
-//   }, []);
-
-//   const handleStart = () => {
-//     setCurrentScene('character-select');
-//   };
-
-//   const handleCharacterSelect = (character: 'zeus' | 'ade') => {
-//     setSelectedCharacter(character);
-//     setCurrentScene('game');
-//   };
-
-//   if (currentScene === 'welcome') {
-//     return <WelcomeScene onStart={handleStart} />;
-//   }
-
-//   if (currentScene === 'character-select') {
-//     return (
-//       <CharacterSelectScene
-//         onCharacterSelect={handleCharacterSelect}
-//         isSocketReady={isSocketReady}
-//       />
-//     );
-//   }
-
-//   return <Game selectedCharacter={selectedCharacter!} />;
-// }
-
-// export default App;
 import { useState, useEffect } from 'react';
 import { socketService } from './services/socketServices';
 import WelcomeScene from './scenes/welcomeScene';
 import ModeSelectScene from './scenes/modeSelectScene';
 import CharacterSelectScene from './scenes/characterSelectScene';
+import QueueScene from './scenes/queueScene';
 import Game from './game/Game';
 import { MatchMode } from './types/game.types';
 
-type Scene = 'welcome' | 'mode-select' | 'character-select' | 'game';
+type Scene = 'welcome' | 'mode-select' | 'character-select' | 'queue' | 'game';
 
 function App() {
   const [currentScene, setCurrentScene] = useState<Scene>('welcome');
@@ -93,7 +38,14 @@ function App() {
   const handleCharacterConfirm = (p1: 'zeus' | 'ade', p2: 'zeus' | 'ade') => {
     setSelectedCharacterP1(p1);
     setSelectedCharacterP2(p2);
-    setCurrentScene('game');
+
+    // LOCAL e AI vanno diretti al game (il join-lobby è già stato emesso)
+    // RANKED e UNRANKED vanno alla coda (la POST è già stata mandata)
+    if (selectedMode === MatchMode.RANKED || selectedMode === MatchMode.UNRANKED) {
+      setCurrentScene('queue');
+    } else {
+      setCurrentScene('game');
+    }
   };
 
   if (currentScene === 'welcome') {
@@ -116,6 +68,15 @@ function App() {
         isSocketReady={isSocketReady}
         onConfirm={handleCharacterConfirm}
         onBack={() => setCurrentScene('mode-select')}
+      />
+    );
+  }
+
+  if (currentScene === 'queue') {
+    return (
+      <QueueScene
+        onMatchFound={() => setCurrentScene('game')}
+        onCancel={() => setCurrentScene('mode-select')}
       />
     );
   }

@@ -1,9 +1,12 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { socketService } from '../services/socketServices';
 import { GameEvents } from '../game/game.events';
 import { MatchMode } from '../types/game.types';
 import { theme } from '../configs/theme';
-import { useRef } from 'react';
+
+// Character images — sostituisci con i tuoi path
+import zeusImg from '../assets/Zeus_selection.jpg';
+import adeImg from '../assets/Ade_selection.png';
 
 type Character = 'zeus' | 'ade';
 
@@ -15,6 +18,16 @@ interface CharacterSelectSceneProps {
 }
 
 const CHARACTERS: Character[] = ['zeus', 'ade'];
+const CHARACTER_IMAGES: Record<Character, string> = {
+  zeus: zeusImg,
+  ade: adeImg,
+};
+
+// Colori P1 / P2
+const P1_COLOR = theme.colors.zeus;
+const P1_GLOW = theme.colors.zeusGlow;
+const P2_COLOR = theme.colors.ade;
+const P2_GLOW = theme.colors.adeGlow;
 
 export default function CharacterSelectScene({
   mode,
@@ -37,24 +50,46 @@ export default function CharacterSelectScene({
   const launchingRef = useRef(false);
   const p2Selectable = isLocal;
 
-  // Auto-confirm P2 per AI e online
   useEffect(() => {
     if (!isLocal) setP2Confirmed(true);
   }, [isLocal]);
 
-  // Keyboard
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const key = e.key.toLowerCase();
 
-      if (!p1Confirmed) {
-        if (key === 'a' || key === 'd') { e.preventDefault(); setP1Index(prev => prev === 0 ? 1 : 0); }
-        if (key === ' ') { e.preventDefault(); setP1Confirmed(true); }
-      }
-
-      if (p2Selectable && !p2Confirmed) {
-        if (key === 'arrowleft' || key === 'arrowright') { e.preventDefault(); setP2Index(prev => prev === 0 ? 1 : 0); }
-        if (key === 'enter') { e.preventDefault(); setP2Confirmed(true); }
+      if (isSplitScreen) {
+        if (!p1Confirmed) {
+          if (key === 'w' || key === 's') {
+            e.preventDefault();
+            setP1Index(prev => prev === 0 ? 1 : 0);
+          }
+          if (key === ' ') {
+            e.preventDefault();
+            setP1Confirmed(true);
+          }
+        }
+        if (p2Selectable && !p2Confirmed) {
+          if (key === 'arrowup' || key === 'arrowdown') {
+            e.preventDefault();
+            setP2Index(prev => prev === 0 ? 1 : 0);
+          }
+          if (key === 'enter') {
+            e.preventDefault();
+            setP2Confirmed(true);
+          }
+        }
+      } else {
+        if (!p1Confirmed) {
+          if (key === 'a' || key === 'd' || key === 'arrowleft' || key === 'arrowright') {
+            e.preventDefault();
+            setP1Index(prev => prev === 0 ? 1 : 0);
+          }
+          if (key === ' ' || key === 'enter') {
+            e.preventDefault();
+            setP1Confirmed(true);
+          }
+        }
       }
 
       if (key === 'escape') onBack();
@@ -62,9 +97,8 @@ export default function CharacterSelectScene({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [p1Confirmed, p2Confirmed, p2Selectable, onBack]);
-
-  // Launch
+  }, [p1Confirmed, p2Confirmed, p2Selectable, isSplitScreen, onBack]);
+  
   useEffect(() => {
     if (!p1Confirmed) return;
     if (isSplitScreen && !p2Confirmed) return;
@@ -72,9 +106,9 @@ export default function CharacterSelectScene({
     if (launchingRef.current) return;
 
     launchingRef.current = true;
-    setLaunching(true); // solo per il FIGHT overlay
+    setLaunching(true);
 
-    const timer = setTimeout(() => {
+    const timer = setTimeout(async () => {
       const finalP1 = CHARACTERS[p1Index];
       const finalP2 = CHARACTERS[p2Index];
 
@@ -95,13 +129,18 @@ export default function CharacterSelectScene({
           userDbId: null,
         });
       } else {
-        socketService.emit(GameEvents.JOIN_LOBBY, {
-          characterName: [finalP1],
-          isLocalGame: false,
-          isAiGame: false,
+        const socket = socketService.getSocket();
+        const { matchmakingService } = await import('../services/matchmakingService');
+        const response = await matchmakingService.joinQueue({
+          userId: 'temp_user_' + (socket?.id || 'unknown'),
+          rank: 1000,
+          characterName: finalP1,
+          isAiPlayer: false,
+          socketId: socket?.id || '',
+          matchMode: mode === MatchMode.RANKED ? 'ranked' : 'standard',
           matchType: 'ffa',
-          userDbId: null,
         });
+        console.log('Matchmaking response:', response);
       }
 
       onConfirm(finalP1, finalP2);
@@ -109,6 +148,21 @@ export default function CharacterSelectScene({
 
     return () => clearTimeout(timer);
   }, [p1Confirmed, p2Confirmed, isSocketReady]);
+
+  function getSharedButtonGlow(index: number): string {
+    const p1On = p1Index === index;
+    const p2On = p2Index === index;
+
+    if (p1On && p2On) {
+      return `
+        -20px 0 16px -2px ${P1_GLOW},
+        20px 0 16px -2px ${P2_GLOW}
+      `;
+    }
+    if (p1On) return `-10px 0 16px ${P1_GLOW}`;
+    if (p2On) return `10px 0 16px ${P2_GLOW}`;
+    return 'none';
+  }
 
   return (
     <div style={{
@@ -120,7 +174,6 @@ export default function CharacterSelectScene({
       backgroundColor: theme.colors.bg,
       overflow: 'hidden',
     }}>
-      {/* Background */}
       <div style={{
         position: 'absolute',
         inset: 0,
@@ -128,7 +181,6 @@ export default function CharacterSelectScene({
         pointerEvents: 'none',
       }} />
 
-      {/* Back */}
       <button
         onClick={onBack}
         style={{
@@ -160,41 +212,262 @@ export default function CharacterSelectScene({
       </button>
 
       {isSplitScreen ? (
-        /* ====== SPLIT SCREEN (LOCAL / AI) ====== */
         <>
-          <PlayerSide
-            label="P1"
-            controls="A, D for choose, SPACE for confirm"
-            selectedIndex={p1Index}
-            confirmed={p1Confirmed}
-            hoveredIndex={p1Hover}
-            onSelect={(i) => { if (!p1Confirmed) setP1Index(i); }}
-            onHover={setP1Hover}
-            onConfirm={() => setP1Confirmed(true)}
-            disabled={false}
-          />
-
+          {/* P1 side */}
           <div style={{
-            width: '1px',
-            background: `linear-gradient(180deg, transparent 10%, ${theme.colors.goldSubtle} 50%, transparent 90%)`,
-            zIndex: 2,
-          }} />
+            flex: 1,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            position: 'relative',
+            padding: '40px 20px',
+          }}>
+            <h2 style={{
+              fontFamily: theme.fonts.heading,
+              fontSize: '24px',
+              fontWeight: 700,
+              color: theme.colors.gold,
+              letterSpacing: '8px',
+              margin: 0,
+            }}>
+              P1
+            </h2>
+            <p style={{
+              fontFamily: theme.fonts.mono,
+              fontSize: '10px',
+              color: theme.colors.textMuted,
+              letterSpacing: '2px',
+              marginTop: '8px',
+            }}>
+              A, D + SPACE
+            </p>
 
-          <PlayerSide
-            label={isAI ? 'CPU' : 'P2'}
-            controls={p2Selectable ? '←, →  for choose. ENTER for confirm' : 'AUTO'}
-            selectedIndex={p2Index}
-            confirmed={p2Confirmed}
-            hoveredIndex={p2Hover}
-            onSelect={(i) => { if (p2Selectable && !p2Confirmed) setP2Index(i); }}
-            onHover={p2Selectable ? setP2Hover : () => {}}
-            onConfirm={() => { if (p2Selectable) setP2Confirmed(true); }}
-            disabled={!p2Selectable}
-          />
+            <div style={{
+              flex: 1,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: '100%',
+              position: 'relative',
+            }}>
+              <div style={{
+                position: 'absolute',
+                width: '200px',
+                height: '200px',
+                borderRadius: '50%',
+                background: `radial-gradient(circle, ${P1_GLOW} 0%, transparent 70%)`,
+                transition: 'all 0.5s ease',
+              }} />
+              <div style={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                zIndex: 2,
+                transform: p1Confirmed ? 'scale(1.05)' : 'scale(1)',
+                transition: 'all 0.3s ease',
+              }}>
+                <span style={{
+                  fontFamily: theme.fonts.heading,
+                  fontSize: 'clamp(36px, 5vw, 56px)',
+                  fontWeight: 700,
+                  color: theme.colors.gold,
+                  textShadow: `0 0 30px ${theme.colors.goldGlow}`,
+                  textTransform: 'uppercase',
+                  letterSpacing: '6px',
+                  transition: 'all 0.3s ease',
+                }}>
+                  {CHARACTERS[p1Hover ?? p1Index]}
+                </span>
+                <div style={{
+                  marginTop: '20px',
+                  width: '120px',
+                  height: '160px',
+                  border: `1px dashed ${theme.colors.goldSubtle}`,
+                  borderRadius: '4px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: theme.colors.textMuted,
+                  fontFamily: theme.fonts.mono,
+                  fontSize: '10px',
+                }}>
+                  3D MODEL
+                </div>
+                {p1Confirmed && (
+                  <div style={{
+                    marginTop: '16px',
+                    fontFamily: theme.fonts.heading,
+                    fontSize: '12px',
+                    color: theme.colors.gold,
+                    letterSpacing: '4px',
+                    animation: 'fadeIn 0.3s ease-out',
+                  }}>
+                    READY
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* CENTER — Shared selection buttons */}
+          <div style={{
+            width: '280px',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '32px',
+            zIndex: 5,
+          }}>
+            {CHARACTERS.map((char, index) => {
+              const p1On = p1Index === index;
+              const p2On = p2Index === index;
+
+              return (
+                <div
+                  key={char}
+                  style={{
+                    width: '120px',
+                    height: '59px',
+                    position: 'relative',
+                    cursor: 'default',
+                  }}
+                >
+                  <img
+                    src={CHARACTER_IMAGES[char]}
+                    alt={char}
+                    style={{
+                      width: '120px',
+                      height: '59px',
+                      objectFit: 'contain',
+                      transition: 'all 0.3s ease',
+                      opacity: (p1On || p2On) ? 1 : 0.4,
+                      filter: (p1On || p2On) ? 'none' : 'grayscale(0.6)',
+                      border: `0.5px solid ${theme.colors.goldSubtle}`,
+                      boxShadow: getSharedButtonGlow(index),
+                    }}
+                  />
+                </div>
+              );
+            })}
+
+            <p style={{
+              fontFamily: theme.fonts.mono,
+              fontSize: '9px',
+              color: theme.colors.textMuted,
+              letterSpacing: '1px',
+              textAlign: 'center',
+              lineHeight: 1.6,
+              marginTop: '8px',
+            }}>
+              <span style={{ color: P1_COLOR }}>P1</span> A/D + SPACE
+              <br />
+              <span style={{ color: P2_COLOR }}>P2</span> ←/→ + ENTER
+            </p>
+          </div>
+
+          {/* P2 side */}
+          <div style={{
+            flex: 1,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            position: 'relative',
+            padding: '40px 20px',
+            opacity: !p2Selectable ? 0.5 : 1,
+          }}>
+            <h2 style={{
+              fontFamily: theme.fonts.heading,
+              fontSize: '24px',
+              fontWeight: 700,
+              color: theme.colors.gold,
+              letterSpacing: '8px',
+              margin: 0,
+            }}>
+              {isAI ? 'CPU' : 'P2'}
+            </h2>
+            <p style={{
+              fontFamily: theme.fonts.mono,
+              fontSize: '10px',
+              color: theme.colors.textMuted,
+              letterSpacing: '2px',
+              marginTop: '8px',
+            }}>
+              {p2Selectable ? '←, → + ENTER' : 'AUTO'}
+            </p>
+
+            <div style={{
+              flex: 1,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: '100%',
+              position: 'relative',
+            }}>
+              <div style={{
+                position: 'absolute',
+                width: '200px',
+                height: '200px',
+                borderRadius: '50%',
+                background: `radial-gradient(circle, ${P2_GLOW} 0%, transparent 70%)`,
+                transition: 'all 0.5s ease',
+              }} />
+              <div style={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                zIndex: 2,
+                transform: p2Confirmed ? 'scale(1.05)' : 'scale(1)',
+                transition: 'all 0.3s ease',
+              }}>
+                <span style={{
+                  fontFamily: theme.fonts.heading,
+                  fontSize: 'clamp(36px, 5vw, 56px)',
+                  fontWeight: 700,
+                  color: theme.colors.gold,
+                  textShadow: `0 0 30px ${theme.colors.goldGlow}`,
+                  textTransform: 'uppercase',
+                  letterSpacing: '6px',
+                  transition: 'all 0.3s ease',
+                }}>
+                  {CHARACTERS[p2Hover ?? p2Index]}
+                </span>
+                <div style={{
+                  marginTop: '20px',
+                  width: '120px',
+                  height: '160px',
+                  border: `1px dashed ${theme.colors.goldSubtle}`,
+                  borderRadius: '4px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: theme.colors.textMuted,
+                  fontFamily: theme.fonts.mono,
+                  fontSize: '10px',
+                }}>
+                  3D MODEL
+                </div>
+                {p2Confirmed && (
+                  <div style={{
+                    marginTop: '16px',
+                    fontFamily: theme.fonts.heading,
+                    fontSize: '12px',
+                    color: theme.colors.gold,
+                    letterSpacing: '4px',
+                    animation: 'fadeIn 0.3s ease-out',
+                  }}>
+                    READY
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
         </>
       ) : (
-        /* ====== SINGLE SELECT (RANKED / UNRANKED) ====== */
-        <div style={{
+        /* SINGLE SELECT */
+  <div style={{
           flex: 1,
           display: 'flex',
           flexDirection: 'column',
@@ -202,91 +475,63 @@ export default function CharacterSelectScene({
           justifyContent: 'center',
           padding: '40px',
         }}>
-          <h2 style={{
+          {/* Character name */}
+          <span style={{
             fontFamily: theme.fonts.heading,
-            fontSize: '28px',
-            fontWeight: 700,
-            color: theme.colors.gold,
-            letterSpacing: '8px',
+            fontSize: '13px',
+            fontWeight: 400,
+            color: theme.colors.goldDim,
             textTransform: 'uppercase',
-            margin: 0,
-            textShadow: `0 0 30px ${theme.colors.goldGlow}`,
+            letterSpacing: '6px',
+            transition: 'all 0.3s ease',
           }}>
-            Choose Your Champion
-          </h2>
+            {CHARACTERS[p1Hover ?? p1Index]}
+          </span>
 
+          {/* 3D Model placeholder */}
           <div style={{
-            marginTop: '12px',
-            width: '120px',
-            height: '1px',
-            background: `linear-gradient(90deg, transparent, ${theme.colors.goldMuted}, transparent)`,
-          }} />
-
-          {/* Preview */}
-          <div style={{
-            marginTop: '50px',
+            marginTop: '16px',
+            width: '180px',
+            height: '260px',
+            border: `1px dashed ${theme.colors.goldSubtle}`,
             display: 'flex',
-            flexDirection: 'column',
             alignItems: 'center',
+            justifyContent: 'center',
+            color: theme.colors.textMuted,
+            fontFamily: theme.fonts.mono,
+            fontSize: '10px',
             position: 'relative',
           }}>
+            3D MODEL
             <div style={{
               position: 'absolute',
-              width: '250px',
-              height: '250px',
+              width: '280px',
+              height: '280px',
               borderRadius: '50%',
               background: `radial-gradient(circle, ${theme.colors.goldGlow} 0%, transparent 70%)`,
-              transition: 'all 0.5s ease',
+              pointerEvents: 'none',
             }} />
-
-            <span style={{
-              fontFamily: theme.fonts.heading,
-              fontSize: 'clamp(48px, 6vw, 72px)',
-              fontWeight: 700,
-              color: theme.colors.gold,
-              textShadow: `0 0 30px ${theme.colors.goldGlow}`,
-              textTransform: 'uppercase',
-              letterSpacing: '8px',
-              transition: 'all 0.3s ease',
-              zIndex: 2,
-            }}>
-              {CHARACTERS[p1Hover ?? p1Index]}
-            </span>
-
-            <div style={{
-              marginTop: '24px',
-              width: '150px',
-              height: '200px',
-              border: `1px dashed ${theme.colors.goldSubtle}`,
-              borderRadius: '4px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: theme.colors.textMuted,
-              fontFamily: theme.fonts.mono,
-              fontSize: '10px',
-              zIndex: 2,
-            }}>
-              3D MODEL
-            </div>
-
-            {p1Confirmed && (
-              <div style={{
-                marginTop: '16px',
-                fontFamily: theme.fonts.heading,
-                fontSize: '14px',
-                color: theme.colors.gold,
-                letterSpacing: '6px',
-                zIndex: 2,
-                animation: 'fadeIn 0.3s ease-out',
-              }}>
-                READY
-              </div>
-            )}
           </div>
 
-          {/* Selection buttons */}
-          <div style={{ display: 'flex', gap: '30px', marginTop: '50px' }}>
+          {p1Confirmed && (
+            <div style={{
+              marginTop: '16px',
+              fontFamily: theme.fonts.heading,
+              fontSize: '14px',
+              color: theme.colors.gold,
+              letterSpacing: '6px',
+              animation: 'fadeIn 0.3s ease-out',
+            }}>
+              READY
+            </div>
+          )}
+
+          {/* Character cards */}
+          <div style={{
+            display: 'flex',
+            gap: '24px',
+            marginTop: '24px',
+          }}>
             {CHARACTERS.map((char, index) => {
               const isSelected = p1Index === index;
               const isHov = p1Hover === index;
@@ -300,50 +545,42 @@ export default function CharacterSelectScene({
                   onMouseLeave={() => { if (!p1Confirmed) setP1Hover(null); }}
                   onDoubleClick={() => { if (!p1Confirmed) { setP1Index(index); setP1Confirmed(true); } }}
                   style={{
-                    width: '160px',
-                    height: '70px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    border: `1px solid ${active ? theme.colors.goldDim : theme.colors.border}`,
-                    borderRadius: '3px',
                     cursor: p1Confirmed ? 'default' : 'pointer',
+                    opacity: p1Confirmed && !isSelected ? 0.25 : 1,
                     transition: 'all 0.3s ease',
-                    backgroundColor: isSelected ? 'rgba(200, 170, 100, 0.08)' : 'rgba(255, 255, 255, 0.02)',
-                    boxShadow: active ? `0 0 20px ${theme.colors.goldGlow}` : 'none',
-                    opacity: p1Confirmed && !isSelected ? 0.3 : 1,
                   }}
                 >
-                  <span style={{
-                    fontFamily: theme.fonts.heading,
-                    fontSize: '16px',
-                    fontWeight: isSelected ? 700 : 400,
-                    color: active ? theme.colors.gold : theme.colors.goldMuted,
-                    letterSpacing: '4px',
-                    textTransform: 'uppercase',
-                    transition: 'all 0.3s ease',
-                  }}>
-                    {char}
-                  </span>
+                  <img
+                    src={CHARACTER_IMAGES[char]}
+                    alt={char}
+                    style={{
+                      width: '120px',
+                      height: '59px',
+                      objectFit: 'contain',
+                      transition: 'all 0.3s ease',
+                      opacity: active ? 1 : 0.4,
+                      filter: active ? 'none' : 'grayscale(0.6)',
+                      border: `0.5px solid ${theme.colors.goldSubtle}`,
+                      boxShadow: active ? `0 0 16px ${theme.colors.goldGlow}` : 'none',
+                    }}
+                  />
                 </div>
               );
             })}
           </div>
 
           <p style={{
-            marginTop: '20px',
+            marginTop: '16px',
             fontFamily: theme.fonts.mono,
             fontSize: '10px',
             color: theme.colors.textMuted,
             letterSpacing: '2px',
           }}>
-            A, D for moving.
-            SPACE for confirm
+            A / D or ← / → — SPACE or ENTER
           </p>
         </div>
       )}
 
-      {/* FIGHT overlay */}
       {launching && (
         <div style={{
           position: 'absolute',
@@ -373,176 +610,6 @@ export default function CharacterSelectScene({
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
         @keyframes scaleIn { from { opacity: 0; transform: scale(0.5); } to { opacity: 1; transform: scale(1); } }
       `}</style>
-    </div>
-  );
-}
-
-// --- Player Side (split screen) ---
-
-interface PlayerSideProps {
-  label: string;
-  controls: string;
-  selectedIndex: number;
-  confirmed: boolean;
-  hoveredIndex: number | null;
-  onSelect: (index: number) => void;
-  onHover: (index: number | null) => void;
-  onConfirm: () => void;
-  disabled: boolean;
-}
-
-function PlayerSide({
-  label, controls, selectedIndex, confirmed,
-  hoveredIndex, onSelect, onHover, onConfirm, disabled,
-}: PlayerSideProps) {
-  const displayChar = CHARACTERS[hoveredIndex ?? selectedIndex];
-
-  return (
-    <div style={{
-      flex: 1,
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      position: 'relative',
-      padding: '40px 20px',
-      opacity: disabled ? 0.5 : 1,
-    }}>
-      <h2 style={{
-        fontFamily: theme.fonts.heading,
-        fontSize: '24px',
-        fontWeight: 700,
-        color: theme.colors.gold,
-        letterSpacing: '8px',
-        margin: 0,
-        marginTop: '20px',
-      }}>
-        {label}
-      </h2>
-
-      <p style={{
-        fontFamily: theme.fonts.mono,
-        fontSize: '10px',
-        color: theme.colors.textMuted,
-        letterSpacing: '2px',
-        marginTop: '8px',
-      }}>
-        {controls}
-      </p>
-
-      {/* Preview */}
-      <div style={{
-        flex: 1,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        width: '100%',
-        position: 'relative',
-      }}>
-        <div style={{
-          position: 'absolute',
-          width: '200px',
-          height: '200px',
-          borderRadius: '50%',
-          background: `radial-gradient(circle, ${theme.colors.goldGlow} 0%, transparent 70%)`,
-          transition: 'all 0.5s ease',
-        }} />
-
-        <div style={{
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          zIndex: 2,
-          transform: confirmed ? 'scale(1.05)' : 'scale(1)',
-          transition: 'all 0.3s ease',
-        }}>
-          <span style={{
-            fontFamily: theme.fonts.heading,
-            fontSize: 'clamp(36px, 5vw, 56px)',
-            fontWeight: 700,
-            color: theme.colors.gold,
-            textShadow: `0 0 30px ${theme.colors.goldGlow}`,
-            textTransform: 'uppercase',
-            letterSpacing: '6px',
-            transition: 'all 0.3s ease',
-          }}>
-            {displayChar}
-          </span>
-
-          <div style={{
-            marginTop: '20px',
-            width: '120px',
-            height: '160px',
-            border: `1px dashed ${theme.colors.goldSubtle}`,
-            borderRadius: '4px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            color: theme.colors.textMuted,
-            fontFamily: theme.fonts.mono,
-            fontSize: '10px',
-          }}>
-            3D MODEL
-          </div>
-
-          {confirmed && (
-            <div style={{
-              marginTop: '16px',
-              fontFamily: theme.fonts.heading,
-              fontSize: '12px',
-              color: theme.colors.gold,
-              letterSpacing: '4px',
-              animation: 'fadeIn 0.3s ease-out',
-            }}>
-              READY
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Selection buttons */}
-      <div style={{ display: 'flex', gap: '20px', marginBottom: '40px' }}>
-        {CHARACTERS.map((char, index) => {
-          const isSelected = selectedIndex === index;
-          const isHov = hoveredIndex === index;
-          const active = isSelected || isHov;
-
-          return (
-            <div
-              key={char}
-              onClick={() => { if (!disabled && !confirmed) onSelect(index); }}
-              onMouseEnter={() => { if (!disabled && !confirmed) onHover(index); }}
-              onMouseLeave={() => { if (!disabled && !confirmed) onHover(null); }}
-              onDoubleClick={() => { if (!disabled && !confirmed) { onSelect(index); onConfirm(); } }}
-              style={{
-                width: 'clamp(100px, 12vw, 140px)',
-                height: 'clamp(50px, 6vh, 70px)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                border: `1px solid ${active ? theme.colors.goldDim : theme.colors.border}`,
-                borderRadius: '3px',
-                cursor: disabled || confirmed ? 'default' : 'pointer',
-                transition: 'all 0.3s ease',
-                backgroundColor: isSelected ? 'rgba(200, 170, 100, 0.08)' : 'rgba(255, 255, 255, 0.02)',
-                boxShadow: active ? `0 0 20px ${theme.colors.goldGlow}` : 'none',
-                opacity: confirmed && !isSelected ? 0.3 : 1,
-              }}
-            >
-              <span style={{
-                fontFamily: theme.fonts.heading,
-                fontSize: '14px',
-                fontWeight: isSelected ? 700 : 400,
-                color: active ? theme.colors.gold : theme.colors.goldMuted,
-                letterSpacing: '3px',
-                textTransform: 'uppercase',
-                transition: 'all 0.3s ease',
-              }}>
-                {char}
-              </span>
-            </div>
-          );
-        })}
-      </div>
     </div>
   );
 }
