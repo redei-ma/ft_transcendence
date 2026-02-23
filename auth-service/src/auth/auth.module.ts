@@ -4,12 +4,10 @@ import { JwtModule } from '@nestjs/jwt';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { JwtStrategy } from './jwt/jwt.strategy';
-import { UsersModule } from 'src/users/users.module';
 import { JwtRefreshStrategy } from './jwt/jwt-refresh.strategy';
 import { MailService } from './mail/mail.service';
 import { GoogleStrategy } from './jwt/google.strategy';
-import { ProfileModule } from 'src/profile/profile.module';
-import { ProfileClient } from 'src/profile/profile.client';
+import { UserModule } from 'src/user/user.module';
 import { APP_GUARD } from '@nestjs/core';
 import { ThrottlerGuard } from '@nestjs/throttler';
 
@@ -17,11 +15,10 @@ import { ThrottlerGuard } from '@nestjs/throttler';
   imports: [
     PassportModule,
     JwtModule.register({}),
-    UsersModule,
-    ProfileModule
+    UserModule
   ],
   controllers: [AuthController],
-  providers: [AuthService, JwtStrategy, JwtRefreshStrategy, MailService, GoogleStrategy, ProfileClient,
+  providers: [AuthService, JwtStrategy, JwtRefreshStrategy, MailService, GoogleStrategy,
     {
     provide: APP_GUARD,
     useClass: ThrottlerGuard,

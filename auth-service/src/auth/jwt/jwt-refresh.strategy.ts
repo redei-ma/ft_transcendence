@@ -3,14 +3,14 @@ import { Strategy, ExtractJwt } from 'passport-jwt';
 import { Injectable, UnauthorizedException} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtRefreshPayloadDto, REFRESH_COOKIE_NAME } from '@game/auth-shared';
-import { UsersService } from '../../users/users.service';
+import { UserClient } from '../../user/user.client';
 
 @Injectable()
 export class JwtRefreshStrategy extends PassportStrategy(
   Strategy,
   'jwt-refresh',
 ) {
-  constructor( private readonly usersService: UsersService, config: ConfigService) {
+  constructor( private readonly usersService: UserClient, config: ConfigService) {
     super({
       jwtFromRequest: ExtractJwt.fromExtractors([
         (req) => req?.cookies?.[REFRESH_COOKIE_NAME],

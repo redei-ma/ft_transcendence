@@ -12,9 +12,6 @@ WORKDIR /usr/src/app
 COPY auth-service/package*.json ./
 RUN npm install
 
-# 4. Generate Prisma
-COPY auth-service/prisma ./prisma
-RUN npx prisma generate
 
 # 5. Copy the rest of the source
 COPY auth-service/. .

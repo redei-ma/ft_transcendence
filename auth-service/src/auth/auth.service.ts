@@ -2,23 +2,21 @@
 import { Injectable, UnauthorizedException, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
-import { UsersService } from '../users/users.service';
 import { JwtAccessPayloadDto, JwtRefreshPayloadDto} from '@game/auth-shared';
 import { ConfigService } from '@nestjs/config';
 import { MailService } from './mail/mail.service';
 import { GoogleUser } from './types/google-user.type';
-import { ProfileClient } from '../profile/profile.client';
+import { UserClient } from '../user/user.client';
 import * as speakeasy from 'speakeasy';
 import * as QRCode from 'qrcode';
 
 @Injectable()
 export class AuthService {
   constructor(
-    private readonly usersService: UsersService,
     private readonly  config: ConfigService,
     private readonly jwtService: JwtService,
     private readonly mailService: MailService,
-    private profileClient: ProfileClient,
+    private usersService: UserClient,
   ) {}
 
   async registerAndSendVerification(

@@ -3,7 +3,7 @@ import { HttpService } from '@nestjs/axios';
 //import type { /* InternalUser  */ } from '@game/auth-shared';
 
 @Injectable()
-export class UsersClient {
+export class UserClient {
   constructor(private readonly http: HttpService) {}
 
   async findByUsername(username: string): Promise</* InternalUser  */ any | null> {
@@ -27,27 +27,36 @@ export class UsersClient {
     return data;
   }
 
-  async createUser(dto: {
-    username: string;
-    email: string;
-    passwordHash: string;
-  }): Promise</* InternalUser  */ any > {
+  async createUser(
+    username: string,
+    email: string,
+    passwordHash: string,
+  ): Promise</* InternalUser  */ any > {
     const { data } = await this.http.axiosRef.post(
       `http://user-service/internal/users`,
-      dto,
+      {
+        username,
+        email,
+        passwordHash
+      },
     );
     return data;
   }
 
-  async createOAuthUser(dto: {
-    email: string;
-    username: string;
-    oauthId: string;
-    provider: string;
-  }): Promise</* InternalUser  */ any > {
+  async createOAuthUser(
+    email: string,
+    username: string,
+    oauthId: string,
+    provider: string,
+  ): Promise</* InternalUser  */ any > {
     const { data } = await this.http.axiosRef.post(
       `http://user-service/internal/users/oauth`,
-      dto,
+      {
+        email,
+        username,
+        oauthId,
+        provider
+      },
     );
     return data;
   }
