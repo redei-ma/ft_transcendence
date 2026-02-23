@@ -1,11 +1,15 @@
 export enum GameEvents {
-	// Client -> Server
-	JOIN_LOBBY = 'join-lobby',
-	INPUT = 'game-input',
+  // Matchmaking — verso Leonardo (socket logic-service)
+  JOIN_LOCAL = 'join_local',
+  JOIN_AI = 'join_ai',
+  JOIN_UNRANKED = 'join_unranked',
+  JOIN_RANKED = 'join_ranked',
+  MATCH_FOUND = 'match_found',
 
-	// Server -> Client
-	GAME_STATE = 'game-state',
-	GAME_OVER = 'game-over',
-	MAP_EMIT = 'map-emit',
-	GAME_MESSAGE = 'game-message',
+  // Game — verso Giovanni (socket game-service)
+  MAP_EMIT = 'map-emit',
+  GAME_STATE = 'game-state',
+  GAME_OVER = 'game-over',
+  INPUT = 'input',
+  GAME_MESSAGE = 'game-message',
 }
