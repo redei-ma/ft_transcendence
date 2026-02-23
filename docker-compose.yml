@@ -39,6 +39,20 @@ services:
         volumes:
             - ./shared_storage/prisma:/app/prisma
 
+    auth-service:
+    build:
+      context: .
+      dockerfile: ./auth-service/Dockerfile
+    container_name: auth_service
+    env_file:
+      - ./auth-service/.env
+      - .env.shared
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - backend-network
+
     user-service:
         container_name: transcendence_user_service
         image: transcendence_user_service:20-alpine
@@ -103,6 +117,38 @@ services:
             timeout: 5s
             retries: 5
             start_period: 15s
+
+    gateway:
+        image: nginx:stable-alpine
+        container_name: api_gateway
+        ports:
+        - "2443:2443"
+        volumes:
+        - ./frontend:/usr/share/nginx/html:ro
+        - ./nginx.conf:/etc/nginx/nginx.conf:ro
+        - ./certs:/etc/nginx/certs
+        depends_on:
+        - auth-service
+        - user-service
+        - game-service
+        networks:
+        - backend-network
+
+    ngrok:
+        image: ngrok/ngrok:3
+        container_name: ngrok
+        command:  http https://gateway:2443
+        env_file:
+        - .env
+        environment:
+        - NGROK_AUTHTOKEN=${NGROK_AUTHTOKEN}
+        depends_on:
+        - gateway
+        ports:
+        - "4040:4040"
+        networks:
+        - backend-network
+
 
 volumes:
     postgres_data:
