@@ -1,0 +1,57 @@
+{
+	"compilerOptions": {
+		/* Language and Environment */
+		"target": "ES2021",
+		"lib": ["ES2021"],
+		"experimentalDecorators": true,
+		"emitDecoratorMetadata": true,
+
+		/* Modules */
+		"module": "commonjs",
+		"rootDir": "./src",
+		"moduleResolution": "node",
+		"baseUrl": "./",
+		"paths": {
+			"@/*": ["src/*"],
+			"@modules/*": ["src/modules/*"],
+			"@config/*": ["src/config/*"]
+		},
+		"resolveJsonModule": true,
+
+		/* Emit */
+		"declaration": true,
+		"outDir": "./dist",
+		"removeComments": true,
+		"sourceMap": true,
+
+		/* Interop Constraints */
+		"esModuleInterop": true,
+		"allowSyntheticDefaultImports": true,
+		"forceConsistentCasingInFileNames": true,
+
+		/* Type Checking */
+		"strict": true,
+		"noImplicitAny": true,
+		"strictNullChecks": true,
+		"strictFunctionTypes": true,
+		"strictBindCallApply": true,
+		"strictPropertyInitialization": false,
+		"noImplicitThis": true,
+		"alwaysStrict": true,
+		"noUnusedLocals": false,
+		"noUnusedParameters": false,
+		"noImplicitReturns": true,
+		"noFallthroughCasesInSwitch": true,
+
+		/* Completeness */
+		"skipLibCheck": true
+	},
+	"include": ["src/**/*"],
+	"exclude": [
+		"node_modules",
+		"test",
+		"dist",
+		"**/*spec.ts",
+		"../shared_storage/prisma/seeds"
+	]
+}
