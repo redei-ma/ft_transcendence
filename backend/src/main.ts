@@ -25,7 +25,7 @@ async function bootstrap() {
     */
 
 	app.enableCors();
-	app.useGlobalFilters(new GameExceptionFilter());
+	//app.useGlobalFilters(new GameExceptionFilter());
 
 	const logger: Logger = new Logger('Bootstrap');
 	await app.listen(3000, "0.0.0.0");

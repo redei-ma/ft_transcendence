@@ -1,7 +1,6 @@
 import { GameConfig } from "../configs/game.config";
 import { SocketEvents } from "../configs/game.events";
 import { GameSession } from "../core/game.session";
-import { GameException } from "../game.exception";
 import { AttackType, GameEndEvents, ErrorCode, GameStateEvents, Player, SuccessCode } from "../interfaces-enums";
 import { ExitStatus } from "../interfaces-enums/exitStatus.interface";
 import { Vector } from "../utils/game.vector";
@@ -54,7 +53,7 @@ export class PlayState implements IGameState{
 		this.logger.log("PlayState finished. Transitioning to EndState.");
 	}
 
-	reconnectPlayer(userDbId: number, socketId: string): ExitStatus{
+	reconnectPlayer(userDbId: string, socketId: string): ExitStatus{
 
 		let players: Player[] = [];
 		for (let currentPlayer of this.session.players.values()){

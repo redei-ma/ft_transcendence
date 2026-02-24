@@ -13,7 +13,7 @@ export interface MatchResult {
 }
 
 export interface PlayerResult {
-	userId: number | null; // null per i bot
+	userId: string | null; // null per i bot
 	teamId: number; // For INDIVIDUAL and FFA modes, each player has a unique teamId
 	characterName: CharacterName; // ADE, ZEUS
 	kills: number;

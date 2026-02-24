@@ -21,7 +21,7 @@ export class GameService{
 	private socketToGame: Map<string, string> = new Map();
 
 	/* In-memory Map to store users, linking userDbId to gameSessionID */
-	private userToGameData = new Map<number, GameData>();
+	private userToGameData = new Map<string, GameData>();
 
 	private server: Server;
 	private gameIndex: number = 0;
@@ -249,7 +249,7 @@ export class GameService{
 		return (this.games.get(gameId));
 	}
 
-	hasPendingMatch(userDbId: number): GameData | undefined{
+	hasPendingMatch(userDbId: string): GameData | undefined{
 		return (this.userToGameData.get(userDbId));
 	}
 

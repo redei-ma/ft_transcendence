@@ -22,7 +22,7 @@ export class GameSession{
 	private logger: Logger = new Logger(GameSession.name);
 
 	//all expected users db of all games
-	public readonly expectedUserDbIds: number[] = [];
+	public readonly expectedUserDbIds: string[] = [];
 	
 	/* this map connect entityID to Player */
 	public readonly players: Map<string, Player> = new Map();

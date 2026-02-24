@@ -2,7 +2,7 @@ import { CharacterName } from "./game.enums";
 
 export interface MatchMakingData{
 	characterName: CharacterName;
-	userDbId: number | null;
+	userDbId: string | null;
 	isAiPlayer: boolean;
 };
 

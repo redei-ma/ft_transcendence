@@ -28,7 +28,7 @@ export interface InputQueue{
 export interface	Player extends DynamicEntity{
 	type: 'player';
 	socketId: string | undefined;
-	userDbId:  number | null;
+	userDbId:  string | null;
 
 	rotation: number; // Orientation angle (in radians)
 

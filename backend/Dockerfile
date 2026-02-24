@@ -14,7 +14,8 @@ RUN npm install @nestjs/websockets \
 	ioredis \
 	@nestjs/microservices \
 	@nestjs/config \
-	@nestjs/throttler
+	@nestjs/throttler \
+	@types/node
 
 COPY . .
 

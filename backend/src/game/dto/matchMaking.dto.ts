@@ -1,4 +1,4 @@
-import { IsEnum, IsOptional, IsNotEmpty, IsNumber, IsBoolean, IsPositive, IsArray, IsString, ValidateNested } from "class-validator";
+import { IsEnum, IsOptional, IsNotEmpty, IsBoolean, IsArray, IsString, ValidateNested } from "class-validator";
 import { CharacterName, MatchMode, MatchType } from "../interfaces-enums";
 import { Type } from "class-transformer";
 
@@ -8,8 +8,8 @@ export class MatchMakingDto{
 	
 	@IsOptional()
 	@IsNotEmpty()
-	@IsNumber()
-	userDbId: number | null;
+	@IsString()
+	userDbId: string | null;
 
 	@IsBoolean()
 	isAiPlayer: boolean;

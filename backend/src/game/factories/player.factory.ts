@@ -47,7 +47,7 @@ function calculateTeamId(spawnIndex: number, matchType: MatchType): number{
 /* returns a player, if there is a position is modified else default position */
 export function getNewPlayer(
 	world: World, socketId: string | undefined, spawnIndex: number,
-	characterName: CharacterName, userDbId: number | null, entityId: string,
+	characterName: CharacterName, userDbId: string | null, entityId: string,
 	isBot: boolean, playerIndex: number | undefined,
 	matchType: MatchType): Player{
 

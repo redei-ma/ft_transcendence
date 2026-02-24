@@ -51,16 +51,16 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect, On
 		const socketId = client.id;
 		if (!socketId) return;
 
-		const userDbId: number = parseInt(client.handshake.query.userDbId as string, 10);
-		if (isNaN(userDbId)){
-			client.emit('exception', {
-				status: 'error',
-				errorCode: ErrorCode.INTERNAL_ERROR,
-				message: 'Invalid user DB ID'
-			});
-			client.disconnect();
-			return;
-		}
+		const userDbId: string = client.handshake.query.userDbId as string;
+		//if (isNaN(userDbId)){
+		//	client.emit('exception', {
+		//		status: 'error',
+		//		errorCode: ErrorCode.INTERNAL_ERROR,
+		//		message: 'Invalid user DB ID'
+		//	});
+		//	client.disconnect();
+		//	return;
+		//}
 
 		const gameData: GameData | undefined = this.gameService.hasPendingMatch(userDbId);
 		if (gameData){
