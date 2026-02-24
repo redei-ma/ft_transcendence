@@ -8,13 +8,7 @@ import {
 	IsEnum,
 	IsOptional,
 } from "class-validator";
-import {
-	MatchMode,
-	MatchType,
-	EndReason,
-	CharacterName,
-	Provider,
-} from "@prisma/client";
+import { Provider } from "../enums";
 
 /**
  * Input DTO for local user registration.

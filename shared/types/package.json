@@ -1,0 +1,21 @@
+{
+	"name": "@transcendence/types",
+	"version": "1.0.0",
+	"private": true,
+	"main": "./dist/index.js",
+	"types": "./dist/index.d.ts",
+	"scripts": {
+		"generate": "ts-node --skip-project --compiler-options '{\"module\":\"CommonJS\"}' generate-enums.ts",
+		"build": "npm run generate && tsc"
+	},
+	"dependencies": {
+		"@nestjs/swagger": "^11.2.6",
+		"class-transformer": "^0.5.1",
+		"class-validator": "^0.14.3"
+	},
+	"devDependencies": {
+		"@types/node": "^20.0.0",
+		"ts-node": "^10.9.0",
+		"typescript": "^5.9.3"
+	}
+}

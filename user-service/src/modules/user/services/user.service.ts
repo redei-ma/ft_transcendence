@@ -26,7 +26,7 @@ import {
 	PublicProfileResponseDto,
 	LeaderboardResponseDto,
 	CheckAvailabilityResponseDto,
-} from "../dto";
+} from "@transcendence/types";
 /**
  * Select Prisma fields for user queries that include accounts.
  */

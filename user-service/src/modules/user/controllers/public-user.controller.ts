@@ -19,7 +19,6 @@ import {
 	ApiParam,
 	ApiBearerAuth,
 } from "@nestjs/swagger";
-import { Provider } from "@prisma/client";
 import { JwtAuthGuard, CurrentUser } from "../../guard";
 import { UserService } from "../services/user.service";
 import {
@@ -35,7 +34,7 @@ import {
 	PublicProfileResponseDto,
 	LeaderboardResponseDto,
 	CheckAvailabilityResponseDto,
-} from "../dto";
+} from "@transcendence/types";
 
 /**
  * Controller for public user endpoints.

@@ -1,6 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
-import { UserStatus, Provider, CharacterName } from "@prisma/client";
-
+import { UserStatus, Provider, CharacterName } from "../enums";
 /**
  * Represents a single linked authentication method (LOCAL or OAuth).
  *
