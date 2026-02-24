@@ -47,10 +47,10 @@ export class CreateLocalUserDto {
 	@ApiProperty({
 		description: "Bcrypt-hashed password (hashed by auth-service)",
 		example: "$2b$10$abcdefghijklmnopqrstuvwxyz1234567890ABCDEFGHIJKLM",
-		minLength: 60,
+		minLength: 10,
 	})
 	@IsString()
-	@MinLength(60, { message: "Invalid password hash format" })
+	@MinLength(10, { message: "Invalid password hash format" })
 	passwordHash: string;
 }
 

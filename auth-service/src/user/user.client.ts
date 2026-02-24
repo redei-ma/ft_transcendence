@@ -8,37 +8,36 @@ export class UserClient {
 
   async findByUsername(username: string): Promise</* InternalUser  */ any | null> {
     const { data } = await this.http.axiosRef.get(
-      `http://user-service/internal/users/${username}`,
+      `http://user-service:3001/internal/users/${username}`,
     );
     return data;
   }
 
   async findByEmail(email: string): Promise</* InternalUser  */ any | null> {
     const { data } = await this.http.axiosRef.get(
-      `http://user-service/internal/users/${email}`,
+      `http://user-service:3001/internal/users/${email}`,
     );
     return data;
   }
 
   async findById(id: number): Promise</* InternalUser  */ any | null> {
     const { data } = await this.http.axiosRef.get(
-      `http://user-service/internal/users/${id}`,
+      `http://user-service:3001/internal/users/${id}`,
     );
     return data;
   }
 
   async createUser(
-    username: string,
-    email: string,
-    passwordHash: string,
+    CreateLocalUserDto:
+    {
+      username: string,
+      email: string,
+      passwordHash: string,
+    }
   ): Promise</* InternalUser  */ any > {
     const { data } = await this.http.axiosRef.post(
-      `http://user-service/internal/users`,
-      {
-        username,
-        email,
-        passwordHash
-      },
+      `http://user-service:3001/internal/users`,
+      CreateLocalUserDto,
     );
     return data;
   }
@@ -50,7 +49,7 @@ export class UserClient {
     provider: string,
   ): Promise</* InternalUser  */ any > {
     const { data } = await this.http.axiosRef.post(
-      `http://user-service/internal/users/oauth`,
+      `http://user-service:3001/internal/users/oauth`,
       {
         email,
         username,
@@ -63,33 +62,33 @@ export class UserClient {
 
   async invalidateRefreshTokens(userId: number): Promise<void> {
     await this.http.axiosRef.patch(
-      `http://user-service/internal/users/${userId}/token-version`,
+      `http://user-service:3001/internal/users/${userId}/token-version`,
     );
   }
 
   async markEmailVerified(userId: number): Promise<void> {
     await this.http.axiosRef.patch(
-      `http://user-service/internal/users/${userId}/verify-email`,
+      `http://user-service:3001/internal/users/${userId}/verify-email`,
     );
   }
 
   async updatePassword(userId: number, hashed: string): Promise<void> {
     await this.http.axiosRef.patch(
-      `http://user-service/internal/users/${userId}/password/change`,
+      `http://user-service:3001/internal/users/${userId}/password/change`,
       { passwordHash: hashed },
     );
   }
 
   async findByProvider(provider: string, oauthId: string): Promise</* InternalUser  */ any | null> {
     const { data } = await this.http.axiosRef.get(
-      `http://user-service/internal/users/${provider}/${oauthId}`,
+      `http://user-service:3001/internal/users/${provider}/${oauthId}`,
     );
     return data;
   }
 
   async linkProvider(userId: number, provider: string, oauthId: string) {
     const { data } = await this.http.axiosRef.post(
-      `http://user-service/internal/users/${userId}/oauth/${provider}`,
+      `http://user-service:3001/internal/users/${userId}/oauth/${provider}`,
       { oauthId },
     );
     return data;
@@ -97,20 +96,20 @@ export class UserClient {
 
   async setup2fa(userId: number, twoFactorSecret: string): Promise<void> {
     await this.http.axiosRef.post(
-      `http://user-service/internal/users/${userId}/2fa/setup`,
+      `http://user-service:3001/internal/users/${userId}/2fa/setup`,
       { twoFactorSecret },
     );
   }
 
   async enable2fa(userId: number): Promise<void> {
     await this.http.axiosRef.patch(
-      `http://user-service/internal/users/${userId}/2fa/enable`,
+      `http://user-service:3001/internal/users/${userId}/2fa/enable`,
     );
   }
 
   async disable2fa(userId: number): Promise<void> {
     await this.http.axiosRef.patch(
-      `http://user-service/internal/users/${userId}/2fa/disable`,
+      `http://user-service:3001/internal/users/${userId}/2fa/disable`,
     );
   }
 }
