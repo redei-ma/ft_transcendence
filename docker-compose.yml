@@ -50,6 +50,8 @@ services:
                 condition: service_healthy
         networks:
             - backend-network
+        expose:
+            - "3002"
 
     user-service:
         container_name: transcendence_user_service
