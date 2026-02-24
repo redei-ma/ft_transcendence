@@ -19,12 +19,63 @@ export class AuthService {
     private usersService: UserClient,
   ) {}
 
+
+async registerAndSendVerification(
+    username: string,
+    email: string,
+    password: string,
+  ) {
+    console.log(`[AUTH] Inizio registrazione per: ${username}, ${email}`);
+
+    try {
+      // 1. Log Hashing
+      console.log('[AUTH] Generazione hash password...');
+      // Attenzione: bcrypt.hash con "60" rounds è INFINITO. 
+      // Il valore standard è 10. Forse è questo che blocca tutto!
+      const passwordHash = await bcrypt.hash(password, 10); 
+      console.log('[AUTH] Hash generato con successo.');
+
+      // 2. Log Chiamata User Service
+      console.log('[AUTH] Chiamata a user-service per creare l utente...');
+      const user = await this.usersService.createUser({username, email, passwordHash});
+      console.log('[AUTH] Utente creato correttamente nel DB:', user.id);
+
+      // 3. Log Token e URL
+      const token = this.generateEmailVerificationToken(user.id);
+      const verifyUrl = `${this.config.getOrThrow<string>('PUBLIC_URL')}/api/auth/verify-email?token=${encodeURIComponent(token)}`;
+      console.log('[AUTH] URL di verifica generato.');
+
+      // 4. Log Email (senza await per non bloccare)
+      console.log('[AUTH] Tentativo invio email...');
+      this.mailService.sendVerifyEmail(user.email, verifyUrl)
+        .then(() => console.log('[AUTH] Email inviata con successo!'))
+        .catch(err => console.error('[AUTH] ERRORE INVIO EMAIL:', err.message));
+
+      return {
+        message: `Welcome ${user.username}! Please check your email.`,
+        user: { username: user.username, email: user.email }
+      };
+
+    } catch (error) {
+      console.error('[AUTH] ERRORE CRITICO NELLA REGISTRAZIONE:', error.message);
+      if (error.response) {
+        console.error('[AUTH] Dettagli errore User-Service:', error.response.data);
+      }
+      throw error;
+    }
+  }
+
+  /* 
   async registerAndSendVerification(
     username: string,
     email: string,
-    passwordHash: string,
+    password: string,
     ) {
-    const user = await this.usersService.createUser(username, email, passwordHash);
+
+    //to-do mettere controlli su psw
+    const passwordHash = await bcrypt.hash(password, 10);
+
+    const user = await this.usersService.createUser({username, email, passwordHash});
 
     const token = this.generateEmailVerificationToken(user.id);
 
@@ -40,7 +91,7 @@ export class AuthService {
         email: user.email,
       }
     };
-  }
+  } */
 
   async resendVerificationEmail(email: string) {
     const user = await this.usersService.findByEmail(email);
@@ -248,6 +299,8 @@ export class AuthService {
     if (payload.type !== 'password-reset') {
       throw new ForbiddenException('Invalid token type');
     }
+
+    //to-do mettere controlli su psw
 
     const hashed = await bcrypt.hash(newPassword, 10);
 
