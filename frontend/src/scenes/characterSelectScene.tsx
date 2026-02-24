@@ -110,7 +110,7 @@ export default function CharacterSelectScene({
       
       
       const payload = {
-        userDbId: Math.random(),
+        userDbId: Math.random().toString(36).substring(7),
         characterName: isSplitScreen ? [finalP1, finalP2] : [finalP1],
         rank: 500,
         rankRange: 100,

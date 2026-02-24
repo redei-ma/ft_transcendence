@@ -3,7 +3,7 @@ import { CharacterName, MatchType, MatchMode } from '../dto/interfaces-enums/gam
 /* Struttura del dato che ricevo quando qualcuno si vuole mettere in coda nel matchmaking */
 
 export class JoinQueueDto {
-  userDbId: number;
+  userDbId: string;
   characterName: CharacterName;
   isAiPlayer: boolean;
   matchType: MatchType;
