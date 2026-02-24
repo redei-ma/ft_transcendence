@@ -123,7 +123,7 @@ services:
             - "2443:2443"
         volumes:
             - ./frontend:/usr/share/nginx/html:ro
-            - ./nginx.conf:/etc/nginx/nginx.conf:ro
+            - ./nginix/nginx.conf:/etc/nginx/nginx.conf:ro
             - ./certs:/etc/nginx/certs
         depends_on:
             - auth-service

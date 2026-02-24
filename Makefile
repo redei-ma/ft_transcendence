@@ -9,6 +9,7 @@ COMPOSE_FILE := docker-compose.yml
 
 CERTS_DIR    := ./certs
 UPLOADS_DIR  := ./user-service/uploads
+TYPES_DIR    := ./shared/types
 
 # --- Phony targets -------------------------------------------
 
@@ -18,9 +19,14 @@ UPLOADS_DIR  := ./user-service/uploads
 
 all: up
 
+# --- Types generation ----------------------------------------
+
+generate: ## Generate enums from schema.prisma and build @transcendence/types
+	cd $(TYPES_DIR) && npm install && npm run build
+
 # --- Lifecycle -----------------------------------------------
 
-up: $(CERTS_DIR) $(UPLOADS_DIR) ## Create required dirs, build images and start all services
+up: $(CERTS_DIR) $(UPLOADS_DIR) generate ## Create required dirs, build images and start all services
 	$(COMPOSE) -f $(COMPOSE_FILE) up -d --build
 
 down: ## Stop and remove containers and networks (volumes and images are preserved)

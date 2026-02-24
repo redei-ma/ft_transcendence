@@ -19,7 +19,7 @@ import {
 	ApiParam,
 	ApiQuery,
 } from "@nestjs/swagger";
-import { Provider } from "@prisma/client";
+import { Provider } from "@transcendence/types";
 import { UserService } from "../services/user.service";
 import {
 	CreateLocalUserDto,
@@ -32,7 +32,7 @@ import {
 	FindUserQueryDto,
 	UserWithAccountsResponseDto,
 	SuccessResponseDto,
-} from "../dto";
+} from "@transcendence/types";
 
 /**
  * Controller for internal user management endpoints.

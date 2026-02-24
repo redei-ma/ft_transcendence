@@ -1,4 +1,4 @@
-import { NotificationType } from "@prisma/client";
+import { NotificationType } from "@transcendence/types";
 
 /**
  * Persistent notification types — saved to DB.

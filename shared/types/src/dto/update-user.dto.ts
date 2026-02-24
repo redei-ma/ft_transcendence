@@ -6,7 +6,7 @@ import {
 	IsUrl,
 	MinLength,
 } from "class-validator";
-import { UserStatus } from "@prisma/client";
+import { UserStatus } from "../enums";
 import { CreateLocalUserDto, CreateOAuthUserDto } from "./create-user.dto";
 
 /**
