@@ -52,6 +52,6 @@
 		"test",
 		"dist",
 		"**/*spec.ts",
-		"../shared_storage/prisma/seeds"
+		"../shared/prisma/seeds"
 	]
 }

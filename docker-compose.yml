@@ -1,4 +1,3 @@
-
 services:
     postgres:
         container_name: transcendence_postgres
@@ -36,7 +35,7 @@ services:
         env_file:
             - .env.shared
         volumes:
-            - ./shared_storage/prisma:/app/prisma
+            - ./shared/prisma:/app/prisma
 
     auth-service:
         build:
@@ -72,7 +71,7 @@ services:
             - .env.shared
         volumes:
             - ./user-service/src:/app/src
-            - ./shared_storage/prisma/schema.prisma:/app/prisma/schema.prisma:ro
+            - ./shared/prisma/schema.prisma:/app/prisma/schema.prisma:ro
             - uploads_data:/uploads
         healthcheck:
             test:
@@ -105,7 +104,7 @@ services:
             - .env.shared
         volumes:
             - ./game-service/src:/app/src
-            - ./shared_storage/prisma/schema.prisma:/app/prisma/schema.prisma:ro
+            - ./shared/prisma/schema.prisma:/app/prisma/schema.prisma:ro
         healthcheck:
             test:
                 [
@@ -136,7 +135,7 @@ services:
     ngrok:
         image: ngrok/ngrok:3
         container_name: ngrok
-        command:  http https://gateway:2443
+        command: http https://gateway:2443
         env_file:
             - .env.shared
         environment:
@@ -147,7 +146,6 @@ services:
             - "4040:4040"
         networks:
             - backend-network
-
 
 volumes:
     postgres_data:

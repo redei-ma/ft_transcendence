@@ -10,7 +10,7 @@ COPY db-migration/package*.json ./
 RUN npm install
 
 # Generate Prisma client
-COPY shared_storage/prisma ./prisma/
+COPY shared/prisma ./prisma/
 RUN npx prisma generate
 
 # Copy source code

@@ -8,7 +8,7 @@ RUN apk add --no-cache openssl
 
 # Copy dependency files and Prisma schema
 COPY user-service/package*.json ./
-COPY shared_storage/prisma/schema.prisma ./prisma/schema.prisma
+COPY shared/prisma/schema.prisma ./prisma/schema.prisma
 
 # Install dependencies
 RUN npm install

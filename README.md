@@ -10,22 +10,22 @@
 
 ## 👥 The Team
 
-| Member | Role | Focus Area | Key Responsibilities |
-| :--- | :--- | :--- | :--- |
-| **Giovanni** 🧜🏿‍♂️ | **Game Server** | Backend & Physics | WebSocket Gateway, Physics Engine, Lag Compensation, Game Logic. |
-| **Francesco** 😈 | **Game Client** | Frontend & 3D | React Three Fiber, Shaders, UI/UX, Visual Effects. |
-| **Leonardo** 🍤 | **Logic Master** | AI & Stats | AI Algorithms, Matchmaking Logic, Game State Management. |
-| **Renato** 💆‍♂️ | **Data Architect** | Data & API | DB Schema, Public API, Friend System, Notifications. |
-| **Ale** 💤 | **SysAdmin** | Auth & DevOps | Docker Orchestration, Auth (JWT/OAuth), Gateway Config. |
+| Member        | Role                | Focus Area        | Key Responsibilities                                             |
+| :------------ | :------------------ | :---------------- | :--------------------------------------------------------------- |
+| **Francesco** | **Product Owner**   | Frontend & 3D     | React Three Fiber, Shaders, UI/UX, Visual Effects.               |
+| **Renato**    | **Project Manager** | Data & API        | DB Schema, API, Friend System, Notifications.                    |
+| **Giovanni**  | **Tech Lead**       | Backend & Physics | WebSocket Gateway, Physics Engine, Lag Compensation, Game Logic. |
+| **Ale**       | **Architect**       | Auth & DevOps     | Docker Orchestration, Auth (JWT/OAuth), Gateway Config.          |
+| **Leonardo**  | **Developer**       | AI & Game Logic   | AI Algorithms, Matchmaking Logic, Game State Management.         |
 
 ---
 
 ## 🛠️ Tech Stack
 
-* **Frontend:** ![React](https://img.shields.io/badge/-React-61DAFB?logo=react&logoColor=white) ![Vite](https://img.shields.io/badge/-Vite-646CFF?logo=vite&logoColor=white) ![Three.js](https://img.shields.io/badge/-Three.js-black?logo=three.js&logoColor=white) ![Tailwind](https://img.shields.io/badge/-Tailwind-06B6D4?logo=tailwindcss&logoColor=white)
-* **Backend:** ![NestJS](https://img.shields.io/badge/-NestJS-E0234E?logo=nestjs&logoColor=white) ![Node.js](https://img.shields.io/badge/-Node.js-339933?logo=node.js&logoColor=white) ![Socket.io](https://img.shields.io/badge/-Socket.io-010101?logo=socket.io&logoColor=white)
-* **Database:** ![PostgreSQL](https://img.shields.io/badge/-PostgreSQL-336791?logo=postgresql&logoColor=white) ![Prisma](https://img.shields.io/badge/-Prisma-2D3748?logo=prisma&logoColor=white)
-* **DevOps:** ![Docker](https://img.shields.io/badge/-Docker-2496ED?logo=docker&logoColor=white) ![Nginx](https://img.shields.io/badge/-Nginx-009639?logo=nginx&logoColor=white)
+- **Frontend:** ![React](https://img.shields.io/badge/-React-61DAFB?logo=react&logoColor=white) ![Vite](https://img.shields.io/badge/-Vite-646CFF?logo=vite&logoColor=white) ![Three.js](https://img.shields.io/badge/-Three.js-black?logo=three.js&logoColor=white) ![Tailwind](https://img.shields.io/badge/-Tailwind-06B6D4?logo=tailwindcss&logoColor=white)
+- **Backend:** ![NestJS](https://img.shields.io/badge/-NestJS-E0234E?logo=nestjs&logoColor=white) ![Node.js](https://img.shields.io/badge/-Node.js-339933?logo=node.js&logoColor=white) ![Socket.io](https://img.shields.io/badge/-Socket.io-010101?logo=socket.io&logoColor=white)
+- **Database:** ![PostgreSQL](https://img.shields.io/badge/-PostgreSQL-336791?logo=postgresql&logoColor=white) ![Prisma](https://img.shields.io/badge/-Prisma-2D3748?logo=prisma&logoColor=white)
+- **DevOps:** ![Docker](https://img.shields.io/badge/-Docker-2496ED?logo=docker&logoColor=white) ![Nginx](https://img.shields.io/badge/-Nginx-009639?logo=nginx&logoColor=white)
 
 ---
 
@@ -33,85 +33,107 @@
 
 An **Isometric Low-Poly Brawler** where players control mythological avatars.
 
-* **View:** Fixed Isometric Camera (Top-Down).
-* **Characters:**
-    * ⚡ **Zeus:** Uses lightning-based AoE attacks.
-    * 🔥 **Ade:** Uses fire-based AoE attacks.
-* **Mechanics:**
-    * **Movement:** Vector-based movement on a 2D plane.
-    * **Attack:** Area of Effect (AoE) burst (Spacebar).
-    * **Defense:** Damage reduction stance (Shift).
-* **Modes:** 1v1 Local, 1v1 Online, 1v1 vs AI.
+- **View:** Fixed Isometric Camera (Top-Down).
+- **Characters:**
+    - ⚡ **Zeus:** Uses lightning-based AoE attacks.
+    - 🔥 **Hades:** Uses fire-based AoE attacks.
+- **Mechanics:**
+    - **Movement:** Vector-based movement on a 2D plane.
+    - **Attack:** Area of Effect (AoE) burst (Spacebar).
+    - **Defense:** Damage reduction stance (Shift).
+- **Modes:** 1v1 Local, 1v1 Online, 1v1 vs AI.
 
 ---
 
-## 📋 Project Modules & Assignments
+## 📋 Project Modules
 
 ### IV.1 Web
-| Feature | Description | Assignee |
-| :--- | :--- | :--- |
-| **Real-time** | WebSockets for live game updates (60fps) & graceful disconnect handling. | 🧜🏿‍♂️ **Giovanni** |
-| **Public API** | REST API with Swagger docs, API Key security, and Rate Limiting. | 💆‍♂️ **Renato** (Dev) + 💤 **Ale** (Sec) |
-| **Frameworks** | React (Frontend) & NestJS (Backend). | 😈 **Francesco** + 💤 **Ale** |
-| **ORM** | Use of an ORM (Prisma/TypeORM) for database interactions. | 💆‍♂️ **Renato** |
-| **Notifications** | Complete system for creation, update, and deletion actions. | 💆‍♂️ **Renato** |
+
+| Module               | Type               | Description                                                                                                                                                 |
+| :------------------- | :----------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Frameworks**       | Major              | Use a framework for both frontend (React) and backend (NestJS).                                                                                             |
+| **Real-time**        | Major              | WebSockets for live game updates, connection/disconnection handling, efficient broadcasting.                                                                |
+| **User Interaction** | Major              | Allow users to interact: basic chat system (send/receive messages), profile system (view user info), friends system (add/remove friends, see friends list). |
+| **ORM**              | Minor              | Use an ORM (Prisma) for database interactions.                                                                                                              |
+| **Notifications**    | Minor _(Optional)_ | Complete notification system for all creation, update, and deletion actions.                                                                                |
 
 ### IV.3 User Management
-| Feature | Description | Assignee |
-| :--- | :--- | :--- |
-| **Auth** | JWT Authentication, Login, Register. | 💤 **Ale** |
-| **User Data** | DB Schema, Friend System, Status (Online/Offline), Profile API. | 💆‍♂️ **Renato** |
-| **Profile UI** | Avatar upload, Stats view, Character selection. | 😈 **Francesco** |
-| **Remote Auth** | OAuth 2.0 (42 Intra, Google). | 💤 **Ale** |
-| **Stats** | Match history logging & Win/Loss visualization. | 🍤 **Leonardo** (Back) + 😈 **Francesco** (Front) |
+
+| Module                 | Type               | Description                                                                              |
+| :--------------------- | :----------------- | :--------------------------------------------------------------------------------------- |
+| **Standard User Mgmt** | Major              | Users can update profile, upload avatars, add friends, see online status, view profiles. |
+| **Game Statistics**    | Minor              | Track user stats (wins, losses, ranking), display match history, show achievements.      |
+| **Remote Auth**        | Minor              | OAuth 2.0 authentication (Google, GitHub, 42, etc.).                                     |
+| **2FA System**         | Minor _(Optional)_ | Two-Factor Authentication for enhanced user security.                                    |
 
 ### IV.4 Artificial Intelligence
-| Feature | Description | Assignee |
-| :--- | :--- | :--- |
-| **AI Opponent** | Server-side bot simulating human behavior (chase & attack). | 🍤 **Leonardo** (forse) |
 
-### IV.6 Gaming & UX
-| Feature | Description | Assignee |
-| :--- | :--- | :--- |
-| **Game Logic** | Physics & Collisions (Giovanni) + Game State/Rules (Leonardo). | 🧜🏿‍♂️ **Giovanni** + 🍤 **Leonardo** |
-| **Netcode** | Lag compensation, interpolation, and reconnection logic. | 🧜🏿‍♂️ **Giovanni** |
-| **Graphics** | Advanced 3D Scene (Three.js), Isometric setup, VFX, Lighting. | 😈 **Francesco** |
+| Module          | Type  | Description                                                                              |
+| :-------------- | :---- | :--------------------------------------------------------------------------------------- |
+| **AI Opponent** | Major | AI that simulates human behavior, can win occasionally, uses game customization options. |
+
+### IV.6 Gaming and User Experience
+
+| Module                   | Type               | Description                                                                                         |
+| :----------------------- | :----------------- | :-------------------------------------------------------------------------------------------------- |
+| **Web-based Game**       | Major              | Complete multiplayer game where users can play against each other in real-time.                     |
+| **Remote Players**       | Major _(Optional)_ | Enable players on separate computers to play together with lag compensation and reconnection logic. |
+| **Advanced 3D Graphics** | Major              | Advanced 3D environment using Three.js, immersive rendering, smooth performance.                    |
+| **Gamification**         | Minor _(Optional)_ | Reward system with achievements, badges, leaderboards, XP system, or daily challenges.              |
 
 ### IV.7 DevOps
-| Feature | Description | Assignee |
-| :--- | :--- | :--- |
-| **Microservices** | Docker Compose orchestration, Nginx Gateway, Service isolation. | 💤 **Ale** (Arch) + **All** |
+
+| Module            | Type  | Description                                                                   |
+| :---------------- | :---- | :---------------------------------------------------------------------------- |
+| **Microservices** | Major | Backend as loosely-coupled microservices with clear interfaces and REST APIs. |
+
+---
+
+## 📊 Module Points Summary
+
+| Category                    | Confirmed Modules | Optional Modules |
+| :-------------------------- | :---------------- | :--------------- |
+| **Web**                     | 7 points          | 1 point          |
+| **User Management**         | 4 points          | 1 point          |
+| **Artificial Intelligence** | 2 points          | -                |
+| **Gaming & UX**             | 4 points          | 3 points         |
+| **DevOps**                  | 2 points          | -                |
+| **Total**                   | **19 points**     | **5 points**     |
 
 ---
 
 ## 🚀 How to Run
 
 ### Prerequisites
-* Docker & Docker Compose installed.
-* Node.js (for local development).
+
+- Docker & Docker Compose installed.
+- Node.js (for local development).
 
 ### Installation
 
 1.  **Clone the repository:**
-    ```bash
-    git clone [https://github.com/your-org/ft_transcendence.git](https://github.com/your-org/ft_transcendence.git)
+
+```bash
+    git clone https://github.com/your-org/ft_transcendence.git
     cd ft_transcendence
-    ```
+```
 
 2.  **Environment Setup:**
-    ```bash
+
+```bash
     # Generate .env file from example
     cp .env.example .env
-    ```
+```
 
 3.  **Launch via Docker:**
-    ```bash
+
+```bash
     docker-compose up --build
-    ```
+```
 
 4.  **Access the App:**
-    * Frontend: `http://localhost:3000`
-    * API Docs (Swagger): `http://localhost:3000/api/docs`
+    - Frontend: `http://localhost:3000`
+    - API Docs (Swagger): `http://localhost:3000/api/docs`
 
 ---
 
@@ -130,20 +152,13 @@ An **Isometric Low-Poly Brawler** where players control mythological avatars.
 └── docker-compose.yml  # Orchestration
 ```
 
-### 📂 Roles & Responsibilities
+---
 
-| Role | Member(s) | Key Responsibilities |
-| :--- | :--- | :--- |
-| **Product Owner (PO)** | 😈 **Francesco** | • Defines product vision & priorities.<br>• Maintains the product backlog.<br>• Validates completed work (UI/UX).<br>• Communicates with stakeholders. |
-| **Project Manager (PM)** | 💆‍♂️ **Renato** | • Facilitates team coordination.<br>• Organizes meetings & planning sessions.<br>• Tracks progress, deadlines, and blockers.<br>• Manages team communication. |
-| **Tech Lead / Architect** | 🧜🏿‍♂️ **Giovanni**<br>💤 **Ale** | • Oversees technical decisions & architecture.<br>• Defines the technology stack.<br>• Ensures code quality & best practices.<br>• Reviews critical code changes. |
-| **Developers** | 👥 **All Members** | • Implement features and modules.<br>• Write code for assigned features.<br>• Participate in code reviews.<br>• Test implementations & Document work. |
+## 📂 Roles & Responsibilities
 
-
-|              | 26/01 - 01/02<br><br><br> | 02/02 - 08/02<br><br><br> | 09/02 - 15/02<br><br><br> | 16/02 - 22/02<br><br><br> | 23/02 - 01/03<br><br><br> |
-|--------------|--------------------------|--------------------------|--------------------------|--------------------------|--------------------------|
-| Alessandro   | finire di fare auth di base<br><br><br>        | iniziare a fare Google Auth e 2FA<br><br><br>        | finire Google Auth e 2FA<br><br><br>        | sistemare dettagli<br><br><br>        | integrare con gli altri<br><br><br>    |
-| Giovanni     | task1<br><br><br>        | task2<br><br><br>        | task3<br><br><br>        | task4<br><br><br>        | task5<br><br><br>        |
-| Renato       | task1<br><br><br>        | task2<br><br><br>        | task3<br><br><br>        | task4<br><br><br>        | task5<br><br><br>        |
-| Francesco    | task1<br><br><br>        | task2<br><br><br>        | task3<br><br><br>        | task4<br><br><br>        | task5<br><br><br>        |
-| Leonardo     | task1<br><br><br>        | task2<br><br><br>        | task3<br><br><br>        | task4<br><br><br>        | task5<br><br><br>        |
+| Role                      | Member(s)                  | Key Responsibilities                                                                                                                                              |
+| :------------------------ | :------------------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Product Owner (PO)**    | **Francesco**              | • Defines product vision & priorities.<br>• Maintains the product backlog.<br>• Validates completed work (UI/UX).<br>• Communicates with stakeholders.            |
+| **Project Manager (PM)**  | **Renato**                 | • Facilitates team coordination.<br>• Organizes meetings & planning sessions.<br>• Tracks progress, deadlines, and blockers.<br>• Manages team communication.     |
+| **Tech Lead / Architect** | **Giovanni**<br>💤 **Ale** | • Oversees technical decisions & architecture.<br>• Defines the technology stack.<br>• Ensures code quality & best practices.<br>• Reviews critical code changes. |
+| **Developers**            | **All Members**            | • Implement features and modules.<br>• Write code for assigned features.<br>• Participate in code reviews.<br>• Test implementations & Document work.             |
