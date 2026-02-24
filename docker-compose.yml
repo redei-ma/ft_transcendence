@@ -1,0 +1,28 @@
+services:
+  # Redis è indispensabile perché il tuo Service ci scrive gli stati (searching/ingame)
+  redis:
+    image: redis:alpine
+    container_name: redis_container
+    ports:
+      - "6379:6379"
+    networks:
+      - matchmaking_net
+
+  # Il tuo servizio con tutte le modifiche di oggi
+  matchmaking-service:
+    build: ./logic-service # Assicurati che il percorso sia corretto rispetto a dove metti questo file
+    container_name: matchmaking_container
+    ports:
+      - "3001:3000" # <--- IMPORTANTISSIMO
+    depends_on:
+      - redis
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - NODE_ENV=development
+    networks:
+      - matchmaking_net
+
+networks:
+  matchmaking_net:
+    driver: bridge
