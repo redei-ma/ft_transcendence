@@ -1,2 +1,0 @@
-npm install @nestjs/microservices ioredis -> installazione redis per ricezione valori generale
-npm install ioredis @nestjs-modules/ioredis -> installazione di ioredis per avere valori sempre ordinati
