@@ -1,16 +1,24 @@
 import { ConnectedSocket, MessageBody, OnGatewayConnection, OnGatewayDisconnect, OnGatewayInit, SubscribeMessage, WebSocketGateway } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
-import { Inject, UseGuards, UsePipes, ValidationPipe } from '@nestjs/common';
+import { Post, UseGuards } from '@nestjs/common';
 import { Logger } from '@nestjs/common';
-import { WsThrottlerGuard } from './WsThrottlerGuard';
+import { WsThrottlerGuard } from './game.WsThrottlerGuard';
 import { GameService } from './game.service';
 import { Vector } from './utils';
-import { GameInputDto, CharacterDto, GameMessageDto } from './dto';
-import { CHARACTER_DATA } from './factories';
-import { NetworkConfig, SocketEvents } from './configs';
-import { MatchMode, CharacterName, MatchMakingData } from './interfaces-enums';
-import { Redis } from 'ioredis';
-import { randomUUID } from 'crypto';
+import { GameInputDto, GameMessageDto } from './dto';
+import { SocketEvents } from './configs';
+import { GameSession } from './core';
+import { GameData, ErrorCode, SuccessCode } from './interfaces-enums';
+
+
+//questo e' come dovra' essere alla fine
+//@WebSocketGateway({ cors:{
+//	origin: process.env.FRONT_END_URL,
+//	methods: ['POST'],
+//	credentials: true,
+//} })
+
+
 
 /* @WebSocketGateway()
 	Decorator that marks this class as a Gateway. It enables real-time, bidirectional
@@ -18,9 +26,6 @@ import { randomUUID } from 'crypto';
 */
 @WebSocketGateway({ cors: true })
 
-/* This decorator implements input validation.
-Setting 'whitelist: true' ensures that any property not explicitly defined in the DTO is automatically stripped. */
-@UsePipes(new ValidationPipe({transform: true, whitelist: true}))
 
 /* This guard will be applied to all events, which means that it will be executed before all methods are called. */
 @UseGuards(WsThrottlerGuard)
@@ -30,10 +35,7 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect, On
 
 	/* Dependency Injection:
 		We ask NestJS to provide the instance of GameService.*/
-	constructor(
-		private readonly gameService: GameService, 
-		@Inject(NetworkConfig.MATCHMAKING.SERVICE.REDIS_CLIENT) private readonly redis: Redis,
-	) {}
+	constructor(private readonly gameService: GameService) {}
 
 	afterInit( server: Server): void {
 		this.gameService.setServer(server);
@@ -49,7 +51,58 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect, On
 		const socketId = client.id;
 		if (!socketId) return;
 
-		this.logger.log(`New client arrived with socket ${socketId}`);
+		const userDbId: number = parseInt(client.handshake.query.userDbId as string, 10);
+		if (isNaN(userDbId)){
+			client.emit('exception', {
+				status: 'error',
+				errorCode: ErrorCode.INTERNAL_ERROR,
+				message: 'Invalid user DB ID'
+			});
+			client.disconnect();
+			return;
+		}
+
+		const gameData: GameData | undefined = this.gameService.hasPendingMatch(userDbId);
+		if (gameData){
+			for (const player of gameData.players){
+				if (userDbId !== player.userDbId) continue ;
+
+				this.gameService.setSocketToGame(socketId, gameData.gameId);
+				client.join(gameData.gameId);
+
+				this.logger.log(`New client arrived ${userDbId} in game ${gameData.gameId}`);
+
+				const session: GameSession | undefined = this.gameService.getGameById(gameData.gameId);
+				if (!session){
+					client.emit('exception', {
+						status: 'error',
+						errorCode: ErrorCode.SESSION_NOT_FOUND,
+						message: 'Session not found, retry to search a new game'
+					});
+					client.disconnect();
+					return;
+				}
+				const result = session.addPlayer(player, socketId);
+				if (result.status !== SuccessCode.OK){
+					client.emit('exception', {
+						status: 'error',
+						errorCode: result.status,
+						message: result.message || 'Error in adding the player in the session'
+					});
+					client.disconnect();
+					this.logger.warn(`${userDbId} is not in game list`);
+				}
+			}
+		}
+		else{
+			client.emit('exception', {
+				status: 'error',
+				errorCode: ErrorCode.PLAYER_NOT_FOUND,
+				message: 'This player isn t in the game list'
+			});
+			client.disconnect();
+			this.logger.warn(`${userDbId} is not in game list`);
+		}
 	}
 
 	/* Implementation of OnGatewayDisconnect */
@@ -60,65 +113,6 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect, On
 		this.gameService.handlePlayerDisconnect(socketId);
 
 		this.logger.log(`client with socket-id ${socketId} is crashed`);
-	}
-
-	/* Whene the socket event is lobby, this function is triggered */
-	@SubscribeMessage(SocketEvents.JOIN_LOBBY)
-	async joinGame(
-		@ConnectedSocket() client: Socket,
-		@MessageBody() payload: CharacterDto): Promise<void>{
-
-			this.logger.log("join lobby event reached");
-
-			//probabilmente questo non va bene qua perche' dovrei prima provare a riconnettere il player in locale e poi fare questa cosa
-			const status = await this.redis.get(`player:${payload.userDbId}:status`);
-			if (status && status != NetworkConfig.MATCHMAKING.PLAYER_STATUS.LOBBY){
-				 return ;//throw new WsGameException('Already in matchmaking');
-			}
-
-			await this.redis.set(
-    			`player:${payload.userDbId}:status`, 
-    			NetworkConfig.MATCHMAKING.PLAYER_STATUS.PLAYING,
-    			'EX',
-    			3600
-			);
-
-			const data: MatchMakingData[] = [];
-			let matchMode: MatchMode = MatchMode.LOCAL;
-
-			data.push( {
-				socketId: client.id,
-				characterName: payload.characterName[0],
-				userDbId: payload.userDbId,
-				isAiPlayer: false,
-				playerIndex: 0,
-			});
-
-			if (payload.isAiGame){
-				const availableCharacters = Object.keys(CHARACTER_DATA).filter(name => name !== 'Default');
-				const randomName = availableCharacters[Math.floor(Math.random() * availableCharacters.length)];
-				data.push({
-					socketId: undefined,
-					characterName: randomName as CharacterName,
-					userDbId: null,
-					isAiPlayer: true,
-					playerIndex: 1,
-				});
-				matchMode = MatchMode.AI;
-			}
-			else if (payload.isLocalGame){
-				data.push( {
-					socketId: client.id,
-					characterName: payload.characterName[1],
-					userDbId: null,
-					isAiPlayer: false,
-					playerIndex: 1,
-				});
-				matchMode = MatchMode.LOCAL;
-			}
-
-			const gameId: string = randomUUID();
-			this.gameService.createMatch(data, gameId, matchMode, payload.matchType);
 	}
 
 	/* @SubscribeMessage: Listens for specific events named 'input'.

@@ -13,8 +13,6 @@ export class EndState implements IGameState{
 	constructor(private readonly session: GameSession) {}
 	onEnter(): void {
 		this.logger.log("Game is over, shutdown the server")
-
-		const endGameData = this.session.engine.endGameData;
 	}
 
 	update(dt: number): void {
@@ -30,7 +28,5 @@ export class EndState implements IGameState{
 	}
 
 	onExit(): void {
-		this.session.cleanUp();
-		return ;
 	}
 }

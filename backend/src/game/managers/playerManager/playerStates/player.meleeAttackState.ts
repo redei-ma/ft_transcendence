@@ -1,7 +1,7 @@
 import { GameConfig } from "../../../configs";
 import { Player } from "../../../interfaces-enums";
 import { CombatSystem } from "../../../systems";
-import { IPlayerState } from "../../../managers";
+import { IPlayerState } from "../..";
 
 export class MeleeAttackState implements IPlayerState{
 

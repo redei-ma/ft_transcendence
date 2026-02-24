@@ -22,24 +22,23 @@ import { MicroserviceOptions, Transport } from '@nestjs/microservices';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
-  // 1. Creiamo l'app come applicazione Web standard (per il browser)
+  // creo l'app come applicazione Web standard , ovvero per il browser
   const app = await NestFactory.create(AppModule);
-  app.enableCors();
 
-  // 2. Colleghiamo il Microservizio Redis (per i messaggi)
+  // collego il Microservizio Redis
   app.connectMicroservice<MicroserviceOptions>({
     transport: Transport.REDIS,
     options: {
-      host: 'redis', // DEVE essere 'redis' per parlare con il container
+      host: 'redis', // per parlare con il container bisogna che si chiami 'redis'
       port: 6379,
       retryAttempts: 10,
       retryDelay: 3000,
     },
   });
 
-  // Avviamo entrambi
+  // avvio microservizi e redis
   await app.startAllMicroservices();
-  await app.listen(3001, '0.0.0.0'); // Porta interna al container
-  console.log('LOGIC SERVICE ONLINE: HTTP su porta 3001 (esterna) e Redis collegato');
+  await app.listen(3500, '0.0.0.0'); // porta interna al container
+  console.log('LOGIC SERVICE ONLINE: HTTP su porta 3500 (esterna) e Redis collegato');
 }
 bootstrap();

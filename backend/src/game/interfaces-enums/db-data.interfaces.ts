@@ -18,6 +18,5 @@ export interface PlayerResult {
 	characterName: CharacterName; // ADE, ZEUS
 	kills: number;
 	deaths: number;
-
-	//finalHpPercent: number;
+	clutchMasterAchievement: boolean;
 }

@@ -5,8 +5,7 @@ import { GameModule } from './game/game.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { SocketEvents } from './game/configs/game.events';
-
-//npm i --save @nestjs/throttler
+import { ConfigModule} from '@nestjs/config'
 
 @Module({
 	imports: [
@@ -15,11 +14,6 @@ import { SocketEvents } from './game/configs/game.events';
 		ThrottlerModule.forRoot([
 			{
 				name: 'default',
-				ttl: 60000,
-				limit: 10,
-			},
-			{
-				name: SocketEvents.JOIN_LOBBY,
 				ttl: 60000,
 				limit: 10,
 			},
@@ -34,6 +28,7 @@ import { SocketEvents } from './game/configs/game.events';
 				limit: 250,
 			},
 			]),
+		ConfigModule.forRoot({isGlobal: true})
 		],
 	controllers: [AppController],
 	providers: [AppService],

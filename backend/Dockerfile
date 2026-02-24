@@ -12,7 +12,9 @@ RUN npm install @nestjs/websockets \
 	class-validator \
 	class-transformer \
 	ioredis \
-	@nestjs/microservices
+	@nestjs/microservices \
+	@nestjs/config \
+	@nestjs/throttler
 
 COPY . .
 

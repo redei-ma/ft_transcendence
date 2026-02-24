@@ -6,15 +6,15 @@ import { Player, AttackType } from "../interfaces-enums";
 
 export class CombatSystem{
 
-	private _tmpBulletDisplacement = new Vector(0, 0);
-	private _tmpAttackCenter = new Vector(0, 0);
+	private tmpBulletDisplacement = new Vector(0, 0);
+	private tmpAttackCenter = new Vector(0, 0);
 
 	handleSpellAttack(attacker: Player, gameWorld: World): void{
 
 		this.calculateBulletDisplacement(attacker);
 		this.calculateAttackImpactPoint(attacker, AttackType.SPELL_ATTACK);
 		gameWorld.spawnBullet(attacker.entityId, attacker.characterName, attacker.teamId,
-			this._tmpAttackCenter, this._tmpBulletDisplacement,
+			this.tmpAttackCenter, this.tmpBulletDisplacement,
 			attacker.spellAttackspeed, attacker.spellAttackHitboxRadius)
 	}
 
@@ -23,7 +23,7 @@ export class CombatSystem{
 		const displacementX = Math.cos(attacker.rotation);
 		const displacementZ = Math.sin(attacker.rotation);
 
-		this._tmpBulletDisplacement.set(displacementX, displacementZ);
+		this.tmpBulletDisplacement.set(displacementX, displacementZ);
 	}
 
 	handleMeleeAttack(attacker: Player, players: Map<string, Player>): void{
@@ -31,10 +31,10 @@ export class CombatSystem{
 		const attackType: AttackType | undefined = attacker.attackType;
 		if (!attackType) return;
 
-		this._tmpAttackCenter.set(attacker.position.x, attacker.position.z);
+		this.tmpAttackCenter.set(attacker.position.x, attacker.position.z);
 		for (const target of players.values()){
 				if (target.entityId === attacker.entityId || target.isDead) continue;
-				if (this.isTargetInHitbox(target, attacker, this._tmpAttackCenter)){
+				if (this.isTargetInHitbox(target, attacker, this.tmpAttackCenter)){
 					this.applyDamage(target, attacker, AttackType.MELEE_ATTACK);
 				}
 			}
@@ -70,6 +70,10 @@ export class CombatSystem{
 			victim.isDead = true;
 			victim.deads++;
 			attacker.kill++;
+
+			if (attacker.hp <= (GameConfig.PLAYER.DEFAULT_HP * GameConfig.ACHIEVEMENT.CLUTCHMASTER)){
+				attacker.clutchMasterAchievement = true;
+			}
 		}
 	}
 
@@ -87,7 +91,7 @@ export class CombatSystem{
 		const offsetX = Math.cos(attacker.rotation) * attackDistance;
 		const offsetZ = Math.sin(attacker.rotation) * attackDistance;
 
-		this._tmpAttackCenter.set(attacker.position.x + offsetX, attacker.position.z + offsetZ);
+		this.tmpAttackCenter.set(attacker.position.x + offsetX, attacker.position.z + offsetZ);
 	}
 
 	updateCooldowns(player: Player, dt: number): void {

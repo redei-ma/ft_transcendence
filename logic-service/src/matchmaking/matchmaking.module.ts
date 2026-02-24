@@ -1,27 +1,22 @@
-// classic import per poter usare i file in un modulo separato
-
 import { Module } from '@nestjs/common';
-import { ClientsModule, Transport } from '@nestjs/microservices';
+import { EventEmitterModule } from '@nestjs/event-emitter';
+import { HttpModule } from '@nestjs/axios';
 import { MatchmakingController } from './matchmaking.controller';
 import { MatchmakingService } from './matchmaking.service';
+import { MatchmakingGateway } from './matchmaking.gateway';
 
-@Module({ // definiamo il modulo di matchmaking
+@Module({
   imports: [
-    // Il ClientsModule vive qui perché serve solo al Matchmaking
-    ClientsModule.register([ // qui andiamo a creare il client per parlare con renna e ricevere i dati di cui abbiamo bisogno
-      {
-        name: 'RENATO_SERVICE',
-        transport: Transport.REDIS,
-        options: {
-          host: 'redis',
-          port: 6379,
-          retryAttempts: 10,
-          retryDelay: 3000,
-        },
-      },
-    ]),
+    // Permette al Service di emettere l'evento 'match.found.internal'
+    EventEmitterModule.forRoot(), 
+    // Permette al Service di fare chiamate HTTP verso il server di Giovanni
+    HttpModule, 
   ],
-  controllers: [MatchmakingController], // controller associato al modulo
-  providers: [MatchmakingService], // service associato al modulo
+  controllers: [MatchmakingController],
+  providers: [
+    MatchmakingService, 
+    // Questo è il "motore" che permette a Francesco di connettersi via Socket.io
+    MatchmakingGateway 
+  ],
 })
 export class MatchmakingModule {}

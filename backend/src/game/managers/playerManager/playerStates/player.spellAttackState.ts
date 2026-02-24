@@ -2,7 +2,7 @@ import { GameConfig } from "../../../configs";
 import { World } from "../../../core";
 import { Player } from "../../../interfaces-enums";
 import { CombatSystem } from "../../../systems";
-import { IPlayerState } from "../../../managers";
+import { IPlayerState } from "../..";
 
 export class SpellAttackState implements IPlayerState{
 

@@ -5,12 +5,11 @@ export const NetworkConfig = {
 			PLAYING: 'ingame'
 		},
 		MATCH_EVENTS:{
-			CREATE_MATCH: 'create_match',
-			END_GAME: 'end_game',
+			CREATE_MATCH: 'create-match',
+			END_GAME: 'end-game',
 		},
 		SERVICE: {
 			REDIS: 'redis',
-			REDIS_CLIENT: 'REDIS_CLIENT'
 		}
 	}
 }

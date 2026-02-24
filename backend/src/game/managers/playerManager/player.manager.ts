@@ -4,7 +4,7 @@ import { CombatSystem, PhysicsSystem } from "../../systems";
 import { World } from "../../core";
 import { GameConfig } from "../../configs";
 import { Vector } from "../../utils";
-import { SpellAttackState, MeleeAttackState, DefenceAttack } from "../../managers";
+import { SpellAttackState, MeleeAttackState, DefenceAttack } from "..";
 import { Player, InputQueue, AttackType } from "../../interfaces-enums";
 
 @Injectable()

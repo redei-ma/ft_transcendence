@@ -9,7 +9,7 @@ class MatchmakingSocket {
       return this.socket;
     }
 
-    this.socket = io('http://localhost:3001', {
+    this.socket = io('http://localhost:3500', {
       transports: ['websocket'],
       reconnection: false, // se si disconnette = leave queue
     });

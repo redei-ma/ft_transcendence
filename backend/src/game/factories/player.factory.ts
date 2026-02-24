@@ -94,6 +94,7 @@ export function getNewPlayer(
 			disconnectionTimer: 0.0,
 			isDisconnected: false,
 			inputQueue: [],
-			currentState: undefined
+			currentState: undefined,
+			clutchMasterAchievement: false,
 		};
 }

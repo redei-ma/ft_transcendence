@@ -1,32 +1,33 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
-import { Logger } from '@nestjs/common';
-import { MicroserviceOptions, Transport } from '@nestjs/microservices';
-import { NetworkConfig } from './game/configs/network.config';
-import { WsGameException } from './game/WsGameException';
+import { Logger, ValidationPipe } from '@nestjs/common';
+import { GameExceptionFilter } from './game/game.WsGameExceptionFilter';
+//serve per poter leggere il .env
+//import { ConfigService} from '@nestjs/config'
 
 async function bootstrap() {
 	const app = await NestFactory.create(AppModule, {
 		logger: ['log', 'error', 'warn', 'debug', 'verbose'],
 	});
 
-	app.enableCors();
-	app.useGlobalFilters(new WsGameException());
-	app.connectMicroservice<MicroserviceOptions>(
-		{
-			transport: Transport.REDIS,
-			options:{
-				host: NetworkConfig.MATCHMAKING.SERVICE.REDIS,
-				port: 6379,
-				retryAttempts: 10,
-				retryDelay: 3000,
-			}
-		}
-	)
+	/* This decorator implements input validation.
+	Setting 'whitelist: true' ensures that any property not explicitly defined in the DTO is automatically stripped. */
+	app.useGlobalPipes(new ValidationPipe({
+		whitelist: true,
+		transform: true}));
 
+	/*
+    app.enableCors({
+        origin: configService.get<string>('FRONTEND_URL'), // Es: 'https://www.clashofolympus.com'
+        methods: ['GET', 'POST'],
+        credentials: true, // Permette l'invio di cookie/token
+    });
+    */
+
+	app.enableCors();
+	app.useGlobalFilters(new GameExceptionFilter());
 
 	const logger: Logger = new Logger('Bootstrap');
-	//await app.startAllMicroservices();
 	await app.listen(3000, "0.0.0.0");
 
 	logger.log(`application running on port 3000`);

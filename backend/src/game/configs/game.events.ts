@@ -1,6 +1,5 @@
 export enum SocketEvents {
 	// Client -> Server
-	JOIN_LOBBY = 'join-lobby',
 	INPUT = 'game-input',
 
 	// Server -> Client

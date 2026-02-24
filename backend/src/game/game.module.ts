@@ -9,22 +9,32 @@ import { PlayerManager } from './managers/playerManager/player.manager';
 import { BulletManager } from './managers/bullet.manager';
 import { ClientsModule, Transport } from '@nestjs/microservices';
 import { NetworkConfig } from './configs/network.config';
-import { MatchMakingController } from './MatchMaking.controller';
-import Redis from 'ioredis';
+import { MatchMakingController } from './game.Matchmaking.controller';
 
 @Module({
-		controllers: [MatchMakingController],
-		providers: [GameService, GameGateway, PhysicsSystem, CombatSystem, GameRules, MapManager, PlayerManager, BulletManager,
+	imports: [
+		ClientsModule.register([
 			{
-				provide: NetworkConfig.MATCHMAKING.SERVICE.REDIS_CLIENT,
-				useFactory: () => {
-					return new Redis({
-						host: process.env.REDIS_HOST || 'localhost',
-						port: 6379 //parseInt(process.env.REDIS_PORT) || 6379,
-					});
+				name: NetworkConfig.MATCHMAKING.SERVICE.REDIS,
+				transport: Transport.REDIS,
+				options: {
+					host: process.env.REDIS_HOST || 'localhost',
+					port: 6379,
 				},
 			},
-		],
-		exports: [NetworkConfig.MATCHMAKING.SERVICE.REDIS_CLIENT]
+		]),
+	],
+	controllers: [MatchMakingController],
+	providers: [
+		GameService, 
+		GameGateway, 
+		PhysicsSystem, 
+		CombatSystem, 
+		GameRules, 
+		MapManager, 
+		PlayerManager, 
+		BulletManager
+	],
+	exports: [ClientsModule]
 })
 export class GameModule {}

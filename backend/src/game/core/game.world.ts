@@ -160,3 +160,5 @@ export class World implements GameWorld{
 		return (this.maxPlayers);
 	}
 }
+
+export { GameWorld };

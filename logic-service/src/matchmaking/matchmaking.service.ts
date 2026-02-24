@@ -3,13 +3,17 @@ import { JoinQueueDto } from './dto/join-queue.dto'; // struttura del dato che r
 import Redis from 'ioredis'; // client Redis per interagire col database
 import { InjectRedis } from '@nestjs-modules/ioredis'; // modulo per iniettare il client Redis
 import { ClientProxy } from '@nestjs/microservices';
+import { HttpService } from '@nestjs/axios';
+import { firstValueFrom } from 'rxjs';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 
-@Injectable() // decoratore della classe, permette di "iniettare" il servizio in altri file
-export class MatchmakingService { // definizione del service
-    // configuriamo il collegaento tra il codice e il container di redis, creiamo una variabile interna al servizio, readonly, usabile ovunque con this.
+@Injectable()
+export class MatchmakingService {
+  client: any;
   constructor(
-    @InjectRedis() private readonly redis: Redis, // serve per poter leggere e scrivere su redis
-    @Inject('RENATO_SERVICE') private readonly client: ClientProxy, // client che permette di parlare con renna via redis
+    @InjectRedis() private readonly redis: Redis,
+    private readonly eventEmitter: EventEmitter2, // Nest la inietta qui
+    private readonly httpService: HttpService,     // Nest la inietta qui
   ) {}
 
 /* ---------------------------------------------------------------------------------------------------------------- */
@@ -17,23 +21,59 @@ export class MatchmakingService { // definizione del service
   // metodo per processare la coda di matchmaking, ovviamente asincrono se no rischiamo di bloccare tutto nel attesa dei dati
   async processQueue(player: JoinQueueDto) {
     const QUEUE_KEY = 'matchmaking_queue'; // tutti i valori della coda verranno messi sotto questo nome
-    const RANK_TOLERANCE = 100; // tolleranza rank per trovare un avversario equilibrato
+    const RANK_TOLERANCE = player.rankRange; // tolleranza rank per trovare un avversario equilibrato
 
     // controlliamo che le persone in coda non siano già in partita
-    const USER_STATUS_KEY = `status:${player.userId}`;
+    const USER_STATUS_KEY = `status:${player.userDbId}`;
     const currentStatusRaw = await this.redis.get(USER_STATUS_KEY);
     
     // analizzo il JSON per vedere se è effettivamente in game
     if (currentStatusRaw !== null) {
       const statusData = JSON.parse(currentStatusRaw);
       if (statusData.state === 'ingame') {
-          console.log(`[Logic] Utente con ID ${player.userId} è già in partita.`);
-          return { status: 'ERROR_ALREADY_IN_GAME' };
+        // troviamo che colui che ha cercato di fare il matchmaking, teoricamente sarebbe già in partita
+        // proviamo a riaggiungerlo alla stessa partita reinviando il socket
+        // andiamo a recuperare l'avversario
+        const opponentStatusRaw = await this.redis.get(`status:${statusData.opponentId}`);
+        // se non troviamo l'avversario, vuol dire che la partita è scaduta o è finita
+        if (!opponentStatusRaw) {
+          console.log(`[Logic] Partita scaduta o avversario non trovato...`);
+          await this.redis.set(USER_STATUS_KEY, JSON.stringify({ state: 'lobby', rank: player.rank }), 'EX', 3600);
+          return { status: 'MATCH_EXPIRED_BACK_TO_LOBBY' };
+        }
+        // se troviamo l'avversario, controlliamo che sia ancora in partita, se no vuol dire che la partita è finita
+        const opponentData = JSON.parse(opponentStatusRaw);
+        if (opponentData.state !== 'ingame') {
+          console.log(`[Logic] L'avversario è già in ${opponentData.state}. Partita conclusa.`);
+          await this.redis.set(USER_STATUS_KEY, JSON.stringify({ ...statusData, state: 'lobby' }), 'EX', 3600);
+          return { status: 'MATCH_ALREADY_FINISHED' };
+        }
+        // prendiamo le vecchie informazioni che avevamo salvato su redis e aggiorniamo solo il socketId
+        const updatedStatus = { ...statusData, socketId: player.socketId };
+        // classico salvataggio su redis
+        await this.redis.set(USER_STATUS_KEY, JSON.stringify(updatedStatus), 'EX', 420);
+        // prendiamo la stringa ricevuta e vediamo se è valida, in caso ad esempio fosse vuota o corrotta si restituisce una stringa vuota
+        const payload = {
+            playersData: [
+                { ...updatedStatus, userDbId: player.userDbId, playerIndex: statusData.playerIndex || 0 },
+                { ...opponentData, userDbId: statusData.opponentId, playerIndex: opponentData.playerIndex || 1 }
+            ],
+            matchType: statusData.matchType || 'ranked',
+            matchMode: statusData.matchMode || 'standard'
+        };
+        try {
+            const url = 'http://game-container:3000/matchmaking/create-match';
+            await firstValueFrom(this.httpService.post(url, payload));
+        } catch (e) { console.error("Errore riconnessione HTTP"); }
+
+        return { status: 'RECONNECTED_TO_GAME', matchId: statusData.matchId };
       }
 
       if (statusData.state === 'searching') {
-          // controlliamo se c'è già qualcuno per lui senza riaggiungerlo
-          console.log(`[Logic] Utente ${player.userId} è già in coda, controllo avversari...`);
+        // controlliamo se c'è già qualcuno per lui senza riaggiungerlo
+        console.log(`[Logic] Aggiornamento ricerca per ${player.userDbId} con tolleranza ${RANK_TOLERANCE}`);
+        const updatedSearching = JSON.stringify({ ...statusData, socketId: player.socketId });
+        await this.redis.set(USER_STATUS_KEY, updatedSearching, 'EX', 600);
       }
     }
     else {
@@ -41,11 +81,11 @@ export class MatchmakingService { // definizione del service
       const timeScore = player.rank + (timestamp / 10000000000000);
 
       // aggiungiamo il player alla coda su Redis
-      // zadd permette di aggiungere un elemento ad una sorted set, il primo parametro è il nome della coda, il secondo è il punteggio (rank) e il terzo è l'elemento (userId)
+      // zadd permette di aggiungere un elemento ad una sorted set, il primo parametro è il nome della coda, il secondo è il punteggio (rank) e il terzo è l'elemento (userDbId)
       // se il player esiste già nella coda, verifichaimo se il nuovo rank è migliore, in caso lo aggiorniamo
-      await this.redis.zadd(QUEUE_KEY, timeScore, player.userId);
+      await this.redis.zadd(QUEUE_KEY, timeScore, player.userDbId);
 
-      // Settiamo lo stato come "searching" includendo i nuovi dati richiesti dal compagno
+      // Settiamo lo stato come "searching"
       const searchingStatus = JSON.stringify({ 
         state: 'searching', 
         rank: player.rank,
@@ -64,7 +104,7 @@ export class MatchmakingService { // definizione del service
     const potentialOpponents = await this.redis.zrangebyscore(QUEUE_KEY, minRank, maxRank);
 
     // rimuoviamo il player stesso dalla lista degli avversari che si possono sfidare
-    const opponents = potentialOpponents.filter(id => id !== player.userId);
+    const opponents = potentialOpponents.filter(id => id !== player.userDbId);
 
     // se troviamo almeno un avversario, creiamo la partita
     if (opponents.length >= 1) {
@@ -74,76 +114,84 @@ export class MatchmakingService { // definizione del service
       // Recuperiamo i dati completi dell'avversario PRIMA di rimuoverlo dalla coda
       const opponentStatusRaw = await this.redis.get(`status:${opponentId}`);
       if (!opponentStatusRaw) {
-        return { status: 'ERROR_OPPONENT_DATA_NOT_FOUND' };
+        // Se l'avversario è sparito proprio ora, resettiamo il player attuale 
+        // così può riprovare subito senza aspettare il timeout
+        await this.redis.set(USER_STATUS_KEY, JSON.stringify({ state: 'lobby', rank: player.rank }), 'EX', 3600);
+        await this.redis.zrem(QUEUE_KEY, player.userDbId); // lo togliamo anche dalla coda
+        return { status: 'ERROR_OPPONENT_VANISHED_RETRYING' };
       }
       const opponentData = JSON.parse(opponentStatusRaw);
 
       // rimuoviamo entrambi i player dalla coda di matchmaking
-      await this.redis.zrem(QUEUE_KEY, player.userId, opponentId);
-
-      // Prepariamo gli oggetti MatchPartecipantData per il compagno
-      const participant1 = {
-        socketId: player.socketId,
-        characterName: player.characterName,
-        userDbId: player.userId,
-        isAiPlayer: player.isAiPlayer,
-        playerIndex: 0,
-      };
-
-      const participant2 = {
-        socketId: opponentData.socketId,
-        characterName: opponentData.characterName,
-        userDbId: opponentId,
-        isAiPlayer: opponentData.isAiPlayer,
-        playerIndex: 1,
-      };
-
-      // creiamo i dati di stato per entrambi i player (usiamo 'lobby' come stato intermedio)
-      const playerStatus = JSON.stringify({ state: 'ingame', ...participant1, opponentId: opponentId });
-      const opponentStatus = JSON.stringify({ state: 'ingame', ...participant2, opponentId: player.userId });
-
-      // una volta trovato il match, etichettiamo i player come "in lobby" nel database Redis
-      // da notare che se qualcuno crasha durante la partita e giovanni non se ne accorge, i dati rimarranno su redis per 7 minuti (420 secondi) e poi verranno eliminati automaticamente
-      await this.redis.set(`status:${player.userId}`, playerStatus, 'EX', 420);
-      await this.redis.set(`status:${opponentId}`, opponentStatus, 'EX', 420);
-
+      await this.redis.zrem(QUEUE_KEY, player.userDbId, opponentId);
       // andiamo a creare un id univoco da assegnare alla partita
       const matchId = `match_${Math.random().toString(36).substring(7)}`;
 
+      // Prepariamo gli oggetti MatchPartecipantData per il compagno
+      const participant1 = {
+        userDbId: Number(player.userDbId),
+        characterName: player.characterName,
+        isAiPlayer: player.isAiPlayer,
+      };
+
+      const participant2 = {
+        characterName: opponentData.characterName,
+        userDbId: opponentId,
+        isAiPlayer: opponentData.isAiPlayer,
+      };
+
+      // creiamo i dati di stato per entrambi i player (usiamo 'lobby' come stato intermedio)
+      const playerStatus = JSON.stringify({ state: 'ingame', ...participant1, opponentId: opponentId, matchId});
+      const opponentStatus = JSON.stringify({ state: 'ingame', ...participant2, opponentId: player.userDbId, matchId});
+
+      // una volta trovato il match, etichettiamo i player come "in lobby" nel database Redis
+      // da notare che se qualcuno crasha durante la partita e giovanni non se ne accorge, i dati rimarranno su redis per 7 minuti (420 secondi) e poi verranno eliminati automaticamente
+      await this.redis.set(`status:${player.userDbId}`, playerStatus, 'EX', 420);
+      await this.redis.set(`status:${opponentId}`, opponentStatus, 'EX', 420);
+
       // creiamo un array contente i due player che saranno dentro la partita
-      const playersData = [participant1, participant2];
 
       const payload = {
-        playersData: playersData,
-        matchMode: player.matchMode,
-        matchType: player.matchType,
+          gameId: matchId,
+          playersData: [participant1, participant2],
+          matchType: player.matchType, // Prendi il tipo dal primo giocatore
+          matchMode: player.matchMode  // Prendi il mode dal primo giocatore
+      };
+      // Inviamo i due oggetti MatchPartecipantData richiesti
+      try {
+          const url = 'http://game_server:3000/matchmaking/create_match'; // L'indirizzo del suo container
+          await firstValueFrom(this.httpService.post(url, payload));
+          console.log("Richiesta di creazione match inviata con successo via HTTP");
+      } catch (error) {
+          console.error("Errore nella creazione del match su Game Server:", error.response?.data);
       }
 
-      // Inviamo i due oggetti MatchPartecipantData richiesti
-      this.client.emit('create_match', payload);
-
-      console.log(`[RankedMatch] Match tra: ${player.userId} vs ${opponentId}`);
+      console.log(`[RankedMatch] Match tra: ${player.userDbId} vs ${opponentId}`);
 
       // restituzione del match creato con id players e ID del match
-      return { 
-        status: 'MATCH_FOUND', 
-        matchId, 
-        players: [participant1, participant2] 
-      };
+      // const matchFoundData = { status: 'MATCH_FOUND', matchId, players: [participant1, participant2] };
+      const matchFoundData = { status: 'MATCH_FOUND'};
+      if (opponentData.socketId) {
+          this.eventEmitter.emit('match.found.internal', {
+              socketId: opponentData.socketId,
+              data: matchFoundData
+          });
+      }
+      return matchFoundData;
     }
     // se nessuno è è un player adatto, restituiamo lo stato di ricerca in corso
     return { status: 'SEARCHING_EQUILIBRATED_MATCH' };
-}
+  }
 
 /* ---------------------------------------------------------------------------------------------------------------- */
 
 async leaveQueue(player: JoinQueueDto) {
     // abbiamo la coda di matchmaking e la chiave per lo stato dell'utente
     const QUEUE_KEY = 'matchmaking_queue';
-    const USER_STATUS_KEY = `status:${player.userId}`;
+    const USER_STATUS_KEY = `status:${player.userDbId}`;
 
     // ZREM rimuove l'elemento dal Sorted Set usando l'ID
-    const result = await this.redis.zrem(QUEUE_KEY, player.userId);
+    const result = await this.redis.zrem(QUEUE_KEY, player.userDbId);
 
     // Prepariamo lo stato lobby mantenendo i dati che l'utente aveva nel DTO
     // In questo modo, tornando nella Home, il sistema si ricorda ancora chi è e che personaggio ha
@@ -161,28 +209,28 @@ async leaveQueue(player: JoinQueueDto) {
 
     // result è 1 se l'ID è stato trovato e rimosso, 0 se non c'era
     if (result === 1) {
-      console.log(`[Logic] Utente ${player.userId} rimosso dalla coda correttamente e riportato in lobby.`);
-      return { status: 'LEFT_QUEUE_SUCCESS', userId: player.userId };
+      console.log(`[Logic] Utente ${player.userDbId} rimosso dalla coda correttamente e riportato in lobby.`);
+      return { status: 'LEFT_QUEUE_SUCCESS', userDbId: player.userDbId };
     } else {
-      console.log(`[Logic] Tentativo di rimozione: ${player.userId} non era in coda, ma lo stato è stato resettato a lobby.`);
-      return { status: 'NOT_IN_QUEUE', userId: player.userId };
+      console.log(`[Logic] Tentativo di rimozione: ${player.userDbId} non era in coda, ma lo stato è stato resettato a lobby.`);
+      return { status: 'NOT_IN_QUEUE', userDbId: player.userDbId };
     }
   }
 
 /* ---------------------------------------------------------------------------------------------------------------- */
 
-async updateRanks(winnerId: string, loserId: string) {
-    // chiediamo a Redis i rank attuali dei due giocatori
+async finalizeMatch(winnerId: string, loserId: string) {
+    // chiediamo a Redis i dati attuali dei due giocatori (non solo il rank, ma tutto l'oggetto status)
     const winnerDataRaw = await this.redis.get(`status:${winnerId}`);
     const loserDataRaw = await this.redis.get(`status:${loserId}`);
 
     // controlliamo di avere tutto, in caso contrario logghiamo l'errore e usciamo
     if (winnerDataRaw === null || loserDataRaw === null) {
-      console.log(`[Error] Impossibile recuperare i rank per ${winnerId} o ${loserId}`);
-      return { status: 'ERROR_RETRIEVING_RANKS' };
+      console.log(`[Error] Impossibile recuperare i dati per ${winnerId} o ${loserId}`);
+      return { status: 'ERROR_RETRIEVING_DATA' };
     }
 
-    // estraiamo i rank dai dati JSON (ora contengono anche characterName, isAiPlayer, ecc.)
+    // estraiamo i dati dai dati JSON (contengono characterName, isAiPlayer, rank attuale, ecc.)
     const winnerData = JSON.parse(winnerDataRaw);
     const loserData = JSON.parse(loserDataRaw);
 
@@ -204,148 +252,314 @@ async updateRanks(winnerId: string, loserId: string) {
         updatedAt: Date.now() 
     });
 
-    // ovviamente se un match è privato non aggiorniamo i rank, ma li riportiamo comunque in lobby
-    if (winnerData.type === 'private' || loserData.type === 'private') {
-       await this.redis.set(`status:${winnerId}`, lobbyStatusWinner, 'EX', 3600);
-       await this.redis.set(`status:${loserId}`, lobbyStatusLoser, 'EX', 3600);
-       return { status: 'PRIVATE_MATCH_FINISHED_NO_RANK_UPDATE' };
-    }
+    // Notifichiamo il sistema dei DB che la partita è finita
+    // Invece di calcolare noi i punti, diciamo a Renna chi ha vinto e chi ha perso.
+    // Sarà il suo servizio a gestire l'INCREMENT o DECREMENT in base alla sua logica.
     
-    // settiamo a quanto sono i rank dei player (calcolo ELO professionale)
-    const Ra = Number(winnerData.rank);
-    const Rb = Number(loserData.rank);
-
-    // Ea rappresenta la probabilità che il vincitore avesse di vincere
-    const Ea = 1 / (1 + Math.pow(10, (Rb - Ra) / 400));
-
-    // il fattore K indica il massimo dei punti che si possono vincere o perdere in un match, solitamente viene messo a 32
-    const K = 40;
-
-    // Formula: NuovoRank = VecchioRank + K * (Risultato - Aspettativa)
-    // Il risultato per il vincitore è sempre 1.
-    const pointsToAdd = Math.round(K * (1 - Ea));
-
-    // per chi perde facciamo in modo che perda una quantità di punti leggermente inferiore a quelli che l'altro guadagna
-    const pointsToRemove = Math.round(pointsToAdd * 0.8); // Esempio: perde l'80% di quelli che l'altro guadagna
-
-    // Assicuriamoci un minimo di punti (es. almeno 5)
-    const finalWinnerPoints = Math.max(pointsToAdd, 5);
-    const finalLoserPoints = Math.max(pointsToRemove, 2);
-
-    // aggiornamento dei rank del database di renna
-    this.client.emit('update_user_db', {
-      userId: winnerId,
-      points: finalWinnerPoints,
-      action: 'INCREMENT'
-    }); // tutta questa parte serve per mandare un messaggio a renna e dirgli che deve aggiornare i rank come gli sto dicendo io, ovvero aggiungendo/sottraendo punti ai rank dei player
-
-    this.client.emit('update_user_db', {
-      userId: loserId,
-      points: finalLoserPoints, // il perdente perde metà dei punti guadagnati dal vincitore
-      action: 'DECREMENT'
+    this.client.emit('match_finished_notification', {
+      winnerId: winnerId,
+      loserId: loserId,
+      matchType: winnerData.matchType || 'ranked',
+      action: 'UPDATE_RANK_REQUEST' 
     });
 
     // ripuliamo il server di redis e evitiamo di avere chiavi inutili o player fantasma
-    // Invece di del(...), riportiamo i player nello stato 'lobby' con scadenza di 1 ora
+    // Riportiamo i player nello stato 'lobby' con scadenza di 1 ora
+    // Fondamentale per permettere ai player di fare una nuova partita!
     await this.redis.set(`status:${winnerId}`, lobbyStatusWinner, 'EX', 3600);
     await this.redis.set(`status:${loserId}`, lobbyStatusLoser, 'EX', 3600);
 
-    console.log(`[RankSystem] Match concluso. Winner: +${finalWinnerPoints}, Loser: -${finalLoserPoints}. Player riportati in lobby.`);
+    console.log(`[RankSystem] Match concluso tra ${winnerId} e ${loserId}. Notifica inviata al DB e player riportati in lobby.`);
 
-    return { status: 'RANK_UPDATED' };
+    return { status: 'MATCH_FINALIZED' };
   }
 
 /* ---------------------------------------------------------------------------------------------------------------- */
 
-  async createChallenge(challengerId: string, opponentId: string) { // funzione asincrona, ricevo gli id dei due player
-    // chiave della sfida composta dagli id dell'avversario e del challenger, in questo modo è univoca e non ci sono problemi di sovrascrittura
-    const UNIQUE_CHALLENGE_KEY = `challenge:${opponentId}:${challengerId}`;
-    // variabile che conterrà il risultato della verifica dell'esistenza della chiave su redis
+  async createChallenge(player: JoinQueueDto, opponentId: string) {
+    const UNIQUE_CHALLENGE_KEY = `challenge:${opponentId}:${player.userDbId}`;
     const exists = await this.redis.exists(UNIQUE_CHALLENGE_KEY);
+    // controlliamo se esiste già una sfida tra questi due utenti, se sì ritorniamo un messaggio di errore
     if (exists) {
-      return { status: 'ERROR_CHALLENGE_EXISTS', message: 'Una sfida tra questi due utenti è già in corso'}; // messaggio di ritorno in caso la sfida esista già
+      return { status: 'ERROR_CHALLENGE_EXISTS', message: 'Una sfida tra questi due utenti è già in corso'};
     }
-    // creiamo una chiave su redis che rappresenta la sfida, con scadenza di 30 secondi
+
+    // recuperiamo lo stato attuale del player che lancia la sfida
+    const currentStatusRaw = await this.redis.get(`status:${player.userDbId}`);
+    const currentStatus = currentStatusRaw ? JSON.parse(currentStatusRaw) : null;
+
+    // Se l'utente è già 'ingame', non può sfidare nessuno
+    if (currentStatus && currentStatus.state === 'ingame') {
+        return { status: 'ERROR_ALREADY_IN_GAME' };
+    }
+
+    // Salviamo i dati del DTO su Redis senza forzare lo stato a 'searching' 
+    // se l'utente era già in 'lobby', lo lasciamo in 'lobby' o creiamo un oggetto di supporto
+    const challengeData = { 
+      ...player, 
+      state: currentStatus?.state || 'lobby', // Manteniamo lo stato precedente
+      lastChallengeSent: opponentId 
+    };
+    
+    await this.redis.set(`status:${player.userDbId}`, JSON.stringify(challengeData), 'EX', 600);
+    
+    // La sfida vera e propria rimane una chiave a parte
     await this.redis.set(UNIQUE_CHALLENGE_KEY, 'pending', 'EX', 30);
-    console.log(`[Logic] Sfida inviata da ${challengerId} a ${opponentId}.`);
-    // ritorniamo il fatto che la sfida è stata inviata
-    return { status: 'CHALLENGE_SENT', challengerId, opponentId };
+    
+    return { status: 'CHALLENGE_SENT', challengerId: player.userDbId, opponentId };
   }
 
 /* ---------------------------------------------------------------------------------------------------------------- */
 
-  async acceptChallenge(challengerId: string, opponentId: string) {
-    const UNIQUE_CHALLENGE_KEY = `challenge:${opponentId}:${challengerId}`; // ricostruzione chiave sfida
-    const QUEUE_KEY = 'matchmaking_queue';
+  async acceptChallenge(challengerId: string, opponent: JoinQueueDto) {
+    const UNIQUE_CHALLENGE_KEY = `challenge:${opponent.userDbId}:${challengerId}`; // ricostruzione chiave sfida
+    const QUEUE_KEY = 'matchmaking_queue'; // chiave della coda globale
+    
     // controllo per vedere se la sfida esiste ancora su redis
     const challengeExists = await this.redis.exists(UNIQUE_CHALLENGE_KEY);
     if (!challengeExists) return { status: 'ERROR_EXPIRED' };
-    // controlliamo che nessuno dei due player sia già dentro al database di redis, segnato come in game
+    
+    // Recuperiamo lo stato del challenger per assicurarci che non sia entrato in un altro game nel frattempo
     const statusA = await this.redis.get(`status:${challengerId}`);
-    const statusB = await this.redis.get(`status:${opponentId}`);
-    // funzione di supporto per verificare se un player è in game
+    
+    // Funzione di supporto per verificare se un player è già in partita
     const isInGame = (raw: string | null) => raw && JSON.parse(raw).state === 'ingame';
-    // se uno dei due è in game, ritorniamo errore
-    if (isInGame(statusA) || isInGame(statusB)) {
-      return { status: 'ERROR_PLAYER_ALREADY_IN_MATCH' };
+    
+    // Se il challenger è già impegnato, la sfida non può partire
+    if (isInGame(statusA)) {
+      return { status: 'ERROR_CHALLENGER_ALREADY_IN_MATCH' };
     }
-    // rimuoviamo entrambi i player dalla coda di matchmaking, se per caso erano entrati in coda
-    await this.redis.zrem(QUEUE_KEY, challengerId, opponentId);
+
+    // Estraiamo i dati del challenger (che avevamo salvato nel createChallenge)
+    const challengerData = statusA ? JSON.parse(statusA) : {};
+
+    // Rimuoviamo ENTRAMBI dalla coda di matchmaking globale
+    // Se erano in 'searching', questa operazione li "dirotta" ufficialmente verso la sfida privata
+    await this.redis.zrem(QUEUE_KEY, challengerId, opponent.userDbId);
+    
     // creiamo l'id univoco della partita privata
     const matchId = `private_${Math.random().toString(36).substring(7)}`;
-    // settiamo lo stato di entrambi i player come "in partita" su redis, con scadenza di 7 minuti per evitare problemi di player fantasma in caso di crash o disconnessione improvvisa
-    const status = JSON.stringify({ state: 'ingame', type: 'private' });
     
-    await this.redis.set(`status:${challengerId}`, status, 'EX', 420);
-    await this.redis.set(`status:${opponentId}`, status, 'EX', 420);
+    // Prepariamo gli oggetti partecipante usando il DTO per l'opponent e i dati Redis per il challenger
+    const participant1 = {
+        characterName: challengerData.characterName,
+        userDbId: Number(challengerId),
+        isAiPlayer: challengerData.isAiPlayer || false,
+        playerIndex: 0,
+    };
+
+    const participant2 = {
+        characterName: opponent.characterName,
+        userDbId: Number(opponent.userDbId), // Conversione forzata a numero
+        isAiPlayer: opponent.isAiPlayer || false,
+        playerIndex: 1,
+    };
+
+    // Settiamo lo stato "ingame" per entrambi
+    // Anche se erano in coda, ora lo stato diventa 'ingame' con tipo 'private' o 'unranked'
+    const playerStatus = JSON.stringify({ state: 'ingame', ...participant1, opponentId: opponent.userDbId, matchId });
+    const opponentStatus = JSON.stringify({ state: 'ingame', ...participant2, opponentId: challengerId, matchId });
+    
+    await this.redis.set(`status:${challengerId}`, playerStatus, 'EX', 420);
+    await this.redis.set(`status:${opponent.userDbId}`, opponentStatus, 'EX', 420);
+    
+    // Notifichiamo Piro. Se erano in coda, la sfida privata vince e crea il game
+    const payload = {
+        gameId: matchId,
+        playersData: [participant1, participant2],
+        matchType: challengerData.matchType || 'unranked', // Forziamo unranked se non specificato
+        matchMode: challengerData.matchMode || 'standard' 
+    };
+    this.client.emit('create_match', payload);
+
+    // Pulizia della chiave sfida
     await this.redis.del(UNIQUE_CHALLENGE_KEY);
 
-    return { status: 'MATCH_FOUND', matchId, players: [challengerId, opponentId] };
+    console.log(`[Logic] Sfida accettata: ${challengerId} e ${opponent.userDbId} dirottati dalla coda al match privato ${matchId}`);
+
+    return { status: 'MATCH_FOUND', matchId, players: [participant1, participant2] };
   }
 
 /* ---------------------------------------------------------------------------------------------------------------- */
 
-async rejectChallenge(challengerId: string, opponentId: string) {
-  // Ricostruiamo la chiave unica che avevamo creato in createChallenge
-  const UNIQUE_CHALLENGE_KEY = `challenge:${opponentId}:${challengerId}`;
+  async rejectChallenge(challengerId: string, opponent: JoinQueueDto) {
+    // Ricostruiamo la chiave unica che avevamo creato in createChallenge
+    const UNIQUE_CHALLENGE_KEY = `challenge:${opponent.userDbId}:${challengerId}`;
 
-  // verifico se la sfida esiste ancora su Redis, se no vuol dire che è già scaduta o non esiste più, quindi ritorniamo un messaggio di errore
-  const challengeExists = await this.redis.exists(UNIQUE_CHALLENGE_KEY);
+    // verifico se la sfida esiste ancora su Redis, se no vuol dire che è già scaduta o non esiste più, quindi ritorniamo un messaggio di errore
+    const challengeExists = await this.redis.exists(UNIQUE_CHALLENGE_KEY);
 
-  if (!challengeExists) {
-    return { status: 'ERROR_CHALLENGE_NOT_FOUND', message: 'La sfida è già scaduta o non esiste più.' };
+    if (!challengeExists) {
+      return { status: 'ERROR_CHALLENGE_NOT_FOUND', message: 'La sfida è già scaduta o non esiste più.' };
+    }
+
+    // se è ancora presente su redis, la eliminiamo per indicare che è stata rifiutata e non è più valida
+    await this.redis.del(UNIQUE_CHALLENGE_KEY);
+
+    console.log(`[Logic] L'utente ${opponent.userDbId} (Rank: ${opponent.rank}) ha rifiutato la sfida di ${challengerId}.`);
+
+    // ritorno lo stato di sfida rifiutata, con gli id dei player coinvolti
+    return { status: 'CHALLENGE_REJECTED', challengerId, opponentId: opponent.userDbId };
   }
-
-  // se è ancora presente su redis, la eliminiamo per indicare che è stata rifiutata e non è più valida
-  await this.redis.del(UNIQUE_CHALLENGE_KEY);
-
-  console.log(`[Logic] L'utente ${opponentId} ha rifiutato la sfida di ${challengerId}.`);
-
-  // ritorno lo stato di sfida rifiutata, con gli id dei player coinvolti
-  return { status: 'CHALLENGE_REJECTED', challengerId, opponentId };
-}
 
 /* ---------------------------------------------------------------------------------------------------------------- */
 
-async cancelChallenge(challengerId: string, opponentId: string) {
-  // Ricostruiamo la chiave unica che avevamo creato in createChallenge
-  const UNIQUE_CHALLENGE_KEY = `challenge:${opponentId}:${challengerId}`;
+  async cancelChallenge(player: JoinQueueDto, opponentId: string) {
+    // Ricostruiamo la chiave unica usando il DTO del challenger
+    const UNIQUE_CHALLENGE_KEY = `challenge:${opponentId}:${player.userDbId}`;
 
-  // verifico se la sfida esiste ancora su Redis, se no vuol dire che è già scaduta o non esiste più, quindi ritorniamo un messaggio di errore
-  const challengeExists = await this.redis.exists(UNIQUE_CHALLENGE_KEY);
+    const challengeExists = await this.redis.exists(UNIQUE_CHALLENGE_KEY);
 
-  if (!challengeExists) {
-    return { status: 'ERROR_CHALLENGE_NOT_FOUND', message: 'La sfida è già scaduta o non esiste più.' };
+    if (!challengeExists) {
+      return { status: 'ERROR_CHALLENGE_NOT_FOUND', message: 'La sfida è già scaduta o non esiste più.' };
+    }
+
+    // Eliminiamo la sfida
+    await this.redis.del(UNIQUE_CHALLENGE_KEY);
+
+    // Logghiamo l'azione usando il DTO per avere più contesto se serve
+    console.log(`[Logic] L'utente ${player.userDbId} (Rank: ${player.rank}) ha annullato la sfida verso ${opponentId}.`);
+
+    return { status: 'CHALLENGE_CANCELLED', challengerId: player.userDbId, opponentId };
   }
 
-  // se è ancora presente su redis, la eliminiamo per indicare che è stata rifiutata e non è più valida
-  await this.redis.del(UNIQUE_CHALLENGE_KEY);
+/* ---------------------------------------------------------------------------------------------------------------- */
 
-  console.log(`[Logic] L'utente ${challengerId} ha annullato la sfida di ${opponentId}.`);
+  async startLocalMatch(player: JoinQueueDto) {
+    const USER_STATUS_KEY = `status:${player.userDbId}`;
+    
+    // Verifichiamo se l'utente è già in coda e lo rimuoviamo per sicurezza
+    await this.redis.zrem('matchmaking_queue', player.userDbId);
 
-  // ritorno lo stato di sfida annullata, con gli id dei player coinvolti
-  return { status: 'CHALLENGE_CANCELLED', challengerId, opponentId };
-}
+    const participant1 = {
+
+        characterName: player.characterName,
+        userDbId: Number(player.userDbId),
+        isAiPlayer: player.isAiPlayer,
+        playerIndex: 0,
+    };
+
+    const participant2 = {
+
+        characterName: player.characterName,
+        userDbId: Number(player.userDbId),
+        isAiPlayer: false,
+        playerIndex: 1,
+    };
+
+    // Stato su Redis: lo segnamo come 'ingame' in modalità 'local'
+    const playerStatus = JSON.stringify({ 
+        state: 'ingame', 
+        matchMode: 'local', 
+        ...participant1
+    });
+
+    await this.redis.set(USER_STATUS_KEY, playerStatus, 'EX', 600);
+
+    // preparo il payload
+    const payload = {
+        playersData: [participant1, participant2], // Inviamo entrambi i partecipanti
+        matchType: 'unranked',
+        matchMode: 'local' // modalità di partita che specifica il fatto che avviene localmente
+    };
+    
+    this.client.emit('create_match', payload);
+    console.log(`[LocalMatch] Avvio sessione locale per ${player.userDbId} su socket ${player.socketId}`);
+    return { status: 'LOCAL_MATCH_STARTED', userDbId: player.userDbId };
+  }
+
+/* ---------------------------------------------------------------------------------------------------------------- */
+
+  async finalizeLocalMatch(userDbId: string) {
+      const USER_STATUS_KEY = `status:${userDbId}`;
+      const userDataRaw = await this.redis.get(USER_STATUS_KEY);
+
+      if (userDataRaw) {
+          const userData = JSON.parse(userDataRaw);
+          // Riportiamo l'utente in lobby con il suo rank originale
+          const lobbyStatus = JSON.stringify({ 
+              state: 'lobby', 
+              rank: userData.rank, 
+              characterName: userData.characterName 
+          });
+          await this.redis.set(USER_STATUS_KEY, lobbyStatus, 'EX', 3600);
+      }
+
+      return { status: 'LOCAL_MATCH_FINISHED' };
+  }
+  
+/* ---------------------------------------------------------------------------------------------------------------- */
+
+  async startAiMatch(player: JoinQueueDto) {
+    const USER_STATUS_KEY = `status:${player.userDbId}`;
+    
+    // Rimuoviamo l'utente da eventuali code attive
+    await this.redis.zrem('matchmaking_queue', player.userDbId);
+
+    const matchId = `ai_${Math.random().toString(36).substring(7)}`;
+
+    // Il giocatore reale
+    const participant1 = {
+        characterName: player.characterName,
+        userDbId: Number(player.userDbId), // Conversione in number per il DTO di Piro
+        isAiPlayer: false,
+        playerIndex: 0,
+    };
+
+    // Il Bot
+    const participant2 = {
+        characterName: 'CPU_Bot',
+        userDbId: null, // Il bot non ha un ID nel database
+        isAiPlayer: true, // Questo attiva la logica AI nel server di gioco
+        playerIndex: 1,
+    };
+
+    // Salviamo lo stato su Redis (stato 'ingame', modalità 'ai')
+    const playerStatus = JSON.stringify({ 
+        state: 'ingame', 
+        matchMode: 'ai', 
+        matchId: matchId,
+        ...participant1 
+    });
+
+    await this.redis.set(USER_STATUS_KEY, playerStatus, 'EX', 600);
+
+    // Prepariamo il payload per l'emit HTTP/Redis a Piro
+    const payload = {
+        gameId: matchId, // Richiesto dal nuovo controller
+        playersData: [participant1, participant2],
+        matchType: 'unranked',
+        matchMode: 'ai' // Specifichiamo che è contro l'IA
+    };
+    
+    this.client.emit('create_match', payload);
+
+    console.log(`[AiMatch] Utente ${player.userDbId} ha avviato sfida contro AI. GameId: ${matchId}`);
+    return { status: 'AI_MATCH_STARTED', matchId };
+  }
+  
+/* ---------------------------------------------------------------------------------------------------------------- */
+
+  async finalizeAiMatch(userDbId: string) {
+    const USER_STATUS_KEY = `status:${userDbId}`;
+    const userDataRaw = await this.redis.get(USER_STATUS_KEY);
+
+    if (userDataRaw) {
+        const userData = JSON.parse(userDataRaw);
+        // Riportiamo l'utente in lobby
+        const lobbyStatus = JSON.stringify({ 
+            state: 'lobby', 
+            rank: userData.rank, 
+            characterName: userData.characterName,
+            isAiPlayer: false,
+            updatedAt: Date.now()
+        });
+        await this.redis.set(USER_STATUS_KEY, lobbyStatus, 'EX', 3600);
+    }
+
+    console.log(`[AiMatch] Partita contro AI conclusa per ${userDbId}.`);
+    return { status: 'AI_MATCH_FINISHED' };
+  }
 
 /* ---------------------------------------------------------------------------------------------------------------- */
 

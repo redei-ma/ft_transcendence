@@ -1,11 +1,10 @@
 services:
   redis:
     image: redis:alpine
-    container_name: redis
-    ports:
-      - "6380:6379"
+    container_name: redis_container
     networks:
       - transcendence_net
+      
   backend:
     build: ./backend
     container_name: game_server
@@ -22,18 +21,21 @@ services:
       - NODE_ENV=development
       - REDIS_HOST=redis
       - REDIS_PORT=6379
-  logic-service:
-    build: ./logic-service
-    container_name: matchmaking-container
+  
+  matchmaking-service:
+    build: ./logic-service # Assicurati che il percorso sia corretto rispetto a dove metti questo file
+    container_name: matchmaking_container
     ports:
-      - "3001:3001"
+      - "3500:3500"
     depends_on:
       - redis
     environment:
       - REDIS_HOST=redis
       - REDIS_PORT=6379
+      - NODE_ENV=development
     networks:
       - transcendence_net
+  
   frontend:
      build: ./frontend
      container_name: game_client

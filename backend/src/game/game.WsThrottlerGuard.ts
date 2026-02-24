@@ -11,7 +11,7 @@ export class WsThrottlerGuard extends ThrottlerGuard {
 
 		// Extract the client's IP address from the WebSocket context
 		const client = context.switchToWs().getClient();
-		
+
 		if (!client || !client.conn) return true;
 		if (client.isAiPlayer) return true;
 

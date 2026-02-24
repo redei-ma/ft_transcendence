@@ -122,7 +122,7 @@ export class Engine{
 		}
 
 		private fillEndGameData(winnerTeamId: number | null, reason: EndReason){
-			this.endGameData.durationSeconds = this.gameTimer * 1000;
+			this.endGameData.durationSeconds = this.gameTimer;
 			this.endGameData.endReason = reason;
 			for (const player of this.players.values()){
 				if (player.userDbId){
@@ -132,7 +132,7 @@ export class Engine{
 						characterName: player.characterName,
 						kills: player.kill,
 						deaths: player.deads,
-						//finalHpPercent: player.damage, da capire
+						clutchMasterAchievement: player.clutchMasterAchievement,
 					});
 				}
 			}

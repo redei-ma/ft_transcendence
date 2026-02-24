@@ -1,7 +1,8 @@
 export const GameConfig = {
 	SERVER: {
 		TICK_RATE: 16,
-		MAX_GAME_DURATION: 300.0,
+		MAX_GAME_DURATION: 10.0,
+		MAX_LOBBY_DURATION: 500.0,
 		MAX_GAME_KILLS: 1,
 		SHUTDOWN_TIMER: 4.0,
 		HARD_LIMIT: 1500.0,
@@ -9,7 +10,6 @@ export const GameConfig = {
 		MAX_DISCONNECTION_TIMER: 5.0,
 		MAX_INPUT_QUEUE_SIZE: 100,
 	},
-
 	MAP: {
 		CELL_SIZE: 5.0,
 	},
@@ -31,5 +31,8 @@ export const GameConfig = {
 		ATTACK_VISUALIZATION: 0.5,
 		DEFENCE_DURATION: 1.5,
 		BULLET_LIFE: 5.0,
+	},
+	ACHIEVEMENT: {
+		CLUTCHMASTER: 0.05,
 	}
 }

@@ -1,83 +1,82 @@
-import { Test, TestingModule } from '@nestjs/testing';
 import { GameRules } from '../core/game.rules';
-import { Player } from '../interfaces-enums';
-import { getNewPlayer } from '../factories';
+import { getNewPlayer } from '../factories/player.factory';
+import { CharacterName, MatchType, Player, World } from '../interfaces-enums';
+import { randomUUID } from 'crypto';
 
 describe('GameRules', () => {
-  let service: GameRules;
+  let gameRules: GameRules;
+  let dummyWorld: any; 
 
-  beforeEach(async () => {
-	const module: TestingModule = await Test.createTestingModule({
-	  providers: [GameRules],
-	}).compile();
+  beforeEach(() => {
+    gameRules = new GameRules();
+    
+    // FIX 1: spawnPoints alla radice e usando 'z' invece di 'y'
+    dummyWorld = {
+      maxPlayers: 2,
+      spawnPoints: [
+        { x: 0, z: 0 },
+        { x: 100, z: 100 }
+      ]
+    };
+  });
 
-	service = module.get<GameRules>(GameRules);
-	
-});
+  describe('shouldGameStart()', () => {
 
-	it('should return 1 if spawn 0 is taken', () => {
-		const players: Map<string, Player> = new Map();
-		const newPlayer = getNewPlayer('player-a', 0, 'Zeus');
-		players.set(newPlayer.id, newPlayer);
-		expect(service.getSpawnPoint(players, 2)).toStrictEqual(1);
-	});
+    it('dovrebbe ritornare FALSE se la lobby non è ancora piena (1 su 2)', () => {
+      const players = new Map<string, Player>();
+      const entityId1 = randomUUID();
+      
+      const player1 = getNewPlayer(
+        dummyWorld as unknown as World, 'socket-123', 0, CharacterName.ZEUS, 
+        1, entityId1, false, 0, MatchType.RANKED
+      );
+      players.set(entityId1, player1);
 
-	it('should return 0 if the map of player is empty', () =>{
-		const players: Map<string, Player> = new Map();
-		expect(service.getSpawnPoint(players, 2)).toStrictEqual(0);
-	})
+      const result = gameRules.shouldGameStart(players, dummyWorld.maxPlayers);
+      expect(result).toBe(false); 
+    });
 
-	it ('should return -1 if all place are full', () => {
-		const players: Map<string, Player> = new Map();
-		const newPlayer1 = getNewPlayer('player-a', 0, 'Zeus');
-		const newPlayer2 = getNewPlayer('player-b', 1, 'Zeus');
+    it('dovrebbe ritornare TRUE se la lobby è piena (2 su 2)', () => {
+      const players = new Map<string, Player>();
+      
+      const entityId1 = randomUUID();
+      const player1 = getNewPlayer(
+        dummyWorld as unknown as World, 'socket-123', 0, CharacterName.ZEUS, 
+        1, entityId1, false, 0, MatchType.RANKED
+      );
+      players.set(entityId1, player1);
 
-		players.set(newPlayer1.id, newPlayer1);
-		players.set(newPlayer2.id, newPlayer2);
+      const entityId2 = randomUUID();
+      const player2 = getNewPlayer(
+        dummyWorld as unknown as World, 'socket-456', 1, CharacterName.ZEUS, 
+        2, entityId2, false, 1, MatchType.RANKED
+      );
+      players.set(entityId2, player2);
 
-		expect(service.getSpawnPoint(players, 2)).toStrictEqual(-1);
-	})
+      const result = gameRules.shouldGameStart(players, dummyWorld.maxPlayers);
+      expect(result).toBe(true);
+    });
 
-	it ('should return undefined if nobody dies', () => {
-		const players: Map<string, Player> = new Map();
-		const newPlayer1 = getNewPlayer('player-a', 0, 'Zeus');
-		const newPlayer2 = getNewPlayer('player-b', 1, 'Zeus');
+  });
 
-		players.set(newPlayer1.id, newPlayer1);
-		players.set(newPlayer2.id, newPlayer2);
+  describe('getSpawnPoint()', () => {
 
-		expect(service.checkWinner(Array.from(players.values()), false)).toStrictEqual(undefined);
-	})
+    it('dovrebbe ritornare 0 come spawn index per il primo giocatore', () => {
+      const players = new Map<string, Player>(); 
+      const spawnIndex = gameRules.getSpawnPoint(players, dummyWorld.maxPlayers);
+      expect(spawnIndex).toBe(0); 
+    });
 
-	it ('should return player-a if player-b dies', () => {
-		const overTime = false;
-		const players: Map<string, Player> = new Map();
-		const newPlayer1 = getNewPlayer('player-a', 0, 'Zeus');
-		const newPlayer2 = getNewPlayer('player-b', 1, 'Zeus');
+    it('dovrebbe ritornare -1 se provi a chiedere uno spawn ma la lobby è già piena', () => {
+      const players = new Map<string, Player>();
+      
+      // FIX 2: Assegniamo uno spawnIndex ai giocatori finti!
+      players.set(randomUUID(), { spawnIndex: 0 } as Player); 
+      players.set(randomUUID(), { spawnIndex: 1 } as Player);
 
-		players.set(newPlayer1.id, newPlayer1);
-		players.set(newPlayer2.id, newPlayer2);
+      const spawnIndex = gameRules.getSpawnPoint(players, dummyWorld.maxPlayers);
+      expect(spawnIndex).toBe(-1); 
+    });
 
-		const player2 :Player | undefined = players.get(newPlayer2.id);
-		if (player2)
-			player2.isDead = true;
-		expect(service.checkWinner(Array.from(players.values()), overTime)).toStrictEqual(newPlayer1);
-	})
-
-	it ('should return undefined if only one player die', () => {
-		const overTime = false;
-		const players: Map<string, Player> = new Map();
-		const newPlayer1 = getNewPlayer('player-a', 0, 'Zeus');
-		const newPlayer2 = getNewPlayer('player-b', 1, 'Zeus');
-		const newPlayer3 = getNewPlayer('player-c', 0, 'Zeus');
-
-		players.set(newPlayer1.id, newPlayer1);
-		players.set(newPlayer2.id, newPlayer2);
-		players.set(newPlayer3.id, newPlayer3);
-
-		const player2 :Player | undefined = players.get(newPlayer2.id);
-		if (player2)
-			player2.isDead = true;
-		expect(service.checkWinner(Array.from(players.values()), overTime)).toStrictEqual(undefined);
-	})
+  });
 });

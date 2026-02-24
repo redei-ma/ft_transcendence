@@ -11,15 +11,19 @@ import { GameConfig } from '../configs/game.config';
 import { SocketEvents } from '../configs/game.events';
 import { PlayerManager } from '../managers/playerManager/player.manager';
 import { BulletManager } from '../managers/bullet.manager';
-import { Player, MatchType, AttackType, MatchMakingData, MatchMode, EndReason } from '../interfaces-enums';
+import { Player, MatchType, AttackType, MatchMakingData, MatchMode, ErrorCode } from '../interfaces-enums';
 import { Logger } from '@nestjs/common';
-import { TIMEOUT } from 'dns';
+import { GameService } from '../game.service';
+import { ExitStatus } from '../interfaces-enums/exitStatus.interface';
 
 /* the session dosn't know what state the game have, this class is only a game manager */
 export class GameSession{
 
 	private logger: Logger = new Logger(GameSession.name);
 
+	//all expected users db of all games
+	public readonly expectedUserDbIds: number[] = [];
+	
 	/* this map connect entityID to Player */
 	public readonly players: Map<string, Player> = new Map();
 
@@ -35,7 +39,8 @@ export class GameSession{
 	constructor(
 		public readonly gameId: string, public readonly server: Server,
 		public readonly gameWorld: World, public readonly gameRules: GameRules,
-		private readonly playerManager: PlayerManager, private readonly bulletManager: BulletManager, matchType: MatchType, matchMode: MatchMode) {
+		private readonly playerManager: PlayerManager, private readonly bulletManager: BulletManager,
+		matchType: MatchType, matchMode: MatchMode,  public readonly gameService: GameService) {
 			this.matchType = matchType;
 			this.matchMode = matchMode;
 			this.engine = new Engine(this.players, this.gameWorld, this.gameRules, this.playerManager, this.bulletManager, matchType, matchMode);
@@ -43,30 +48,37 @@ export class GameSession{
 			this.currentState.onEnter();
 	}
 
-	addPlayer(player: MatchMakingData): boolean{
+	addPlayer(player: MatchMakingData, socketId: string | undefined, ): ExitStatus{
 		if (this.currentState instanceof LobbyState){
-			this.currentState.addPlayer(player);
-			return true;
+			return this.currentState.addPlayer(player, socketId);
 		}
-		return false;
+		else if (this.currentState instanceof PlayState && player.userDbId && socketId){
+			return this.currentState.reconnectPlayer(player.userDbId, socketId);
+		}
+		return ({status: ErrorCode.INTERNAL_ERROR, message: 'Internal server error, sorry for the issue'});
+	}
+
+	addBot(player: MatchMakingData){
+		if (this.currentState instanceof LobbyState){
+			return (this.currentState.addBot(player));
+		}
+		return ({status: ErrorCode.INTERNAL_ERROR, message: 'Internal server error, sorry for the issue'});
 	}
 
 	/* This method is called by GameGateway when an 'input' event is received */
 	processInput(socketId: string, input: Vector, attackType: AttackType, playerIndex: number): void {
 
-		const controlledEntities: string[] | string | undefined = this.socketToEntities.get(socketId);
+		const controlledEntities: string[] | undefined = this.socketToEntities.get(socketId);
 
 		if (!controlledEntities || playerIndex >= controlledEntities.length) {
-			this.logger.warn(`ROUTING ERROR controlledEntities not founded ${controlledEntities}`);
-			return;
+			return ;
 		}
 
 		/* i get the entityes if are more than 1(local game) the index can be 0(default value) or 1 for the second player*/
 		const targetEntityId: string = controlledEntities[playerIndex];
 
 		if (!targetEntityId) {
-			console.warn(`ROUTING ERROR index ${playerIndex} not found for socket ${socketId}`);
-			return;
+			return ;
 		}
 
 		this.currentState.onInput(targetEntityId, input, attackType);
@@ -89,6 +101,7 @@ export class GameSession{
 	/* method to clean up the players map */
 	cleanUp(): void{
 		this.players.clear();
+		this.socketToEntities.clear();
 	}
 
 	isGameOver(): boolean {
@@ -142,32 +155,6 @@ export class GameSession{
 		this.currentState.onEnter();
 	}
 
-	tryToReconnectPlayer(userDbId: number, socketId: string): string | undefined{
-		for (const player of this.players.values()){
-			if (userDbId === player.userDbId && player.isDisconnected
-					&& player.disconnectionTimer < GameConfig.SERVER.MAX_DISCONNECTION_TIMER){
-				if (player.socketId){
-					this.socketToEntities.delete(player.socketId);
-				}
-
-				if (!this.socketToEntities.get(socketId)){
-					this.socketToEntities.set(socketId, []);
-				}
-
-				this.socketToEntities.get(socketId)?.push(player.entityId);
-				player.socketId = socketId;
-				player.isDisconnected = false;
-				player.disconnectionTimer = 0.0;
-
-				this.server.to(socketId).emit(SocketEvents.MAP_EMIT,{ map: this.gameWorld,
-					config:{playerRadius: GameConfig.PLAYER.RADIUS, playerSpeed: GameConfig.PLAYER.SPEED}});
-				this.server.in(socketId).socketsJoin(this.gameId);
-				return (this.gameId);
-			}
-		}
-		return (undefined);
-	}
-
 	/* getters */
 	getGameState(): string{
 		return this.currentState.name;
@@ -179,5 +166,11 @@ export class GameSession{
 
 	getPlayersIds(): string[]{
 		return (Array.from(this.players.keys()));
+	}
+
+	getPlayerIndex(): number{
+		if (this.matchMode === MatchMode.LOCAL && this.players.size === 1) return 1
+
+		return 0;
 	}
 }

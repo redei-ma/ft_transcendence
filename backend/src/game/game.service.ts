@@ -5,20 +5,23 @@ import { GameConfig, NetworkConfig } from './configs';
 import { GameSession, GameRules, World } from './core';
 import { Vector } from './utils';
 import { PlayerManager, MapManager, BulletManager } from './managers';
-import { AttackType, MatchType, Player, MapData, MatchMode, MatchMakingData } from './interfaces-enums';
-import { WsGameException } from './WsGameException';
-import Redis from 'ioredis';
+import { AttackType, MatchType, Player, MapData, MatchMode, MatchMakingData, MatchResult, GameData, ErrorCode, SuccessCode } from './interfaces-enums';
+import { ClientProxy } from '@nestjs/microservices';
+import { ExitStatus } from './interfaces-enums/exitStatus.interface';
 
 // Game Engine Service
 @Injectable()
 export class GameService{
 
 	private readonly logger: Logger = new Logger(GameService.name);
-
+	
 	/* In-memory Map to store all active games, linking gameID to GameSession objects */
 	private games: Map<string, GameSession> = new Map();
 	/* In-memory Map to store all active socketID, linking socketID(Player) to gameSessionID */
 	private socketToGame: Map<string, string> = new Map();
+
+	/* In-memory Map to store users, linking userDbId to gameSessionID */
+	private userToGameData = new Map<number, GameData>();
 
 	private server: Server;
 	private gameIndex: number = 0;
@@ -28,11 +31,11 @@ export class GameService{
 	private timeAccumulator: number = 0.0;
 
 	constructor(
-		@Inject(NetworkConfig.MATCHMAKING.SERVICE.REDIS_CLIENT) private readonly redis: Redis,
 		private readonly gameRules: GameRules,
 		private readonly mapManager: MapManager,
 		private readonly playerManager: PlayerManager,
-		private readonly bulletManager: BulletManager) {}
+		private readonly bulletManager: BulletManager,
+		@Inject(NetworkConfig.MATCHMAKING.SERVICE.REDIS) private readonly redis: ClientProxy) {}
 
 	/* @Interval decorator creates a game loop that runs every 16ms */
 	@Interval(GameConfig.SERVER.TICK_RATE)
@@ -95,22 +98,26 @@ export class GameService{
 	}
 
 	/* Triggered by OnGatewayDisconnect. Removes the game from memory. */
-	async removeSession(game: GameSession): Promise<void> {
-			const gameId = game.getGameId();
+	removeSession(game: GameSession): void {
+		// inviare i dati al database di renato
+		const gameId = game.getGameId();
 
-			for (const socketId of game.socketToEntities.keys()){
-				this.socketToGame.delete(socketId);
-			}
+		//sending the end_game event for the matchmaking
+		this.redis.emit(NetworkConfig.MATCHMAKING.MATCH_EVENTS.END_GAME, gameId);
 
-			for (const player of game.players.values()) {
-	        	await this.redis.set(
-    	        	`player:${player.userDbId}:status`, 
-        	    	NetworkConfig.MATCHMAKING.PLAYER_STATUS.LOBBY
-        	);
-
-			//chiamata al db di renato per salvare i dati
-			this.games.delete(gameId);
+		//sending the end game data to the database
+		const endGameData: MatchResult = game.engine.endGameData;
+		//this.MatchResultModule.processMatchEnd(endGameData);
+		for (const socketId of game.socketToEntities.keys()){
+			this.socketToGame.delete(socketId);
 		}
+
+		for (const userDbId of game.expectedUserDbIds) {
+			this.userToGameData.delete(userDbId);
+		}
+
+		game.cleanUp();
+		this.games.delete(gameId);
 	}
 
 	removePlayerFromSession(socketId: string): void{
@@ -135,6 +142,8 @@ export class GameService{
 		for (const entityId of entityIds.values()){
 			currentGameSession.removePlayer(entityId);
 		}
+
+		this.socketToGame.delete(socketId);
 	}
 
 	handleInput(socketId: string, input: Vector, attackType: AttackType, playerIndex: number = 0): void{
@@ -148,68 +157,58 @@ export class GameService{
 		gameSession.processInput(socketId, input, attackType, playerIndex);
 	}
 
-	createMatch(players: MatchMakingData[], gameId: string, matchMode: MatchMode, matchType: MatchType): string | undefined{
+	prepareMatch(gameId: string, players: MatchMakingData[], matchMode: MatchMode, matchType: MatchType): ExitStatus{
 
-		for (const player of players){
-			if (player.socketId && player.userDbId){
-				//da migliorare per riconnessione anche locale e bot
-				const gameId: string | undefined = this.searchForReconnection(player.userDbId, player.socketId);
-				if (gameId){
-					this.logger.warn(`Player ${player.userDbId} reconnected with socket ${player.socketId}`);
-					return (gameId);
+		for (const player of players) {
+			if (player.userDbId !== null && this.userToGameData.has(player.userDbId)) {
+				this.logger.error(`Player ${player.userDbId} is already in another match`);
+				return {status: ErrorCode.UNAUTHORIZED, message: `this player ${player.userDbId} is already in a game`}; 
+			}
+		}
+
+		const mapData: MapData | undefined = this.mapManager.getMap();
+		if (!mapData) return {status: ErrorCode.MAP_LOAD_FAILED, message: `error in loading the map`};
+
+		this.gameIndex++;
+
+		/* creating the game world */
+		const gameWorld: World = new World(mapData);
+		
+		/* creating the new session */
+		const newGameSession: GameSession = new GameSession(
+			gameId,
+			this.server,
+			gameWorld,
+			this.gameRules,
+			this.playerManager,
+			this.bulletManager,
+			matchType,
+			matchMode,
+			this,
+		);
+		
+		this.games.set(gameId, newGameSession);
+
+		for (const player of players) {
+			if (player.userDbId !== null) {
+				const alreadyRegistered: GameData | undefined = this.userToGameData.get(player.userDbId);
+				if (alreadyRegistered){
+					alreadyRegistered.players.push(player);
+				}
+				else
+					this.userToGameData.set(player.userDbId, {gameId: gameId, players: [player]});
+
+				newGameSession.expectedUserDbIds.push(player.userDbId);
+			}
+			if (player.isAiPlayer){
+				const result = newGameSession.addBot(player);
+				if (result.status !== SuccessCode.OK){
+					this.logger.error(`Failed to add the bot in the game: ${result.message}`);
+					return (result);
 				}
 			}
-
 		}
-		try{
-			const mapData: MapData | undefined = this.mapManager.getMap();
-			if (!mapData) return ;//throw new WsGameException('failed to load the map');
-
-			/* if the lobby isn't found I create a new one */
-			this.gameIndex++;
-
-			/* creating the game world */
-			const gameWorld: World = new World(mapData);
-
-			/* creating the new session */
-			const newGameSession: GameSession = new GameSession(
-				gameId,
-				this.server,
-				gameWorld,
-				this.gameRules,
-				this.playerManager,
-				this.bulletManager,
-				matchType,
-				matchMode
-			);
-
-			this.games.set(gameId, newGameSession);
-
-			for (const player of players.values()){
-				newGameSession.addPlayer(player);
-				if (player.socketId)
-					this.socketToGame.set(player.socketId, gameId);
-				this.logger.log(`Player ${player.socketId} created new lobby ${gameId}`);
-			}
-			return gameId;
-		}
-		catch(error){
-			let clientSocket: any;
-			for (const player of players.values()){
-
-				if (player.socketId){
-					this.socketToGame.delete(player.socketId);
-					clientSocket = this.server.sockets.sockets.get(player.socketId);
-				}
-
-				if (clientSocket) {
-					clientSocket.emit("error in loading the game, please retry");
-					clientSocket.disconnect(true);
-				}
-				this.logger.error(`An error occurred while creating session: ${error.message}`);
-			}
-			return undefined;
-		}
+		return ({status: SuccessCode.OK});
 	}
 
 	processGameMessage(socketId: string, message: string){
@@ -238,21 +237,24 @@ export class GameService{
 		return gameSession;
 	}
 
-	public searchForReconnection(userDbId: number, socketId: string): string | undefined{
-
-		for (const session of this.games.values()){
-			const gameId = session.tryToReconnectPlayer(userDbId, socketId);
-			if (gameId){
-				this.socketToGame.delete(socketId);
-				this.socketToGame.set(socketId, session.gameId);
-				return (gameId);
-			}
-		}
-		return (undefined);
-	}
-
 	setServer(server: Server){
 		this.server = server;
+	}
+
+	setSocketToGame(socketId: string, gameId: string){
+		this.socketToGame.set(socketId, gameId);
+	}
+
+	getGameById(gameId: string): GameSession | undefined{
+		return (this.games.get(gameId));
+	}
+
+	hasPendingMatch(userDbId: number): GameData | undefined{
+		return (this.userToGameData.get(userDbId));
+	}
+
+	removeOldSocket(socketId: string){
+		this.socketToGame.delete(socketId);
 	}
 }
 

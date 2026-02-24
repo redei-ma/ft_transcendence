@@ -54,8 +54,8 @@ export interface	Player extends DynamicEntity{
 	spellAttackCooldown: number;
 	defenceAttackCooldown: number;
 
-	isAttacking: boolean;
 	attackType: AttackType | undefined,
+	isAttacking: boolean;
 
 	isDead: boolean;
 	isWinner: boolean;
@@ -70,6 +70,7 @@ export interface	Player extends DynamicEntity{
 	inputQueue: InputQueue[];
 
 	currentState: IPlayerState | undefined;
+	clutchMasterAchievement: boolean;
 }
 
 export interface CharacherStats{
