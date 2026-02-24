@@ -25,6 +25,7 @@ export class MatchmakingService {
 
     // controlliamo che le persone in coda non siano già in partita
     const USER_STATUS_KEY = `status:${player.userDbId}`;
+    
     const currentStatusRaw = await this.redis.get(USER_STATUS_KEY);
     
     // analizzo il JSON per vedere se è effettivamente in game
@@ -62,7 +63,7 @@ export class MatchmakingService {
             matchMode: statusData.matchMode || 'standard'
         };
         try {
-            const url = 'http://game-container:3000/matchmaking/create-match';
+            const url = 'http://game_server:3000/matchmaking/create-match';
             await firstValueFrom(this.httpService.post(url, payload));
         } catch (e) { console.error("Errore riconnessione HTTP"); }
 
@@ -159,7 +160,7 @@ export class MatchmakingService {
       };
       // Inviamo i due oggetti MatchPartecipantData richiesti
       try {
-          const url = 'http://game_server:3000/matchmaking/create_match'; // L'indirizzo del suo container
+          const url = 'http://backend:3000/matchmaking/create-match'; // L'indirizzo del suo container
           await firstValueFrom(this.httpService.post(url, payload));
           console.log("Richiesta di creazione match inviata con successo via HTTP");
       } catch (error) {
