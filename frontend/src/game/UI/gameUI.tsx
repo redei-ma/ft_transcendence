@@ -1,4 +1,4 @@
-import { CharacterName, GameStatePayload, MapEmitPayload } from '../../types/game.types';
+import { GameStatePayload, MapEmitPayload } from '../../types/game.types';
 import { theme } from '../../configs/theme';
 import HPBar from './components/HPBar';
 
@@ -23,7 +23,6 @@ export default function GameUI({
 }: GameUIProps) {
   return (
     <>
-      {/* HP Bars */}
       {gameState?.players.map((player) => (
         <HPBar
           key={player.id}
@@ -36,14 +35,8 @@ export default function GameUI({
         />
       ))}
 
-      {/* Death Overlays + Respawn Timer */}
       {gameState?.players.map((player) => {
         if (!player.isDead) return null;
-
-        const displayName = player.characterName.charAt(0).toUpperCase() + player.characterName.slice(1);
-        const playerColor = player.characterName === 'zeus'
-          ? theme.colors.zeus
-          : theme.colors.ade;
 
         return (
           <div
@@ -66,7 +59,7 @@ export default function GameUI({
               animation: 'pulse 1s infinite',
               marginBottom: '4px',
             }}>
-              {displayName} DEAD
+              {player.characterName} DEAD
             </div>
 
             <div style={{
@@ -82,7 +75,6 @@ export default function GameUI({
         );
       })}
 
-      {/* Info Box */}
       <div style={{
         position: 'absolute',
         top: 20,

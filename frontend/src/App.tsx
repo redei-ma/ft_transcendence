@@ -41,6 +41,16 @@ function App() {
     setCurrentScene('character-select');
   };
 
+  const handlePlayAgain = () => {
+    socketService.disconnect();
+    setCurrentScene('mode-select');
+  };
+
+  const handleQuit = () => {
+    socketService.disconnect();
+    setCurrentScene('welcome');
+  };
+
   const handleCharacterConfirm = (p1: 'zeus' | 'ade', p2: 'zeus' | 'ade') => {
     setSelectedCharacterP1(p1);
     setSelectedCharacterP2(p2);
@@ -100,6 +110,8 @@ function App() {
       selectedMode={selectedMode!}
       p1Character={selectedCharacterP1}
       p2Character={selectedCharacterP2}
+      onPlayAgain={handlePlayAgain}
+      onQuit={handleQuit}
     />
   );
 }

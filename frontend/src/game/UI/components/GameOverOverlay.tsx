@@ -4,18 +4,17 @@ import { theme } from '../../../configs/theme';
 interface GameOverOverlayProps {
   gameOver: GameOverPayload;
   players: PlayerSnapshot[];
+  onPlayAgain: () => void;
+  onQuit: () => void;
 }
 
-export function GameOverOverlay({ gameOver, players }: GameOverOverlayProps) {
+export function GameOverOverlay({ gameOver, players, onPlayAgain, onQuit }: GameOverOverlayProps) {
   const winnerIds = new Set(gameOver.winnerData?.winnerPlayersIds || []);
 
   const winners = players.filter(p => winnerIds.has(p.id));
   const losers = players.filter(p => !winnerIds.has(p.id));
 
-  const winnerName = winners.length > 0
-    ? winners[0].characterName
-    : 'unknown';
-
+  const winnerName = winners.length > 0 ? winners[0].characterName : 'unknown';
   const displayName = winnerName.charAt(0).toUpperCase() + winnerName.slice(1);
   const isDraw = winners.length === 0;
 
@@ -34,7 +33,6 @@ export function GameOverOverlay({ gameOver, players }: GameOverOverlayProps) {
       zIndex: 2000,
       animation: 'fadeIn 0.5s ease-out',
     }}>
-      {/* Winner Title */}
       <h1 style={{
         fontSize: '72px',
         fontFamily: theme.fonts.heading,
@@ -60,7 +58,6 @@ export function GameOverOverlay({ gameOver, players }: GameOverOverlayProps) {
         CLASH OF OLYMPUS
       </p>
 
-      {/* Scoreboard */}
       <div style={{
         backgroundColor: theme.colors.bgDark,
         border: `1px solid ${isDraw ? theme.colors.border : color}`,
@@ -69,7 +66,6 @@ export function GameOverOverlay({ gameOver, players }: GameOverOverlayProps) {
         boxShadow: isDraw ? 'none' : `0 0 30px ${glow}`,
         overflow: 'hidden',
       }}>
-        {/* Table Header */}
         <div style={{
           display: 'grid',
           gridTemplateColumns: '1fr 80px 80px',
@@ -82,7 +78,6 @@ export function GameOverOverlay({ gameOver, players }: GameOverOverlayProps) {
           <HeaderCell center>DEATHS</HeaderCell>
         </div>
 
-        {/* Winners */}
         {winners.map((p) => (
           <PlayerRow key={p.id} player={p} isWinner />
         ))}
@@ -91,13 +86,11 @@ export function GameOverOverlay({ gameOver, players }: GameOverOverlayProps) {
           <div style={{ height: '1px', backgroundColor: theme.colors.border }} />
         )}
 
-        {/* Losers */}
         {losers.map((p) => (
           <PlayerRow key={p.id} player={p} isWinner={false} />
         ))}
       </div>
 
-      {/* Placeholder */}
       <p style={{
         marginTop: theme.spacing.xl,
         color: theme.colors.textMuted,
@@ -106,22 +99,72 @@ export function GameOverOverlay({ gameOver, players }: GameOverOverlayProps) {
       }}>
         [ victory artwork placeholder ]
       </p>
+      
+      {/* Actions */}
+      <div style={{
+        marginTop: '40px',
+        display: 'flex',
+        gap: '24px',
+      }}>
+        <button
+          onClick={onPlayAgain}
+          style={{
+            padding: '14px 48px',
+            background: 'none',
+            border: `1px solid ${theme.colors.goldDim}`,
+            color: theme.colors.gold,
+            fontFamily: theme.fonts.heading,
+            fontSize: '13px',
+            letterSpacing: '4px',
+            textTransform: 'uppercase',
+            cursor: 'pointer',
+            transition: 'all 0.3s ease',
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.borderColor = theme.colors.gold;
+            e.currentTarget.style.boxShadow = `0 0 20px ${theme.colors.goldGlow}`;
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.borderColor = theme.colors.goldDim;
+            e.currentTarget.style.boxShadow = 'none';
+          }}
+        >
+          Play Again
+        </button>
 
+        <button
+          onClick={onQuit}
+          style={{
+            padding: '14px 48px',
+            background: 'none',
+            border: `1px solid ${theme.colors.border}`,
+            color: theme.colors.textMuted,
+            fontFamily: theme.fonts.heading,
+            fontSize: '13px',
+            letterSpacing: '4px',
+            textTransform: 'uppercase',
+            cursor: 'pointer',
+            transition: 'all 0.3s ease',
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.borderColor = theme.colors.goldSubtle;
+            e.currentTarget.style.color = theme.colors.goldDim;
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.borderColor = theme.colors.border;
+            e.currentTarget.style.color = theme.colors.textMuted;
+          }}
+        >
+          Quit
+        </button>
+      </div>
       <style>{`
-        @keyframes fadeIn {
-          from { opacity: 0; }
-          to { opacity: 1; }
-        }
-        @keyframes scaleIn {
-          from { transform: scale(0.5); opacity: 0; }
-          to { transform: scale(1); opacity: 1; }
-        }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes scaleIn { from { transform: scale(0.5); opacity: 0; } to { transform: scale(1); opacity: 1; } }
       `}</style>
     </div>
   );
 }
-
-// --- Sub-components ---
 
 function HeaderCell({ children, center }: { children: string; center?: boolean }) {
   return (
@@ -139,10 +182,7 @@ function HeaderCell({ children, center }: { children: string; center?: boolean }
 }
 
 function PlayerRow({ player, isWinner }: { player: PlayerSnapshot; isWinner: boolean }) {
-  const playerColor = player.characterName === 'zeus'
-    ? theme.colors.zeus
-    : theme.colors.ade;
-
+  const playerColor = player.characterName === 'zeus' ? theme.colors.zeus : theme.colors.ade;
   const displayName = player.characterName.charAt(0).toUpperCase() + player.characterName.slice(1);
 
   return (
