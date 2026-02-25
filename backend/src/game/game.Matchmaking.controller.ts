@@ -15,7 +15,7 @@ export class MatchMakingController{
 
 	@Post(NetworkConfig.MATCHMAKING.MATCH_EVENTS.CREATE_MATCH)
 	async handleMatchCreation(
-		@Body() data: any)//,
+		@Body() data: CreateMatchDto)//,
 		//@Headers('authorization') authHeader: string)
 		{
 

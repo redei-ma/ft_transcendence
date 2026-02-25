@@ -1,7 +1,6 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { Logger, ValidationPipe } from '@nestjs/common';
-import { GameExceptionFilter } from './game/game.WsGameExceptionFilter';
 //serve per poter leggere il .env
 //import { ConfigService} from '@nestjs/config'
 
@@ -25,7 +24,6 @@ async function bootstrap() {
     */
 
 	app.enableCors();
-	//app.useGlobalFilters(new GameExceptionFilter());
 
 	const logger: Logger = new Logger('Bootstrap');
 	await app.listen(3000, "0.0.0.0");

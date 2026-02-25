@@ -1,7 +1,6 @@
 import { ConnectedSocket, MessageBody, OnGatewayConnection, OnGatewayDisconnect, OnGatewayInit, SubscribeMessage, WebSocketGateway } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
-import { Post, UseGuards } from '@nestjs/common';
-import { Logger } from '@nestjs/common';
+import { UseGuards, Logger, UseFilters } from '@nestjs/common';
 import { WsThrottlerGuard } from './game.WsThrottlerGuard';
 import { GameService } from './game.service';
 import { Vector } from './utils';
@@ -9,6 +8,7 @@ import { GameInputDto, GameMessageDto } from './dto';
 import { SocketEvents } from './configs';
 import { GameSession } from './core';
 import { GameData, ErrorCode, SuccessCode } from './interfaces-enums';
+import { GameExceptionFilter } from './game.WsGameExceptionFilter';
 
 
 //questo e' come dovra' essere alla fine
@@ -17,8 +17,6 @@ import { GameData, ErrorCode, SuccessCode } from './interfaces-enums';
 //	methods: ['POST'],
 //	credentials: true,
 //} })
-
-
 
 /* @WebSocketGateway()
 	Decorator that marks this class as a Gateway. It enables real-time, bidirectional
@@ -29,6 +27,7 @@ import { GameData, ErrorCode, SuccessCode } from './interfaces-enums';
 
 /* This guard will be applied to all events, which means that it will be executed before all methods are called. */
 @UseGuards(WsThrottlerGuard)
+@UseFilters(new GameExceptionFilter())
 export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect, OnGatewayInit {
 
 	private readonly logger: Logger = new Logger(GameGateway.name);

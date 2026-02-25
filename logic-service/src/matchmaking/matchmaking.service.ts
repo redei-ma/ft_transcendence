@@ -25,7 +25,6 @@ export class MatchmakingService {
 
     // controlliamo che le persone in coda non siano già in partita
     const USER_STATUS_KEY = `status:${player.userDbId}`;
-    
     const currentStatusRaw = await this.redis.get(USER_STATUS_KEY);
     
     // analizzo il JSON per vedere se è effettivamente in game
@@ -63,7 +62,7 @@ export class MatchmakingService {
             matchMode: statusData.matchMode || 'standard'
         };
         try {
-            const url = 'http://game_server:3000/matchmaking/create-match';
+            const url = 'http://game-container:3000/matchmaking/create-match';
             await firstValueFrom(this.httpService.post(url, payload));
         } catch (e) { console.error("Errore riconnessione HTTP"); }
 
@@ -130,15 +129,17 @@ export class MatchmakingService {
 
       // Prepariamo gli oggetti MatchPartecipantData per il compagno
       const participant1 = {
-        userDbId: Number(player.userDbId),
         characterName: player.characterName,
+        userDbId: String(player.userDbId),
         isAiPlayer: player.isAiPlayer,
+        playerIndex: 0,
       };
 
       const participant2 = {
         characterName: opponentData.characterName,
-        userDbId: opponentId,
+        userDbId: String(opponentId),
         isAiPlayer: opponentData.isAiPlayer,
+        playerIndex: 1,
       };
 
       // creiamo i dati di stato per entrambi i player (usiamo 'lobby' come stato intermedio)
@@ -153,14 +154,14 @@ export class MatchmakingService {
       // creiamo un array contente i due player che saranno dentro la partita
 
       const payload = {
-          gameId: matchId,
+          gameId: String(matchId),
           playersData: [participant1, participant2],
           matchType: player.matchType, // Prendi il tipo dal primo giocatore
           matchMode: player.matchMode  // Prendi il mode dal primo giocatore
       };
       // Inviamo i due oggetti MatchPartecipantData richiesti
       try {
-          const url = 'http://backend:3000/matchmaking/create-match'; // L'indirizzo del suo container
+          const url = 'http://game_container:3000/matchmaking/create_match'; // L'indirizzo del suo container
           await firstValueFrom(this.httpService.post(url, payload));
           console.log("Richiesta di creazione match inviata con successo via HTTP");
       } catch (error) {
@@ -171,10 +172,17 @@ export class MatchmakingService {
 
       // restituzione del match creato con id players e ID del match
       // const matchFoundData = { status: 'MATCH_FOUND', matchId, players: [participant1, participant2] };
-      const matchFoundData = { status: 'MATCH_FOUND'};
+      const matchFoundData = { status: 'MATCH_FOUND', matchId: matchId };
+
       if (opponentData.socketId) {
           this.eventEmitter.emit('match.found.internal', {
               socketId: opponentData.socketId,
+              data: matchFoundData
+          });
+      }
+      if (player.socketId) {
+          this.eventEmitter.emit('match.found.internal', {
+              socketId: player.socketId,
               data: matchFoundData
           });
       }
@@ -237,38 +245,20 @@ async finalizeMatch(winnerId: string, loserId: string) {
 
     // Prepariamo lo stato Lobby per il dopo-partita mantenendo i dati del DTO
     // Questo serve a Francesco (Frontend) per sapere che l'utente è tornato nel menu principale
-    const lobbyStatusWinner = JSON.stringify({ 
+    const createLobbyStatus = (data: any) => JSON.stringify({ 
         state: 'lobby', 
-        rank: winnerData.rank, 
-        characterName: winnerData.characterName,
-        isAiPlayer: winnerData.isAiPlayer,
+        userDbId: String(data.userDbId),
+        characterName: data.characterName,
+        isAiPlayer: data.isAiPlayer || false,
+        rank: data.rank, // Il rank qui è quello che avevamo all'inizio (il DB lo aggiornerà a parte)
         updatedAt: Date.now() 
-    });
-
-    const lobbyStatusLoser = JSON.stringify({ 
-        state: 'lobby', 
-        rank: loserData.rank,
-        characterName: loserData.characterName,
-        isAiPlayer: loserData.isAiPlayer,
-        updatedAt: Date.now() 
-    });
-
-    // Notifichiamo il sistema dei DB che la partita è finita
-    // Invece di calcolare noi i punti, diciamo a Renna chi ha vinto e chi ha perso.
-    // Sarà il suo servizio a gestire l'INCREMENT o DECREMENT in base alla sua logica.
-    
-    this.client.emit('match_finished_notification', {
-      winnerId: winnerId,
-      loserId: loserId,
-      matchType: winnerData.matchType || 'ranked',
-      action: 'UPDATE_RANK_REQUEST' 
     });
 
     // ripuliamo il server di redis e evitiamo di avere chiavi inutili o player fantasma
     // Riportiamo i player nello stato 'lobby' con scadenza di 1 ora
     // Fondamentale per permettere ai player di fare una nuova partita!
-    await this.redis.set(`status:${winnerId}`, lobbyStatusWinner, 'EX', 3600);
-    await this.redis.set(`status:${loserId}`, lobbyStatusLoser, 'EX', 3600);
+    await this.redis.set(`status:${winnerId}`, createLobbyStatus(winnerData), 'EX', 3600);
+    await this.redis.set(`status:${loserId}`, createLobbyStatus(loserData), 'EX', 3600);
 
     console.log(`[RankSystem] Match concluso tra ${winnerId} e ${loserId}. Notifica inviata al DB e player riportati in lobby.`);
 
@@ -344,15 +334,15 @@ async finalizeMatch(winnerId: string, loserId: string) {
     // Prepariamo gli oggetti partecipante usando il DTO per l'opponent e i dati Redis per il challenger
     const participant1 = {
         characterName: challengerData.characterName,
-        userDbId: Number(challengerId),
-        isAiPlayer: challengerData.isAiPlayer || false,
+        userDbId: String(challengerId),
+        isAiPlayer: Boolean(challengerData.isAiPlayer || false),
         playerIndex: 0,
     };
 
     const participant2 = {
         characterName: opponent.characterName,
-        userDbId: Number(opponent.userDbId), // Conversione forzata a numero
-        isAiPlayer: opponent.isAiPlayer || false,
+        userDbId: String(opponent.userDbId),
+        isAiPlayer: Boolean(opponent.isAiPlayer || false),
         playerIndex: 1,
     };
 
@@ -366,12 +356,20 @@ async finalizeMatch(winnerId: string, loserId: string) {
     
     // Notifichiamo Piro. Se erano in coda, la sfida privata vince e crea il game
     const payload = {
-        gameId: matchId,
+        gameId: String(matchId),
         playersData: [participant1, participant2],
         matchType: challengerData.matchType || 'unranked', // Forziamo unranked se non specificato
         matchMode: challengerData.matchMode || 'standard' 
     };
-    this.client.emit('create_match', payload);
+    try {
+          const url = 'http://game_container:3000/matchmaking/create_match';
+          // Utilizziamo firstValueFrom per gestire l'Observable di httpService
+          await firstValueFrom(this.httpService.post(url, payload));
+          console.log(`[HTTP] Match privato creato con successo sul Game Server: ${matchId}`);
+      } catch (error) {
+          console.error("Errore creazione match privato su Game Server:", error.response?.data || error.message);
+          // Opzionale: gestire qui il rollback dello stato redis se la creazione fallisce
+      }
 
     // Pulizia della chiave sfida
     await this.redis.del(UNIQUE_CHALLENGE_KEY);
@@ -431,19 +429,19 @@ async finalizeMatch(winnerId: string, loserId: string) {
     
     // Verifichiamo se l'utente è già in coda e lo rimuoviamo per sicurezza
     await this.redis.zrem('matchmaking_queue', player.userDbId);
+    // Creiamo un matchId univoco anche per la sessione locale
+    const matchId = `local_${Math.random().toString(36).substring(7)}`;
 
     const participant1 = {
-
         characterName: player.characterName,
-        userDbId: Number(player.userDbId),
-        isAiPlayer: player.isAiPlayer,
+        userDbId: String(player.userDbId),
+        isAiPlayer: Boolean(player.isAiPlayer),
         playerIndex: 0,
     };
 
     const participant2 = {
-
-        characterName: player.characterName,
-        userDbId: Number(player.userDbId),
+        characterName: player.characterName, 
+        userDbId: String(player.userDbId), 
         isAiPlayer: false,
         playerIndex: 1,
     };
@@ -451,7 +449,8 @@ async finalizeMatch(winnerId: string, loserId: string) {
     // Stato su Redis: lo segnamo come 'ingame' in modalità 'local'
     const playerStatus = JSON.stringify({ 
         state: 'ingame', 
-        matchMode: 'local', 
+        matchMode: 'local',
+        matchId: matchId,
         ...participant1
     });
 
@@ -459,12 +458,21 @@ async finalizeMatch(winnerId: string, loserId: string) {
 
     // preparo il payload
     const payload = {
-        playersData: [participant1, participant2], // Inviamo entrambi i partecipanti
-        matchType: 'unranked',
-        matchMode: 'local' // modalità di partita che specifica il fatto che avviene localmente
+        gameId: matchId, // Obbligatorio nel suo DTO
+        playersData: [participant1, participant2],
+        matchType: 'unranked', // Valore compatibile con Enum MatchType
+        matchMode: 'local'     // Valore compatibile con Enum MatchMode
     };
     
-    this.client.emit('create_match', payload);
+    // chiamata HTTP POST
+    try {
+        const url = 'http://game_container:3000/matchmaking/create_match';
+        await firstValueFrom(this.httpService.post(url, payload));
+        console.log(`[LocalMatch] Sessione locale inviata al Game Server per ${player.userDbId}`);
+    } catch (error) {
+        console.error("Errore invio match locale al Game Server:", error.response?.data || error.message);
+    }
+
     console.log(`[LocalMatch] Avvio sessione locale per ${player.userDbId} su socket ${player.socketId}`);
     return { status: 'LOCAL_MATCH_STARTED', userDbId: player.userDbId };
   }
@@ -502,7 +510,7 @@ async finalizeMatch(winnerId: string, loserId: string) {
     // Il giocatore reale
     const participant1 = {
         characterName: player.characterName,
-        userDbId: Number(player.userDbId), // Conversione in number per il DTO di Piro
+        userDbId: String(player.userDbId), // Conversione in string per il DTO di Piro
         isAiPlayer: false,
         playerIndex: 0,
     };
@@ -533,7 +541,13 @@ async finalizeMatch(winnerId: string, loserId: string) {
         matchMode: 'ai' // Specifichiamo che è contro l'IA
     };
     
-    this.client.emit('create_match', payload);
+    try {
+        const url = 'http://game_container:3000/matchmaking/create_match';
+        await firstValueFrom(this.httpService.post(url, payload));
+        console.log(`[AiMatch] Richiesta creazione match vs AI inviata per ${player.userDbId}`);
+    } catch (error) {
+        console.error("Errore invio match AI al Game Server:", error.response?.data || error.message);
+    }
 
     console.log(`[AiMatch] Utente ${player.userDbId} ha avviato sfida contro AI. GameId: ${matchId}`);
     return { status: 'AI_MATCH_STARTED', matchId };
