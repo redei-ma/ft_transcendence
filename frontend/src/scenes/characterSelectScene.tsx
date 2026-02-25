@@ -3,7 +3,6 @@ import { matchmakingSocket } from '../services/matchmakingSocket';
 import { GameEvents } from '../game/game.events';
 import { MatchMode, MatchType } from '../types/game.types';
 import { theme } from '../configs/theme';
-
 import zeusImg from '../assets/Zeus_selection.jpg';
 import adeImg from '../assets/Ade_selection.png';
 
@@ -11,6 +10,7 @@ type Character = 'zeus' | 'ade';
 
 interface CharacterSelectSceneProps {
   mode: MatchMode;
+  userDbId: string;
   onConfirm: (p1: Character, p2: Character) => void;
   onBack: () => void;
 }
@@ -28,6 +28,7 @@ const P2_GLOW = theme.colors.adeGlow;
 
 export default function CharacterSelectScene({
   mode,
+  userDbId,
   onConfirm,
   onBack,
 }: CharacterSelectSceneProps) {
@@ -110,7 +111,7 @@ export default function CharacterSelectScene({
       
       
       const payload = {
-        userDbId: Math.random().toString(36).substring(7),
+        userDbId: userDbId,
         characterName: isSplitScreen ? [finalP1, finalP2] : [finalP1],
         rank: 500,
         rankRange: 100,

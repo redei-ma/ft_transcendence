@@ -8,7 +8,7 @@ export class SocketService {
     public getSocket(): Socket | null {
         return this.socket;
     }
-    connect(url:string): Socket{
+    connect(url: string, userDbId?: string): Socket{
         if (this.socket?.connected){
             console.log('Already connected.');
             return this.socket;
@@ -18,6 +18,7 @@ export class SocketService {
             reconnection:   true,
             reconnectionAttempts: 5,
             reconnectionDelay: 1000,
+            query: userDbId ? { userDbId } : {},
         });
         this.socket.on('connect', () => {
             console.log('Connected. Socket ID is: ', this.socket?.id);
