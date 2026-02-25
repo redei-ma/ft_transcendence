@@ -94,7 +94,7 @@ async registerAndSendVerification(
   } */
 
   async resendVerificationEmail(email: string) {
-    const user = await this.usersService.findByEmail(email);
+    const user = await this.usersService.findUser({ email });
 
     if (!user) {
       // Do NOT reveal user existence
@@ -141,7 +141,7 @@ async registerAndSendVerification(
 } */
 
   async login(username: string, passwordHash: string, totp?: string) {
-    const user = await this.usersService.findByUsername(username);
+    const user = await this.usersService.findUser({ username });
 
     if (!user) {
       throw new UnauthorizedException('invalid credentials');
@@ -272,7 +272,7 @@ async registerAndSendVerification(
   }
 
   async sendPasswordReset(email: string) {
-    const user = await this.usersService.findByEmail(email);
+    const user = await this.usersService.findUser({ email });
 
     // Prevent email enumeration
     if (!user) return;
@@ -314,7 +314,7 @@ async registerAndSendVerification(
     let username = base;
     let i = 0;
 
-    while (await this.usersService.findByUsername(username)) {
+    while (await this.usersService.findUser({ username })) {
       i++;
       username = `${base}${i}`;
     }
@@ -330,7 +330,7 @@ async registerAndSendVerification(
 
     if (!user) {
       // Auto-link by email
-      user = await this.usersService.findByEmail(googleUser.email);
+      user = await this.usersService.findUser({ email: googleUser.email });
       
       if (user) {
         /* user = */await this.usersService.linkProvider(
@@ -391,7 +391,7 @@ async registerAndSendVerification(
   }
 
   async enable2fa(userId: number, code: string) {
-    const user = await this.usersService.findById(userId);
+    const user = await this.usersService.findUser({ id: userId });
 
     const verified = speakeasy.totp.verify({
       secret: user?.twoFactorSecret,

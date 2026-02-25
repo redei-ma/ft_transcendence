@@ -1,36 +1,29 @@
 # --- Stage 1: Build ---
-FROM node:20-alpine AS build
+  FROM node:20-alpine AS build
 
-WORKDIR /app
+  WORKDIR /app
+  RUN apk add --no-cache openssl
 
-# Install OpenSSL for Prisma
-RUN apk add --no-cache openssl
+  COPY shared/prisma/schema.prisma ./prisma/schema.prisma
 
-# Copy dependency files and Prisma schema
-COPY game-service/package*.json ./
-COPY shared/prisma/schema.prisma ./prisma/schema.prisma
+  WORKDIR /app/game-service
 
-# Install dependencies
-RUN npm install
+  COPY game-service/package*.json ./
+  RUN npm install
+  COPY game-service/. .
 
-# Copy source code
-COPY game-service/. .
+  RUN npx prisma generate --schema=../prisma/schema.prisma
+  RUN npm run build
 
-# Generate Prisma Client and build the application
-RUN npx prisma generate
-RUN npm run build
+  # --- Stage 2: Production ---
+  FROM node:20-alpine
 
-# --- Stage 2: Production ---
-FROM node:20-alpine
+  WORKDIR /app/game-service
 
-WORKDIR /app
+  COPY --from=build /app/game-service/node_modules ./node_modules
+  COPY --from=build /app/game-service/package*.json ./
+  COPY --from=build /app/game-service/dist ./dist
+  COPY --from=build /app/prisma ./prisma
 
-# Copy built artifacts and modules from the builder stage
-COPY --from=build /app/node_modules ./node_modules
-COPY --from=build /app/package*.json ./
-COPY --from=build /app/dist ./dist
-COPY --from=build /app/prisma ./prisma
-
-EXPOSE 3000
-
-CMD ["node", "dist/main"]
+  EXPOSE 3000
+  CMD ["node", "dist/main"]

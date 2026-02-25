@@ -1,81 +1,43 @@
-import { ApiProperty, ApiPropertyOptional, PickType } from "@nestjs/swagger";
-import {
-	IsEmail,
-	IsString,
-	MinLength,
-	MaxLength,
-	Matches,
-	IsEnum,
-	IsOptional,
-} from "class-validator";
+import { ApiPropertyOptional } from "@nestjs/swagger";
+import { IsOptional, IsString } from "class-validator";
 import { Provider } from "../enums";
+import {
+	IsEmailField,
+	IsUsernameField,
+	IsPasswordHashField,
+	IsOAuthIdField,
+	IsOAuthProviderField,
+} from "./field-validators";
 
 /**
  * Input DTO for local user registration.
  * Password must be pre-hashed by the auth-service.
  */
 export class CreateLocalUserDto {
-	@ApiProperty({
-		description: "User email address (must be unique)",
-		example: "john@example.com",
-	})
-	@IsEmail({}, { message: "Invalid email format" })
+	@IsEmailField()
 	email: string;
 
-	@ApiProperty({
-		description:
-			"Username (3-20 chars, lowercase letters, numbers and underscores only)",
-		example: "john_doe",
-		minLength: 3,
-		maxLength: 20,
-	})
-	@IsString()
-	@MinLength(3, { message: "Username must be at least 3 characters" })
-	@MaxLength(20, { message: "Username must be at most 20 characters" })
-	@Matches(/^[a-z0-9_]+$/, {
-		message:
-			"Username can only contain lowercase letters, numbers, and underscores",
-	})
+	@IsUsernameField()
 	username: string;
 
-	@ApiProperty({
-		description: "Bcrypt-hashed password (hashed by auth-service)",
-		example: "$2b$10$abcdefghijklmnopqrstuvwxyz1234567890ABCDEFGHIJKLM",
-		minLength: 10,
-	})
-	@IsString()
-	@MinLength(10, { message: "Invalid password hash format" })
+	@IsPasswordHashField()
 	passwordHash: string;
 }
 
 /**
- * All providers except LOCAL are valid for OAuth registration.
+ * Input DTO for OAuth user registration.
  */
+export class CreateOAuthUserDto {
+	@IsEmailField()
+	email: string;
 
-const OAuthProviders = Object.values(Provider).filter(
-	(p) => p !== Provider.LOCAL,
-);
+	@IsUsernameField()
+	username: string;
 
-export class CreateOAuthUserDto extends PickType(CreateLocalUserDto, [
-	"email",
-	"username",
-] as const) {
-	@ApiProperty({
-		description: "Unique ID from the OAuth provider",
-		example: "110248495921238986420",
-	})
-	@IsString()
-	@MinLength(1, { message: "OAuth ID is required" })
+	@IsOAuthIdField()
 	oauthId: string;
 
-	@ApiProperty({
-		description: "OAuth provider name",
-		enum: OAuthProviders,
-		example: "GOOGLE",
-	})
-	@IsEnum(OAuthProviders, {
-		message: `Provider must be one of: ${OAuthProviders.join(", ")}`,
-	})
+	@IsOAuthProviderField()
 	provider: Exclude<Provider, "LOCAL">;
 
 	@ApiPropertyOptional({

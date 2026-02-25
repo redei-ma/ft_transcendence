@@ -1,44 +1,47 @@
-import { ApiProperty, ApiPropertyOptional, PickType } from "@nestjs/swagger";
-import {
-	IsEnum,
-	IsOptional,
-	IsString,
-	IsUrl,
-	MinLength,
-} from "class-validator";
+import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
+import { IsEnum, IsOptional, IsString, IsUrl, MinLength } from "class-validator";
 import { UserStatus } from "../enums";
-import { CreateLocalUserDto, CreateOAuthUserDto } from "./create-user.dto";
+import {
+	IsEmailField,
+	IsUsernameField,
+	IsPasswordHashField,
+	IsOAuthIdField,
+} from "./field-validators";
 
 /**
  * Input DTO for setting a password.
  * Password must be pre-hashed by the auth-service.
  */
-export class SetPasswordDto extends PickType(CreateLocalUserDto, [
-	"passwordHash",
-] as const) {}
+export class SetPasswordDto {
+	@IsPasswordHashField()
+	passwordHash: string;
+}
 
 /**
  * Input DTO for updating a password.
  * Password must be pre-hashed by the auth-service.
  */
-export class UpdatePasswordDto extends PickType(CreateLocalUserDto, [
-	"passwordHash",
-] as const) {}
+export class UpdatePasswordDto {
+	@IsPasswordHashField()
+	passwordHash: string;
+}
 
 /**
  * Update username.
  * If the user still has a default DiceBear avatar, it will be regenerated.
  */
-export class UpdateUsernameDto extends PickType(CreateLocalUserDto, [
-	"username",
-] as const) {}
+export class UpdateUsernameDto {
+	@IsUsernameField()
+	username: string;
+}
 
 /**
  * Input DTO for updating email.
  */
-export class UpdateEmailDto extends PickType(CreateLocalUserDto, [
-	"email",
-] as const) {}
+export class UpdateEmailDto {
+	@IsEmailField()
+	email: string;
+}
 
 /**
  * Input DTO for updating avatar.
@@ -74,9 +77,10 @@ export class UpdateStatusDto {
 /**
  * Input DTO for linking an OAuth account to an existing user.
  */
-export class LinkOAuthDto extends PickType(CreateOAuthUserDto, [
-	"oauthId",
-] as const) {
+export class LinkOAuthDto {
+	@IsOAuthIdField()
+	oauthId: string;
+
 	@ApiPropertyOptional({
 		description:
 			"Avatar URL from OAuth provider. Overwrites avatar only if the current one is a default DiceBear.",

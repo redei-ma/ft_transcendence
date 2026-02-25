@@ -1,5 +1,12 @@
 export { CreateLocalUserDto, CreateOAuthUserDto } from "./create-user.dto";
 export {
+	IsUsernameField,
+	IsEmailField,
+	IsPasswordHashField,
+	IsOAuthIdField,
+	IsOAuthProviderField,
+} from "./field-validators";
+export {
 	SetPasswordDto,
 	UpdatePasswordDto,
 	UpdateUsernameDto,
@@ -25,5 +32,6 @@ export {
 	PublicProfileResponseDto,
 	LeaderboardResponseDto,
 	CheckAvailabilityResponseDto,
+	LeaderboardEntryDto,
 	SuccessResponseDto,
 } from "./response.dto";

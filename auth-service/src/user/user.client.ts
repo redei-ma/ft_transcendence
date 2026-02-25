@@ -6,25 +6,17 @@ import { HttpService } from '@nestjs/axios';
 export class UserClient {
   constructor(private readonly http: HttpService) {}
 
-  async findByUsername(username: string): Promise</* InternalUser  */ any | null> {
-    const { data } = await this.http.axiosRef.get(
-      `http://user-service:3001/internal/users/${username}`,
-    );
-    return data;
-  }
-
-  async findByEmail(email: string): Promise</* InternalUser  */ any | null> {
-    const { data } = await this.http.axiosRef.get(
-      `http://user-service:3001/internal/users/${email}`,
-    );
-    return data;
-  }
-
-  async findById(id: number): Promise</* InternalUser  */ any | null> {
-    const { data } = await this.http.axiosRef.get(
-      `http://user-service:3001/internal/users/${id}`,
-    );
-    return data;
+  async findUser(query: { id?: number; email?: string; username?: string }): Promise<any | null> {
+    try {
+      const { data } = await this.http.axiosRef.get(
+        'http://user-service:3001/internal/users',
+        { params: query },
+      );
+      return data;
+    } catch (e) {
+      if (e?.response?.status === 404) return null;
+      throw e;
+    }
   }
 
   async createUser(
@@ -95,7 +87,7 @@ export class UserClient {
   }
 
   async setup2fa(userId: number, twoFactorSecret: string): Promise<void> {
-    await this.http.axiosRef.post(
+    await this.http.axiosRef.patch(
       `http://user-service:3001/internal/users/${userId}/2fa/setup`,
       { twoFactorSecret },
     );
@@ -108,7 +100,7 @@ export class UserClient {
   }
 
   async disable2fa(userId: number): Promise<void> {
-    await this.http.axiosRef.patch(
+    await this.http.axiosRef.delete(
       `http://user-service:3001/internal/users/${userId}/2fa/disable`,
     );
   }

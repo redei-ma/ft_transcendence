@@ -63,16 +63,18 @@ services:
         depends_on:
             db-migration:
                 condition: service_completed_successfully
-        command: sh -c "npx prisma generate && npm run start:dev"
+        command: sh -c "npm run prisma:generate && npm run start:dev"
         restart: unless-stopped
         networks:
             - backend-network
         expose:
             - "3001"
+        ports:
+            - "127.0.0.1:3001:3001"
         env_file:
             - .env.shared
         volumes:
-            - ./user-service/src:/app/src
+            - ./user-service/src:/app/user-service/src
             - ./shared/prisma/schema.prisma:/app/prisma/schema.prisma:ro
             - uploads_data:/uploads
         healthcheck:
@@ -96,7 +98,7 @@ services:
         depends_on:
             db-migration:
                 condition: service_completed_successfully
-        command: sh -c "npx prisma generate && npm run start:dev"
+        command: sh -c "npm run prisma:generate && npm run start:dev"
         restart: unless-stopped
         networks:
             - backend-network
@@ -105,7 +107,7 @@ services:
         env_file:
             - .env.shared
         volumes:
-            - ./game-service/src:/app/src
+            - ./game-service/src:/app/game-service/src
             - ./shared/prisma/schema.prisma:/app/prisma/schema.prisma:ro
         healthcheck:
             test:

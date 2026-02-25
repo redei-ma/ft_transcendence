@@ -5,7 +5,7 @@ import {
 	ConflictException,
 } from "@nestjs/common";
 import { PrismaService } from "../../prisma/prisma.service";
-import { Provider } from "@prisma/client";
+import { Provider } from "@transcendence/types";
 import {
 	CreateLocalUserDto,
 	CreateOAuthUserDto,
