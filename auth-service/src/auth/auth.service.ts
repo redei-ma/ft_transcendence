@@ -101,7 +101,7 @@ async registerAndSendVerification(
       return { message: 'If the email exists, a verification email was sent.' };
     }
 
-    if (user.emailVerified) {
+    if (user.isEmailVerified) {
       return { message: 'Email already verified.' };
     }
 
@@ -147,22 +147,23 @@ async registerAndSendVerification(
       throw new UnauthorizedException('invalid credentials');
     }
 
-    if (!user.passwordHash) {
+    const localAccount = user.accounts.find((a) => a.provider === 'LOCAL');
+    if (!localAccount?.passwordHash) {
       throw new UnauthorizedException('This account uses Google login');
     }
 
-    const isMatch = await bcrypt.compare(passwordHash, user.passwordHash);
+    const isMatch = await bcrypt.compare(passwordHash, localAccount.passwordHash);
     if (!isMatch) {
       throw new UnauthorizedException('invalid credentials');
     }
 
-    if (!user.emailVerified) {
+    if (!user.isEmailVerified) {
       throw new ForbiddenException(
         'please verify your email before logging in',
       );
     }
 
-    if (user.twoFactorEnabled) {
+    if (user.is2faEnabled) {
       if (!totp) {
         return { requires2fa: true };
       }

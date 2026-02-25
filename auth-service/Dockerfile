@@ -1,28 +1,30 @@
 FROM node:20-alpine
 
-# 1. Build the shared library first
+# 1. Build auth-shared
 WORKDIR /usr/src/auth-shared
 COPY auth-shared/ .
 RUN npm install && npm run build
 
-# 2. Set up the main app
-WORKDIR /usr/src/app
+# 2. Build shared/types
+WORKDIR /usr/src/shared/types
+COPY shared/types/ .
+RUN npm install
 
-# 3. Copy package files and install
+# 3. Set up auth-service
+WORKDIR /usr/src/app
 COPY auth-service/package*.json ./
 RUN npm install
 
-
-# 5. Copy the rest of the source
+# 4. Copy source
 COPY auth-service/. .
 
-# 6. MANUALLY INJECT THE SHARED LIBRARY
-# Instead of copying the whole folder, we link to the one we just built
-# Force the link to overwrite whatever npm install put there
+# 5. Inject shared libraries (overwrite symlinks created by npm install)
 RUN mkdir -p node_modules/@game && \
-    ln -sf /usr/src/auth-shared ./node_modules/@game/auth-shared
+    ln -sf /usr/src/auth-shared ./node_modules/@game/auth-shared && \
+    mkdir -p node_modules/@transcendence && \
+    ln -sf /usr/src/shared/types ./node_modules/@transcendence/types
 
-# 7. Build and finalize
+# 6. Build
 RUN npm run build
 
 COPY auth-service/entrypoint.sh /entrypoint.sh

@@ -1,14 +1,14 @@
 import { Injectable } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
-//import type { /* InternalUser  */ } from '@game/auth-shared';
+import type { UserWithAccountsResponseDto } from '@transcendence/types';
 
 @Injectable()
 export class UserClient {
   constructor(private readonly http: HttpService) {}
 
-  async findUser(query: { id?: number; email?: string; username?: string }): Promise<any | null> {
+  async findUser(query: { id?: number; email?: string; username?: string }): Promise<UserWithAccountsResponseDto | null> {
     try {
-      const { data } = await this.http.axiosRef.get(
+      const { data } = await this.http.axiosRef.get<UserWithAccountsResponseDto>(
         'http://user-service:3001/internal/users',
         { params: query },
       );
@@ -19,17 +19,14 @@ export class UserClient {
     }
   }
 
-  async createUser(
-    CreateLocalUserDto:
-    {
-      username: string,
-      email: string,
-      passwordHash: string,
-    }
-  ): Promise</* InternalUser  */ any > {
-    const { data } = await this.http.axiosRef.post(
+  async createUser(dto: {
+    username: string;
+    email: string;
+    passwordHash: string;
+  }): Promise<UserWithAccountsResponseDto> {
+    const { data } = await this.http.axiosRef.post<UserWithAccountsResponseDto>(
       `http://user-service:3001/internal/users`,
-      CreateLocalUserDto,
+      dto,
     );
     return data;
   }
@@ -39,15 +36,10 @@ export class UserClient {
     username: string,
     oauthId: string,
     provider: string,
-  ): Promise</* InternalUser  */ any > {
-    const { data } = await this.http.axiosRef.post(
+  ): Promise<UserWithAccountsResponseDto> {
+    const { data } = await this.http.axiosRef.post<UserWithAccountsResponseDto>(
       `http://user-service:3001/internal/users/oauth`,
-      {
-        email,
-        username,
-        oauthId,
-        provider
-      },
+      { email, username, oauthId, provider },
     );
     return data;
   }
@@ -71,19 +63,23 @@ export class UserClient {
     );
   }
 
-  async findByProvider(provider: string, oauthId: string): Promise</* InternalUser  */ any | null> {
-    const { data } = await this.http.axiosRef.get(
-      `http://user-service:3001/internal/users/${provider}/${oauthId}`,
-    );
-    return data;
+  async findByProvider(provider: string, oauthId: string): Promise<UserWithAccountsResponseDto | null> {
+    try {
+      const { data } = await this.http.axiosRef.get<UserWithAccountsResponseDto>(
+        `http://user-service:3001/internal/users/${provider}/${oauthId}`,
+      );
+      return data;
+    } catch (e) {
+      if (e?.response?.status === 404) return null;
+      throw e;
+    }
   }
 
-  async linkProvider(userId: number, provider: string, oauthId: string) {
-    const { data } = await this.http.axiosRef.post(
+  async linkProvider(userId: number, provider: string, oauthId: string): Promise<void> {
+    await this.http.axiosRef.post(
       `http://user-service:3001/internal/users/${userId}/oauth/${provider}`,
       { oauthId },
     );
-    return data;
   }
 
   async setup2fa(userId: number, twoFactorSecret: string): Promise<void> {
