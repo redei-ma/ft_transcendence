@@ -78,7 +78,7 @@ export class MatchmakingGateway implements OnGatewayInit, OnGatewayConnection, O
     handleMatchFoundInternal(payload: { socketId: string; data: any }) {
         const clientSocket = this.server.sockets.sockets.get(payload.socketId);
         if (clientSocket) {
-            clientSocket.emit('matchFound', payload.data);
+            clientSocket.emit('match_found', payload.data);
             console.log(`[Socket] Notifica inviata al socket: ${payload.socketId}`);
         } else {
             console.warn(`[Socket] Impossibile trovare il socket ${payload.socketId} per inviare il match`);

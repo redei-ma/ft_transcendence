@@ -161,7 +161,7 @@ export class MatchmakingService {
       };
       // Inviamo i due oggetti MatchPartecipantData richiesti
       try {
-          const url = 'http://game_container:3000/matchmaking/create_match'; // L'indirizzo del suo container
+          const url = 'http://backend:3000/matchmaking/create-match'; // L'indirizzo del suo container
           await firstValueFrom(this.httpService.post(url, payload));
           console.log("Richiesta di creazione match inviata con successo via HTTP");
       } catch (error) {
