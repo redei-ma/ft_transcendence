@@ -126,7 +126,7 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect, On
 	@SubscribeMessage(SocketEvents.INPUT)
 	handleInput(
 		@ConnectedSocket() client: Socket,
-		@MessageBody() input: any): void{
+		@MessageBody() input: GameInputDto): void{
 		
 		const socketId = client.id;
 		if (!socketId){
