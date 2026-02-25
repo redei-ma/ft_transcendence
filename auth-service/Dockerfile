@@ -5,7 +5,7 @@ WORKDIR /app/auth-shared
 
 COPY auth-shared/ .
 
-RUN npm ci && npm run build
+RUN npm install && npm run build
 
 WORKDIR /app
 

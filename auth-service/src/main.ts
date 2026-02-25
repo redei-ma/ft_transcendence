@@ -1,4 +1,3 @@
-
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { NestExpressApplication } from '@nestjs/platform-express';
@@ -17,7 +16,7 @@ async function bootstrap() {
   app.use(cookieParser());
 
   // Add global prefix "api"
-  app.setGlobalPrefix('api');
+  app.setGlobalPrefix('api', { exclude: ['health'] });
 
   await app.listen(3002);
 }

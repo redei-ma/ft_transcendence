@@ -68,7 +68,7 @@ services:
             interval: 10s
             timeout: 5s
             retries: 5
-            start_period: 15s
+            start_period: 30s
 
     user-service:
         container_name: transcendence_user_service
@@ -103,7 +103,7 @@ services:
             interval: 10s
             timeout: 5s
             retries: 5
-            start_period: 15s
+            start_period: 30s
 
     game-service:
         container_name: transcendence_game_service
@@ -135,16 +135,19 @@ services:
             interval: 10s
             timeout: 5s
             retries: 5
-            start_period: 15s
+            start_period: 30s
 
     gateway:
         container_name: api_gateway
         image: nginx:stable-alpine
         restart: unless-stopped
         depends_on:
-            - auth-service
-            - user-service
-            - game-service
+            auth-service:
+                condition: service_healthy
+            user-service:
+                condition: service_healthy
+            game-service:
+                condition: service_healthy
         networks:
             - backend-network
         ports:
@@ -160,7 +163,8 @@ services:
         command: http https://gateway:2443
         restart: unless-stopped
         depends_on:
-            - gateway
+            gateway:
+                condition: service_started
         networks:
             - backend-network
         env_file:

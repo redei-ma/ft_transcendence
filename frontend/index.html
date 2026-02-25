@@ -1,119 +1,137 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<head>
-  <title>Game App - Login</title>
-</head>
-<body>
-  <h1>Welcome to the Game</h1>
+	<head>
+		<title>Game App - Login</title>
+	</head>
+	<body>
+		<h1>Welcome to the Game</h1>
 
-  <!-- Login Form dovrebbe scomparire dopo che ti sei loggato ma non funziona bene-->
-  <form id="loginForm">
-    <input type="text" name="username" placeholder="Username" required /><br/>
-    <input type="password" name="password" placeholder="Password" required /><br/>
-    <input id="totp" placeholder="2FA Code" style="display:none;" />
-    <button type="submit">Login</button>
-    <p></p>
-  </form>
+		<!-- Login Form dovrebbe scomparire dopo che ti sei loggato ma non funziona bene-->
+		<form id="loginForm">
+			<input
+				type="text"
+				name="username"
+				placeholder="Username"
+				required
+			/><br />
+			<input
+				type="password"
+				name="password"
+				placeholder="Password"
+				required
+			/><br />
+			<input id="totp" placeholder="2FA Code" style="display: none" />
+			<button type="submit">Login</button>
+			<p></p>
+		</form>
 
-  <a href="/api/auth/google">Login with Google</a>
+		<a href="/api/auth/google">Login with Google</a>
 
-  <p>Don't have an account? <a href="register.html">Register</a></p>
-  <p>Forgot your password? <a href="forgot-password.html">Reset it</a></p>
-  <input id="resendEmail" placeholder="Your email" />
-  <button onclick="resend()">Resend verification</button>
+		<p>Don't have an account? <a href="register.html">Register</a></p>
+		<p>Forgot your password? <a href="forgot-password.html">Reset it</a></p>
+		<input id="resendEmail" placeholder="Your email" />
+		<button onclick="resend()">Resend verification</button>
 
-  <!-- Logout Button dovrebbe apparire solo dopo che sei loggato ma non funziona bene-->
-  <button id="logoutBtn" style="display:none;">Logout</button>
-  <!-- Dashboard Button dovrebbe apparire solo dopo che sei loggato ma non funziona bene-->
-  <button id="dashboardBtn" style="display:none;">Go to Dashboard</button>
+		<!-- Logout Button dovrebbe apparire solo dopo che sei loggato ma non funziona bene-->
+		<button id="logoutBtn" style="display: none">Logout</button>
+		<!-- Dashboard Button dovrebbe apparire solo dopo che sei loggato ma non funziona bene-->
+		<button id="dashboardBtn" style="display: none">Go to Dashboard</button>
 
-  <script>
-    const form = document.getElementById("loginForm");
-    const logoutBtn = document.getElementById("logoutBtn");
-    const dashboardBtn = document.getElementById("dashboardBtn");
-    const totpInput = document.getElementById("totp");
+		<script>
+			const form = document.getElementById("loginForm");
+			const logoutBtn = document.getElementById("logoutBtn");
+			const dashboardBtn = document.getElementById("dashboardBtn");
+			const totpInput = document.getElementById("totp");
 
-    let pending2fa = false;
+			let pending2fa = false;
 
-    form.addEventListener("submit", async (e) => {
-      e.preventDefault();
+			form.addEventListener("submit", async (e) => {
+				e.preventDefault();
 
-      const payload = {
-        username: form.username.value,
-        password: form.password.value,
-      };
+				const payload = {
+					username: form.username.value,
+					password: form.password.value,
+				};
 
-      if (pending2fa) {
-        payload.totp = totpInput.value;
-      }
+				if (pending2fa) {
+					payload.totp = totpInput.value;
+				}
 
-      const res = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify(payload),
-      });
+				let res, json;
 
-      const json = await res.json();
+				try {
+					res = await fetch("/api/auth/login", {
+						method: "POST",
+						headers: { "Content-Type": "application/json" },
+						credentials: "include",
+						body: JSON.stringify(payload),
+					});
+				} catch (err) {
+					alert("Network error: cannot reach the server");
+					return;
+				}
 
-      if (json.requires2fa) {
-        pending2fa = true;
-        totpInput.style.display = "block";
-        alert("Enter your Google Authenticator code");
-        return;
-      }
+				try {
+					json = await res.json();
+				} catch (err) {
+					alert(`Server error (${res.status}): unexpected response`);
+					return;
+				}
 
-      if (res.ok) {
-        // Hide login form and show buttons, non funziona bene
-        form.style.display = "none";
-        logoutBtn.style.display = "inline-block";
-        dashboardBtn.style.display = "inline-block";
+				if (json.requires2fa) {
+					pending2fa = true;
+					totpInput.style.display = "block";
+					alert("Enter your Google Authenticator code");
+					return;
+				}
 
-        // Optional: Show welcome alert
-        alert(`Welcome, ${form.username.value}!`);
+				if (res.ok) {
+					form.style.display = "none";
+					logoutBtn.style.display = "inline-block";
+					dashboardBtn.style.display = "inline-block";
+					alert(`Welcome, ${form.username.value}!`);
+					window.location.href = "dashboard.html";
+				} else {
+					const msg = json?.message || json?.error || "Login failed";
+					alert(`Error: ${msg}`);
+				}
+			});
 
-        // Automatically redirect to dashboard after login
-        window.location.href = "dashboard.html";
-      } else {
-        alert(`${json.error}, ${json.message}`);
-      }
-    });
+			// Logout handler
+			logoutBtn.addEventListener("click", async () => {
+				const res = await fetch("/api/auth/logout", {
+					method: "POST",
+					credentials: "include",
+				});
 
-    // Logout handler
-    logoutBtn.addEventListener("click", async () => {
-      const res = await fetch("/api/auth/logout", {
-        method: "POST",
-        credentials: "include"
-      });
+				if (res.ok) {
+					alert("Logged out successfully!");
+					// Show login form again, hide buttons
+					form.style.display = "block";
+					logoutBtn.style.display = "none";
+					dashboardBtn.style.display = "none";
+				} else {
+					alert("Logout failed");
+				}
+			});
 
-      if (res.ok) {
-        alert("Logged out successfully!");
-        // Show login form again, hide buttons
-        form.style.display = "block";
-        logoutBtn.style.display = "none";
-        dashboardBtn.style.display = "none";
-      } else {
-        alert("Logout failed");
-      }
-    });
+			// Dashboard button handler
+			dashboardBtn.addEventListener("click", () => {
+				window.location.href = "dashboard.html";
+			});
 
-    // Dashboard button handler
-    dashboardBtn.addEventListener("click", () => {
-      window.location.href = "dashboard.html";
-    });
+			async function resend() {
+				const email = document.getElementById("resendEmail").value;
 
-    async function resend() {
-      const email = document.getElementById("resendEmail").value;
+				const res = await fetch("/api/auth/resend-verification", {
+					method: "POST",
+					headers: { "Content-Type": "application/json" },
+					body: JSON.stringify({ email }),
+				});
 
-      const res = await fetch("/api/auth/resend-verification", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email })
-      });
-
-      const json = await res.json();
-      alert(json.message);
-    }
-  </script>
-</body>
+				const json = await res.json();
+				alert(json.message);
+			}
+		</script>
+	</body>
 </html>
