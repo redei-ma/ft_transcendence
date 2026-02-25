@@ -3,6 +3,7 @@ import { Strategy } from 'passport-google-oauth20';
 import { Injectable,ForbiddenException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Profile } from 'passport-google-oauth20';
+import { Provider } from '@transcendence/types';
 
 @Injectable()
 export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
@@ -32,14 +33,14 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
 
     const rawUsername = profile.displayName || email.split('@')[0];
 
-    const baseUsername = rawUsername.replace(/[^a-zA-Z0-9_]/g, '').toLowerCase().slice(3, 20);
+    const baseUsername = rawUsername.replace(/[^a-zA-Z0-9_]/g, '').toLowerCase().slice(0, 20);
 
     return {
-      provider: 'google',
+      provider: Provider.GOOGLE,
       oauthId: profile.id,
       email: email,
-      username: baseUsername
+      username: baseUsername,
+      avatarUrl: profile.photos?.[0]?.value,
     };
   }
-
 }

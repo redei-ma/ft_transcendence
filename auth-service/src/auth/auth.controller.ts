@@ -8,8 +8,8 @@ import { JwtRefreshGuard } from './jwt/jwt-refresh.guard';
 import { JwtAuthGuard } from './jwt/jwt.guard';
 import { ConfigService } from '@nestjs/config';
 import { GoogleAuthGuard } from './jwt/google.guard';
-import { GoogleUser } from './types/google-user.type';
 import { Throttle } from '@nestjs/throttler';
+import type { CreateLocalUserDto, CreateOAuthUserDto} from '@transcendence/types';
 
 @Controller('auth')
 export class AuthController {
@@ -88,8 +88,7 @@ async login(@Body() body: { username: string; password: string; totp?: string })
   @Get('google/callback')
   @Throttle({ default: { limit: 5, ttl: 60_000 } })
   @UseGuards(GoogleAuthGuard)
-  async googleCallback(@Req() req: Request & {user: GoogleUser}, @Res() res: Response) {
-
+  async googleCallback(@Req() req: Request & {user: CreateOAuthUserDto}, @Res() res: Response) {
 
     if (!req.user) {
       return res.redirect(`${this.config.get('PUBLIC_URL')}/index.html?error=google_failed`);
