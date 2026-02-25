@@ -1,12 +1,32 @@
 import { Injectable } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
-import type { UserWithAccountsResponseDto } from '@transcendence/types';
+import {
+  CreateLocalUserDto,
+  CreateOAuthUserDto,
+  SetPasswordDto,
+  UpdatePasswordDto,
+  UpdateUsernameDto,
+  UpdateEmailDto,
+  UpdateAvatarDto,
+  UpdateStatusDto,
+  LinkOAuthDto,
+  Setup2faDto,
+  FindUserQueryDto,
+  LeaderboardQueryDto,
+  UserWithAccountsResponseDto,
+  UserProfileResponseDto,
+  UserStatsResponseDto,
+  UserSettingsResponseDto,
+  PublicProfileResponseDto,
+  LeaderboardResponseDto,
+  CheckAvailabilityResponseDto,
+} from "@transcendence/types";
 
 @Injectable()
 export class UserClient {
   constructor(private readonly http: HttpService) {}
 
-  async findUser(query: { id?: number; email?: string; username?: string }): Promise<UserWithAccountsResponseDto | null> {
+  async findUser(query: FindUserQueryDto): Promise<UserWithAccountsResponseDto | null> {
     try {
       const { data } = await this.http.axiosRef.get<UserWithAccountsResponseDto>(
         'http://user-service:3001/internal/users',
@@ -19,11 +39,7 @@ export class UserClient {
     }
   }
 
-  async createUser(dto: {
-    username: string;
-    email: string;
-    passwordHash: string;
-  }): Promise<UserWithAccountsResponseDto> {
+  async createUser(dto: CreateLocalUserDto): Promise<UserWithAccountsResponseDto> {
     const { data } = await this.http.axiosRef.post<UserWithAccountsResponseDto>(
       `http://user-service:3001/internal/users`,
       dto,
@@ -31,15 +47,10 @@ export class UserClient {
     return data;
   }
 
-  async createOAuthUser(
-    email: string,
-    username: string,
-    oauthId: string,
-    provider: string,
-  ): Promise<UserWithAccountsResponseDto> {
+  async createOAuthUser(dto: CreateOAuthUserDto ): Promise<UserWithAccountsResponseDto> {
     const { data } = await this.http.axiosRef.post<UserWithAccountsResponseDto>(
       `http://user-service:3001/internal/users/oauth`,
-      { email, username, oauthId, provider },
+      dto,
     );
     return data;
   }
@@ -56,10 +67,10 @@ export class UserClient {
     );
   }
 
-  async updatePassword(userId: number, hashed: string): Promise<void> {
+  async updatePassword(userId: number, dto: UpdatePasswordDto): Promise<void> {
     await this.http.axiosRef.patch(
       `http://user-service:3001/internal/users/${userId}/password/change`,
-      { passwordHash: hashed },
+      dto,
     );
   }
 
@@ -75,17 +86,17 @@ export class UserClient {
     }
   }
 
-  async linkProvider(userId: number, provider: string, oauthId: string): Promise<void> {
+  async linkProvider(userId: number, provider: string, dto: LinkOAuthDto): Promise<void> {
     await this.http.axiosRef.post(
       `http://user-service:3001/internal/users/${userId}/oauth/${provider}`,
-      { oauthId },
+      dto
     );
   }
 
-  async setup2fa(userId: number, twoFactorSecret: string): Promise<void> {
+  async setup2fa(userId: number, dto: Setup2faDto): Promise<void> {
     await this.http.axiosRef.patch(
       `http://user-service:3001/internal/users/${userId}/2fa/setup`,
-      { twoFactorSecret },
+      dto,
     );
   }
 

@@ -5,10 +5,10 @@ import * as bcrypt from 'bcryptjs';
 import { JwtAccessPayloadDto, JwtRefreshPayloadDto} from '@game/auth-shared';
 import { ConfigService } from '@nestjs/config';
 import { MailService } from './mail/mail.service';
-import { GoogleUser } from './types/google-user.type';
 import { UserClient } from '../user/user.client';
 import * as speakeasy from 'speakeasy';
 import * as QRCode from 'qrcode';
+import type { CreateOAuthUserDto} from '@transcendence/types';
 
 @Injectable()
 export class AuthService {
@@ -30,9 +30,9 @@ async registerAndSendVerification(
     try {
       // 1. Log Hashing
       console.log('[AUTH] Generazione hash password...');
-      // Attenzione: bcrypt.hash con "60" rounds è INFINITO. 
+      // Attenzione: bcrypt.hash con "60" rounds è INFINITO.
       // Il valore standard è 10. Forse è questo che blocca tutto!
-      const passwordHash = await bcrypt.hash(password, 10); 
+      const passwordHash = await bcrypt.hash(password, 10);
       console.log('[AUTH] Hash generato con successo.');
 
       // 2. Log Chiamata User Service
@@ -65,7 +65,7 @@ async registerAndSendVerification(
     }
   }
 
-  /* 
+  /*
   async registerAndSendVerification(
     username: string,
     email: string,
@@ -305,7 +305,7 @@ async registerAndSendVerification(
 
     const hashed = await bcrypt.hash(newPassword, 10);
 
-    await this.usersService.updatePassword(payload.sub, hashed);
+    await this.usersService.updatePassword(payload.sub, {passwordHash: hashed});
 
     // Invalidate refresh tokens after password change
     await this.usersService.invalidateRefreshTokens(payload.sub);
@@ -323,7 +323,7 @@ async registerAndSendVerification(
     return username;
   }
 
-  async loginWithGoogle(googleUser: GoogleUser) {
+  async loginWithGoogle(googleUser: CreateOAuthUserDto) {
     let user = await this.usersService.findByProvider(
       googleUser.provider,
       googleUser.oauthId,
@@ -332,22 +332,25 @@ async registerAndSendVerification(
     if (!user) {
       // Auto-link by email
       user = await this.usersService.findUser({ email: googleUser.email });
-      
+
       if (user) {
-        /* user = */await this.usersService.linkProvider(
+        await this.usersService.linkProvider(
           user.id,
           googleUser.provider,
-          googleUser.oauthId,
-        );
+          {
+            oauthId: googleUser.oauthId,
+            avatarUrl: googleUser.avatarUrl,
+          });
       } else {
         const uniqueUsername = await this.generateUniqueUsername( googleUser.username );
 
-        user = await this.usersService.createOAuthUser(
-          googleUser.email,
-          uniqueUsername,
-          googleUser.oauthId,
-          googleUser.provider,
-        );
+        user = await this.usersService.createOAuthUser({
+          email: googleUser.email,
+          username: uniqueUsername,
+          oauthId: googleUser.oauthId,
+          provider: googleUser.provider,
+          avatarUrl: googleUser.avatarUrl,
+        });
       }
     }
 
@@ -383,7 +386,7 @@ async registerAndSendVerification(
 
     const qrCode = await QRCode.toDataURL(secret.otpauth_url);
 
-    await this.usersService.setup2fa(userId, secret.base32);
+    await this.usersService.setup2fa(userId, {twoFactorSecret: secret.base32});
 
     return {
       qrCode,
