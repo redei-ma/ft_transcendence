@@ -10,6 +10,6 @@ export enum GameEvents {
   MAP_EMIT = 'map-emit',
   GAME_STATE = 'game-state',
   GAME_OVER = 'game-over',
-  INPUT = 'input',
+  INPUT = 'game-input',
   GAME_MESSAGE = 'game-message',
 }

@@ -24,4 +24,4 @@ COPY . .
 EXPOSE 3000
 
 # Avviamo l'applicazione in modalità sviluppo per vedere i log in tempo reale
-CMD ["npm", "run", "start"]
+CMD ["npm", "run", "start:dev"]

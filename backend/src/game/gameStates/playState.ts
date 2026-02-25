@@ -37,7 +37,6 @@ export class PlayState implements IGameState{
 
 	onInput(entityId: string, input: Vector, attackType: AttackType): void {
 		/* Retrieve the player by ID and validate existence */
-
 		const player = this.session.players.get(entityId);
 		if (!player) {
 			this.logger.warn("Player not found, ignoring input.");

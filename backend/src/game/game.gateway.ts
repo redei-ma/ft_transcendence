@@ -48,9 +48,13 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect, On
 			Since this class is a Singleton (shared instance), we cannot save state in 'this'.
 			'client.id' is unique for this specific connection.*/
 		const socketId = client.id;
-		if (!socketId) return;
+		if (!socketId){
+			this.logger.error('invalid socket reached, ignoring');	
+			return ;
+		}
 
 		const userDbId: string = client.handshake.query.userDbId as string;
+		this.logger.log(`New client arrived ${userDbId}`)
 		//if (isNaN(userDbId)){
 		//	client.emit('exception', {
 		//		status: 'error',
@@ -107,7 +111,10 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect, On
 	/* Implementation of OnGatewayDisconnect */
 	handleDisconnect(@ConnectedSocket() client: Socket): void {
 		const socketId = client.id;
-		if (!socketId) return;
+		if (!socketId){
+			this.logger.error('invalid socket reached, ignoring');	
+			return;
+		}
 
 		this.gameService.handlePlayerDisconnect(socketId);
 
@@ -119,11 +126,14 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect, On
 	@SubscribeMessage(SocketEvents.INPUT)
 	handleInput(
 		@ConnectedSocket() client: Socket,
-		@MessageBody() input: GameInputDto): void{
-
+		@MessageBody() input: any): void{
+		
 		const socketId = client.id;
+		if (!socketId){
+			this.logger.error('invalid socket reached, ignoring');	
+			return ;
+		}
 
-		this.logger.log(`input recived,  attackType=${input.attackType}, x=${input.x}, z=${input.z}, playerIndex=${input.playerIndex}`);
 		this.gameService.handleInput(socketId, Vector.fromData(input), input.attackType, input.playerIndex);
 	}
 
@@ -133,8 +143,10 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect, On
 		@MessageBody() input: GameMessageDto): void{
 
 			const socketId = client.id;
-
-			if (!socketId) return ;
+			if (!socketId){
+				this.logger.error('invalid socket reached, ignoring');	
+				return ;
+			}
 
 			this.gameService.processGameMessage(socketId, input.message);
 		}
