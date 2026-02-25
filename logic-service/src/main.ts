@@ -38,7 +38,7 @@ async function bootstrap() {
 
   // avvio microservizi e redis
   await app.startAllMicroservices();
-  await app.listen(3000, '0.0.0.0'); // porta interna al container
-  console.log('LOGIC SERVICE ONLINE: HTTP su porta 3001 (esterna) e Redis collegato');
+  await app.listen(3500, '0.0.0.0'); // porta interna al container
+  console.log('LOGIC SERVICE ONLINE: HTTP su porta 3500 e Redis collegato');
 }
 bootstrap();

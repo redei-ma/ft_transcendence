@@ -6,7 +6,7 @@
     <button onclick="join()">Entra in Coda (Ranked)</button>
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
     <script>
-        const socket = io('http://localhost:3001', { transports: ['websocket'] });
+        const socket = io('http://localhost:3500', { transports: ['websocket'] });
 
         socket.on('connect', () => {
             document.getElementById('status').innerText = 'CONNESSO! ID: ' + socket.id;
