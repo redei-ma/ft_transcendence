@@ -7,7 +7,7 @@ RUN apk add --no-cache openssl
 
 # Copy dependency files and install dependencies
 COPY db-migration/package*.json ./
-RUN npm install
+RUN npm ci
 
 # Generate Prisma client
 COPY shared/prisma ./prisma/

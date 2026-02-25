@@ -8,12 +8,11 @@ COMPOSE      := docker compose
 COMPOSE_FILE := docker-compose.yml
 
 CERTS_DIR    := ./certs
-UPLOADS_DIR  := ./user-service/uploads
 TYPES_DIR    := ./shared/types
 
 # --- Phony targets -------------------------------------------
 
-.PHONY: all up down restart clean fclean re rebuild prune logs ps help
+.PHONY: all generate certs up down restart clean fclean re rebuild prune logs ps help 
 
 # --- Default target ------------------------------------------
 
@@ -24,23 +23,31 @@ all: up
 generate: ## Generate enums from schema.prisma and build @transcendence/types
 	cd $(TYPES_DIR) && npm install && npm run build
 
+# --- Certificates generation --------------------------------
+
+certs: ## Generate self-signed TLS certificates if not already present
+		@mkdir -p $(CERTS_DIR)
+		@if [ ! -f $(CERTS_DIR)/cert.key ]; then \
+				echo "Generating self-signed certificates..."; \
+				openssl req -x509 -newkey rsa:4096 -nodes \
+						-keyout $(CERTS_DIR)/cert.key \
+						-out $(CERTS_DIR)/cert.crt \
+						-days 365 \
+						-subj "/CN=localhost" 2>/dev/null; \
+				echo "Done: $(CERTS_DIR)/cert.crt and $(CERTS_DIR)/cert.key"; \
+		else \
+				echo "Certificates already present, skipping."; \
+		fi
+	
 # --- Lifecycle -----------------------------------------------
 
-up: $(CERTS_DIR) $(UPLOADS_DIR) generate ## Create required dirs, build images and start all services
+up: certs generate ## Create required dirs, build images and start all services
 	$(COMPOSE) -f $(COMPOSE_FILE) up -d --build
 
 down: ## Stop and remove containers and networks (volumes and images are preserved)
 	$(COMPOSE) -f $(COMPOSE_FILE) down
 
 restart: down up ## Full stop followed by a full start
-
-# --- Directory setup -----------------------------------------
-
-$(CERTS_DIR):
-	mkdir -p $(CERTS_DIR)
-
-$(UPLOADS_DIR):
-	mkdir -p $(UPLOADS_DIR)
 
 # --- Cleanup -------------------------------------------------
 

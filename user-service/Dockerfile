@@ -3,26 +3,27 @@ FROM node:20-alpine AS build
 
 WORKDIR /app
 
-# Install OpenSSL for Prisma
+
 RUN apk add --no-cache openssl
 
-# Copy prebuilt shared types and Prisma schema
+
 COPY shared/types ./shared/types
+
 COPY shared/prisma/schema.prisma ./prisma/schema.prisma
 
-# Set working directory
+
 WORKDIR /app/user-service
 
-# Copy dependency files
+
 COPY user-service/package*.json ./
 
-# Install dependencies
-RUN npm install --install-links
 
-# Copy source code
+RUN npm ci --install-links
+
+
 COPY user-service/. .
 
-# Generate Prisma Client and build the application
+
 RUN npx prisma generate --schema=../prisma/schema.prisma
 RUN npm run build
 

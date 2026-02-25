@@ -20,6 +20,7 @@ services:
             interval: 5s
             timeout: 5s
             retries: 5
+
     db-migration:
         container_name: transcendence_db_migration
         image: transcendence_db_migration:20-alpine
@@ -38,20 +39,36 @@ services:
             - ./shared/prisma:/app/prisma
 
     auth-service:
+        container_name: transcendence_auth_service
+        image: transcendence_auth_service:20-alpine
         build:
             context: .
             dockerfile: ./auth-service/Dockerfile
-        container_name: transcendence_auth_service
-        env_file:
-            - ./auth-service/.env
-            - .env.shared
+            target: build
+        command: npm run start:dev
+        restart: unless-stopped
         depends_on:
-            postgres:
-                condition: service_healthy
+            db-migration:
+                condition: service_completed_successfully
         networks:
             - backend-network
         expose:
             - "3002"
+        env_file:
+            - ./auth-service/.env
+            - .env.shared
+        volumes:
+            - ./auth-service/src:/app/auth-service/src
+        healthcheck:
+            test:
+                [
+                    "CMD-SHELL",
+                    "wget -qO- http://localhost:3002/health || exit 1",
+                ]
+            interval: 10s
+            timeout: 5s
+            retries: 5
+            start_period: 15s
 
     user-service:
         container_name: transcendence_user_service
@@ -60,11 +77,11 @@ services:
             context: .
             dockerfile: ./user-service/Dockerfile
             target: build
+        command: sh -c "npm run prisma:generate && npm run start:dev"
+        restart: unless-stopped
         depends_on:
             db-migration:
                 condition: service_completed_successfully
-        command: sh -c "npm run prisma:generate && npm run start:dev"
-        restart: unless-stopped
         networks:
             - backend-network
         expose:
@@ -95,11 +112,11 @@ services:
             context: .
             dockerfile: ./game-service/Dockerfile
             target: build
+        command: sh -c "npm run prisma:generate && npm run start:dev"
+        restart: unless-stopped
         depends_on:
             db-migration:
                 condition: service_completed_successfully
-        command: sh -c "npm run prisma:generate && npm run start:dev"
-        restart: unless-stopped
         networks:
             - backend-network
         expose:
@@ -121,35 +138,35 @@ services:
             start_period: 15s
 
     gateway:
-        image: nginx:stable-alpine
         container_name: api_gateway
-        ports:
-            - "2443:2443"
-        volumes:
-            - ./frontend:/usr/share/nginx/html:ro
-            - ./nginix/nginx.conf:/etc/nginx/nginx.conf:ro
-            - ./certs:/etc/nginx/certs
+        image: nginx:stable-alpine
+        restart: unless-stopped
         depends_on:
             - auth-service
             - user-service
             - game-service
         networks:
             - backend-network
+        ports:
+            - "2443:2443"
+        volumes:
+            - ./frontend:/usr/share/nginx/html:ro
+            - ./nginix/nginx.conf:/etc/nginx/nginx.conf:ro
+            - ./certs:/etc/nginx/certs
 
     ngrok:
-        image: ngrok/ngrok:3
         container_name: ngrok
+        image: ngrok/ngrok:3
         command: http https://gateway:2443
+        restart: unless-stopped
+        depends_on:
+            - gateway
+        networks:
+            - backend-network
         env_file:
             - .env.shared
         environment:
             - NGROK_AUTHTOKEN=${NGROK_AUTHTOKEN}
-        depends_on:
-            - gateway
-        ports:
-            - "4040:4040"
-        networks:
-            - backend-network
 
 volumes:
     postgres_data:

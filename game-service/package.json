@@ -1,10 +1,9 @@
 {
 	"name": "backend-trascendence",
 	"version": "0.0.1",
-	"description": "",
+	"description": "Game management microservice for ft_transcendence",
 	"author": "",
 	"private": true,
-	"license": "UNLICENSED",
 	"scripts": {
 		"build": "nest build",
 		"format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
@@ -22,7 +21,7 @@
 	},
 	"dependencies": {
 		"@nestjs/common": "^11.1.12",
-		"@nestjs/config": "^4.0.0",
+		"@nestjs/config": "^4.0.2",
 		"@nestjs/core": "^11.1.12",
 		"@nestjs/microservices": "^11.1.13",
 		"@nestjs/platform-express": "^11.1.12",
