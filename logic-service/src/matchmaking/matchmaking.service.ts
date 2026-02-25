@@ -159,6 +159,7 @@ export class MatchmakingService {
           matchType: player.matchType, // Prendi il tipo dal primo giocatore
           matchMode: player.matchMode  // Prendi il mode dal primo giocatore
       };
+
       // Inviamo i due oggetti MatchPartecipantData richiesti
       try {
           const url = 'http://backend:3000/matchmaking/create-match'; // L'indirizzo del suo container

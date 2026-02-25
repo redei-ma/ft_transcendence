@@ -123,6 +123,7 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect, On
 
 		const socketId = client.id;
 
+		this.logger.log(`input recived,  attackType=${input.attackType}, x=${input.x}, z=${input.z}, playerIndex=${input.playerIndex}`);
 		this.gameService.handleInput(socketId, Vector.fromData(input), input.attackType, input.playerIndex);
 	}
 
