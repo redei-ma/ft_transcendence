@@ -8,6 +8,7 @@ import GameUI from './UI/gameUI';
 import { PlayerEntity } from './entities/PlayerEntity';
 import { BulletEntity } from './entities/BulletEntity';
 import { GameOverOverlay } from './UI/components/GameOverOverlay';
+import GameChat  from './UI/components/GameChat';
 import { EffectComposer, Bloom } from '@react-three/postprocessing';
 
 interface GameProps {
@@ -17,9 +18,10 @@ interface GameProps {
   p2Character: 'zeus' | 'ade';
   onPlayAgain: () => void;
   onQuit: () => void;
+  myUserId: string,
 }
 
-export default function Game({ selectedCharacter, selectedMode, onPlayAgain, onQuit }: GameProps) {
+export default function Game({ selectedCharacter, selectedMode, onPlayAgain, onQuit, myUserId }: GameProps) {
   const inputManagerRef = useRef<InputManager | null>(null);
   const { isConnected, world, gameState, gameOver } = useGameSocket();
 
@@ -90,6 +92,13 @@ export default function Game({ selectedCharacter, selectedMode, onPlayAgain, onQ
           maxPlayers={world?.map?.maxPlayers || 2}
           gameOver={gameOver}
           gameState={gameState}
+        />
+      )}
+
+      {!gameOver && (selectedMode === MatchMode.RANKED || selectedMode === MatchMode.UNRANKED) && (
+        <GameChat
+          myUserId={myUserId}
+          isVisible={true}
         />
       )}
 

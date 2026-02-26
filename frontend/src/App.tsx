@@ -112,6 +112,7 @@ function App() {
       p2Character={selectedCharacterP2}
       onPlayAgain={handlePlayAgain}
       onQuit={handleQuit}
+      myUserId={userDbId}
     />
   );
 }

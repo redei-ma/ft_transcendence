@@ -110,15 +110,15 @@ export default function CharacterSelectScene({
       const finalP2 = CHARACTERS[p2Index];
       
       
-      const payload = {
-        userDbId: userDbId,
-        characterName: isSplitScreen ? [finalP1, finalP2] : [finalP1],
-        rank: 500,
-        rankRange: 100,
-        matchType: MatchType.FFA,
-        matchMode: mode,
-        isAiPlayer: isAI,
-      };
+    const payload = {
+      userDbId: userDbId,
+      characterName: isSplitScreen ? [finalP1, finalP2] : [finalP1],
+      rank: (mode === MatchMode.RANKED || mode === MatchMode.UNRANKED) ? 500 : null,
+      rankRange: (mode === MatchMode.RANKED || mode === MatchMode.UNRANKED) ? 100 : null,
+      matchType: MatchType.FFA,
+      matchMode: mode,
+      isAiPlayer: isAI,
+    };
       
       let event: GameEvents;
       if (isLocal) event = GameEvents.JOIN_LOCAL;
