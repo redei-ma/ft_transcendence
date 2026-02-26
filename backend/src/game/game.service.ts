@@ -79,7 +79,7 @@ export class GameService{
 	handlePlayerDisconnect(socketId: string): ExitStatus{
 		const session: GameSession | undefined = this.getGameBySocket(socketId);
 
-		if (!session) return {status: ErrorCode.SESSION_NOT_FOUND, message: 'session not found, unable to remove the player'};
+		if (!session) return {status: ErrorCode.SESSION_NOT_FOUND, message: 'session not found, game is already over'};
 
 		const entityIds: string[] | undefined = session.socketToEntities.get(socketId);
 

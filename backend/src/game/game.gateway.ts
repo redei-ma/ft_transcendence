@@ -24,7 +24,6 @@ import { GameExceptionFilter } from './game.WsGameExceptionFilter';
 */
 @WebSocketGateway({ cors: true })
 
-
 /* This guard will be applied to all events, which means that it will be executed before all methods are called. */
 @UseGuards(WsThrottlerGuard)
 @UseFilters(new GameExceptionFilter())
@@ -124,7 +123,7 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect, On
 				message: result.message || 'undefined error'
 			});
 			client.disconnect();
-			this.logger.warn(`error in removing the player from the game`);
+			this.logger.warn(`error in removing the player from the game, message: ${result.message}`);
 		}
 		else
 			this.logger.log(`client with socket-id ${socketId} is exit`);
