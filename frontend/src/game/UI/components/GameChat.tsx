@@ -78,18 +78,19 @@ export default function GameChat({ myUserId, isVisible }: GameChatProps) {
   useEffect(() => {
     if (!isVisible) return;
 
-    const handler = (data: { message: string; senderCharacterName: string }) => {
-      const isMe = data.senderCharacterName === myUserId;
-      const newMsg: ChatMessage = {
-        id: `${Date.now()}-${data.senderCharacterName}`,
-        sender: isMe ? 'me' : 'enemy',
-        name: data.senderCharacterName.charAt(0).toUpperCase() + data.senderCharacterName.slice(1),
+  const handler = (data: { message: string; author: string }) => {
+    if (data.author === myUserId) return; // ignora i miei, già aggiunti localmente
+    
+    const newMsg: ChatMessage = {
+        id: `${Date.now()}-${data.author}`,
+        sender: 'enemy',
+        name: data.author,
         text: data.message,
         timestamp: Date.now(),
-      };
-      setMessages(prev => [...prev, newMsg]);
-      resetFadeTimer();
     };
+    setMessages(prev => [...prev, newMsg]);
+    resetFadeTimer();
+  };
 
     socketService.on(GameEvents.GAME_MESSAGE, handler);
     return () => socketService.off(GameEvents.GAME_MESSAGE, handler);
@@ -119,9 +120,9 @@ export default function GameChat({ myUserId, isVisible }: GameChatProps) {
       e.preventDefault();
       if (inputText.trim()) {
         sendMessage();
+        setInputText('');
       }
-      closeChat();
-    } else if (e.key === 'Escape') {
+    } else if ( e.key === 'Escape' || (e.key === 'Shift')) {
       e.preventDefault();
       setInputText('');
       closeChat();
@@ -228,7 +229,7 @@ export default function GameChat({ myUserId, isVisible }: GameChatProps) {
           width: '100%',
           height: '32px',
           background: 'rgba(0, 0, 0, 0.7)',
-          border: '1px solid rgba(255,255,255,0.2)',
+          border: '1px rgba(255,255,255,0.2)',
           borderRadius: '4px',
           color: 'white',
           fontFamily: theme.fonts.mono,
