@@ -150,7 +150,8 @@ export class MatchmakingService {
       // da notare che se qualcuno crasha durante la partita e giovanni non se ne accorge, i dati rimarranno su redis per 7 minuti (420 secondi) e poi verranno eliminati automaticamente
       await this.redis.set(`status:${player.userDbId}`, playerStatus, 'EX', 420);
       await this.redis.set(`status:${opponentId}`, opponentStatus, 'EX', 420);
-
+      await this.redis.set(`match_players:${matchId}`, `${player.userDbId},${opponentId}`, 'EX', 3600);
+      console.log(`[Logic] Match trovato! ${player.userDbId} vs ${opponentId} (Rank: ${player.rank} vs ${opponentData.rank}) - MatchID: ${matchId}`);
       // creiamo un array contente i due player che saranno dentro la partita
 
       const payload = {
@@ -229,41 +230,44 @@ async leaveQueue(player: JoinQueueDto) {
 
 /* ---------------------------------------------------------------------------------------------------------------- */
 
-async finalizeMatch(winnerId: string, loserId: string) {
-    // chiediamo a Redis i dati attuali dei due giocatori (non solo il rank, ma tutto l'oggetto status)
-    const winnerDataRaw = await this.redis.get(`status:${winnerId}`);
-    const loserDataRaw = await this.redis.get(`status:${loserId}`);
+  async finalizeMatch(matchId: string) {
+      // recuperiamo la stringa dei partecipanti (es: "1,2")
+      const playersRaw = await this.redis.get(`match_players:${matchId}`);
+      console.log(`Tentativo di cleanup del MatchID: ${matchId}`);
+      if (!playersRaw) {
+          console.log(`[Cleanup] Match ${matchId} non trovato o già rimosso.`);
+          return { status: 'MATCH_ALREADY_CLEANED' };
+      }
 
-    // controlliamo di avere tutto, in caso contrario logghiamo l'errore e usciamo
-    if (winnerDataRaw === null || loserDataRaw === null) {
-      console.log(`[Error] Impossibile recuperare i dati per ${winnerId} o ${loserId}`);
-      return { status: 'ERROR_RETRIEVING_DATA' };
-    }
+      // dividiamo la stringa per ottenere i singoli ID
+      const playerIds = playersRaw.split(',');
 
-    // estraiamo i dati dai dati JSON (contengono characterName, isAiPlayer, rank attuale, ecc.)
-    const winnerData = JSON.parse(winnerDataRaw);
-    const loserData = JSON.parse(loserDataRaw);
+      for (const userId of playerIds) {
+          // Recuperiamo i dati attuali per non perdere characterName o rank
+          const dataRaw = await this.redis.get(`status:${userId}`);
+          if (dataRaw) {
+              const userData = JSON.parse(dataRaw);
+              
+              // Creiamo lo stato lobby
+              const lobbyStatus = JSON.stringify({ 
+                  state: 'lobby', 
+                  userDbId: String(userId),
+                  characterName: userData.characterName,
+                  isAiPlayer: userData.isAiPlayer || false,
+                  rank: userData.rank,
+                  updatedAt: Date.now() 
+              });
 
-    // Prepariamo lo stato Lobby per il dopo-partita mantenendo i dati del DTO
-    // Questo serve a Francesco (Frontend) per sapere che l'utente è tornato nel menu principale
-    const createLobbyStatus = (data: any) => JSON.stringify({ 
-        state: 'lobby', 
-        userDbId: String(data.userDbId),
-        characterName: data.characterName,
-        isAiPlayer: data.isAiPlayer || false,
-        rank: data.rank, // Il rank qui è quello che avevamo all'inizio (il DB lo aggiornerà a parte)
-        updatedAt: Date.now() 
-    });
+              // Riportiamo l'utente in lobby per 1 ora
+              await this.redis.set(`status:${userId}`, lobbyStatus, 'EX', 3600);
+          }
+      }
 
-    // ripuliamo il server di redis e evitiamo di avere chiavi inutili o player fantasma
-    // Riportiamo i player nello stato 'lobby' con scadenza di 1 ora
-    // Fondamentale per permettere ai player di fare una nuova partita!
-    await this.redis.set(`status:${winnerId}`, createLobbyStatus(winnerData), 'EX', 3600);
-    await this.redis.set(`status:${loserId}`, createLobbyStatus(loserData), 'EX', 3600);
+      // eliminiamo l'indice del match
+      await this.redis.del(`match_players:${matchId}`);
 
-    console.log(`[RankSystem] Match concluso tra ${winnerId} e ${loserId}. Notifica inviata al DB e player riportati in lobby.`);
-
-    return { status: 'MATCH_FINALIZED' };
+      console.log(`[Cleanup] Match ${matchId} finalizzato. Player resettati: ${playersRaw}`);
+      return { status: 'MATCH_FINALIZED', matchId };
   }
 
 /* ---------------------------------------------------------------------------------------------------------------- */

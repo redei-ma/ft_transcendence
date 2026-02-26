@@ -37,9 +37,11 @@ export class MatchmakingController {
     return await this.matchmakingService.getQueueCount();  
   }
 
-  @MessagePattern('match_finished')
-  async handleMatchFinished(@Payload() data: { winnerId: string, loserId: string }) {
-    return await this.matchmakingService.finalizeMatch(data.winnerId, data.loserId);
+  @MessagePattern('end-game')
+  async handleMatchFinished(@Payload() data: any) {
+      const id = typeof data === 'string' ? data : data?.matchId || data?.gameId;
+      console.log(`[Controller] Ricevuto segnale end-game per ID: ${id}`);
+      return await this.matchmakingService.finalizeMatch(id);
   }
 
   // Riceve il DTO completo del challenger e l'ID dell'avversario
