@@ -9,6 +9,7 @@ import { SocketEvents } from './configs';
 import { GameSession } from './core';
 import { GameData, ErrorCode, SuccessCode } from './interfaces-enums';
 import { GameExceptionFilter } from './game.WsGameExceptionFilter';
+import { ExitStatus } from './interfaces-enums/exitStatus.interface';
 
 
 //questo e' come dovra' essere alla fine
@@ -76,33 +77,18 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect, On
 
 				const session: GameSession | undefined = this.gameService.getGameById(gameData.gameId);
 				if (!session){
-					client.emit('exception', {
-						status: 'error',
-						errorCode: ErrorCode.SESSION_NOT_FOUND,
-						message: 'Session not found, retry to search a new game'
-					});
-					client.disconnect();
+					this.sendErrorAndDisconnectClient(client, {status:  ErrorCode.SESSION_NOT_FOUND, message: 'Session not found, retry to search a new game'});
 					return;
 				}
 				const result = session.addPlayer(player, socketId);
 				if (result.status !== SuccessCode.OK){
-					client.emit('exception', {
-						status: 'error',
-						errorCode: result.status,
-						message: result.message || 'Error in adding the player in the session'
-					});
-					client.disconnect();
+					this.sendErrorAndDisconnectClient(client, result);
 					this.logger.warn(`${userDbId} is not in game list`);
 				}
 			}
 		}
 		else{
-			client.emit('exception', {
-				status: 'error',
-				errorCode: ErrorCode.PLAYER_NOT_FOUND,
-				message: 'This player isn t in the game list'
-			});
-			client.disconnect();
+			this.sendErrorAndDisconnectClient(client, {status: ErrorCode.PLAYER_NOT_FOUND, message: 'This player isn t in the game list'});
 			this.logger.warn(`${userDbId} is not in game list`);
 		}
 	}
@@ -117,12 +103,7 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect, On
 
 		const result = this.gameService.handlePlayerDisconnect(socketId);
 		if (result.status !== SuccessCode.OK){
-			client.emit('exception', {
-				status: 'error',
-				errorCode: result.status,
-				message: result.message || 'undefined error'
-			});
-			client.disconnect();
+			this.sendErrorAndDisconnectClient(client, result);
 			this.logger.warn(`error in removing the player from the game, message: ${result.message}`);
 		}
 		else
@@ -158,4 +139,13 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect, On
 
 			this.gameService.processGameMessage(socketId, input.message);
 		}
+
+	private sendErrorAndDisconnectClient(client: Socket, exitStatus: ExitStatus){
+		client.emit('exception', {
+				status: 'error',
+				errorCode: exitStatus.status,
+				message: exitStatus.message || 'undefined error'
+			});
+			client.disconnect();
+	}
 }

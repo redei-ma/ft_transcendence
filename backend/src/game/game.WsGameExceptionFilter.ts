@@ -12,14 +12,13 @@ export class GameExceptionFilter extends BaseWsExceptionFilter {
 		const client = host.switchToWs().getClient<Socket>();
 
 		if (exception instanceof GameException) {
-			const errorPayload = exception.getError() as any;
 			client.emit('exception', { 
 				status: 'error', 
-				errorCode: errorPayload.code,
-				message: errorPayload.message,
+				errorCode: exception.code,
+				message: exception.message,
 			});
 		}
-		else if (exception instanceof Error || exception instanceof WsException) {
+		else if (exception instanceof Error) {
 			client.emit('exception', { 
 				status: 'error', 
 				errorCode: 'GENERIC_ERROR',

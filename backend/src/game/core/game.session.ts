@@ -58,7 +58,7 @@ export class GameSession{
 		return ({status: ErrorCode.INTERNAL_ERROR, message: 'Internal server error, sorry for the issue'});
 	}
 
-	addBot(player: MatchMakingData){
+	addBot(player: MatchMakingData): ExitStatus{
 		if (this.currentState instanceof LobbyState){
 			return (this.currentState.addBot(player));
 		}
@@ -140,6 +140,7 @@ export class GameSession{
 	}
 
 	sendMessage(author: Player, message: string): void{
+		this.logger.log(`message author ${author}, message: ${message}`);
 		this.server.to(this.gameId).emit(SocketEvents.GAME_MESSAGE,{
 			author: author.userDbId,
 			message: message,
