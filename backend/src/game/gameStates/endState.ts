@@ -7,7 +7,7 @@ import { AttackType } from "../interfaces-enums";
 
 export class EndState implements IGameState{
 	logger: Logger = new Logger(EndState.name);
-	name = 'EndGame';
+	name = 'END';
 	private shutdownTimer: number = 0.0;
 	public isReadyToClose: boolean = false;
 	constructor(private readonly session: GameSession) {}

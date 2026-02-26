@@ -105,15 +105,15 @@ export class GameSession{
 	}
 
 	isGameOver(): boolean {
-		return (this.currentState.name === 'EndGame');
+		return (this.currentState.name === 'END');
 	}
 
 	isPlaying(): boolean{
-		return (this.currentState instanceof PlayState);
+		return (this.currentState.name === 'PLAY');
 	}
 
 	isJoinable(): boolean{
-		return(this.currentState instanceof LobbyState && this.players.size < this.gameWorld.maxPlayers);
+		return(this.currentState.name === 'LOBBY' && this.players.size < this.gameWorld.maxPlayers);
 	}
 
 	canShutdown(): boolean{
