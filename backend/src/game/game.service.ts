@@ -101,13 +101,7 @@ export class GameService{
 	removeSession(game: GameSession): void {
 		// inviare i dati al database di renato
 		const gameId = game.getGameId();
-
-		//sending the end_game event for the matchmaking
-		this.redis.emit(NetworkConfig.MATCHMAKING.MATCH_EVENTS.END_GAME, gameId);
-
-		//sending the end game data to the database
-		const endGameData: MatchResult = game.engine.endGameData;
-		//this.MatchResultModule.processMatchEnd(endGameData);
+		
 		for (const socketId of game.socketToEntities.keys()){
 			this.socketToGame.delete(socketId);
 		}
@@ -115,9 +109,16 @@ export class GameService{
 		for (const userDbId of game.expectedUserDbIds) {
 			this.userToGameData.delete(userDbId);
 		}
-
 		game.cleanUp();
 		this.games.delete(gameId);
+
+		//sending the end_game event for the matchmaking
+		this.redis.emit(NetworkConfig.MATCHMAKING.MATCH_EVENTS.END_GAME, gameId);
+
+		//sending the end game data to the database
+		const endGameData: MatchResult = game.engine.endGameData;
+		//this.MatchResultModule.processMatchEnd(endGameData);
+
 	}
 
 	removePlayerFromSession(socketId: string): void{
@@ -158,11 +159,20 @@ export class GameService{
 	}
 
 	prepareMatch(gameId: string, players: MatchMakingData[], matchMode: MatchMode, matchType: MatchType): ExitStatus{
-
 		for (const player of players) {
 			if (player.userDbId !== null && this.userToGameData.has(player.userDbId)) {
-				this.logger.error(`Player ${player.userDbId} is already in another match`);
-				return {status: ErrorCode.UNAUTHORIZED, message: `this player ${player.userDbId} is already in a game`}; 
+				const oldGameData: GameData | undefined = this.userToGameData.get(player.userDbId);
+				if (!oldGameData) continue ;
+				
+				const oldGame: GameSession | undefined = this.games.get(oldGameData.gameId);
+				if (oldGame && !oldGame.isGameOver()){
+					this.logger.error(`Player ${player.userDbId} is already in another match`);
+					return {status: ErrorCode.UNAUTHORIZED, message: `this player ${player.userDbId} is already in a game`}; 
+				}
+				else{
+					this.userToGameData.delete(player.userDbId);
+					this.logger.log(`deleting userdbId=>${player.userDbId} from gameData`);
+				}
 			}
 		}
 

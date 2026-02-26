@@ -543,7 +543,7 @@ async finalizeMatch(winnerId: string, loserId: string) {
     };
     
     try {
-        const url = 'http://game_container:3000/matchmaking/create-match';
+        const url = 'http://backend:3000/matchmaking/create-match';
         await firstValueFrom(this.httpService.post(url, payload));
         console.log(`[AiMatch] Richiesta creazione match vs AI inviata per ${player.userDbId}`);
     } catch (error) {
