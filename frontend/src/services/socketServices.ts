@@ -14,6 +14,7 @@ export class SocketService {
             return this.socket;
         }
         this.socket = io(url, {
+            path: "/game_api/socket.io",
             transports: ['websocket'],
             reconnection:   true,
             reconnectionAttempts: 5,

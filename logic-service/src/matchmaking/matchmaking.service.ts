@@ -62,7 +62,7 @@ export class MatchmakingService {
             matchMode: statusData.matchMode || 'standard'
         };
         try {
-            const url = 'http://game-container:3000/matchmaking/create-match';
+            const url = 'http://backend:3000/matchmaking/create-match';
             await firstValueFrom(this.httpService.post(url, payload));
         } catch (e) { console.error("Errore riconnessione HTTP"); }
 
@@ -363,7 +363,7 @@ async finalizeMatch(winnerId: string, loserId: string) {
         matchMode: challengerData.matchMode || 'standard' 
     };
     try {
-          const url = 'http://game_container:3000/matchmaking/create_match';
+          const url = 'http://backend:3000/matchmaking/create-match';
           // Utilizziamo firstValueFrom per gestire l'Observable di httpService
           await firstValueFrom(this.httpService.post(url, payload));
           console.log(`[HTTP] Match privato creato con successo sul Game Server: ${matchId}`);
@@ -467,7 +467,7 @@ async finalizeMatch(winnerId: string, loserId: string) {
     
     // chiamata HTTP POST
     try {
-        const url = 'http://game_container:3000/matchmaking/create_match';
+        const url = 'http://backend:3000/matchmaking/create-match';
         await firstValueFrom(this.httpService.post(url, payload));
         console.log(`[LocalMatch] Sessione locale inviata al Game Server per ${player.userDbId}`);
     } catch (error) {
@@ -543,7 +543,7 @@ async finalizeMatch(winnerId: string, loserId: string) {
     };
     
     try {
-        const url = 'http://game_container:3000/matchmaking/create_match';
+        const url = 'http://game_container:3000/matchmaking/create-match';
         await firstValueFrom(this.httpService.post(url, payload));
         console.log(`[AiMatch] Richiesta creazione match vs AI inviata per ${player.userDbId}`);
     } catch (error) {

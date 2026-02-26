@@ -9,7 +9,7 @@ services:
     build: ./backend
     container_name: game_server
     ports:
-      - "3000:3000"
+      - "3000"
     depends_on:
       - redis
     networks:
@@ -26,7 +26,7 @@ services:
     build: ./logic-service # Assicurati che il percorso sia corretto rispetto a dove metti questo file
     container_name: matchmaking_container
     ports:
-      - "3500:3500"
+      - "3500"
     depends_on:
       - redis
     environment:
@@ -40,15 +40,26 @@ services:
      build: ./frontend
      container_name: game_client
      ports:
-     - "5173:5173"
+      - "5173"
      volumes:
-     - ./frontend:/usr/src/app/
-     - /usr/src/app/node_modules
+      - ./frontend:/usr/src/app/
+      - /usr/src/app/node_modules
      environment:
-     - VITE_API_URL=http://localhost:3000
+      - VITE_API_URL=http://localhost:3000
      networks:
-     - transcendence_net
+      - transcendence_net
 
+  nginx:
+    build: ./nginx
+    container_name: reverse_proxy
+    ports:
+      - "80:80"
+    networks:
+      - transcendence_net
+    depends_on:
+      - backend
+      - matchmaking-service
+      - frontend
 networks:
   transcendence_net:
     driver: bridge
