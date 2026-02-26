@@ -187,22 +187,28 @@ export default function GameChat({ myUserId, isVisible }: GameChatProps) {
           opacity: isFaded ? 0 : 1,
           transition: isFaded ? 'opacity 1s ease' : 'opacity 0s',
           maxHeight: isActive ? '200px' : 'auto',
-          overflowY: isActive ? 'auto' : 'hidden',
         }}
       >
-        {visibleMessages.map(msg => (
-          <div key={msg.id} style={{ marginBottom: '4px', lineHeight: '1.4' }}>
+      {visibleMessages.map(msg => {
+      const nameText = `${msg.name}: `;
+      return (
+        <div key={msg.id} style={{ marginBottom: '6px', lineHeight: '1.5' }}>
             <span style={{
-              fontWeight: 'bold',
-              color: SENDER_COLORS[msg.sender],
+                fontWeight: 'bold',
+                color: SENDER_COLORS[msg.sender],
+                whiteSpace: 'nowrap',
             }}>
-              {msg.name}:{' '}
+                {nameText}
             </span>
-            <span style={{ color: 'rgba(255,255,255,0.85)' }}>
-              {msg.text}
+            <span style={{
+                color: 'rgba(255,255,255,0.85)',
+                wordBreak: 'break-word',
+            }}>
+                {msg.text}
             </span>
-          </div>
-        ))}
+        </div>
+      );
+    })}
         <div ref={messagesEndRef} />
       </div>
 
