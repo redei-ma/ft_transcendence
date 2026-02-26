@@ -25,11 +25,14 @@ export class MatchmakingService {
 
     // controlliamo che le persone in coda non siano già in partita
     const USER_STATUS_KEY = `status:${player.userDbId}`;
+
     const currentStatusRaw = await this.redis.get(USER_STATUS_KEY);
-    
+    const statusData = currentStatusRaw ? JSON.parse(currentStatusRaw) : null;
+
     // analizzo il JSON per vedere se è effettivamente in game
-    if (currentStatusRaw !== null) {
-      const statusData = JSON.parse(currentStatusRaw);
+    if (statusData && (statusData.state === 'ingame' || statusData.state === 'searching')) {
+      console.log(`Player già esistente con stato ${currentStatusRaw}, verifico se è in partita...`);
+
       if (statusData.state === 'ingame') {
         // troviamo che colui che ha cercato di fare il matchmaking, teoricamente sarebbe già in partita
         // proviamo a riaggiungerlo alla stessa partita reinviando il socket
@@ -38,18 +41,29 @@ export class MatchmakingService {
         // se non troviamo l'avversario, vuol dire che la partita è scaduta o è finita
         if (!opponentStatusRaw) {
           console.log(`[Logic] Partita scaduta o avversario non trovato...`);
-          await this.redis.set(USER_STATUS_KEY, JSON.stringify({ state: 'lobby', rank: player.rank }), 'EX', 3600);
+          await this.redis.set(USER_STATUS_KEY, JSON.stringify({ 
+            state: 'lobby', 
+            rank: player.rank,
+            characterName: player.characterName,
+            isAiPlayer: player.isAiPlayer,
+            socketId: player.socketId,
+            updatedAt: Date.now()
+          }), 'EX', 3600);
           return { status: 'MATCH_EXPIRED_BACK_TO_LOBBY' };
         }
         // se troviamo l'avversario, controlliamo che sia ancora in partita, se no vuol dire che la partita è finita
         const opponentData = JSON.parse(opponentStatusRaw);
         if (opponentData.state !== 'ingame') {
           console.log(`[Logic] L'avversario è già in ${opponentData.state}. Partita conclusa.`);
-          await this.redis.set(USER_STATUS_KEY, JSON.stringify({ ...statusData, state: 'lobby' }), 'EX', 3600);
+          await this.redis.set(USER_STATUS_KEY, JSON.stringify({ 
+            ...statusData, 
+            state: 'lobby',
+            updatedAt: Date.now()
+          }), 'EX', 3600);
           return { status: 'MATCH_ALREADY_FINISHED' };
         }
-        // prendiamo le vecchie informazioni che avevamo salvato su redis e aggiorniamo solo il socketId
-        const updatedStatus = { ...statusData, socketId: player.socketId };
+        // prendiamo le vecchie informazioni che avevamo salvato su redis e aggiorniamo solo il socketId e il timestamp
+        const updatedStatus = { ...statusData, socketId: player.socketId, updatedAt: Date.now() };
         // classico salvataggio su redis
         await this.redis.set(USER_STATUS_KEY, JSON.stringify(updatedStatus), 'EX', 420);
         // prendiamo la stringa ricevuta e vediamo se è valida, in caso ad esempio fosse vuota o corrotta si restituisce una stringa vuota
@@ -72,11 +86,16 @@ export class MatchmakingService {
       if (statusData.state === 'searching') {
         // controlliamo se c'è già qualcuno per lui senza riaggiungerlo
         console.log(`[Logic] Aggiornamento ricerca per ${player.userDbId} con tolleranza ${RANK_TOLERANCE}`);
-        const updatedSearching = JSON.stringify({ ...statusData, socketId: player.socketId });
+        const updatedSearching = JSON.stringify({ 
+          ...statusData, 
+          socketId: player.socketId,
+          updatedAt: Date.now() 
+        });
         await this.redis.set(USER_STATUS_KEY, updatedSearching, 'EX', 600);
       }
     }
     else {
+      console.log(`Nuovo player ${player.userDbId} aggiunto alla coda correttamente, in cerca di match. Rank: ${player.rank}, Tolleranza: ${RANK_TOLERANCE}`);
       const timestamp = Date.now();
       const timeScore = player.rank + (timestamp / 10000000000000);
 
@@ -91,7 +110,8 @@ export class MatchmakingService {
         rank: player.rank,
         characterName: player.characterName,
         isAiPlayer: player.isAiPlayer,
-        socketId: player.socketId || undefined
+        socketId: player.socketId || undefined,
+        updatedAt: Date.now()
       });
       await this.redis.set(USER_STATUS_KEY, searchingStatus, 'EX', 600); // 10 minuti di timeout per la coda
     }
@@ -105,7 +125,7 @@ export class MatchmakingService {
 
     // rimuoviamo il player stesso dalla lista degli avversari che si possono sfidare
     const opponents = potentialOpponents.filter(id => id !== player.userDbId);
-
+    console.log(`[Logic] Player ${player.userDbId} in cerca di match. Trovati ${opponents.length} potenziali avversari nella tolleranza (${minRank} - ${maxRank}).`);
     // se troviamo almeno un avversario, creiamo la partita
     if (opponents.length >= 1) {
       const opponentId = opponents[0];
@@ -116,7 +136,14 @@ export class MatchmakingService {
       if (!opponentStatusRaw) {
         // Se l'avversario è sparito proprio ora, resettiamo il player attuale 
         // così può riprovare subito senza aspettare il timeout
-        await this.redis.set(USER_STATUS_KEY, JSON.stringify({ state: 'lobby', rank: player.rank }), 'EX', 3600);
+        await this.redis.set(USER_STATUS_KEY, JSON.stringify({ 
+          state: 'lobby', 
+          rank: player.rank,
+          characterName: player.characterName,
+          isAiPlayer: player.isAiPlayer,
+          socketId: player.socketId,
+          updatedAt: Date.now()
+        }), 'EX', 3600);
         await this.redis.zrem(QUEUE_KEY, player.userDbId); // lo togliamo anche dalla coda
         return { status: 'ERROR_OPPONENT_VANISHED_RETRYING' };
       }
@@ -132,6 +159,8 @@ export class MatchmakingService {
         characterName: player.characterName,
         userDbId: String(player.userDbId),
         isAiPlayer: player.isAiPlayer,
+        rank: player.rank,
+        socketId: player.socketId,
         playerIndex: 0,
       };
 
@@ -139,12 +168,30 @@ export class MatchmakingService {
         characterName: opponentData.characterName,
         userDbId: String(opponentId),
         isAiPlayer: opponentData.isAiPlayer,
+        rank: opponentData.rank,
+        socketId: opponentData.socketId,
         playerIndex: 1,
       };
 
-      // creiamo i dati di stato per entrambi i player (usiamo 'lobby' come stato intermedio)
-      const playerStatus = JSON.stringify({ state: 'ingame', ...participant1, opponentId: opponentId, matchId});
-      const opponentStatus = JSON.stringify({ state: 'ingame', ...participant2, opponentId: player.userDbId, matchId});
+      // creiamo i dati di stato per entrambi i player (Uniformato con matchMode e updatedAt)
+      const playerStatus = JSON.stringify({ 
+        state: 'ingame', 
+        ...participant1, 
+        opponentId: opponentId, 
+        matchId, 
+        matchMode: player.matchMode || 'standard',
+        matchType: player.matchType || 'ranked',
+        updatedAt: Date.now()
+      });
+      const opponentStatus = JSON.stringify({ 
+        state: 'ingame', 
+        ...participant2, 
+        opponentId: player.userDbId, 
+        matchId, 
+        matchMode: player.matchMode || 'standard',
+        matchType: player.matchType || 'ranked',
+        updatedAt: Date.now()
+      });
 
       // una volta trovato il match, etichettiamo i player come "in lobby" nel database Redis
       // da notare che se qualcuno crasha durante la partita e giovanni non se ne accorge, i dati rimarranno su redis per 7 minuti (420 secondi) e poi verranno eliminati automaticamente
@@ -211,6 +258,7 @@ async leaveQueue(player: JoinQueueDto) {
       rank: player.rank,
       characterName: player.characterName,
       isAiPlayer: player.isAiPlayer,
+      socketId: player.socketId || undefined,
       updatedAt: Date.now() 
     });
 
@@ -248,13 +296,14 @@ async leaveQueue(player: JoinQueueDto) {
           if (dataRaw) {
               const userData = JSON.parse(dataRaw);
               
-              // Creiamo lo stato lobby
+              // Creiamo lo stato lobby (Uniformato)
               const lobbyStatus = JSON.stringify({ 
                   state: 'lobby', 
                   userDbId: String(userId),
                   characterName: userData.characterName,
                   isAiPlayer: userData.isAiPlayer || false,
                   rank: userData.rank,
+                  socketId: userData.socketId || undefined,
                   updatedAt: Date.now() 
               });
 
@@ -294,7 +343,8 @@ async leaveQueue(player: JoinQueueDto) {
     const challengeData = { 
       ...player, 
       state: currentStatus?.state || 'lobby', // Manteniamo lo stato precedente
-      lastChallengeSent: opponentId 
+      lastChallengeSent: opponentId,
+      updatedAt: Date.now()
     };
     
     await this.redis.set(`status:${player.userDbId}`, JSON.stringify(challengeData), 'EX', 600);
@@ -341,6 +391,8 @@ async leaveQueue(player: JoinQueueDto) {
         characterName: challengerData.characterName,
         userDbId: String(challengerId),
         isAiPlayer: Boolean(challengerData.isAiPlayer || false),
+        rank: challengerData.rank || 0,
+        socketId: challengerData.socketId || undefined,
         playerIndex: 0,
     };
 
@@ -348,13 +400,30 @@ async leaveQueue(player: JoinQueueDto) {
         characterName: opponent.characterName,
         userDbId: String(opponent.userDbId),
         isAiPlayer: Boolean(opponent.isAiPlayer || false),
+        rank: opponent.rank || 0,
+        socketId: opponent.socketId || undefined,
         playerIndex: 1,
     };
 
-    // Settiamo lo stato "ingame" per entrambi
-    // Anche se erano in coda, ora lo stato diventa 'ingame' con tipo 'private' o 'unranked'
-    const playerStatus = JSON.stringify({ state: 'ingame', ...participant1, opponentId: opponent.userDbId, matchId });
-    const opponentStatus = JSON.stringify({ state: 'ingame', ...participant2, opponentId: challengerId, matchId });
+    // Settiamo lo stato "ingame" per entrambi (Uniformato)
+    const playerStatus = JSON.stringify({ 
+      state: 'ingame', 
+      ...participant1, 
+      opponentId: opponent.userDbId, 
+      matchId,
+      matchType: challengerData.matchType || 'unranked',
+      matchMode: challengerData.matchMode || 'standard',
+      updatedAt: Date.now()
+    });
+    const opponentStatus = JSON.stringify({ 
+      state: 'ingame', 
+      ...participant2, 
+      opponentId: challengerId, 
+      matchId,
+      matchType: challengerData.matchType || 'unranked',
+      matchMode: challengerData.matchMode || 'standard',
+      updatedAt: Date.now()
+    });
     
     await this.redis.set(`status:${challengerId}`, playerStatus, 'EX', 420);
     await this.redis.set(`status:${opponent.userDbId}`, opponentStatus, 'EX', 420);
@@ -441,6 +510,8 @@ async leaveQueue(player: JoinQueueDto) {
         characterName: player.characterName,
         userDbId: String(player.userDbId),
         isAiPlayer: Boolean(player.isAiPlayer),
+        rank: player.rank,
+        socketId: player.socketId,
         playerIndex: 0,
     };
 
@@ -448,15 +519,20 @@ async leaveQueue(player: JoinQueueDto) {
         characterName: player.characterName, 
         userDbId: String(player.userDbId), 
         isAiPlayer: false,
+        rank: player.rank,
+        socketId: player.socketId,
         playerIndex: 1,
     };
 
-    // Stato su Redis: lo segnamo come 'ingame' in modalità 'local'
+    // Stato su Redis: lo segnamo come 'ingame' in modalità 'local' (Uniformato)
     const playerStatus = JSON.stringify({ 
         state: 'ingame', 
         matchMode: 'local',
+        matchType: 'unranked',
         matchId: matchId,
-        ...participant1
+        opponentId: player.userDbId, // In locale l'opponente è se stesso (o lo stesso account)
+        ...participant1,
+        updatedAt: Date.now()
     });
 
     await this.redis.set(USER_STATUS_KEY, playerStatus, 'EX', 600);
@@ -490,11 +566,14 @@ async leaveQueue(player: JoinQueueDto) {
 
       if (userDataRaw) {
           const userData = JSON.parse(userDataRaw);
-          // Riportiamo l'utente in lobby con il suo rank originale
+          // Riportiamo l'utente in lobby con il suo rank originale (Uniformato)
           const lobbyStatus = JSON.stringify({ 
               state: 'lobby', 
               rank: userData.rank, 
-              characterName: userData.characterName 
+              characterName: userData.characterName,
+              isAiPlayer: userData.isAiPlayer || false,
+              socketId: userData.socketId || undefined,
+              updatedAt: Date.now()
           });
           await this.redis.set(USER_STATUS_KEY, lobbyStatus, 'EX', 3600);
       }
@@ -517,6 +596,8 @@ async leaveQueue(player: JoinQueueDto) {
         characterName: player.characterName,
         userDbId: String(player.userDbId), // Conversione in string per il DTO di Piro
         isAiPlayer: false,
+        rank: player.rank,
+        socketId: player.socketId,
         playerIndex: 0,
     };
 
@@ -525,15 +606,19 @@ async leaveQueue(player: JoinQueueDto) {
         characterName: 'CPU_Bot',
         userDbId: null, // Il bot non ha un ID nel database
         isAiPlayer: true, // Questo attiva la logica AI nel server di gioco
+        rank: player.rank,
         playerIndex: 1,
     };
 
-    // Salviamo lo stato su Redis (stato 'ingame', modalità 'ai')
+    // Salviamo lo stato su Redis (stato 'ingame', modalità 'ai') (Uniformato)
     const playerStatus = JSON.stringify({ 
         state: 'ingame', 
         matchMode: 'ai', 
+        matchType: 'unranked',
         matchId: matchId,
-        ...participant1 
+        opponentId: 'CPU_BOT',
+        ...participant1,
+        updatedAt: Date.now()
     });
 
     await this.redis.set(USER_STATUS_KEY, playerStatus, 'EX', 600);
@@ -566,12 +651,13 @@ async leaveQueue(player: JoinQueueDto) {
 
     if (userDataRaw) {
         const userData = JSON.parse(userDataRaw);
-        // Riportiamo l'utente in lobby
+        // Riportiamo l'utente in lobby (Uniformato)
         const lobbyStatus = JSON.stringify({ 
             state: 'lobby', 
             rank: userData.rank, 
             characterName: userData.characterName,
             isAiPlayer: false,
+            socketId: userData.socketId || undefined,
             updatedAt: Date.now()
         });
         await this.redis.set(USER_STATUS_KEY, lobbyStatus, 'EX', 3600);
