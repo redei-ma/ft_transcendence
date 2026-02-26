@@ -15,8 +15,8 @@ export const GameConfig = {
 	},
 	PLAYER: {
 		DEFAULT_HP: 100,
-		SPEED: 20.0,
-		RADIUS: 0.8,
+		SPEED: 40.0,
+		RADIUS: 1.6,
 		RESPAWN_TIMER: 5.0,
 		BOT_DB_ID: -1,
 	},
@@ -24,8 +24,8 @@ export const GameConfig = {
 		DEFAULT_PLAYERS_FOR_TEAM: 2, // Per gestire 2vs2, 2vs2vs2, ecc.
 	},
 	COMBAT: {
-		MELEE_HITBOX_RADIUS: 2.0,
-		SPELL_HITBOX_RADIUS: 0.5,
+		MELEE_HITBOX_RADIUS: 3.0,
+		SPELL_HITBOX_RADIUS: 1.5,
 		ATTACK_RANGE_OFFSET: 1.5,
 		SPELL_ATTACK_RANGE_OFFSET: 1.0,
 		ATTACK_VISUALIZATION: 0.5,

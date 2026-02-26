@@ -5,17 +5,17 @@ import { CharacherStats, CharacterName, MatchType, Player } from "../interfaces-
 
 export const CHARACTER_DATA: Record<CharacterName, CharacherStats> = {
 	[CharacterName.ZEUS]: {
-		MELEE_DAMAGE: 10.0,
-		SPELL_DAMAGE: 8.0,
-		SPELL_SPEED: 25.0,
+		MELEE_DAMAGE: 15.0,
+		SPELL_DAMAGE: 10.0,
+		SPELL_SPEED: 60.0,
 		COOLDOWN_MELEE_ATTACK: 0.8,
 		COOLDOWN_SPELL_ATTACK: 1.5,
 		COOLDOWN_DEFENCE_ATTACK: 5.0,
 	},
 	[CharacterName.ADE]: {
 		MELEE_DAMAGE: 15.0,
-		SPELL_DAMAGE: 5.0,
-		SPELL_SPEED: 18.0,
+		SPELL_DAMAGE: 10.0,
+		SPELL_SPEED: 60.0,
 		COOLDOWN_MELEE_ATTACK: 1.2,
 		COOLDOWN_SPELL_ATTACK: 1.0,
 		COOLDOWN_DEFENCE_ATTACK: 6.0,
