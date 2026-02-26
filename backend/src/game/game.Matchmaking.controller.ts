@@ -36,7 +36,7 @@ export class MatchMakingController{
 		if (result.status !== SuccessCode.OK){
 			this.logger.warn(`match not created, internal error ${data.gameId}`);
 			throw new BadRequestException({
-				errorCode: result.status, // es. ErrorCode.UNAUTHORIZED o MAP_LOAD_FAILED
+				errorCode: result.status,
 				message: result.message || 'Match creation failed', 
 				gameId: data.gameId
 			});

@@ -76,14 +76,14 @@ export class GameService{
 	}
 
 	/* Triggered by handleDisconnect. Makes the player in disconnect mode. */
-	handlePlayerDisconnect(socketId: string){
+	handlePlayerDisconnect(socketId: string): ExitStatus{
 		const session: GameSession | undefined = this.getGameBySocket(socketId);
 
-		if (!session) return ;
+		if (!session) return {status: ErrorCode.SESSION_NOT_FOUND, message: 'session not found, unable to remove the player'};
 
 		const entityIds: string[] | undefined = session.socketToEntities.get(socketId);
 
-		if (!entityIds || entityIds.length === 0) return ;
+		if (!entityIds || entityIds.length === 0) return{status: ErrorCode.INTERNAL_ERROR, message: 'entity id not found, error'} ;
 
 		let player: Player | undefined = undefined;
 
@@ -95,13 +95,19 @@ export class GameService{
 			player.isDisconnected = true;
 			this.logger.log(`Player ${player.characterName} (ID: ${entityId}) disconnected.`);
 		}
+
+		return {status: SuccessCode.OK}
 	}
 
 	/* Triggered by OnGatewayDisconnect. Removes the game from memory. */
 	removeSession(game: GameSession): void {
 		// inviare i dati al database di renato
+		//sending the end_game event for the matchmaking
 		const gameId = game.getGameId();
-		
+		if (!gameId)
+			this.logger.error('error, gameid is undefined')
+		this.redis.emit(NetworkConfig.MATCHMAKING.MATCH_EVENTS.END_GAME, gameId);
+
 		for (const socketId of game.socketToEntities.keys()){
 			this.socketToGame.delete(socketId);
 		}
@@ -111,9 +117,6 @@ export class GameService{
 		}
 		game.cleanUp();
 		this.games.delete(gameId);
-
-		//sending the end_game event for the matchmaking
-		this.redis.emit(NetworkConfig.MATCHMAKING.MATCH_EVENTS.END_GAME, gameId);
 
 		//sending the end game data to the database
 		const endGameData: MatchResult = game.engine.endGameData;

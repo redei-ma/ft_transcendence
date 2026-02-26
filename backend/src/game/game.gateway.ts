@@ -116,8 +116,16 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect, On
 			return;
 		}
 
-		this.gameService.handlePlayerDisconnect(socketId);
-
+		const result = this.gameService.handlePlayerDisconnect(socketId);
+		if (result.status !== SuccessCode.OK){
+			client.emit('exception', {
+				status: 'error',
+				errorCode: result.status,
+				message: result.message || 'undefined error'
+			});
+			client.disconnect();
+			this.logger.warn(`error in removing the player from the game`);
+		}
 		this.logger.log(`client with socket-id ${socketId} is exit`);
 	}
 

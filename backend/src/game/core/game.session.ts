@@ -105,7 +105,7 @@ export class GameSession{
 	}
 
 	isGameOver(): boolean {
-		return (this.currentState instanceof EndState);
+		return (this.currentState.name === 'EndGame');
 	}
 
 	isPlaying(): boolean{
