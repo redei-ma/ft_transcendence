@@ -126,7 +126,8 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect, On
 			client.disconnect();
 			this.logger.warn(`error in removing the player from the game`);
 		}
-		this.logger.log(`client with socket-id ${socketId} is exit`);
+		else
+			this.logger.log(`client with socket-id ${socketId} is exit`);
 	}
 
 	/* @SubscribeMessage: Listens for specific events named 'input'.
