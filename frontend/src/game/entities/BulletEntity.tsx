@@ -8,7 +8,8 @@
 //   snapshot: BulletSnapshot;
 // }
 
-// const BULLET_RADIUS = 0.5;
+// // Scaled 2x (was 0.5)
+// const BULLET_RADIUS = 1.0;
 
 // // --- Fire shader ---
 
@@ -184,9 +185,9 @@
 //     if (timeAccum.current > 0.025) {
 //       timeAccum.current = 0;
 
-//       // Mini-fulmini attorno
 //       for (const line of boltObjects) {
 //         const posAttr = line.geometry.getAttribute('position') as THREE.BufferAttribute;
+//         // Bolt radius scaled with bullet — 3.0 (was 1.5 relative)
 //         const radius = BULLET_RADIUS * 1.5;
 
 //         const sTheta = Math.random() * Math.PI * 2;
@@ -208,7 +209,6 @@
 //         posAttr.needsUpdate = true;
 //       }
 
-//       // Scia: archi verso indietro
 //       for (const line of trailObjects) {
 //         const posAttr = line.geometry.getAttribute('position') as THREE.BufferAttribute;
 
@@ -227,7 +227,7 @@
 
 //   return (
 //     <group ref={groupRef} position={[snapshot.position.x, 1, snapshot.position.z]}>
-//       {/* Core bianco */}
+//       {/* Core — 0.35 (was 0.175 relative) */}
 //       <mesh>
 //         <sphereGeometry args={[BULLET_RADIUS * 0.35, 16, 16]} />
 //         <meshBasicMaterial
@@ -238,7 +238,7 @@
 //         />
 //       </mesh>
 
-//       {/* Alone */}
+//       {/* Alone — 0.6 (was 0.3 relative) */}
 //       <mesh>
 //         <sphereGeometry args={[BULLET_RADIUS * 0.6, 12, 12]} />
 //         <meshBasicMaterial
@@ -249,12 +249,10 @@
 //         />
 //       </mesh>
 
-//       {/* Mini-fulmini */}
 //       {boltObjects.map((line, i) => (
 //         <primitive key={`bolt-${i}`} object={line} />
 //       ))}
 
-//       {/* Scia archi */}
 //       {trailObjects.map((line, i) => (
 //         <primitive key={`trail-${i}`} object={line} />
 //       ))}
@@ -276,7 +274,6 @@
 //   const spawnTimer = useRef(0);
 //   const nextIdx = useRef(0);
 //   const historyLen = 20;
-//   // Registro delle posizioni mondiali passate del proiettile
 //   const posHistory = useRef<THREE.Vector3[]>([]);
 
 //   const fireUniforms = useMemo(() => ({
@@ -308,15 +305,12 @@
 //       fireMatRef.current.uniforms.uTime.value = time.current * 2.0;
 //     }
 
-//     // Salva posizione mondiale corrente nella history
 //     const worldPos = groupRef.current.position.clone();
 //     posHistory.current.push(worldPos);
 //     if (posHistory.current.length > historyLen) {
 //       posHistory.current.shift();
 //     }
 
-//     // Scia: spawna particelle dalle posizioni PASSATE
-//     // Le particelle sono in coordinate LOCALI al group — compenso
 //     if (trailRef.current) {
 //       const posAttr = trailRef.current.geometry.getAttribute('position') as THREE.BufferAttribute;
 //       const { pos, vel, life } = trailData;
@@ -327,12 +321,10 @@
 //         const idx = nextIdx.current % TRAIL_COUNT;
 //         nextIdx.current++;
 
-//         // Prendi una posizione recente dalla history
 //         const history = posHistory.current;
 //         const histIdx = Math.max(0, history.length - 3 - Math.floor(Math.random() * 3));
 //         const spawnWorldPos = history[histIdx] || worldPos;
 
-//         // Converti da mondiale a locale al group
 //         const localPos = groupRef.current.worldToLocal(spawnWorldPos.clone());
 
 //         pos[idx * 3]     = localPos.x + (Math.random() - 0.5) * 0.6;
@@ -346,7 +338,6 @@
 //         life[idx] = 0.3 + Math.random() * 0.3;
 //       }
 
-//       // Aggiorna particelle
 //       for (let i = 0; i < TRAIL_COUNT; i++) {
 //         life[i] -= dt;
 
@@ -359,9 +350,6 @@
 //         pos[i * 3 + 1] += vel[i * 3 + 1] * dt;
 //         pos[i * 3 + 2] += vel[i * 3 + 2] * dt;
 
-//         // Compensazione: il group si è mosso, le particelle devono restare ferme nel mondo
-//         // Sottrai il delta di movimento del group
-//         // Questo fa sì che le particelle "restino indietro"
 //         const groupDelta = new THREE.Vector3().subVectors(worldPos, (posHistory.current[posHistory.current.length - 2] || worldPos));
 //         pos[i * 3]     -= groupDelta.x;
 //         pos[i * 3 + 1] -= groupDelta.y;
@@ -378,18 +366,18 @@
 
 //   return (
 //     <group ref={groupRef} position={[snapshot.position.x, 1, snapshot.position.z]}>
-//       {/* Core */}
+//       {/* Core — 0.25 (was 0.125 relative) */}
 //       <mesh>
 //         <sphereGeometry args={[BULLET_RADIUS * 0.25, 10, 10]} />
 //         <meshBasicMaterial
-//           color={new THREE.Color(12, 4, 0)}
+//           color={new THREE.Color(3, 1, 0)}
 //           transparent
 //           opacity={0.7}
 //           toneMapped={false}
 //         />
 //       </mesh>
 
-//       {/* Sfera fuoco */}
+//       {/* Sfera fuoco — BULLET_RADIUS = 1.0 */}
 //       <mesh>
 //         <sphereGeometry args={[BULLET_RADIUS, 32, 32]} />
 //         <shaderMaterial
@@ -404,18 +392,18 @@
 //         />
 //       </mesh>
 
-//       {/* Alone */}
+//       {/* Alone — 1.4 (was 0.7 relative) */}
 //       <mesh>
 //         <sphereGeometry args={[BULLET_RADIUS * 1.4, 16, 16]} />
 //         <meshBasicMaterial
-//           color={new THREE.Color(3, 0.4, 0)}
+//           color={new THREE.Color(1.5, 0.3, 0)}
 //           transparent
 //           opacity={0.08}
 //           toneMapped={false}
 //         />
 //       </mesh>
 
-//       {/* Scia — dentro il group, compensata */}
+//       {/* Scia */}
 //       <points ref={trailRef} frustumCulled={false}>
 //         <bufferGeometry>
 //           <bufferAttribute
@@ -436,7 +424,7 @@
 //     </group>
 //   );
 // }
-import { useRef, useMemo } from 'react';
+import { useRef, useMemo, useEffect } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { BulletSnapshot, BulletHit } from '../../types/game.types';
@@ -625,7 +613,6 @@ function ZeusBullet({ snapshot }: { snapshot: BulletSnapshot }) {
 
       for (const line of boltObjects) {
         const posAttr = line.geometry.getAttribute('position') as THREE.BufferAttribute;
-        // Bolt radius scaled with bullet — 3.0 (was 1.5 relative)
         const radius = BULLET_RADIUS * 1.5;
 
         const sTheta = Math.random() * Math.PI * 2;
@@ -665,7 +652,7 @@ function ZeusBullet({ snapshot }: { snapshot: BulletSnapshot }) {
 
   return (
     <group ref={groupRef} position={[snapshot.position.x, 1, snapshot.position.z]}>
-      {/* Core — 0.35 (was 0.175 relative) */}
+      {/* Core */}
       <mesh>
         <sphereGeometry args={[BULLET_RADIUS * 0.35, 16, 16]} />
         <meshBasicMaterial
@@ -676,7 +663,7 @@ function ZeusBullet({ snapshot }: { snapshot: BulletSnapshot }) {
         />
       </mesh>
 
-      {/* Alone — 0.6 (was 0.3 relative) */}
+      {/* Alone */}
       <mesh>
         <sphereGeometry args={[BULLET_RADIUS * 0.6, 12, 12]} />
         <meshBasicMaterial
@@ -707,7 +694,6 @@ const TRAIL_COUNT = 50;
 function AdeBullet({ snapshot }: { snapshot: BulletSnapshot }) {
   const groupRef = useRef<THREE.Group>(null);
   const fireMatRef = useRef<THREE.ShaderMaterial>(null);
-  const trailRef = useRef<THREE.Points>(null);
   const time = useRef(0);
   const spawnTimer = useRef(0);
   const nextIdx = useRef(0);
@@ -720,16 +706,47 @@ function AdeBullet({ snapshot }: { snapshot: BulletSnapshot }) {
     uDeform: { value: 0.15 },
   }), []);
 
-  const trailData = useMemo(() => {
+  // Sistema scia completamente imperativo
+  const trailSystem = useMemo(() => {
     const pos = new Float32Array(TRAIL_COUNT * 3);
     const vel = new Float32Array(TRAIL_COUNT * 3);
     const life = new Float32Array(TRAIL_COUNT);
+
     for (let i = 0; i < TRAIL_COUNT; i++) {
-      pos[i * 3 + 1] = -100;
+      pos[i * 3]     = 0;
+      pos[i * 3 + 1] = -1000;
+      pos[i * 3 + 2] = 0;
       life[i] = 0;
     }
-    return { pos, vel, life };
+
+    const geometry = new THREE.BufferGeometry();
+    const posAttr = new THREE.BufferAttribute(pos, 3);
+    posAttr.setUsage(THREE.DynamicDrawUsage);
+    geometry.setAttribute('position', posAttr);
+
+    const material = new THREE.PointsMaterial({
+      size: 0.12,
+      color: new THREE.Color(6, 1.5, 0),
+      transparent: true,
+      opacity: 0.6,
+      toneMapped: false,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+    });
+
+    const points = new THREE.Points(geometry, material);
+    points.frustumCulled = false;
+
+    return { points, pos, vel, life, geometry };
   }, []);
+
+  // Cleanup
+  useEffect(() => {
+    return () => {
+      trailSystem.geometry.dispose();
+      (trailSystem.points.material as THREE.PointsMaterial).dispose();
+    };
+  }, [trailSystem]);
 
   useFrame((_, delta) => {
     if (!groupRef.current) return;
@@ -749,62 +766,66 @@ function AdeBullet({ snapshot }: { snapshot: BulletSnapshot }) {
       posHistory.current.shift();
     }
 
-    if (trailRef.current) {
-      const posAttr = trailRef.current.geometry.getAttribute('position') as THREE.BufferAttribute;
-      const { pos, vel, life } = trailData;
+    // Scia — aggiorna sistema imperativo
+    const { pos, vel, life, geometry } = trailSystem;
+    const posAttr = geometry.getAttribute('position') as THREE.BufferAttribute;
 
-      spawnTimer.current += dt;
-      while (spawnTimer.current > 0.02) {
-        spawnTimer.current -= 0.02;
-        const idx = nextIdx.current % TRAIL_COUNT;
-        nextIdx.current++;
+    spawnTimer.current += dt;
+    while (spawnTimer.current > 0.02) {
+      spawnTimer.current -= 0.02;
+      const idx = nextIdx.current % TRAIL_COUNT;
+      nextIdx.current++;
 
-        const history = posHistory.current;
-        const histIdx = Math.max(0, history.length - 3 - Math.floor(Math.random() * 3));
-        const spawnWorldPos = history[histIdx] || worldPos;
+      const history = posHistory.current;
+      const histIdx = Math.max(0, history.length - 3 - Math.floor(Math.random() * 3));
+      const spawnWorldPos = history[histIdx] || worldPos;
 
-        const localPos = groupRef.current.worldToLocal(spawnWorldPos.clone());
+      const localPos = groupRef.current.worldToLocal(spawnWorldPos.clone());
 
-        pos[idx * 3]     = localPos.x + (Math.random() - 0.5) * 0.6;
-        pos[idx * 3 + 1] = localPos.y + (Math.random() - 0.5) * 0.6;
-        pos[idx * 3 + 2] = localPos.z + (Math.random() - 0.5) * 0.6;
+      pos[idx * 3]     = localPos.x + (Math.random() - 0.5) * 0.6;
+      pos[idx * 3 + 1] = localPos.y + (Math.random() - 0.5) * 0.6;
+      pos[idx * 3 + 2] = localPos.z + (Math.random() - 0.5) * 0.6;
 
-        vel[idx * 3]     = (Math.random() - 0.5) * 1.0;
-        vel[idx * 3 + 1] = 0.5 + Math.random() * 1.0;
-        vel[idx * 3 + 2] = (Math.random() - 0.5) * 1.0;
+      vel[idx * 3]     = (Math.random() - 0.5) * 1.0;
+      vel[idx * 3 + 1] = 0.5 + Math.random() * 1.0;
+      vel[idx * 3 + 2] = (Math.random() - 0.5) * 1.0;
 
-        life[idx] = 0.3 + Math.random() * 0.3;
-      }
-
-      for (let i = 0; i < TRAIL_COUNT; i++) {
-        life[i] -= dt;
-
-        if (life[i] <= 0) {
-          posAttr.array[i * 3 + 1] = -100;
-          continue;
-        }
-
-        pos[i * 3]     += vel[i * 3] * dt;
-        pos[i * 3 + 1] += vel[i * 3 + 1] * dt;
-        pos[i * 3 + 2] += vel[i * 3 + 2] * dt;
-
-        const groupDelta = new THREE.Vector3().subVectors(worldPos, (posHistory.current[posHistory.current.length - 2] || worldPos));
-        pos[i * 3]     -= groupDelta.x;
-        pos[i * 3 + 1] -= groupDelta.y;
-        pos[i * 3 + 2] -= groupDelta.z;
-
-        posAttr.array[i * 3]     = pos[i * 3];
-        posAttr.array[i * 3 + 1] = pos[i * 3 + 1];
-        posAttr.array[i * 3 + 2] = pos[i * 3 + 2];
-      }
-
-      posAttr.needsUpdate = true;
+      life[idx] = 0.3 + Math.random() * 0.3;
     }
+
+    for (let i = 0; i < TRAIL_COUNT; i++) {
+      life[i] -= dt;
+
+      if (life[i] <= 0) {
+        pos[i * 3]     = 0;
+        pos[i * 3 + 1] = -1000;
+        pos[i * 3 + 2] = 0;
+        posAttr.array[i * 3]     = 0;
+        posAttr.array[i * 3 + 1] = -1000;
+        posAttr.array[i * 3 + 2] = 0;
+        continue;
+      }
+
+      pos[i * 3]     += vel[i * 3] * dt;
+      pos[i * 3 + 1] += vel[i * 3 + 1] * dt;
+      pos[i * 3 + 2] += vel[i * 3 + 2] * dt;
+
+      const groupDelta = new THREE.Vector3().subVectors(worldPos, (posHistory.current[posHistory.current.length - 2] || worldPos));
+      pos[i * 3]     -= groupDelta.x;
+      pos[i * 3 + 1] -= groupDelta.y;
+      pos[i * 3 + 2] -= groupDelta.z;
+
+      posAttr.array[i * 3]     = pos[i * 3];
+      posAttr.array[i * 3 + 1] = pos[i * 3 + 1];
+      posAttr.array[i * 3 + 2] = pos[i * 3 + 2];
+    }
+
+    posAttr.needsUpdate = true;
   });
 
   return (
     <group ref={groupRef} position={[snapshot.position.x, 1, snapshot.position.z]}>
-      {/* Core — 0.25 (was 0.125 relative) */}
+      {/* Core */}
       <mesh>
         <sphereGeometry args={[BULLET_RADIUS * 0.25, 10, 10]} />
         <meshBasicMaterial
@@ -815,7 +836,7 @@ function AdeBullet({ snapshot }: { snapshot: BulletSnapshot }) {
         />
       </mesh>
 
-      {/* Sfera fuoco — BULLET_RADIUS = 1.0 */}
+      {/* Sfera fuoco */}
       <mesh>
         <sphereGeometry args={[BULLET_RADIUS, 32, 32]} />
         <shaderMaterial
@@ -830,7 +851,7 @@ function AdeBullet({ snapshot }: { snapshot: BulletSnapshot }) {
         />
       </mesh>
 
-      {/* Alone — 1.4 (was 0.7 relative) */}
+      {/* Alone */}
       <mesh>
         <sphereGeometry args={[BULLET_RADIUS * 1.4, 16, 16]} />
         <meshBasicMaterial
@@ -841,24 +862,8 @@ function AdeBullet({ snapshot }: { snapshot: BulletSnapshot }) {
         />
       </mesh>
 
-      {/* Scia */}
-      <points ref={trailRef} frustumCulled={false}>
-        <bufferGeometry>
-          <bufferAttribute
-            attach="attributes-position"
-            args={[trailData.pos, 3]}
-          />
-        </bufferGeometry>
-        <pointsMaterial
-          size={0.12}
-          color={new THREE.Color(6, 1.5, 0)}
-          transparent
-          opacity={0.6}
-          toneMapped={false}
-          blending={THREE.AdditiveBlending}
-          depthWrite={false}
-        />
-      </points>
+      {/* Scia — imperativa */}
+      <primitive object={trailSystem.points} />
     </group>
   );
 }

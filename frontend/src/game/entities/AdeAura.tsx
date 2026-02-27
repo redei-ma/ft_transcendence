@@ -11,7 +11,8 @@
 //   isDead: boolean;
 // }
 
-// const SPHERE_RADIUS = 2.2;
+// // Scaled 1.5x (was 2.2)
+// const SPHERE_RADIUS = 3.3;
 // const EMBER_COUNT_IDLE = 60;
 // const EMBER_COUNT_ATTACK = 120;
 // const EMBER_COUNT_MAX = 120;
@@ -90,7 +91,6 @@
 //   void main() {
 //     vPosition = position;
 
-//     // Ruota il sampling noise — fiamme restano indietro
 //     float lagAngle = -uRotation * 0.6;
 //     float cosA = cos(lagAngle);
 //     float sinA = sin(lagAngle);
@@ -100,7 +100,6 @@
 //       position.x * sinA + position.z * cosA
 //     );
 
-//     // 3 ottave di noise con corrente ascendente
 //     vec3 noiseBase = rotatedPos * 1.2 + vec3(0.0, -uTime * 1.2, 0.0);
 //     float n1 = snoise(noiseBase);
 //     float n2 = snoise(noiseBase * 2.3 + vec3(37.0, 0.0, 91.0)) * 0.5;
@@ -128,38 +127,27 @@
 //   varying float vNoise;
 
 //   void main() {
-//     // Heat: noise + leggero bias di altezza
 //     float rawHeat = vNoise * 0.5 + normalize(vPosition).y * 0.15;
-//     // uHeatBias controlla quanto la palette si sposta verso il caldo
 //     float heat = clamp((rawHeat + 1.2) * (0.3 + uHeatBias), 0.0, 1.0);
 
-//     // Palette: rosso sangue scuro dominante
 //     vec3 color;
 //     if (heat < 0.25) {
-//       // Rosso sangue scuro — la maggioranza della sfera
 //       color = mix(vec3(0.15, 0.0, 0.0), vec3(0.4, 0.02, 0.0), heat / 0.25);
 //     } else if (heat < 0.45) {
-//       // Rosso scuro → rosso
 //       color = mix(vec3(0.4, 0.02, 0.0), vec3(0.75, 0.08, 0.0), (heat - 0.25) / 0.2);
 //     } else if (heat < 0.65) {
-//       // Rosso → arancio scuro
 //       color = mix(vec3(0.75, 0.08, 0.0), vec3(1.0, 0.35, 0.0), (heat - 0.45) / 0.2);
 //     } else if (heat < 0.82) {
-//       // Arancio → giallo
 //       color = mix(vec3(1.0, 0.35, 0.0), vec3(1.0, 0.7, 0.1), (heat - 0.65) / 0.17);
 //     } else {
-//       // Giallo → bianco caldo (raro, solo picchi)
 //       color = mix(vec3(1.0, 0.7, 0.1), vec3(1.0, 0.9, 0.6), (heat - 0.82) / 0.18);
 //     }
 
 //     color *= uIntensity;
 
-//     // Flicker
 //     float flicker = 0.93 + sin(uTime * 10.0 + vPosition.x * 7.0 + vPosition.z * 5.0 + vPosition.y * 3.0) * 0.07;
 //     color *= flicker;
 
-//     // Opacita basata su noise — zone con noise basso sono piu trasparenti
-//     // Questo crea "buchi" nella sfera dove si intravede Ade
 //     float noiseOpacity = smoothstep(-0.3, 0.5, vNoise);
 //     float finalOpacity = uOpacity * (0.5 + noiseOpacity * 0.5);
 
@@ -203,7 +191,11 @@
 //     const vel = new Float32Array(EMBER_COUNT_MAX * 3);
 
 //     for (let i = 0; i < EMBER_COUNT_MAX; i++) {
-//       respawnEmber(pos, vel, life, maxLife, i);
+//       pos[i * 3]     = 0;
+//       pos[i * 3 + 1] = -100;
+//       pos[i * 3 + 2] = 0;
+//       life[i] = 0;
+//       maxLife[i] = 0;
 //     }
 
 //     return { positions: pos, velocities: vel, lifetimes: life, maxLifetimes: maxLife };
@@ -216,7 +208,6 @@
 //     time.current += dt;
 //     const isMelee = isAttacking && attackType === AttackType.MELEE_ATTACK;
 
-//     // Scale
 //     let targetScale = 1.0;
 //     if (isDefending) {
 //       targetScale = 0.85;
@@ -228,28 +219,20 @@
 //     );
 //     groupRef.current.scale.setScalar(currentScale.current);
 
-//     // Rotazione — attacco = veloce, difesa = lenta
 //     const rotSpeed = isDefending ? 0.4 : isMelee ? 3.5 : 1.0;
 //     rotation.current += rotSpeed * dt;
 //     groupRef.current.rotation.y = rotation.current;
 
-//     // Ember count — piu braci in attacco
 //     const targetEmbers = isDefending ? 30 : isMelee ? EMBER_COUNT_ATTACK : EMBER_COUNT_IDLE;
 //     activeEmbers.current = Math.round(THREE.MathUtils.lerp(
 //       activeEmbers.current, targetEmbers, 1 - Math.pow(0.01, dt)
 //     ));
 
-//     // Shader params
-//     // Difesa: scuro, compatto, poco noise
-//     // Idle: rosso scuro dominante, poco giallo/bianco
-//     // Attacco: piu rotazione, poco piu noise, moderato giallo
 //     const timeSpeed = isDefending ? 0.4 : isMelee ? 1.3 : 0.9;
 //     const innerDeform = isDefending ? 0.12 : isMelee ? 0.4 : 0.3;
 //     const outerDeform = isDefending ? 0.2 : isMelee ? 0.55 : 0.4;
 //     const innerIntensity = isDefending ? 1.8 : isMelee ? 2.3 : 2.0;
 //     const outerIntensity = isDefending ? 1.0 : isMelee ? 1.5 : 1.2;
-//     // heatBias: sposta la palette verso il caldo
-//     // Difesa ~0 (quasi tutto rosso sangue), idle = poco, attacco = moderato
 //     const heatBias = isDefending ? -0.02 : isMelee ? 0.1 : 0.05;
 
 //     if (innerFireRef.current) {
@@ -278,7 +261,6 @@
 
 //       for (let i = 0; i < EMBER_COUNT_MAX; i++) {
 //         if (i >= count) {
-//           // Particelle extra: manda fuori schermo
 //           posAttr.array[i * 3] = 0;
 //           posAttr.array[i * 3 + 1] = -100;
 //           posAttr.array[i * 3 + 2] = 0;
@@ -295,7 +277,6 @@
 //         positions[i * 3 + 1] += velocities[i * 3 + 1] * dt;
 //         positions[i * 3 + 2] += velocities[i * 3 + 2] * dt;
 
-//         // Rotazione braci
 //         const x = positions[i * 3];
 //         const z = positions[i * 3 + 2];
 //         positions[i * 3]     += (-z * 0.5) * dt;
@@ -313,30 +294,30 @@
 //   if (isDead) return null;
 
 //   return (
-//     <group ref={groupRef} position={[0, 1.6, 0]}>
-//       {/* Core */}
+//     <group ref={groupRef} position={[0, 2.4, 0]}>
+//       Core — 0.75 (was 0.5)
 //       <mesh>
-//         <sphereGeometry args={[0.5, 16, 16]} />
+//         <sphereGeometry args={[0.75, 16, 16]} />
 //         <meshBasicMaterial
-//           color={new THREE.Color(8, 2, 0)}
+//           color={new THREE.Color(2, 0.5, 0)}
 //           transparent
 //           opacity={isDefending ? 0.5 : 0.3}
 //           toneMapped={false}
 //         />
 //       </mesh>
 
-//       {/* Alone intermedio */}
+//       {/* Alone intermedio — 1.5 (was 1.0) */}
 //       <mesh>
-//         <sphereGeometry args={[1.0, 16, 16]} />
+//         <sphereGeometry args={[1.5, 16, 16]} />
 //         <meshBasicMaterial
-//           color={new THREE.Color(3, 0.3, 0)}
+//           color={new THREE.Color(1.5, 0.2, 0)}
 //           transparent
 //           opacity={0.1}
 //           toneMapped={false}
 //         />
 //       </mesh>
 
-//       {/* Sfera fuoco interna */}
+//       {/* Sfera fuoco interna — SPHERE_RADIUS * 0.75 = 2.475 */}
 //       <mesh>
 //         <sphereGeometry args={[SPHERE_RADIUS * 0.75, 64, 64]} />
 //         <shaderMaterial
@@ -351,7 +332,7 @@
 //         />
 //       </mesh>
 
-//       {/* Sfera fuoco esterna */}
+//       {/* Sfera fuoco esterna — SPHERE_RADIUS = 3.3 */}
 //       <mesh>
 //         <sphereGeometry args={[SPHERE_RADIUS, 48, 48]} />
 //         <shaderMaterial
@@ -360,30 +341,37 @@
 //           fragmentShader={fireFragmentShader}
 //           uniforms={outerUniforms}
 //           transparent
-//           side={THREE.DoubleSide}
+//           side={THREE.FrontSide}
 //           depthWrite={false}
 //           blending={THREE.AdditiveBlending}
 //         />
 //       </mesh>
 
 //       {/* Braci */}
-//       <points ref={embersRef}>
-//         <bufferGeometry>
-//           <bufferAttribute
-//             attach="attributes-position"
-//             args={[emberData.positions, 3]}
-//           />
-//         </bufferGeometry>
-//         <pointsMaterial
-//           size={0.08}
-//           color={new THREE.Color(6, 1.5, 0)}
-//           transparent
-//           opacity={0.7}
-//           toneMapped={false}
-//           blending={THREE.AdditiveBlending}
-//           depthWrite={false}
-//         />
-//       </points>
+//       <points ref={embersRef} frustumCulled={false}>
+//     <bufferGeometry ref={(geo) => {
+//         if (geo && !geo.hasAttribute('position')) {
+//             // Forza tutte le posizioni fuori schermo
+//             for (let i = 0; i < EMBER_COUNT_MAX; i++) {
+//                 emberData.positions[i * 3]     = 0;
+//                 emberData.positions[i * 3 + 1] = -100;
+//                 emberData.positions[i * 3 + 2] = 0;
+//             }
+//             const attr = new THREE.BufferAttribute(emberData.positions, 3);
+//             attr.setUsage(THREE.DynamicDrawUsage);
+//             geo.setAttribute('position', attr);
+//         }
+//     }} />
+//     <pointsMaterial
+//         size={0.08}
+//         color={new THREE.Color(6, 1.5, 0)}
+//         transparent
+//         opacity={0.7}
+//         toneMapped={false}
+//         blending={THREE.AdditiveBlending}
+//         depthWrite={false}
+//     />
+// </points>
 //     </group>
 //   );
 // }
@@ -394,6 +382,7 @@
 // ) {
 //   const theta = Math.random() * Math.PI * 2;
 //   const phi = Math.random() * Math.PI;
+//   // Spawn sulla superficie della sfera scalata
 //   const r = SPHERE_RADIUS * (0.8 + Math.random() * 0.4);
 
 //   pos[i * 3]     = r * Math.sin(phi) * Math.cos(theta);
@@ -408,10 +397,9 @@
 //   life[i] = l;
 //   maxLife[i] = l;
 // }
-import { useRef, useMemo } from 'react';
+import { useRef, useMemo, useEffect } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
-import { AURA_CONFIG } from '../../configs/auraConfig';
 import { AttackType } from '../../types/game.types';
 
 interface AdeAuraProps {
@@ -421,7 +409,6 @@ interface AdeAuraProps {
   isDead: boolean;
 }
 
-// Scaled 1.5x (was 2.2)
 const SPHERE_RADIUS = 3.3;
 const EMBER_COUNT_IDLE = 60;
 const EMBER_COUNT_ATTACK = 120;
@@ -566,15 +553,56 @@ const fireFragmentShader = `
 `;
 
 export function AdeAura({ isAttacking, attackType, isDefending, isDead }: AdeAuraProps) {
-  const config = AURA_CONFIG.ade;
   const groupRef = useRef<THREE.Group>(null);
   const innerFireRef = useRef<THREE.ShaderMaterial>(null);
   const outerFireRef = useRef<THREE.ShaderMaterial>(null);
-  const embersRef = useRef<THREE.Points>(null);
   const currentScale = useRef(1.0);
   const rotation = useRef(0);
   const time = useRef(0);
   const activeEmbers = useRef(EMBER_COUNT_IDLE);
+
+  // Sistema braci completamente imperativo
+  const embersSystem = useMemo(() => {
+    const positions = new Float32Array(EMBER_COUNT_MAX * 3);
+    const velocities = new Float32Array(EMBER_COUNT_MAX * 3);
+    const lifetimes = new Float32Array(EMBER_COUNT_MAX);
+    const maxLifetimes = new Float32Array(EMBER_COUNT_MAX);
+
+    for (let i = 0; i < EMBER_COUNT_MAX; i++) {
+      positions[i * 3]     = 0;
+      positions[i * 3 + 1] = -1000;
+      positions[i * 3 + 2] = 0;
+      lifetimes[i] = 0;
+      maxLifetimes[i] = 0;
+    }
+
+    const geometry = new THREE.BufferGeometry();
+    const posAttr = new THREE.BufferAttribute(positions, 3);
+    posAttr.setUsage(THREE.DynamicDrawUsage);
+    geometry.setAttribute('position', posAttr);
+
+    const material = new THREE.PointsMaterial({
+      size: 0.08,
+      color: new THREE.Color(6, 1.5, 0),
+      transparent: true,
+      opacity: 0.7,
+      toneMapped: false,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+    });
+
+    const points = new THREE.Points(geometry, material);
+    points.frustumCulled = false;
+
+    return { points, positions, velocities, lifetimes, maxLifetimes, geometry };
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      embersSystem.geometry.dispose();
+      (embersSystem.points.material as THREE.PointsMaterial).dispose();
+    };
+  }, [embersSystem]);
 
   const innerUniforms = useMemo(() => ({
     uTime: { value: 0 },
@@ -593,19 +621,6 @@ export function AdeAura({ isAttacking, attackType, isDefending, isDead }: AdeAur
     uRotation: { value: 0 },
     uHeatBias: { value: 0.05 },
   }), []);
-
-  const emberData = useMemo(() => {
-    const pos = new Float32Array(EMBER_COUNT_MAX * 3);
-    const life = new Float32Array(EMBER_COUNT_MAX);
-    const maxLife = new Float32Array(EMBER_COUNT_MAX);
-    const vel = new Float32Array(EMBER_COUNT_MAX * 3);
-
-    for (let i = 0; i < EMBER_COUNT_MAX; i++) {
-      respawnEmber(pos, vel, life, maxLife, i);
-    }
-
-    return { positions: pos, velocities: vel, lifetimes: life, maxLifetimes: maxLife };
-  }, []);
 
   useFrame((_, delta) => {
     if (!groupRef.current) return;
@@ -658,50 +673,50 @@ export function AdeAura({ isAttacking, attackType, isDefending, isDead }: AdeAur
     }
 
     // Braci
-    if (embersRef.current) {
-      const posAttr = embersRef.current.geometry.getAttribute('position') as THREE.BufferAttribute;
-      const { positions, velocities, lifetimes, maxLifetimes } = emberData;
+    const { positions, velocities, lifetimes, maxLifetimes, geometry } = embersSystem;
+    const posAttr = geometry.getAttribute('position') as THREE.BufferAttribute;
+    const emberRate = isDefending ? 0.3 : isMelee ? 1.8 : 1.0;
+    const count = activeEmbers.current;
 
-      const emberRate = isDefending ? 0.3 : isMelee ? 1.8 : 1.0;
-      const count = activeEmbers.current;
-
-      for (let i = 0; i < EMBER_COUNT_MAX; i++) {
-        if (i >= count) {
-          posAttr.array[i * 3] = 0;
-          posAttr.array[i * 3 + 1] = -100;
-          posAttr.array[i * 3 + 2] = 0;
-          continue;
-        }
-
-        lifetimes[i] -= dt * emberRate;
-
-        if (lifetimes[i] <= 0) {
-          respawnEmber(positions, velocities, lifetimes, maxLifetimes, i);
-        }
-
-        positions[i * 3]     += velocities[i * 3] * dt;
-        positions[i * 3 + 1] += velocities[i * 3 + 1] * dt;
-        positions[i * 3 + 2] += velocities[i * 3 + 2] * dt;
-
-        const x = positions[i * 3];
-        const z = positions[i * 3 + 2];
-        positions[i * 3]     += (-z * 0.5) * dt;
-        positions[i * 3 + 2] += (x * 0.5) * dt;
-
-        posAttr.array[i * 3]     = positions[i * 3];
-        posAttr.array[i * 3 + 1] = positions[i * 3 + 1];
-        posAttr.array[i * 3 + 2] = positions[i * 3 + 2];
+    for (let i = 0; i < EMBER_COUNT_MAX; i++) {
+      if (i >= count) {
+        positions[i * 3]     = 0;
+        positions[i * 3 + 1] = -1000;
+        positions[i * 3 + 2] = 0;
+        posAttr.array[i * 3]     = 0;
+        posAttr.array[i * 3 + 1] = -1000;
+        posAttr.array[i * 3 + 2] = 0;
+        continue;
       }
 
-      posAttr.needsUpdate = true;
+      lifetimes[i] -= dt * emberRate;
+
+      if (lifetimes[i] <= 0) {
+        respawnEmber(positions, velocities, lifetimes, maxLifetimes, i);
+      }
+
+      positions[i * 3]     += velocities[i * 3] * dt;
+      positions[i * 3 + 1] += velocities[i * 3 + 1] * dt;
+      positions[i * 3 + 2] += velocities[i * 3 + 2] * dt;
+
+      const x = positions[i * 3];
+      const z = positions[i * 3 + 2];
+      positions[i * 3]     += (-z * 0.5) * dt;
+      positions[i * 3 + 2] += (x * 0.5) * dt;
+
+      posAttr.array[i * 3]     = positions[i * 3];
+      posAttr.array[i * 3 + 1] = positions[i * 3 + 1];
+      posAttr.array[i * 3 + 2] = positions[i * 3 + 2];
     }
+
+    posAttr.needsUpdate = true;
   });
 
   if (isDead) return null;
 
   return (
     <group ref={groupRef} position={[0, 2.4, 0]}>
-      {/* Core — 0.75 (was 0.5) */}
+      {/* Core */}
       <mesh>
         <sphereGeometry args={[0.75, 16, 16]} />
         <meshBasicMaterial
@@ -712,7 +727,7 @@ export function AdeAura({ isAttacking, attackType, isDefending, isDead }: AdeAur
         />
       </mesh>
 
-      {/* Alone intermedio — 1.5 (was 1.0) */}
+      {/* Alone intermedio */}
       <mesh>
         <sphereGeometry args={[1.5, 16, 16]} />
         <meshBasicMaterial
@@ -723,7 +738,7 @@ export function AdeAura({ isAttacking, attackType, isDefending, isDead }: AdeAur
         />
       </mesh>
 
-      {/* Sfera fuoco interna — SPHERE_RADIUS * 0.75 = 2.475 */}
+      {/* Sfera fuoco interna */}
       <mesh>
         <sphereGeometry args={[SPHERE_RADIUS * 0.75, 64, 64]} />
         <shaderMaterial
@@ -738,7 +753,7 @@ export function AdeAura({ isAttacking, attackType, isDefending, isDead }: AdeAur
         />
       </mesh>
 
-      {/* Sfera fuoco esterna — SPHERE_RADIUS = 3.3 */}
+      {/* Sfera fuoco esterna */}
       <mesh>
         <sphereGeometry args={[SPHERE_RADIUS, 48, 48]} />
         <shaderMaterial
@@ -747,30 +762,14 @@ export function AdeAura({ isAttacking, attackType, isDefending, isDead }: AdeAur
           fragmentShader={fireFragmentShader}
           uniforms={outerUniforms}
           transparent
-          side={THREE.DoubleSide}
+          side={THREE.FrontSide}
           depthWrite={false}
           blending={THREE.AdditiveBlending}
         />
       </mesh>
 
-      {/* Braci */}
-      <points ref={embersRef}>
-        <bufferGeometry>
-          <bufferAttribute
-            attach="attributes-position"
-            args={[emberData.positions, 3]}
-          />
-        </bufferGeometry>
-        <pointsMaterial
-          size={0.08}
-          color={new THREE.Color(6, 1.5, 0)}
-          transparent
-          opacity={0.7}
-          toneMapped={false}
-          blending={THREE.AdditiveBlending}
-          depthWrite={false}
-        />
-      </points>
+      {/* Braci — imperativo puro */}
+      <primitive object={embersSystem.points} />
     </group>
   );
 }
@@ -781,7 +780,6 @@ function respawnEmber(
 ) {
   const theta = Math.random() * Math.PI * 2;
   const phi = Math.random() * Math.PI;
-  // Spawn sulla superficie della sfera scalata
   const r = SPHERE_RADIUS * (0.8 + Math.random() * 0.4);
 
   pos[i * 3]     = r * Math.sin(phi) * Math.cos(theta);
