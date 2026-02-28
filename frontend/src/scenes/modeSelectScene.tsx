@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { MatchMode } from '../types/game.types';
 import { theme } from '../configs/theme';
+import Cerberus from '../assets/Cerberus.png';
 
 interface ModeSelectSceneProps {
   onModeSelect: (mode: MatchMode) => void;
@@ -17,22 +18,22 @@ const MODES: ModeOption[] = [
   {
     mode: MatchMode.LOCAL,
     label: 'LOCAL',
-    description: 'Sfida un tuo amico sulla stessa tastiera.',
+    description: 'Fight with a friend on the same keyboard.',
   },
   {
     mode: MatchMode.AI,
     label: 'VS IA',
-    description: 'Sfida un bot automatico.',
+    description: 'Fight an automate bot.',
   },
   {
     mode: MatchMode.UNRANKED,
     label: 'NORMAL',
-    description: 'Sfida un avversario casuale. Il primo a fare 5 uccisioni ha vinto.',
+    description: 'Fight with a random player online withouth earn any points.',
   },
   {
     mode: MatchMode.RANKED,
     label: 'RANKED',
-    description: 'Sfida un avversario casuale in modalità classificata.',
+    description: 'Fight with a player based on your rank and compete for be the master of olympus.',
   },
 ];
 
@@ -46,17 +47,13 @@ export default function ModeSelectScene({ onModeSelect, onBack }: ModeSelectScen
       display: 'flex',
       flexDirection: 'column',
       alignItems: 'center',
-      backgroundColor: theme.colors.bg,
+      justifyContent: 'center',
+      backgroundImage: `url(${Cerberus})`,
+      backgroundSize: 'cover',
+      backgroundPosition: 'center',
+      backgroundRepeat: 'no-repeat',
       overflow: 'hidden',
     }}>
-      {/* Background placeholder */}
-      <div style={{
-        position: 'absolute',
-        inset: 0,
-        background: `radial-gradient(ellipse at 50% 30%, rgba(80, 40, 0, 0.12) 0%, transparent 60%), radial-gradient(ellipse at 50% 70%, rgba(0, 40, 80, 0.08) 0%, transparent 60%)`,
-        pointerEvents: 'none',
-      }} />
-
       {/* Back */}
       <button
         onClick={onBack}
@@ -65,9 +62,9 @@ export default function ModeSelectScene({ onModeSelect, onBack }: ModeSelectScen
           top: '24px',
           left: '24px',
           background: 'none',
-          border: `1px solid ${theme.colors.goldSubtle}`,
+          border: `1px solid ${theme.colors.gold}`,
           borderRadius: '2px',
-          color: theme.colors.goldDim,
+          color: theme.colors.gold,
           fontFamily: theme.fonts.heading,
           fontSize: '11px',
           letterSpacing: '3px',
@@ -77,12 +74,12 @@ export default function ModeSelectScene({ onModeSelect, onBack }: ModeSelectScen
           zIndex: 10,
         }}
         onMouseEnter={(e) => {
-          e.currentTarget.style.color = theme.colors.gold;
-          e.currentTarget.style.borderColor = theme.colors.borderHover;
+          e.currentTarget.style.color = theme.colors.goldBright;
+          e.currentTarget.style.borderColor = theme.colors.goldBright;
         }}
         onMouseLeave={(e) => {
-          e.currentTarget.style.color = theme.colors.goldDim;
-          e.currentTarget.style.borderColor = theme.colors.goldSubtle;
+          e.currentTarget.style.color = theme.colors.gold;
+          e.currentTarget.style.borderColor = theme.colors.gold;
         }}
       >
         BACK
@@ -90,8 +87,8 @@ export default function ModeSelectScene({ onModeSelect, onBack }: ModeSelectScen
 
       {/* Title */}
       <div style={{
-        marginTop: 'clamp(60px, 12vh, 120px)',
         textAlign: 'center',
+        marginBottom: '60px',
         animation: 'fadeDown 0.8s ease-out',
       }}>
         <h1 style={{
@@ -102,7 +99,7 @@ export default function ModeSelectScene({ onModeSelect, onBack }: ModeSelectScen
           letterSpacing: '8px',
           textTransform: 'uppercase',
           margin: 0,
-          textShadow: `0 0 30px ${theme.colors.goldGlow}`,
+          textShadow: `0 0 30px ${theme.colors.goldGlow}, 0 2px 8px rgba(0,0,0,0.8)`,
         }}>
           Choose Your Battle
         </h1>
@@ -118,16 +115,14 @@ export default function ModeSelectScene({ onModeSelect, onBack }: ModeSelectScen
       {/* Mode buttons */}
       <div style={{
         display: 'flex',
-        gap: 'clamp(16px, 3vw, 40px)',
-        marginTop: 'clamp(60px, 10vh, 100px)',
+        gap: 'clamp(24px, 4vw, 56px)',
         animation: 'fadeUp 0.8s ease-out 0.2s both',
-        flexWrap: 'wrap',
         justifyContent: 'center',
+        alignItems: 'flex-start',
         padding: '0 20px',
       }}>
         {MODES.map((option) => {
           const isHovered = hoveredMode === option.mode;
-          const isOnline = option.mode === MatchMode.RANKED || option.mode === MatchMode.UNRANKED;
 
           return (
             <div key={option.mode} style={{
@@ -140,61 +135,56 @@ export default function ModeSelectScene({ onModeSelect, onBack }: ModeSelectScen
                 onMouseEnter={() => setHoveredMode(option.mode)}
                 onMouseLeave={() => setHoveredMode(null)}
                 style={{
-                  width: 'clamp(130px, 15vw, 180px)',
-                  height: 'clamp(130px, 15vw, 180px)',
+                  width: 'clamp(160px, 18vw, 220px)',
+                  height: 'clamp(160px, 18vw, 220px)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  border: `1px solid ${isHovered ? theme.colors.goldDim : theme.colors.border}`,
+                  border: `1px solid ${isHovered ? theme.colors.gold : theme.colors.goldDim}`,
                   borderRadius: '50%',
                   cursor: 'pointer',
                   transition: 'all 0.4s ease',
-                  backgroundColor: isHovered ? 'rgba(200, 170, 100, 0.06)' : 'rgba(255, 255, 255, 0.02)',
-                  boxShadow: isHovered ? `0 0 40px rgba(200, 170, 100, 0.1), inset 0 0 30px rgba(200, 170, 100, 0.03)` : 'none',
-                  position: 'relative',
+                  backgroundColor: isHovered ? 'rgba(200, 170, 100, 0.08)' : 'rgba(0, 0, 0, 0.3)',
+                  boxShadow: isHovered
+                    ? `0 0 50px rgba(200, 170, 100, 0.15), inset 0 0 40px rgba(200, 170, 100, 0.05)`
+                    : `0 0 20px rgba(0, 0, 0, 0.5)`,
                 }}
               >
                 <span style={{
                   fontFamily: theme.fonts.heading,
-                  fontSize: 'clamp(14px, 1.8vw, 20px)',
+                  fontSize: 'clamp(18px, 2.2vw, 26px)',
                   fontWeight: 700,
                   color: isHovered ? theme.colors.gold : theme.colors.goldDim,
-                  letterSpacing: '4px',
+                  letterSpacing: '5px',
                   textTransform: 'uppercase',
                   transition: 'color 0.3s ease',
                   textAlign: 'center',
+                  textShadow: `0 0 20px rgba(0,0,0,0.9), 0 2px 8px rgba(0,0,0,0.8)`,
                 }}>
                   {option.label}
                 </span>
-
-                {isOnline && (
-                  <div style={{
-                    position: 'absolute',
-                    top: '8px',
-                    right: '8px',
-                    fontSize: '8px',
-                    fontFamily: theme.fonts.mono,
-                    letterSpacing: '1px',
-                    color: theme.colors.textMuted,
-                    textTransform: 'uppercase',
-                  }}>
-                    soon
-                  </div>
-                )}
               </div>
 
-              <div style={{ marginTop: '16px', height: '40px', display: 'flex', alignItems: 'flex-start', justifyContent: 'center' }}>
+              {/* Description — visible only on hover */}
+              <div style={{
+                marginTop: '20px',
+                height: '50px',
+                display: 'flex',
+                alignItems: 'flex-start',
+                justifyContent: 'center',
+              }}>
                 <p style={{
                   fontFamily: theme.fonts.heading,
-                  fontSize: '11px',
-                  color: theme.colors.goldDim,
+                  fontSize: '12px',
+                  color: theme.colors.goldBright,
                   textAlign: 'center',
-                  maxWidth: '180px',
+                  maxWidth: '200px',
                   lineHeight: 1.5,
                   margin: 0,
                   opacity: isHovered ? 1 : 0,
-                  transform: isHovered ? 'translateY(0)' : 'translateY(-4px)',
+                  transform: isHovered ? 'translateY(0)' : 'translateY(-6px)',
                   transition: 'all 0.3s ease',
+                  textShadow: `0 0 20px rgba(0,0,0,0.9), 0 2px 8px rgba(0,0,0,0.8)`,
                 }}>
                   {option.description}
                 </p>

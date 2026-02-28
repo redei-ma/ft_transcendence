@@ -3,8 +3,8 @@ import { matchmakingSocket } from '../services/matchmakingSocket';
 import { GameEvents } from '../game/game.events';
 import { MatchMode, MatchType } from '../types/game.types';
 import { theme } from '../configs/theme';
-import zeusImg from '../assets/Zeus_selection.jpg';
-import adeImg from '../assets/Ade_selection.png';
+import zeusImg from '../assets/Zeus_selection.png';
+import adeImg from '../assets/Ade_selection.jpg';
 
 type Character = 'zeus' | 'ade';
 

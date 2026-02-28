@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { theme } from '../configs/theme';
+import welcomeScene from '../assets/welcomeScene.png';
 
 interface WelcomeSceneProps {
   onStart: () => void;
@@ -16,99 +17,101 @@ export default function WelcomeScene({ onStart }: WelcomeSceneProps) {
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
-        justifyContent: 'center',
-        backgroundColor: theme.colors.bg,
+        justifyContent: 'flex-start',
+        backgroundImage: `url(${welcomeScene})`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundRepeat: 'no-repeat',
         overflow: 'hidden',
         cursor: 'pointer',
       }}
       onClick={onStart}
     >
+      {/* Titolo CLASH of OLYMPUS */}
       <div style={{
-        position: 'absolute',
-        inset: 0,
-        background: `radial-gradient(ellipse at 50% 40%, rgba(80, 40, 0, 0.15) 0%, transparent 60%), radial-gradient(ellipse at 50% 60%, rgba(0, 40, 80, 0.1) 0%, transparent 60%)`,
-        pointerEvents: 'none',
-      }} />
-
-      <div style={{
-        position: 'absolute',
-        top: '2%',
-        left: '50%',
-        transform: 'translateX(-50%)',
-        width: '200px',
-        height: '1px',
-        background: `linear-gradient(90deg, transparent, ${theme.colors.goldMuted}, transparent)`,
-      }} />
-
-      <h1 style={{
-        fontSize: 'clamp(48px, 8vw, 96px)',
-        fontFamily: theme.fonts.heading,
-        fontWeight: 700,
-        color: theme.colors.gold,
-        textAlign: 'center',
-        letterSpacing: '12px',
-        textTransform: 'uppercase',
-        margin: 0,
-        lineHeight: 1.1,
-        textShadow: `0 0 40px ${theme.colors.goldGlow}, 0 2px 4px rgba(0,0,0,0.8)`,
+        marginTop: '75px',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
         animation: 'titleFadeIn 2s ease-out',
       }}>
-        CLASH
-        <br />
         <span style={{
-          fontSize: '0.4em',
-          letterSpacing: '20px',
-          color: theme.colors.goldDim,
-          fontWeight: 400,
+          fontSize: 'clamp(80px, 12vw, 164px)',
+          fontFamily: theme.fonts.heading,
+          fontWeight: 700,
+          color: theme.colors.gold,
+          letterSpacing: '8px',
+          textTransform: 'uppercase',
+          lineHeight: 1,
+          textShadow: `0 0 40px ${theme.colors.goldGlow}, 0 2px 4px rgba(0,0,0,0.8)`,
         }}>
-          OF
+          CLASH
         </span>
-        <br />
-        OLYMPUS
-      </h1>
 
+        <span style={{
+          fontSize: 'clamp(28px, 4vw, 52px)',
+          fontFamily: theme.fonts.heading,
+          fontWeight: 400,
+          color: theme.colors.goldDim,
+          letterSpacing: '20px',
+          textTransform: 'lowercase',
+          lineHeight: 1,
+          marginTop: '8px',
+          marginBottom: '8px',
+          textShadow: `0 0 30px ${theme.colors.goldGlow}, 0 2px 4px rgba(0,0,0,0.8)`,
+        }}>
+          of
+        </span>
+
+        <span style={{
+          fontSize: 'clamp(80px, 12vw, 164px)',
+          fontFamily: theme.fonts.heading,
+          fontWeight: 700,
+          color: theme.colors.gold,
+          letterSpacing: '8px',
+          textTransform: 'uppercase',
+          lineHeight: 1,
+          textShadow: `0 0 40px ${theme.colors.goldGlow}, 0 2px 4px rgba(0,0,0,0.8)`,
+        }}>
+          OLYMPUS
+        </span>
+      </div>
+
+      {/* Sottotitolo */}
       <p style={{
-        marginTop: '40px',
+        marginTop: '24px',
         fontFamily: theme.fonts.heading,
-        fontSize: '14px',
-        letterSpacing: '8px',
-        color: theme.colors.goldDim,
+        fontSize: 'clamp(16px, 2.5vw, 22px)',
+        letterSpacing: '10px',
+        color: theme.colors.goldDark,
         textTransform: 'uppercase',
+        textShadow: `0 0 20px rgba(0,0,0,0.9), 0 2px 8px rgba(0,0,0,0.8)`,
         animation: 'subtitleFadeIn 2s ease-out 0.5s both',
       }}>
-        Ade contro Zeus
+        Hades against Zeus
       </p>
 
+      {/* CTA */}
       <div
         onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => setHovered(false)}
         style={{
-          marginTop: '80px',
-          padding: '16px 60px',
-          border: `1px solid ${hovered ? theme.colors.goldDim : theme.colors.goldSubtle}`,
-          borderRadius: '2px',
+          marginTop: 'auto',
+          marginBottom: '80px',
           fontFamily: theme.fonts.heading,
-          fontSize: '13px',
+          fontSize: 'clamp(48px, 2vw, 32px)',
+          fontWeight: 500,
           letterSpacing: '6px',
-          color: hovered ? theme.colors.gold : theme.colors.goldDim,
+          color: theme.colors.gold,
           textTransform: 'uppercase',
           transition: 'all 0.4s ease',
-          boxShadow: hovered ? `0 0 30px rgba(200, 170, 100, 0.15)` : 'none',
-          animation: 'enterFadeIn 2s ease-out 1s both',
+          boxShadow: `0 0 30px rgba(200, 170, 100, 0.15)`,
+          textShadow: `0 0 20px rgba(0,0,0,0.9), 0 2px 8px rgba(0,0,0,0.8)`,
+          animation: 'blinkFade 2s ease-in-out infinite',
         }}
       >
-        Enter the Arena
+        Click everywhere for starting
       </div>
-
-      <div style={{
-        position: 'absolute',
-        bottom: '30%',
-        left: '50%',
-        transform: 'translateX(-50%)',
-        width: '200px',
-        height: '1px',
-        background: `linear-gradient(90deg, transparent, ${theme.colors.goldMuted}, transparent)`,
-      }} />
 
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&display=swap');
@@ -120,6 +123,10 @@ export default function WelcomeScene({ onStart }: WelcomeSceneProps) {
         @keyframes enterFadeIn {
           from { opacity: 0; transform: translateY(10px); }
           to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes blinkFade {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.3; }
         }
       `}</style>
     </div>

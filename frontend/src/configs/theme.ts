@@ -7,6 +7,7 @@ export const theme = {
 
     // Gold palette — unico colore per tutto
     gold:           '#e8d5a3',
+    goldDark:       '#3e341a',
     goldBright:     '#f0e0b0',
     goldDim:        'rgba(200, 170, 100, 0.6)',
     goldMuted:      'rgba(200, 170, 100, 0.4)',
