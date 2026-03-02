@@ -437,7 +437,7 @@ export class MatchmakingService {
         // SALTO IL BOT O IL GUEST:
         // Se l'ID contiene "ai_bot" o "guest", non dobbiamo ripristinare uno stato lobby
         // perché non sono utenti reali nel database.
-        if (userId.includes('ai_bot') || userId.includes('guest')) {
+        if (userId.includes('ai_bot') || userId.includes('guest_')) {
             console.log(`[Cleanup] Skippato ripristino per entità non-user: ${userId}`);
             continue;
         }
@@ -660,7 +660,7 @@ export class MatchmakingService {
 
     // Estraiamo i nomi dei personaggi dall'array inviato dal frontend
     const charP1 = Array.isArray(data.characterName) ? data.characterName[0] : data.characterName;
-    const charP2 = Array.isArray(data.characterName) ? data.characterName[1] : 'Guest';
+    const charP2 = Array.isArray(data.characterName) ? data.characterName[1] : 'default';
 
     const participant1 = {
         characterName: charP1,
@@ -673,7 +673,7 @@ export class MatchmakingService {
 
     const participant2 = {
         characterName: charP2, 
-        userDbId: `guest_${data.userDbId}`,
+        userDbId: String(data.userDbId),
         isAiPlayer: false,
         rank: data.rank,
         socketId: data.socketId,
@@ -683,7 +683,7 @@ export class MatchmakingService {
     const playerStatus = JSON.stringify({ 
         state: 'ingame', 
         matchMode: 'local',
-        matchType: 'unranked',
+        matchType: 'ffa',
         matchId: matchId,
         opponentId: 'LOCAL_GUEST',
         ...participant1,
@@ -695,7 +695,7 @@ export class MatchmakingService {
     const payload = {
         gameId: matchId,
         playersData: [participant1, participant2],
-        matchType: 'unranked',
+        matchType: 'ffa',
         matchMode: 'local'
     };
     
@@ -707,7 +707,7 @@ export class MatchmakingService {
         console.error("Errore invio match locale al Game Server:", error.response?.data || error.message);
     }
 
-    await this.redis.set(`match_players:${matchId}`, `${data.userDbId},guest_${data.userDbId}`, 'EX', 3600);
+    await this.redis.set(`match_players:${matchId}`, `${data.userDbId}, guest_${data.userDbId}`, 'EX', 3600);
     
     if (data.socketId) {
         this.eventEmitter.emit('match.found.internal', {
@@ -774,7 +774,7 @@ export class MatchmakingService {
     const payload = {
         gameId: matchId,
         playersData: [participant1, participant2],
-        matchType: 'unranked',
+        matchType: 'ffa',
         matchMode: 'ai'
     };
     

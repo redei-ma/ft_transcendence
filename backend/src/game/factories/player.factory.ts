@@ -51,8 +51,7 @@ export function getNewPlayer(
 	isBot: boolean, playerIndex: number | undefined,
 	matchType: MatchType): Player{
 
-	const teamId: number = calculateTeamId(spawnIndex, matchType);
-	
+	const teamId: number = calculateTeamId(spawnIndex, matchType);	
 	const character = (characterName in CHARACTER_DATA) ? characterName : CharacterName.DEFAULT;
 
 	const stats = CHARACTER_DATA[character];

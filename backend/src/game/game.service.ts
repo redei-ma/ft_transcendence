@@ -162,6 +162,7 @@ export class GameService{
 	}
 
 	prepareMatch(gameId: string, players: MatchMakingData[], matchMode: MatchMode, matchType: MatchType): ExitStatus{
+
 		for (const player of players) {
 			if (player.userDbId !== null && this.userToGameData.has(player.userDbId)) {
 				const oldGameData: GameData | undefined = this.userToGameData.get(player.userDbId);
@@ -178,7 +179,7 @@ export class GameService{
 				}
 			}
 		}
-
+		this.logger.log(players)
 		const mapData: MapData | undefined = this.mapManager.getMap();
 		if (!mapData) return {status: ErrorCode.MAP_LOAD_FAILED, message: `error in loading the map`};
 

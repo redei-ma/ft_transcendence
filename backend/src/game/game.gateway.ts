@@ -7,7 +7,7 @@ import { Vector } from './utils';
 import { GameInputDto, GameMessageDto } from './dto';
 import { SocketEvents } from './configs';
 import { GameSession } from './core';
-import { GameData, ErrorCode, SuccessCode } from './interfaces-enums';
+import { GameData, ErrorCode, SuccessCode, MatchType, MatchMode } from './interfaces-enums';
 import { GameExceptionFilter } from './game.WsGameExceptionFilter';
 import { ExitStatus } from './interfaces-enums/exitStatus.interface';
 
@@ -68,22 +68,33 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect, On
 		const gameData: GameData | undefined = this.gameService.hasPendingMatch(userDbId);
 		if (gameData){
 			for (const player of gameData.players){
-				if (userDbId !== player.userDbId) continue ;
+				if (userDbId !== player.userDbId){
+					continue ;
+				}
 
 				this.gameService.setSocketToGame(socketId, gameData.gameId);
+				
+				this.logger.log(`New client arrived ${userDbId} in game ${gameData.gameId}`);
+				
 				client.join(gameData.gameId);
 
-				this.logger.log(`New client arrived ${userDbId} in game ${gameData.gameId}`);
-
+				this.logger.log('player added in socket room')
 				const session: GameSession | undefined = this.gameService.getGameById(gameData.gameId);
 				if (!session){
 					this.sendErrorAndDisconnectClient(client, {status:  ErrorCode.SESSION_NOT_FOUND, message: 'Session not found, retry to search a new game'});
+					this.logger.warn('unable to locate the session, disconnecting')
 					return;
 				}
-				const result = session.addPlayer(player, socketId);
-				if (result.status !== SuccessCode.OK){
-					this.sendErrorAndDisconnectClient(client, result);
-					this.logger.warn(`${userDbId} is not in game list`);
+				else{
+					const result = session.addPlayer(player, socketId);
+					
+					if (result.status !== SuccessCode.OK){
+						this.logger.warn(`${userDbId} is not in game list`);
+						this.sendErrorAndDisconnectClient(client, result);
+					}
+					else{
+						this.logger.log('player added');
+					}
 				}
 			}
 		}
