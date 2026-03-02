@@ -2,6 +2,7 @@ import { NestFactory } from "@nestjs/core";
 import { ValidationPipe } from "@nestjs/common";
 import { SwaggerModule, DocumentBuilder } from "@nestjs/swagger";
 import { AppModule } from "./app.module";
+import cookieParser from 'cookie-parser';
 
 async function bootstrap() {
 	const app = await NestFactory.create(AppModule);
@@ -27,6 +28,13 @@ async function bootstrap() {
 
 	const document = SwaggerModule.createDocument(app, config);
 	SwaggerModule.setup("api/docs", app, document);
+
+	app.enableCors({
+		origin: true,
+		credentials: true,
+	});
+
+	app.use(cookieParser());
 
 	const port = process.env.PORT || 3000;
 	await app.listen(port);

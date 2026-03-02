@@ -168,7 +168,7 @@ services:
         networks:
             - backend-network
         env_file:
-            - .env.shared
+            - .env
         environment:
             - NGROK_AUTHTOKEN=${NGROK_AUTHTOKEN}
 

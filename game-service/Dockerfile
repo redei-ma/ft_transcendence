@@ -1,6 +1,10 @@
 # --- Stage 1: Build ---
 FROM node:20-alpine AS build
 
+WORKDIR /usr/src/auth-shared
+COPY auth-shared/ .
+RUN npm install && npm run build
+
 WORKDIR /app
 
 RUN apk add --no-cache openssl
@@ -11,9 +15,13 @@ WORKDIR /app/game-service
 
 COPY game-service/package*.json ./
 
-RUN npm ci
+RUN npm install
 
 COPY game-service/. .
+
+# Inject the shared library using a symbolic link (Force it with -sf)
+RUN mkdir -p node_modules/@game && \
+    ln -sf /usr/src/auth-shared ./node_modules/@game/auth-shared
 
 RUN npx prisma generate --schema=../prisma/schema.prisma
 RUN npm run build

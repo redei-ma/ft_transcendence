@@ -17,7 +17,7 @@
         path: "/socket.io/",
       },
       onAuthenticated: (socket) => {
-        console.log("🎮 Ready to play as socket:", socket.id);
+        console.log("Ready to play as socket:", socket.id);
       },
       onUnauthorized: () => {
         window.location.href = "index.html";
