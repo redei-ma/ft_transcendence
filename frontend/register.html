@@ -40,7 +40,8 @@
         window.location.href = "index.html"; // redirect to login
       } else {
         // On error show error message, fallback included
-        alert(json.error || "Registration failed");
+        console.log("Server Response:", json);
+        alert(json.error + ": " + json.message || "Registration failed");
       }
 
     } catch (err) {

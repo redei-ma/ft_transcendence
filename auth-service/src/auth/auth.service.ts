@@ -27,6 +27,15 @@ async registerAndSendVerification(
   ) {
     console.log(`[AUTH] Inizio registrazione per: ${username}, ${email}`);
 
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+  
+    if (!password || password.length < 10) {
+      throw new BadRequestException('Password must be at least 8 characters long.');
+    }
+    
+    if (!passwordRegex.test(password)) {
+      throw new BadRequestException('Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character.');
+    }
     try {
       // 1. Log Hashing
       console.log('[AUTH] Generazione hash password...');
