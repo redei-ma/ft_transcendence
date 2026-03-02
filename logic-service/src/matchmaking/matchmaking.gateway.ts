@@ -58,13 +58,15 @@ export class MatchmakingGateway implements OnGatewayInit, OnGatewayConnection, O
         return await this.matchmakingService.leaveQueue(data);
     }
 
-    // 2. JOIN AI (Partita contro Bot)
-    /*@SubscribeMessage('join_ai')
-    async handleJoinAi(@MessageBody() data: JoinQueueDto, @ConnectedSocket() client: Socket) {
+    @SubscribeMessage('join_ai')
+    async handleJoinAi(@MessageBody() data: any, @ConnectedSocket() client: Socket) {
+        // Registriamo il socket dell'utente come negli altri gateway
         this.registerUserSocket(client.id, data.userDbId);
+        // Assegniamo il socketId ai dati
         data.socketId = client.id;
+        // Chiamata al servizio per avviare il match contro l'IA
         return await this.matchmakingService.startAiMatch(data);
-    }*/
+    }
 
     // 3. JOIN LOCAL (Partita 1vs1 locale)
     @SubscribeMessage('join_local')

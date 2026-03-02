@@ -27,6 +27,14 @@ export class MatchmakingController {
     return this.matchmakingService.processQueue(data); 
   }
 
+  @MessagePattern('join_ai') 
+  async handleJoinAi(@Payload() data: any) { 
+      console.log(`[Logic] Utente ${data.userDbId} ha richiesto un match contro IA`);
+      
+      // Inoltriamo la richiesta al servizio logico
+      return this.matchmakingService.startAiMatch(data); 
+  }
+
   @MessagePattern('leave_queue') 
   async handleLeaveQueue(@Payload() data: JoinQueueDto) {
     return await this.matchmakingService.leaveQueue(data);

@@ -722,6 +722,7 @@ export class MatchmakingService {
 /* ---------------------------------------------------------------------------------------------------------------- */
 
   async startAiMatch(data: any) {
+    console.log(`[Logic] inizio procedura match vs AI per ${data.userDbId} con rank ${data.rank} e personaggio ${data.characterName}`);
     const USER_STATUS_KEY = `status:${data.userDbId}`;
     
     // 1. Pulizia: rimuoviamo l'utente da eventuali code attive
