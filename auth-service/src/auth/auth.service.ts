@@ -25,7 +25,6 @@ async registerAndSendVerification(
     email: string,
     password: string,
   ) {
-    console.log(`[AUTH] Inizio registrazione per: ${username}, ${email}`);
 
     const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
   
@@ -36,71 +35,31 @@ async registerAndSendVerification(
     if (!passwordRegex.test(password)) {
       throw new BadRequestException('Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character.');
     }
-    try {
-      // 1. Log Hashing
-      console.log('[AUTH] Generazione hash password...');
-      // Attenzione: bcrypt.hash con "60" rounds è INFINITO.
-      // Il valore standard è 10. Forse è questo che blocca tutto!
+/*     try { */
+
       const passwordHash = await bcrypt.hash(password, 10);
-      console.log('[AUTH] Hash generato con successo.');
 
-      // 2. Log Chiamata User Service
-      console.log('[AUTH] Chiamata a user-service per creare l utente...');
       const user = await this.usersService.createUser({username, email, passwordHash});
-      console.log('[AUTH] Utente creato correttamente nel DB:', user.id);
 
-      // 3. Log Token e URL
       const token = this.generateEmailVerificationToken(user.id);
-      const verifyUrl = `${this.config.getOrThrow<string>('PUBLIC_URL')}/api/auth/verify-email?token=${encodeURIComponent(token)}`;
-      console.log('[AUTH] URL di verifica generato.');
 
-      // 4. Log Email (senza await per non bloccare)
-      console.log('[AUTH] Tentativo invio email...');
-      this.mailService.sendVerifyEmail(user.email, verifyUrl)
-        .then(() => console.log('[AUTH] Email inviata con successo!'))
-        .catch(err => console.error('[AUTH] ERRORE INVIO EMAIL:', err.message));
+      const verifyUrl = `${this.config.getOrThrow<string>('PUBLIC_URL')}/api/auth/verify-email?token=${encodeURIComponent(token)}`;
+
+      await this.mailService.sendVerifyEmail(user.email, verifyUrl);
 
       return {
         message: `Welcome ${user.username}! Please check your email.`,
         user: { username: user.username, email: user.email }
       };
 
-    } catch (error) {
+  /*   } catch (error) {
       console.error('[AUTH] ERRORE CRITICO NELLA REGISTRAZIONE:', error.message);
       if (error.response) {
         console.error('[AUTH] Dettagli errore User-Service:', error.response.data);
       }
-      throw error;
-    }
+      throw error.message;
+    } */
   }
-
-  /*
-  async registerAndSendVerification(
-    username: string,
-    email: string,
-    password: string,
-    ) {
-
-    //to-do mettere controlli su psw
-    const passwordHash = await bcrypt.hash(password, 10);
-
-    const user = await this.usersService.createUser({username, email, passwordHash});
-
-    const token = this.generateEmailVerificationToken(user.id);
-
-    const verifyUrl =
-    `${this.config.getOrThrow<string>('PUBLIC_URL')}/api/auth/verify-email?token=${encodeURIComponent(token)}`;
-
-    await this.mailService.sendVerifyEmail(user.email, verifyUrl);
-
-    return {
-      message: `Welcome ${user.username}! Please check your email to verify your account.`,
-      user: {
-        username: user.username,
-        email: user.email,
-      }
-    };
-  } */
 
   async resendVerificationEmail(email: string) {
     const user = await this.usersService.findUser({ email });
@@ -122,32 +81,6 @@ async registerAndSendVerification(
 
     return { message: 'If the email exists, a verification email was sent.' };
   }
-
-/* async login(username: string, password: string, totp?: string) {
-  const user = await this.usersClient.findByUsername(username);
-
-  const isMatch = await bcrypt.compare(password, user.passwordHash);
-  if (!isMatch) throw new UnauthorizedException();
-
-  if (user.twoFactorEnabled) {
-    if (!totp) {
-      return { requires2fa: true };
-    }
-
-    const valid = speakeasy.totp.verify({
-      secret: user.twoFactorSecret,
-      encoding: 'base32',
-      token: totp,
-      window: 1,
-    });
-
-    if (!valid) {
-      throw new UnauthorizedException('Invalid 2FA code');
-    }
-  }
-
-  return this.issueTokens(user);
-} */
 
   async login(username: string, passwordHash: string, totp?: string) {
     const user = await this.usersService.findUser({ username });
