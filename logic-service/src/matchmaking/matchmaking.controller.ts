@@ -15,10 +15,10 @@ export class MatchmakingController {
     return await this.matchmakingService.processQueue(data);
   }
 
-  @Post('local')
-  async startLocalMatch(@Body() data: JoinQueueDto) {
-      console.log(`[HTTP] Richiesta partita locale per utente: ${data.userDbId}`);
-      return await this.matchmakingService.startLocalMatch(data);
+  @Post('create-match') // o il tuo endpoint di riferimento
+  async startLocalMatch(@Body() payload: any) {
+      // Passiamo l'intero oggetto 'payload' invece di dividere in 2 argomenti
+      return await this.matchmakingService.startLocalMatch(payload);
   }
 
   @MessagePattern('join_queue') 

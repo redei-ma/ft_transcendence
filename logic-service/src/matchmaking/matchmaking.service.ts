@@ -243,7 +243,149 @@ export class MatchmakingService {
 
 /* ---------------------------------------------------------------------------------------------------------------- */
 
-async leaveQueue(player: JoinQueueDto) {
+  async processUnrankedQueue(player: JoinQueueDto) {
+    const QUEUE_KEY = 'matchmaking_queue_unranked'; // Usiamo una coda separata per unranked
+    const USER_STATUS_KEY = `status:${player.userDbId}`;
+
+    // 1. Controllo Stato Attuale (Riconnessione o Già in ricerca)
+    const currentStatusRaw = await this.redis.get(USER_STATUS_KEY);
+    const statusData = currentStatusRaw ? JSON.parse(currentStatusRaw) : null;
+
+    if (statusData && (statusData.state === 'ingame' || statusData.state === 'searching')) {
+        if (statusData.state === 'ingame') {
+            // Logica Riconnessione (identica alla ranked)
+            const opponentStatusRaw = await this.redis.get(`status:${statusData.opponentId}`);
+            if (!opponentStatusRaw) {
+                await this.redis.set(USER_STATUS_KEY, JSON.stringify({ 
+                    state: 'lobby', rank: player.rank, characterName: player.characterName,
+                    isAiPlayer: player.isAiPlayer, socketId: player.socketId, updatedAt: Date.now()
+                }), 'EX', 3600);
+                return { status: 'MATCH_EXPIRED_BACK_TO_LOBBY' };
+            }
+            
+            const opponentData = JSON.parse(opponentStatusRaw);
+            const updatedStatus = { ...statusData, socketId: player.socketId, updatedAt: Date.now() };
+            await this.redis.set(USER_STATUS_KEY, JSON.stringify(updatedStatus), 'EX', 420);
+
+            const payload = {
+                gameId: statusData.matchId,
+                playersData: [
+                    { ...updatedStatus, userDbId: player.userDbId, playerIndex: statusData.playerIndex || 0 },
+                    { ...opponentData, userDbId: statusData.opponentId, playerIndex: opponentData.playerIndex || 1 }
+                ],
+                matchType: 'unranked',
+                matchMode: statusData.matchMode || 'standard'
+            };
+            try {
+                await firstValueFrom(this.httpService.post('http://backend:3000/matchmaking/create-match', payload));
+            } catch (e) { console.error("Errore riconnessione HTTP Unranked"); }
+
+            return { status: 'RECONNECTED_TO_GAME', matchId: statusData.matchId };
+        }
+
+        if (statusData.state === 'searching') {
+            const updatedSearching = JSON.stringify({ ...statusData, socketId: player.socketId, updatedAt: Date.now() });
+            await this.redis.set(USER_STATUS_KEY, updatedSearching, 'EX', 600);
+        }
+    } else {
+        // 2. Aggiunta in Coda (Punteggio basato solo sul tempo per Unranked)
+        const timestamp = Date.now();
+        await this.redis.zadd(QUEUE_KEY, timestamp, player.userDbId);
+
+        const searchingStatus = JSON.stringify({ 
+            state: 'searching', rank: player.rank, characterName: player.characterName,
+            isAiPlayer: player.isAiPlayer, socketId: player.socketId, updatedAt: Date.now()
+        });
+        await this.redis.set(USER_STATUS_KEY, searchingStatus, 'EX', 600);
+    }
+
+    // 3. Ricerca Avversario (Senza limiti di Rank)
+    // Prendiamo i primi 2 elementi della coda
+    const potentialOpponents = await this.redis.zrange(QUEUE_KEY, 0, 1);
+
+    // Filtriamo noi stessi
+    const opponents = potentialOpponents.filter(id => id !== String(player.userDbId));
+
+    if (opponents.length >= 1) {
+        const opponentId = opponents[0];
+        const opponentStatusRaw = await this.redis.get(`status:${opponentId}`);
+        
+        if (!opponentStatusRaw) {
+            await this.redis.zrem(QUEUE_KEY, opponentId); // Pulizia se l'avversario è sparito
+            return { status: 'SEARCHING_UNRANKED_MATCH' };
+        }
+
+        const opponentData = JSON.parse(opponentStatusRaw);
+
+        // Rimuoviamo entrambi dalla coda
+        await this.redis.zrem(QUEUE_KEY, player.userDbId, opponentId);
+        
+        const matchId = `match_unranked_${Math.random().toString(36).substring(7)}`;
+
+        const participant1 = {
+            characterName: player.characterName,
+            userDbId: String(player.userDbId),
+            isAiPlayer: player.isAiPlayer,
+            rank: player.rank, // Lo inviamo comunque per i log/display
+            socketId: player.socketId,
+            playerIndex: 0,
+        };
+
+        const participant2 = {
+            characterName: opponentData.characterName,
+            userDbId: String(opponentId),
+            isAiPlayer: opponentData.isAiPlayer,
+            rank: opponentData.rank,
+            socketId: opponentData.socketId,
+            playerIndex: 1,
+        };
+
+        const playerStatus = JSON.stringify({ 
+            state: 'ingame', ...participant1, opponentId, matchId, 
+            matchMode: player.matchMode || 'standard', matchType: 'unranked', updatedAt: Date.now()
+        });
+        const opponentStatus = JSON.stringify({ 
+            state: 'ingame', ...participant2, opponentId: player.userDbId, matchId, 
+            matchMode: player.matchMode || 'standard', matchType: 'unranked', updatedAt: Date.now()
+        });
+
+        await this.redis.set(`status:${player.userDbId}`, playerStatus, 'EX', 420);
+        await this.redis.set(`status:${opponentId}`, opponentStatus, 'EX', 420);
+        
+        // Salvataggio per la tua nuova funzione finalizeMatch globale
+        await this.redis.set(`match_players:${matchId}`, `${player.userDbId},${opponentId}`, 'EX', 3600);
+
+        const payload = {
+            gameId: matchId,
+            playersData: [participant1, participant2],
+            matchType: 'unranked',
+            matchMode: player.matchMode
+        };
+
+        try {
+            await firstValueFrom(this.httpService.post('http://backend:3000/matchmaking/create-match', payload));
+        } catch (error) {
+            console.error("Errore creazione match Unranked:", error.response?.data);
+        }
+
+        const matchFoundData = { status: 'MATCH_FOUND', matchId };
+
+        if (opponentData.socketId) {
+            this.eventEmitter.emit('match.found.internal', { socketId: opponentData.socketId, data: matchFoundData });
+        }
+        if (player.socketId) {
+            this.eventEmitter.emit('match.found.internal', { socketId: player.socketId, data: matchFoundData });
+        }
+
+        return matchFoundData;
+    }
+
+    return { status: 'SEARCHING_UNRANKED_MATCH' };
+  }
+
+/* ---------------------------------------------------------------------------------------------------------------- */
+
+  async leaveQueue(player: JoinQueueDto) {
     // abbiamo la coda di matchmaking e la chiave per lo stato dell'utente
     const QUEUE_KEY = 'matchmaking_queue';
     const USER_STATUS_KEY = `status:${player.userDbId}`;
@@ -279,44 +421,56 @@ async leaveQueue(player: JoinQueueDto) {
 /* ---------------------------------------------------------------------------------------------------------------- */
 
   async finalizeMatch(matchId: string) {
-      // recuperiamo la stringa dei partecipanti (es: "1,2")
-      const playersRaw = await this.redis.get(`match_players:${matchId}`);
-      console.log(`Tentativo di cleanup del MatchID: ${matchId}`);
-      if (!playersRaw) {
-          console.log(`[Cleanup] Match ${matchId} non trovato o già rimosso.`);
-          return { status: 'MATCH_ALREADY_CLEANED' };
-      }
+    // 1. Recuperiamo gli ID associati al match (es: "123" oppure "123,456")
+    const playersRaw = await this.redis.get(`match_players:${matchId}`);
+    console.log(`[Cleanup] Avvio finalizzazione globale per MatchID: ${matchId}`);
 
-      // dividiamo la stringa per ottenere i singoli ID
-      const playerIds = playersRaw.split(',');
+    if (!playersRaw) {
+        console.log(`[Cleanup] Match ${matchId} non trovato o già rimosso.`);
+        return { status: 'MATCH_ALREADY_CLEANED' };
+    }
 
-      for (const userId of playerIds) {
-          // Recuperiamo i dati attuali per non perdere characterName o rank
-          const dataRaw = await this.redis.get(`status:${userId}`);
-          if (dataRaw) {
-              const userData = JSON.parse(dataRaw);
-              
-              // Creiamo lo stato lobby (Uniformato)
-              const lobbyStatus = JSON.stringify({ 
-                  state: 'lobby', 
-                  userDbId: String(userId),
-                  characterName: userData.characterName,
-                  isAiPlayer: userData.isAiPlayer || false,
-                  rank: userData.rank,
-                  socketId: userData.socketId || undefined,
-                  updatedAt: Date.now() 
-              });
+    // 2. Otteniamo la lista degli ID
+    const playerIds = playersRaw.split(',');
 
-              // Riportiamo l'utente in lobby per 1 ora
-              await this.redis.set(`status:${userId}`, lobbyStatus, 'EX', 3600);
-          }
-      }
+    for (const userId of playerIds) {
+        // SALTO IL BOT O IL GUEST:
+        // Se l'ID contiene "ai_bot" o "guest", non dobbiamo ripristinare uno stato lobby
+        // perché non sono utenti reali nel database.
+        if (userId.includes('ai_bot') || userId.includes('guest')) {
+            console.log(`[Cleanup] Skippato ripristino per entità non-user: ${userId}`);
+            continue;
+        }
 
-      // eliminiamo l'indice del match
-      await this.redis.del(`match_players:${matchId}`);
+        const USER_STATUS_KEY = `status:${userId}`;
+        const dataRaw = await this.redis.get(USER_STATUS_KEY);
 
-      console.log(`[Cleanup] Match ${matchId} finalizzato. Player resettati: ${playersRaw}`);
-      return { status: 'MATCH_FINALIZED', matchId };
+        if (dataRaw) {
+            const userData = JSON.parse(dataRaw);
+            
+            // Creiamo lo stato lobby (Uniformato)
+            const lobbyStatus = JSON.stringify({ 
+                state: 'lobby', 
+                userDbId: String(userId),
+                characterName: userData.characterName,
+                // In lobby l'utente reale non è mai un AI player
+                isAiPlayer: false, 
+                rank: userData.rank,
+                socketId: userData.socketId || undefined,
+                updatedAt: Date.now() 
+            });
+
+            // Riportiamo l'utente in lobby per 1 ora
+            await this.redis.set(USER_STATUS_KEY, lobbyStatus, 'EX', 3600);
+            console.log(`[Cleanup] Utente ${userId} riportato in lobby.`);
+        }
+    }
+
+    // 3. Eliminiamo l'indice del match per liberare memoria
+    await this.redis.del(`match_players:${matchId}`);
+
+    console.log(`[Cleanup] Match ${matchId} rimosso con successo.`);
+    return { status: 'MATCH_FINALIZED', matchId };
   }
 
 /* ---------------------------------------------------------------------------------------------------------------- */
@@ -498,119 +652,110 @@ async leaveQueue(player: JoinQueueDto) {
 
 /* ---------------------------------------------------------------------------------------------------------------- */
 
-  async startLocalMatch(player: JoinQueueDto) {
-    const USER_STATUS_KEY = `status:${player.userDbId}`;
+  async startLocalMatch(data: any) { // Cambiamo la firma per accettare l'oggetto unico
+    const USER_STATUS_KEY_1 = `status:${data.userDbId}`;
     
-    // Verifichiamo se l'utente è già in coda e lo rimuoviamo per sicurezza
-    await this.redis.zrem('matchmaking_queue', player.userDbId);
-    // Creiamo un matchId univoco anche per la sessione locale
+    await this.redis.zrem('matchmaking_queue', data.userDbId);
     const matchId = `local_${Math.random().toString(36).substring(7)}`;
 
+    // Estraiamo i nomi dei personaggi dall'array inviato dal frontend
+    const charP1 = Array.isArray(data.characterName) ? data.characterName[0] : data.characterName;
+    const charP2 = Array.isArray(data.characterName) ? data.characterName[1] : 'Guest';
+
     const participant1 = {
-        characterName: player.characterName,
-        userDbId: String(player.userDbId),
-        isAiPlayer: Boolean(player.isAiPlayer),
-        rank: player.rank,
-        socketId: player.socketId,
+        characterName: charP1,
+        userDbId: String(data.userDbId),
+        isAiPlayer: false,
+        rank: data.rank,
+        socketId: data.socketId,
         playerIndex: 0,
     };
 
     const participant2 = {
-        characterName: player.characterName, 
-        userDbId: String(player.userDbId), 
+        characterName: charP2, 
+        userDbId: `guest_${data.userDbId}`,
         isAiPlayer: false,
-        rank: player.rank,
-        socketId: player.socketId,
+        rank: data.rank,
+        socketId: data.socketId,
         playerIndex: 1,
     };
 
-    // Stato su Redis: lo segnamo come 'ingame' in modalità 'local' (Uniformato)
     const playerStatus = JSON.stringify({ 
         state: 'ingame', 
         matchMode: 'local',
         matchType: 'unranked',
         matchId: matchId,
-        opponentId: player.userDbId, // In locale l'opponente è se stesso (o lo stesso account)
+        opponentId: 'LOCAL_GUEST',
         ...participant1,
         updatedAt: Date.now()
     });
 
-    await this.redis.set(USER_STATUS_KEY, playerStatus, 'EX', 600);
+    await this.redis.set(USER_STATUS_KEY_1, playerStatus, 'EX', 3600);
 
-    // preparo il payload
     const payload = {
-        gameId: matchId, // Obbligatorio nel suo DTO
+        gameId: matchId,
         playersData: [participant1, participant2],
-        matchType: 'unranked', // Valore compatibile con Enum MatchType
-        matchMode: 'local'     // Valore compatibile con Enum MatchMode
+        matchType: 'unranked',
+        matchMode: 'local'
     };
     
-    // chiamata HTTP POST
     try {
         const url = 'http://backend:3000/matchmaking/create-match';
         await firstValueFrom(this.httpService.post(url, payload));
-        console.log(`[LocalMatch] Sessione locale inviata al Game Server per ${player.userDbId}`);
+        console.log(`[LocalMatch] Sessione locale inviata al Game Server per ${charP1.userDbId}`);
     } catch (error) {
         console.error("Errore invio match locale al Game Server:", error.response?.data || error.message);
     }
 
-    console.log(`[LocalMatch] Avvio sessione locale per ${player.userDbId} su socket ${player.socketId}`);
-    return { status: 'LOCAL_MATCH_STARTED', userDbId: player.userDbId };
-  }
-
-/* ---------------------------------------------------------------------------------------------------------------- */
-
-  async finalizeLocalMatch(userDbId: string) {
-      const USER_STATUS_KEY = `status:${userDbId}`;
-      const userDataRaw = await this.redis.get(USER_STATUS_KEY);
-
-      if (userDataRaw) {
-          const userData = JSON.parse(userDataRaw);
-          // Riportiamo l'utente in lobby con il suo rank originale (Uniformato)
-          const lobbyStatus = JSON.stringify({ 
-              state: 'lobby', 
-              rank: userData.rank, 
-              characterName: userData.characterName,
-              isAiPlayer: userData.isAiPlayer || false,
-              socketId: userData.socketId || undefined,
-              updatedAt: Date.now()
-          });
-          await this.redis.set(USER_STATUS_KEY, lobbyStatus, 'EX', 3600);
-      }
-
-      return { status: 'LOCAL_MATCH_FINISHED' };
-  }
-  
-/* ---------------------------------------------------------------------------------------------------------------- */
-
-  async startAiMatch(player: JoinQueueDto) {
-    const USER_STATUS_KEY = `status:${player.userDbId}`;
+    await this.redis.set(`match_players:${matchId}`, `${data.userDbId},guest_${data.userDbId}`, 'EX', 3600);
     
-    // Rimuoviamo l'utente da eventuali code attive
-    await this.redis.zrem('matchmaking_queue', player.userDbId);
+    if (data.socketId) {
+        this.eventEmitter.emit('match.found.internal', {
+            socketId: data.socketId,
+            data: { status: 'MATCH_FOUND', matchId: matchId }
+        });
+    }
+
+    return { status: 'LOCAL_MATCH_STARTED', userDbId: data.userDbId };
+  }
+
+/* ---------------------------------------------------------------------------------------------------------------- */
+
+  async startAiMatch(data: any) {
+    const USER_STATUS_KEY = `status:${data.userDbId}`;
+    
+    // 1. Pulizia: rimuoviamo l'utente da eventuali code attive
+    await this.redis.zrem('matchmaking_queue', data.userDbId);
+    await this.redis.zrem('matchmaking_queue_unranked', data.userDbId);
 
     const matchId = `ai_${Math.random().toString(36).substring(7)}`;
 
+    // Estraiamo i nomi dei personaggi dall'array (stessa logica di local)
+    const charP1 = Array.isArray(data.characterName) ? data.characterName[0] : data.characterName;
+    // Se il frontend non passa un nome per il bot nell'array, usiamo 'CPU_Bot'
+    const charP2 = Array.isArray(data.characterName) && data.characterName[1] ? data.characterName[1] : 'CPU_Bot';
+
     // Il giocatore reale
     const participant1 = {
-        characterName: player.characterName,
-        userDbId: String(player.userDbId), // Conversione in string per il DTO di Piro
+        characterName: charP1,
+        userDbId: String(data.userDbId),
         isAiPlayer: false,
-        rank: player.rank,
-        socketId: player.socketId,
+        rank: data.rank,
+        socketId: data.socketId,
         playerIndex: 0,
     };
 
     // Il Bot
     const participant2 = {
-        characterName: 'CPU_Bot',
-        userDbId: null, // Il bot non ha un ID nel database
-        isAiPlayer: true, // Questo attiva la logica AI nel server di gioco
-        rank: player.rank,
+        characterName: charP2,
+        userDbId: `ai_bot_${matchId}`, // ID virtuale per il cleanup
+        isAiPlayer: true, // Attiva la logica AI nel Game Server
+        rank: data.rank,
+        socketId: null,
         playerIndex: 1,
     };
 
-    // Salviamo lo stato su Redis (stato 'ingame', modalità 'ai') (Uniformato)
+    // Salviamo lo stato su Redis (stato 'ingame', modalità 'ai')
     const playerStatus = JSON.stringify({ 
         state: 'ingame', 
         matchMode: 'ai', 
@@ -621,50 +766,39 @@ async leaveQueue(player: JoinQueueDto) {
         updatedAt: Date.now()
     });
 
-    await this.redis.set(USER_STATUS_KEY, playerStatus, 'EX', 600);
+    // Settiamo lo status dell'utente
+    await this.redis.set(USER_STATUS_KEY, playerStatus, 'EX', 3600);
 
-    // Prepariamo il payload per l'emit HTTP/Redis a Piro
+    // Prepariamo il payload per il Game Server
     const payload = {
-        gameId: matchId, // Richiesto dal nuovo controller
+        gameId: matchId,
         playersData: [participant1, participant2],
         matchType: 'unranked',
-        matchMode: 'ai' // Specifichiamo che è contro l'IA
+        matchMode: 'ai'
     };
     
     try {
         const url = 'http://backend:3000/matchmaking/create-match';
         await firstValueFrom(this.httpService.post(url, payload));
-        console.log(`[AiMatch] Richiesta creazione match vs AI inviata per ${player.userDbId}`);
+        console.log(`[AiMatch] Match vs AI inviato al Game Server per ${data.userDbId}`);
     } catch (error) {
         console.error("Errore invio match AI al Game Server:", error.response?.data || error.message);
     }
 
-    console.log(`[AiMatch] Utente ${player.userDbId} ha avviato sfida contro AI. GameId: ${matchId}`);
-    return { status: 'AI_MATCH_STARTED', matchId };
-  }
-  
-/* ---------------------------------------------------------------------------------------------------------------- */
+    // Settiamo la chiave per il cleanup globale (User Reale + Bot ID)
+    await this.redis.set(`match_players:${matchId}`, `${data.userDbId},ai_bot_${matchId}`, 'EX', 3600);
 
-  async finalizeAiMatch(userDbId: string) {
-    const USER_STATUS_KEY = `status:${userDbId}`;
-    const userDataRaw = await this.redis.get(USER_STATUS_KEY);
-
-    if (userDataRaw) {
-        const userData = JSON.parse(userDataRaw);
-        // Riportiamo l'utente in lobby (Uniformato)
-        const lobbyStatus = JSON.stringify({ 
-            state: 'lobby', 
-            rank: userData.rank, 
-            characterName: userData.characterName,
-            isAiPlayer: false,
-            socketId: userData.socketId || undefined,
-            updatedAt: Date.now()
+    // Notifica al frontend tramite Socket
+    const matchFoundData = { status: 'MATCH_FOUND', matchId: matchId };
+    if (data.socketId) {
+        this.eventEmitter.emit('match.found.internal', {
+            socketId: data.socketId,
+            data: matchFoundData
         });
-        await this.redis.set(USER_STATUS_KEY, lobbyStatus, 'EX', 3600);
     }
 
-    console.log(`[AiMatch] Partita contro AI conclusa per ${userDbId}.`);
-    return { status: 'AI_MATCH_FINISHED' };
+    console.log(`[AiMatch] Utente ${data.userDbId} vs AI avviato. GameId: ${matchId}`);
+    return { status: 'AI_MATCH_STARTED', matchId };
   }
 
 /* ---------------------------------------------------------------------------------------------------------------- */
