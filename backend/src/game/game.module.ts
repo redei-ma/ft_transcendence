@@ -9,7 +9,7 @@ import { PlayerManager } from './managers/playerManager/player.manager';
 import { BulletManager } from './managers/bullet.manager';
 import { ClientsModule, Transport } from '@nestjs/microservices';
 import { NetworkConfig } from './configs/network.config';
-import { MatchMakingController } from './game.Matchmaking.controller';
+import { MatchMakingController } from './controllers/game.Matchmaking.controller';
 
 @Module({
 	imports: [

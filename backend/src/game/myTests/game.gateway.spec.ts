@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { GameGateway } from '../game.gateway';
 import { GameService } from '../game.service';
-import { WsThrottlerGuard } from '../game.WsThrottlerGuard';
+import { WsThrottlerGuard } from '../guards/game.WsThrottlerGuard';
 import { ErrorCode, SuccessCode } from '../interfaces-enums';
 import { Vector } from '../utils';
 

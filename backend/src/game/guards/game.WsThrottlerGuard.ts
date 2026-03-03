@@ -1,8 +1,8 @@
 import { ExecutionContext, Injectable } from "@nestjs/common";
 import { ThrottlerGuard, ThrottlerException } from "@nestjs/throttler";
-import { GameException } from "./game.exception";
-import { ErrorCode } from "./interfaces-enums";
-import { SocketEvents } from "./configs";
+import { GameException } from "../errorHandling/game.exception";
+import { ErrorCode } from "../interfaces-enums";
+import { SocketEvents } from "../configs";
 
 @Injectable()
 export class WsThrottlerGuard extends ThrottlerGuard {

@@ -24,7 +24,6 @@ export class GameService implements OnModuleDestroy{
 	private userToGameData = new Map<string, GameData>();
 
 	private server: Server;
-	private gameIndex: number = 0;
 	private lastTime: number = performance.now();
 
 	private TIME_STEPS: number = (1 / 60);
@@ -108,8 +107,8 @@ export class GameService implements OnModuleDestroy{
 			this.logger.error('error, gameid is undefined')
 
 		this.redis.emit(NetworkConfig.MATCHMAKING.MATCH_EVENTS.END_GAME, gameId).subscribe({
-            next: () => this.logger.log(`Evento END_GAME inviato con successo per il match ${gameId}`),
-            error: (err) => this.logger.error(`Errore nell'invio dell'evento END_GAME a Redis: ${err.message}`)
+            next: () => this.logger.log(`event END_GAME inviated for game with id ${gameId}`),
+            error: (err) => this.logger.error(`error in sending the event END_GAME with Redis: ${err.message}`)
         });
 
 		for (const socketId of game.socketToEntities.keys()){
@@ -183,11 +182,12 @@ export class GameService implements OnModuleDestroy{
 				}
 			}
 		}
-		this.logger.log(players)
+		this.logger.log(`Players data in prepare match ${players}`);
 		const mapData: MapData | undefined = this.mapManager.getMap();
-		if (!mapData) return {status: ErrorCode.MAP_LOAD_FAILED, message: `error in loading the map`};
-
-		this.gameIndex++;
+		if (!mapData){
+			this.logger.error('Fatal error in loading the map');
+			return {status: ErrorCode.MAP_LOAD_FAILED, message: `error in loading the map`};
+		}
 
 		/* creating the game world */
 		const gameWorld: World = new World(mapData);
@@ -245,6 +245,7 @@ export class GameService implements OnModuleDestroy{
 		}
 	}
 
+	//Getter methods
 	getGameBySocket(socketId: string): GameSession | undefined{
 		const gameId: string | undefined = this.socketToGame.get(socketId);
 
@@ -254,7 +255,12 @@ export class GameService implements OnModuleDestroy{
 
 		return gameSession;
 	}
+	
+	getGameById(gameId: string): GameSession | undefined{
+		return (this.games.get(gameId));
+	}
 
+	//Setter methods
 	setServer(server: Server){
 		this.server = server;
 	}
@@ -263,10 +269,7 @@ export class GameService implements OnModuleDestroy{
 		this.socketToGame.set(socketId, gameId);
 	}
 
-	getGameById(gameId: string): GameSession | undefined{
-		return (this.games.get(gameId));
-	}
-
+	//utlis
 	hasPendingMatch(userDbId: string): GameData | undefined{
 		return (this.userToGameData.get(userDbId));
 	}
@@ -275,6 +278,7 @@ export class GameService implements OnModuleDestroy{
 		this.socketToGame.delete(socketId);
 	}
 
+	//when there is an error and the server crashed, i free all data
 	async onModuleDestroy(){
 		this.logger.warn('the server is in shutdown, cleaning up all resources');
 

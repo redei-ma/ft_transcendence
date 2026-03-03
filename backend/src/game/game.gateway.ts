@@ -1,14 +1,14 @@
 import { ConnectedSocket, MessageBody, OnGatewayConnection, OnGatewayDisconnect, OnGatewayInit, SubscribeMessage, WebSocketGateway } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 import { UseGuards, Logger, UseFilters } from '@nestjs/common';
-import { WsThrottlerGuard } from './game.WsThrottlerGuard';
+import { WsThrottlerGuard } from './guards/game.WsThrottlerGuard';
 import { GameService } from './game.service';
 import { Vector } from './utils';
 import { GameInputDto, GameMessageDto } from './dto';
 import { SocketEvents } from './configs';
 import { GameSession } from './core';
 import { GameData, ErrorCode, SuccessCode, MatchType, MatchMode } from './interfaces-enums';
-import { GameExceptionFilter } from './game.WsGameExceptionFilter';
+import { GameExceptionFilter } from './errorHandling/game.WsGameExceptionFilter';
 import { ExitStatus } from './interfaces-enums/exitStatus.interface';
 
 //questo e' come dovra' essere alla fine
