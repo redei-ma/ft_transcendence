@@ -5,13 +5,15 @@ WORKDIR /app
 
 RUN apk add --no-cache openssl
 
+COPY shared/types ./shared/types
+
 COPY shared/prisma/schema.prisma ./prisma/schema.prisma
 
 WORKDIR /app/game-service
 
 COPY game-service/package*.json ./
 
-RUN npm ci
+RUN npm ci --install-links
 
 COPY game-service/. .
 

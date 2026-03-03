@@ -1,12 +1,3 @@
-/**
- * @file main.ts
- * @description Entry point for the user-service.
- *
- * Bootstraps the NestJS application with:
- * - Global ValidationPipe (auto-validates all incoming DTOs)
- * - Swagger/OpenAPI documentation (available at /api/docs)
- * - Graceful shutdown hooks
- */
 import { NestFactory } from "@nestjs/core";
 import { ValidationPipe } from "@nestjs/common";
 import { SwaggerModule, DocumentBuilder } from "@nestjs/swagger";
@@ -42,7 +33,6 @@ async function bootstrap() {
 
 	const document = SwaggerModule.createDocument(app, config);
 	SwaggerModule.setup("api/docs", app, document);
-	
 
 	const port = process.env.PORT || 3001;
 	await app.listen(port);

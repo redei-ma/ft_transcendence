@@ -1,21 +1,6 @@
-/**
- * @file match.service.ts
- * @description Handles end-of-match processing.
- *
- * Post-match flow:
- * 1. Transaction: save Match + Participants + update UserStats + CharacterStats
- * 2. Check achievements (based on match result + updated stats)
- * 3. Send notifications for unlocked achievements (via user-service API)
- *
- * Stats update rules by mode:
- * - RANKED: elo + stats + achievements
- * - UNRANKED: stats + achievements (no elo)
- * - AI: stats + achievements (no elo)
- * - LOCAL: save match only (no stats, no achievements)
- */
 import { Injectable, Logger } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
-import { MatchMode, CharacterName, Prisma } from "@prisma/client";
+import { MatchMode, MatchType, CharacterName, Prisma } from "@prisma/client";
 import { MatchResult, PlayerResult } from "../../types/match-result.interface";
 import {
 	AchievementService,
@@ -72,6 +57,19 @@ export class MatchResultService {
 			// LOCAL mode: save match only, no stats
 			if (isLocal) return [];
 
+			// Pre-fetch current ELO for all real players (needed for ELO calculation)
+			const eloMap = new Map<number, number>();
+			if (matchResult.mode === MatchMode.RANKED) {
+				for (const p of matchResult.players) {
+					if (p.userId === null) continue;
+					const s = await tx.userStats.findUnique({
+						where: { userId: p.userId },
+						select: { eloCurrent: true },
+					});
+					eloMap.set(p.userId, s?.eloCurrent ?? 500);
+				}
+			}
+
 			// Update stats for each real player
 			const updatedStats: UpdatedPlayerStats[] = [];
 
@@ -82,6 +80,7 @@ export class MatchResultService {
 					tx,
 					player,
 					matchResult,
+					eloMap,
 				);
 				updatedStats.push(stats);
 			}
@@ -117,6 +116,7 @@ export class MatchResultService {
 		tx: Prisma.TransactionClient,
 		player: PlayerResult,
 		matchResult: MatchResult,
+		eloMap: Map<number, number>,
 	): Promise<UpdatedPlayerStats> {
 		const isWinner =
 			matchResult.winningTeamId !== null &&
@@ -126,16 +126,83 @@ export class MatchResultService {
 			player.teamId !== matchResult.winningTeamId;
 		const isDraw = matchResult.winningTeamId === null;
 
-		// ─── ELO ──────────────────────────────────────────────
-		let eloChange = 0;
-		if (matchResult.mode === MatchMode.RANKED) {
-			eloChange = this.calculateElo(player, matchResult);
-		}
-
 		// ─── UserStats ────────────────────────────────────────
 		const currentStats = await tx.userStats.findUnique({
 			where: { userId: player.userId! },
 		});
+
+		// ─── ELO ──────────────────────────────────────────────
+		let eloChange = 0;
+		if (matchResult.mode === MatchMode.RANKED) {
+			const playerElo = eloMap.get(player.userId!) ?? 500;
+			let opponents: { elo: number; result: "win" | "loss" | "draw" }[];
+
+			if (matchResult.type === MatchType.FFA) {
+				if (isDraw) {
+					// FFA draw: small adjustment against all other real players
+					opponents = matchResult.players
+						.filter(
+							(p) =>
+								p.userId !== null && p.userId !== player.userId,
+						)
+						.map((p) => ({
+							elo: eloMap.get(p.userId!) ?? 500,
+							result: "draw" as const,
+						}));
+				} else if (isWinner) {
+					// Winner: compare against the highest-ELO opponent only
+					const realOpponentElos = matchResult.players
+						.filter(
+							(p) =>
+								p.userId !== null && p.userId !== player.userId,
+						)
+						.map((p) => eloMap.get(p.userId!) ?? 500);
+					opponents =
+						realOpponentElos.length > 0
+							? [
+									{
+										elo: Math.max(...realOpponentElos),
+										result: "win" as const,
+									},
+								]
+							: [];
+				} else {
+					// Loser: compare only against the winner
+					const winnerPlayer = matchResult.players.find(
+						(p) => p.teamId === matchResult.winningTeamId,
+					);
+					const winnerElo =
+						winnerPlayer?.userId != null
+							? (eloMap.get(winnerPlayer.userId) ?? 500)
+							: 500;
+					opponents = [{ elo: winnerElo, result: "loss" as const }];
+				}
+			} else {
+				// TEAM mode: each player vs every opponent on the other team
+				opponents = matchResult.players
+					.filter(
+						(p) =>
+							p.userId !== null &&
+							p.userId !== player.userId &&
+							p.teamId !== player.teamId,
+					)
+					.map((p) => {
+						const opponentIsWinner =
+							matchResult.winningTeamId !== null &&
+							p.teamId === matchResult.winningTeamId;
+						const result: "win" | "loss" | "draw" = isDraw
+							? "draw"
+							: isWinner
+								? "win"
+								: opponentIsWinner
+									? "loss"
+									: "draw";
+						return { elo: eloMap.get(p.userId!) ?? 500, result };
+					});
+			}
+
+			eloChange = this.calculateElo(playerElo, opponents);
+		}
 
 		// Streak calculation
 		let newWinStreak = currentStats?.currentWinStreak ?? 0;
@@ -153,8 +220,8 @@ export class MatchResultService {
 			newLoseStreak = 0;
 		}
 
-		const newElo = (currentStats?.eloCurrent ?? 1000) + eloChange;
-		const newEloPeak = Math.max(currentStats?.eloPeak ?? 1000, newElo);
+		const newElo = (currentStats?.eloCurrent ?? 500) + eloChange;
+		const newEloPeak = Math.max(currentStats?.eloPeak ?? 500, newElo);
 		const newBestWinStreak = Math.max(
 			currentStats?.bestWinStreak ?? 0,
 			newWinStreak,
@@ -229,19 +296,29 @@ export class MatchResultService {
 	// ─── ELO Calculation ──────────────────────────────────────────
 
 	/**
-	 * Calculates ELO change for a player after a ranked match.
+	 * Calculates ELO delta for a player after a ranked match.
 	 *
-	 * TODO: implement ELO algorithm
-	 * Should consider: current ELO of both players, win/loss/draw,
-	 * K-factor, etc.
+	 * Formula per opponent:
+	 *   E = 1 / (1 + 10^((opponentElo - playerElo) / 400))
+	 *   delta = K * (actualScore - E)
 	 *
-	 * @returns ELO change
+	 * Delta is averaged across all opponents.
+	 * K-factor: 32.
 	 */
 	private calculateElo(
-		_player: PlayerResult,
-		_matchResult: MatchResult,
+		playerElo: number,
+		opponents: { elo: number; result: "win" | "loss" | "draw" }[],
 	): number {
-		// TODO: implement ELO calculation
-		return 0;
+		if (opponents.length === 0) return 0;
+
+		const K = 32;
+
+		const totalDelta = opponents.reduce((sum, { elo: oppElo, result }) => {
+			const actual = result === "win" ? 1 : result === "draw" ? 0.5 : 0;
+			const expected = 1 / (1 + Math.pow(10, (oppElo - playerElo) / 400));
+			return sum + K * (actual - expected);
+		}, 0);
+
+		return Math.round(totalDelta / opponents.length);
 	}
 }

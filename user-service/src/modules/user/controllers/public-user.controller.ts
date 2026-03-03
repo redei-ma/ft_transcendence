@@ -1,16 +1,19 @@
 import {
 	Controller,
 	Get,
+	Post,
 	Patch,
 	Delete,
 	Body,
 	Param,
 	Query,
 	ParseIntPipe,
-	ParseEnumPipe,
 	HttpCode,
 	HttpStatus,
 	UseGuards,
+	UseInterceptors,
+	UploadedFile,
+	BadRequestException,
 } from "@nestjs/common";
 import {
 	ApiTags,
@@ -18,13 +21,17 @@ import {
 	ApiResponse,
 	ApiParam,
 	ApiBearerAuth,
+	ApiConsumes,
+	ApiBody,
 } from "@nestjs/swagger";
+import { FileInterceptor } from "@nestjs/platform-express";
+import { memoryStorage } from "multer";
+import { Throttle } from "@nestjs/throttler";
 import { JwtAuthGuard, CurrentUser } from "../../guard";
 import { UserService } from "../services/user.service";
 import {
 	UpdateUsernameDto,
 	UpdateEmailDto,
-	UpdateAvatarDto,
 	CheckEmailQueryDto,
 	CheckUsernameQueryDto,
 	LeaderboardQueryDto,
@@ -34,7 +41,12 @@ import {
 	PublicProfileResponseDto,
 	LeaderboardResponseDto,
 	CheckAvailabilityResponseDto,
+	MatchHistoryQueryDto,
+	MatchHistoryResponseDto,
+	UserAchievementsResponseDto,
 } from "@transcendence/types";
+import { MatchHistoryService } from "../services/match-history.service";
+import { AchievementService } from "../services/achievement.service";
 
 /**
  * Controller for public user endpoints.
@@ -43,7 +55,11 @@ import {
 @ApiTags("Users")
 @Controller("api/users")
 export class PublicUserController {
-	constructor(private readonly userService: UserService) {}
+	constructor(
+		private readonly userService: UserService,
+		private readonly matchHistoryService: MatchHistoryService,
+		private readonly achievementService: AchievementService,
+	) {}
 
 	// ─── Useer profile ─────────────────────────────────────────────────────────────────────────────
 
@@ -189,27 +205,86 @@ export class PublicUserController {
 	}
 
 	/**
-	 * Update current user's avatar.
+	 * Upload a custom avatar image.
 	 */
-	@Patch("me/avatar")
+	@Post("me/avatar")
+	@HttpCode(HttpStatus.OK)
 	@UseGuards(JwtAuthGuard)
 	@ApiBearerAuth()
-	@ApiOperation({ summary: "Update avatar or reset to default" })
-	@ApiResponse({
-		status: HttpStatus.OK,
-		description: "Avatar updated successfully",
-		type: UserProfileResponseDto,
+	@Throttle({ global: { limit: 5, ttl: 60_000 } })
+	@ApiOperation({
+		summary: "Upload a custom avatar image (max 5MB, jpeg/png/gif/webp)",
 	})
-	@ApiResponse({
-		status: HttpStatus.UNAUTHORIZED,
-		description: "Missing or invalid JWT",
+	@ApiConsumes("multipart/form-data")
+	@ApiBody({
+		schema: {
+			type: "object",
+			properties: {
+				avatar: { type: "string", format: "binary" },
+			},
+		},
 	})
-	async updateAvatar(
+	@ApiResponse({ status: HttpStatus.OK, type: UserProfileResponseDto })
+	@ApiResponse({
+		status: HttpStatus.BAD_REQUEST,
+		description: "No file, invalid type, or not a real image",
+	})
+	@ApiResponse({ status: HttpStatus.UNAUTHORIZED })
+	@UseInterceptors(
+		FileInterceptor("avatar", {
+			storage: memoryStorage(),
+			limits: { fileSize: 5 * 1024 * 1024 },
+			fileFilter: (
+				_req: Express.Request,
+				file: Express.Multer.File,
+				callback: (error: Error | null, acceptFile: boolean) => void,
+			) => {
+				const allowed = [
+					"image/jpeg",
+					"image/png",
+					"image/gif",
+					"image/webp",
+				];
+				if (allowed.includes(file.mimetype)) {
+					callback(null, true);
+				} else {
+					callback(
+						new BadRequestException(
+							"Only image files are allowed (jpeg, png, gif, webp)",
+						),
+						false,
+					);
+				}
+			},
+		}),
+	)
+	async uploadAvatar(
 		@CurrentUser("id") userId: number,
-		@Body() dto: UpdateAvatarDto,
+		@UploadedFile() file: Express.Multer.File | undefined,
 	): Promise<UserProfileResponseDto> {
-		return this.userService.updateAvatar(userId, dto);
+		if (!file) {
+			throw new BadRequestException("Avatar file is required");
+		}
+		return this.userService.uploadAvatar(userId, file.buffer);
 	}
+
+	/**
+	 * Reset avatar to default.
+	 */
+	@Delete("me/avatar")
+	@HttpCode(HttpStatus.OK)
+	@UseGuards(JwtAuthGuard)
+	@ApiBearerAuth()
+	@ApiOperation({ summary: "Reset avatar to default DiceBear" })
+	@ApiResponse({ status: HttpStatus.OK, type: UserProfileResponseDto })
+	@ApiResponse({ status: HttpStatus.UNAUTHORIZED })
+	async resetAvatar(
+		@CurrentUser("id") userId: number,
+	): Promise<UserProfileResponseDto> {
+		return this.userService.resetAvatar(userId);
+	}
+
+	// ─── Delete account ────────────────────────────────────────────────────────
 
 	/**
 	 * Permanently delete the current user's account and all associated data.
@@ -312,5 +387,62 @@ export class PublicUserController {
 		@Query() query: LeaderboardQueryDto,
 	): Promise<LeaderboardResponseDto> {
 		return this.userService.getLeaderboard(query);
+	}
+
+	// ─── Match history ─────────────────────────────────────────────────────────
+
+	@Get("me/matches")
+	@UseGuards(JwtAuthGuard)
+	@ApiBearerAuth()
+	@ApiOperation({ summary: "Get current user match history" })
+	@ApiResponse({ status: HttpStatus.OK, type: MatchHistoryResponseDto })
+	@ApiResponse({ status: HttpStatus.UNAUTHORIZED })
+	async getMyMatchHistory(
+		@CurrentUser("id") userId: number,
+		@Query() query: MatchHistoryQueryDto,
+	): Promise<MatchHistoryResponseDto> {
+		return this.matchHistoryService.getMyMatchHistory(userId, query);
+	}
+
+	@Get(":id/matches")
+	@UseGuards(JwtAuthGuard)
+	@ApiBearerAuth()
+	@ApiOperation({ summary: "Get match history of a player" })
+	@ApiParam({ name: "id", type: Number })
+	@ApiResponse({ status: HttpStatus.OK, type: MatchHistoryResponseDto })
+	@ApiResponse({ status: HttpStatus.NOT_FOUND })
+	@ApiResponse({ status: HttpStatus.UNAUTHORIZED })
+	async getUserMatchHistory(
+		@Param("id", ParseIntPipe) targetId: number,
+		@Query() query: MatchHistoryQueryDto,
+	): Promise<MatchHistoryResponseDto> {
+		return this.matchHistoryService.getUserMatchHistory(targetId, query);
+	}
+
+	// ─── Achievements ──────────────────────────────────────────────────────────
+
+	@Get("me/achievements")
+	@UseGuards(JwtAuthGuard)
+	@ApiBearerAuth()
+	@ApiOperation({ summary: "Get current user achievements" })
+	@ApiResponse({ status: HttpStatus.OK, type: UserAchievementsResponseDto })
+	@ApiResponse({ status: HttpStatus.UNAUTHORIZED })
+	async getMyAchievements(
+		@CurrentUser("id") userId: number,
+	): Promise<UserAchievementsResponseDto> {
+		return this.achievementService.getMyAchievements(userId);
+	}
+
+	@Get(":id/achievements")
+	@UseGuards(JwtAuthGuard)
+	@ApiBearerAuth()
+	@ApiOperation({ summary: "Get achievements of a player" })
+	@ApiParam({ name: "id", type: Number })
+	@ApiResponse({ status: HttpStatus.OK, type: UserAchievementsResponseDto })
+	@ApiResponse({ status: HttpStatus.UNAUTHORIZED })
+	async getUserAchievements(
+		@Param("id", ParseIntPipe) targetId: number,
+	): Promise<UserAchievementsResponseDto> {
+		return this.achievementService.getUserAchievements(targetId);
 	}
 }

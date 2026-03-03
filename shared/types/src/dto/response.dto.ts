@@ -1,5 +1,19 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
-import { UserStatus, Provider, CharacterName } from "../enums";
+import {
+	UserStatus,
+	Provider,
+	CharacterName,
+	AchievementType,
+	MatchMode,
+	MatchType,
+	EndReason,
+	FriendshipStatus,
+	InviteStatus,
+	NotificationType,
+} from "../enums";
+
+type MatchResult = "WIN" | "LOSS" | "DRAW";
+
 /**
  * Represents a single linked authentication method (LOCAL or OAuth).
  *
@@ -372,6 +386,54 @@ export class LeaderboardResponseDto {
 }
 
 /**
+ * A single unlocked achievement with unlock timestamp.
+ */
+export class AchievementResponseDto {
+	@ApiProperty({ example: "Flawless Victory" })
+	name: string;
+
+	@ApiProperty({ example: "Win a match without dying." })
+	description: string;
+
+	@ApiProperty({ example: "/icons/flawless.png" })
+	iconPath: string;
+
+	@ApiProperty({ enum: AchievementType, example: "SILVER" })
+	tier: AchievementType;
+
+	@ApiProperty()
+	unlockedAt: Date;
+}
+
+/**
+ * A user's full achievement collection.
+ */
+export class UserAchievementsResponseDto {
+	@ApiProperty({ type: [AchievementResponseDto] })
+	unlocked: AchievementResponseDto[];
+
+	@ApiProperty({ example: 4 })
+	unlockedCount: number;
+
+	@ApiProperty({
+		description: "Total achievements available in the game",
+		example: 12,
+	})
+	totalCount: number;
+}
+
+/**
+ * ELO rating of a user.
+ */
+export class UserEloResponseDto {
+	@ApiProperty({
+		description: "Current ELO rating of the user",
+		example: 750,
+	})
+	eloCurrent: number;
+}
+
+/**
  * Response for email and username availability checks.
  */
 export class CheckAvailabilityResponseDto {
@@ -391,4 +453,258 @@ export class SuccessResponseDto {
 		example: "Operation completed successfully",
 	})
 	message: string;
+}
+
+// ─── MATCH HISTORY ──────────────────────────────────────────────────────────
+
+/**
+ * Single participant snapshot inside a match history entry.
+ */
+export class MatchParticipantSummaryDto {
+	@ApiProperty({
+		description: "User ID, null if the account was deleted",
+		nullable: true,
+		example: 7,
+	})
+	userId: number | null;
+
+	@ApiProperty({
+		description: "Username, null if account deleted",
+		nullable: true,
+		example: "pro_gamer",
+	})
+	username: string | null;
+
+	@ApiProperty({
+		description: "Avatar URL, null if account deleted",
+		nullable: true,
+		example: "https://...",
+	})
+	avatarUrl: string | null;
+
+	@ApiProperty({
+		description: "Team the participant belonged to",
+		example: 1,
+	})
+	teamId: number;
+
+	@ApiProperty({ enum: CharacterName, example: "ZEUS" })
+	characterName: CharacterName;
+
+	@ApiProperty({ example: 5 })
+	kills: number;
+
+	@ApiProperty({ example: 2 })
+	deaths: number;
+}
+
+/**
+ * Single match in a user's history, with result from that user's perspective.
+ */
+export class MatchHistoryEntryDto {
+	@ApiProperty({ example: 101 })
+	matchId: number;
+
+	@ApiProperty()
+	playedAt: Date;
+
+	@ApiProperty({ enum: MatchMode, example: "RANKED" })
+	mode: MatchMode;
+
+	@ApiProperty({ enum: MatchType, example: "FFA" })
+	type: MatchType;
+
+	@ApiProperty({ description: "Match duration in seconds", example: 180 })
+	durationSeconds: number;
+
+	@ApiProperty({ enum: EndReason, nullable: true, example: "KILLOUT" })
+	endReason: EndReason | null;
+
+	@ApiProperty({
+		enum: ["WIN", "LOSS", "DRAW"],
+		description: "Result from the requesting user's perspective",
+		example: "WIN",
+	})
+	result: MatchResult;
+
+	@ApiProperty({ type: [MatchParticipantSummaryDto] })
+	participants: MatchParticipantSummaryDto[];
+}
+
+/**
+ * Paginated match history.
+ */
+export class MatchHistoryResponseDto {
+	@ApiProperty({ type: [MatchHistoryEntryDto] })
+	entries: MatchHistoryEntryDto[];
+
+	@ApiProperty({ example: 150 })
+	total: number;
+
+	@ApiProperty({ example: 1 })
+	page: number;
+
+	@ApiProperty({ example: 20 })
+	limit: number;
+}
+
+// ─── FRIENDSHIP ─────────────────────────────────────────────────────────────
+
+/**
+ * Minimal user info used inside friendship and invite responses.
+ */
+export class FriendUserDto {
+	@ApiProperty({ example: 7 })
+	id: number;
+
+	@ApiProperty({ example: "pro_gamer" })
+	username: string;
+
+	@ApiProperty({
+		example: "https://api.dicebear.com/9.x/pixel-art/svg?seed=pro_gamer",
+	})
+	avatarUrl: string;
+
+	@ApiProperty({ enum: UserStatus, example: "ONLINE" })
+	status: UserStatus;
+}
+
+/**
+ * Single friendship record with direction indicator.
+ */
+export class FriendResponseDto {
+	@ApiProperty({ description: "Friendship record ID", example: 42 })
+	id: number;
+
+	@ApiProperty({
+		description: "The other user in this friendship",
+		type: FriendUserDto,
+	})
+	friend: FriendUserDto;
+
+	@ApiProperty({ enum: FriendshipStatus, example: "ACCEPTED" })
+	status: FriendshipStatus;
+
+	@ApiProperty({
+		description:
+			"SENT = current user sent the request; RECEIVED = current user received it",
+		enum: ["SENT", "RECEIVED"],
+		example: "SENT",
+	})
+	direction: "SENT" | "RECEIVED";
+
+	@ApiProperty()
+	createdAt: Date;
+
+	@ApiProperty()
+	updatedAt: Date;
+}
+
+/**
+ * List of accepted friends.
+ */
+export class FriendListResponseDto {
+	@ApiProperty({ type: [FriendResponseDto] })
+	friends: FriendResponseDto[];
+
+	@ApiProperty({ example: 12 })
+	total: number;
+}
+
+/**
+ * Pending friend requests split by direction.
+ */
+export class FriendRequestsResponseDto {
+	@ApiProperty({
+		type: [FriendResponseDto],
+		description: "Requests sent by the current user",
+	})
+	sent: FriendResponseDto[];
+
+	@ApiProperty({
+		type: [FriendResponseDto],
+		description: "Requests received by the current user",
+	})
+	received: FriendResponseDto[];
+}
+
+// ─── GAME INVITE ─────────────────────────────────────────────────────────────
+
+/**
+ * Single game invite record.
+ */
+export class GameInviteResponseDto {
+	@ApiProperty({ example: 55 })
+	id: number;
+
+	@ApiProperty({ type: FriendUserDto })
+	sender: FriendUserDto;
+
+	@ApiProperty({ type: FriendUserDto })
+	receiver: FriendUserDto;
+
+	@ApiProperty({ enum: InviteStatus, example: "PENDING" })
+	status: InviteStatus;
+
+	@ApiProperty()
+	createdAt: Date;
+
+	@ApiProperty()
+	expiresAt: Date;
+}
+
+/**
+ * List of game invites.
+ */
+export class GameInviteListResponseDto {
+	@ApiProperty({ type: [GameInviteResponseDto] })
+	invites: GameInviteResponseDto[];
+
+	@ApiProperty({ example: 3 })
+	total: number;
+}
+
+// ─── NOTIFICATION ────────────────────────────────────────────────────────────
+
+/**
+ * Single in-app notification.
+ */
+export class NotificationResponseDto {
+	@ApiProperty({ example: 1 })
+	id: number;
+
+	@ApiProperty({ enum: NotificationType, example: "FRIEND_REQ" })
+	type: NotificationType;
+
+	@ApiProperty({ example: "pro_gamer sent you a friend request." })
+	message: string;
+
+	@ApiProperty({ example: false })
+	isRead: boolean;
+
+	@ApiProperty()
+	createdAt: Date;
+}
+
+/**
+ * Paginated notification list with unread count.
+ */
+export class NotificationListResponseDto {
+	@ApiProperty({ type: [NotificationResponseDto] })
+	notifications: NotificationResponseDto[];
+
+	@ApiProperty({ example: 50 })
+	total: number;
+
+	@ApiProperty({
+		example: 3,
+		description: "Unread count across ALL pages, not just current",
+	})
+	unreadCount: number;
+
+	@ApiProperty({ example: 1 })
+	page: number;
+
+	@ApiProperty({ example: 20 })
+	limit: number;
 }

@@ -11,7 +11,6 @@ export {
 	UpdatePasswordDto,
 	UpdateUsernameDto,
 	UpdateEmailDto,
-	UpdateAvatarDto,
 	UpdateStatusDto,
 	LinkOAuthDto,
 	Setup2faDto,
@@ -21,6 +20,8 @@ export {
 	CheckEmailQueryDto,
 	CheckUsernameQueryDto,
 	LeaderboardQueryDto,
+	MatchHistoryQueryDto,
+	NotificationsQueryDto,
 } from "./query.dto";
 export {
 	AccountResponseDto,
@@ -30,8 +31,25 @@ export {
 	UserStatsResponseDto,
 	UserSettingsResponseDto,
 	PublicProfileResponseDto,
-	LeaderboardResponseDto,
-	CheckAvailabilityResponseDto,
 	LeaderboardEntryDto,
+	LeaderboardResponseDto,
+	UserEloResponseDto,
+	CheckAvailabilityResponseDto,
 	SuccessResponseDto,
+	AchievementResponseDto,
+	UserAchievementsResponseDto,
+	MatchParticipantSummaryDto,
+	MatchHistoryEntryDto,
+	MatchHistoryResponseDto,
+	FriendUserDto,
+	FriendResponseDto,
+	FriendListResponseDto,
+	FriendRequestsResponseDto,
+	GameInviteResponseDto,
+	GameInviteListResponseDto,
+	NotificationResponseDto,
+	NotificationListResponseDto,
 } from "./response.dto";
+export { RespondFriendRequestDto } from "./friendship.dto";
+export { SendGameInviteDto, RespondGameInviteDto } from "./game-invite.dto";
+export { CreateNotificationDto } from "./notification.dto";

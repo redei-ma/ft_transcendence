@@ -1,11 +1,3 @@
-/**
-2 * @file match-result.interface.ts
-3 * @description Interfaces for end-of-match data.
-4 *
-5 * Created by the game engine at the end of a match and passed
-6 * to the match service for DB persistence, stats update, and
-7 * achievement checking.
-8 */
 import { CharacterName, MatchMode, MatchType, EndReason } from "@prisma/client";
 
 export interface MatchResult {

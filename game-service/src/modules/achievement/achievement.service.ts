@@ -1,19 +1,7 @@
-/**
- * @file achievement.service.ts
- * @description Manages achievement seeding, caching, and post-match checking.
- *
- * On startup:
- * 1. Upserts all achievement definitions (keeps descriptions aligned with AchievementConfig)
- * 2. Loads achievements into memory cache (avoids DB queries on every match end)
- *
- * After each match: checks all conditions against match result + updated stats,
- * unlocks any newly earned achievements.
- */
 import { Injectable, OnModuleInit, Logger } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
 import { CharacterName } from "@prisma/client";
-import { AchievementConfig } from "../../types/achievement.config";
-import { ACHIEVEMENTS } from "./achievement.data";
+import { AchievementConfig } from "@transcendence/types";
 import { MatchResult } from "../../types/match-result.interface";
 
 /** Stats snapshot after the match transaction has been committed */
@@ -39,30 +27,10 @@ export class AchievementService implements OnModuleInit {
 
 	constructor(private readonly prisma: PrismaService) {}
 
-	// ─── Startup: Seed + Cache ────────────────────────────────────
+	// ─── Startup: Cache ────────────────────────────────────
 
 	async onModuleInit(): Promise<void> {
-		await this.seedAchievements();
 		await this.loadCache();
-	}
-
-	/** Upserts achievement definitions so descriptions stay aligned with AchievementConfig values */
-	private async seedAchievements(): Promise<void> {
-		this.logger.log("Seeding achievements...");
-
-		for (const ach of ACHIEVEMENTS) {
-			await this.prisma.achievement.upsert({
-				where: { name: ach.name },
-				update: {
-					description: ach.description,
-					tier: ach.tier,
-					iconPath: ach.iconPath,
-				},
-				create: ach,
-			});
-		}
-
-		this.logger.log(`${ACHIEVEMENTS.length} achievements seeded`);
 	}
 
 	/** Loads all achievements into memory to avoid DB queries on every match */

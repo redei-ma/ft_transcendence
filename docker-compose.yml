@@ -156,6 +156,7 @@ services:
             - ./frontend:/usr/share/nginx/html:ro
             - ./nginix/nginx.conf:/etc/nginx/nginx.conf:ro
             - ./certs:/etc/nginx/certs
+            - uploads_data:/upl
 
     ngrok:
         container_name: ngrok
@@ -169,8 +170,6 @@ services:
             - backend-network
         env_file:
             - .env.shared
-        environment:
-            - NGROK_AUTHTOKEN=${NGROK_AUTHTOKEN}
 
 volumes:
     postgres_data:

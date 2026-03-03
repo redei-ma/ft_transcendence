@@ -3,35 +3,26 @@ import { HttpService } from '@nestjs/axios';
 import {
   CreateLocalUserDto,
   CreateOAuthUserDto,
-  SetPasswordDto,
   UpdatePasswordDto,
-  UpdateUsernameDto,
-  UpdateEmailDto,
-  UpdateAvatarDto,
-  UpdateStatusDto,
   LinkOAuthDto,
   Setup2faDto,
   FindUserQueryDto,
-  LeaderboardQueryDto,
   UserWithAccountsResponseDto,
-  UserProfileResponseDto,
-  UserStatsResponseDto,
-  UserSettingsResponseDto,
-  PublicProfileResponseDto,
-  LeaderboardResponseDto,
-  CheckAvailabilityResponseDto,
-} from "@transcendence/types";
+} from '@transcendence/types';
 
 @Injectable()
 export class UserClient {
   constructor(private readonly http: HttpService) {}
 
-  async findUser(query: FindUserQueryDto): Promise<UserWithAccountsResponseDto | null> {
+  async findUser(
+    query: FindUserQueryDto,
+  ): Promise<UserWithAccountsResponseDto | null> {
     try {
-      const { data } = await this.http.axiosRef.get<UserWithAccountsResponseDto>(
-        'http://user-service:3001/internal/users',
-        { params: query },
-      );
+      const { data } =
+        await this.http.axiosRef.get<UserWithAccountsResponseDto>(
+          'http://user-service:3001/internal/users',
+          { params: query },
+        );
       return data;
     } catch (e) {
       if (e?.response?.status === 404) return null;
@@ -39,7 +30,9 @@ export class UserClient {
     }
   }
 
-  async createUser(dto: CreateLocalUserDto): Promise<UserWithAccountsResponseDto> {
+  async createUser(
+    dto: CreateLocalUserDto,
+  ): Promise<UserWithAccountsResponseDto> {
     const { data } = await this.http.axiosRef.post<UserWithAccountsResponseDto>(
       `http://user-service:3001/internal/users`,
       dto,
@@ -47,7 +40,9 @@ export class UserClient {
     return data;
   }
 
-  async createOAuthUser(dto: CreateOAuthUserDto ): Promise<UserWithAccountsResponseDto> {
+  async createOAuthUser(
+    dto: CreateOAuthUserDto,
+  ): Promise<UserWithAccountsResponseDto> {
     const { data } = await this.http.axiosRef.post<UserWithAccountsResponseDto>(
       `http://user-service:3001/internal/users/oauth`,
       dto,
@@ -74,11 +69,15 @@ export class UserClient {
     );
   }
 
-  async findByProvider(provider: string, oauthId: string): Promise<UserWithAccountsResponseDto | null> {
+  async findByProvider(
+    provider: string,
+    oauthId: string,
+  ): Promise<UserWithAccountsResponseDto | null> {
     try {
-      const { data } = await this.http.axiosRef.get<UserWithAccountsResponseDto>(
-        `http://user-service:3001/internal/users/${provider}/${oauthId}`,
-      );
+      const { data } =
+        await this.http.axiosRef.get<UserWithAccountsResponseDto>(
+          `http://user-service:3001/internal/users/${provider}/${oauthId}`,
+        );
       return data;
     } catch (e) {
       if (e?.response?.status === 404) return null;
@@ -86,10 +85,14 @@ export class UserClient {
     }
   }
 
-  async linkProvider(userId: number, provider: string, dto: LinkOAuthDto): Promise<void> {
+  async linkProvider(
+    userId: number,
+    provider: string,
+    dto: LinkOAuthDto,
+  ): Promise<void> {
     await this.http.axiosRef.post(
       `http://user-service:3001/internal/users/${userId}/oauth/${provider}`,
-      dto
+      dto,
     );
   }
 

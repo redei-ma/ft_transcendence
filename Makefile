@@ -12,7 +12,7 @@ TYPES_DIR    := ./shared/types
 
 # --- Phony targets -------------------------------------------
 
-.PHONY: all generate certs up down restart clean fclean re rebuild prune logs ps help 
+.PHONY: all generate migrate certs up down restart clean fclean re rebuild prune logs ps help 
 
 # --- Default target ------------------------------------------
 
@@ -22,6 +22,29 @@ all: up
 
 generate: ## Generate enums from schema.prisma and build @transcendence/types
 	cd $(TYPES_DIR) && npm install && npm run build
+
+# --- Migrations ----------------------------------------------
+
+migrate: ## Create a migration from schema changes. Usage: make migrate name=<migration_name>
+		@if [ -z "$(name)" ]; then \
+				echo "  Error: migration name required."; \
+				echo "  Usage: make migrate name=<migration_name>"; \
+				exit 1; \
+		fi
+		@echo "Starting postgres (no-op if already running)..."
+		$(COMPOSE) -f $(COMPOSE_FILE) up -d --wait postgres
+		@echo "Creating migration '$(name)'..."
+		$(COMPOSE) -f $(COMPOSE_FILE) run --rm \
+				--no-deps \
+				--entrypoint "" \
+				--volume "$(CURDIR)/shared/prisma:/app/db-migration/prisma:rw" \
+				db-migration \
+				sh -c "npx prisma migrate dev --name $(name)"
+		@$(MAKE) --no-print-directory generate
+		@echo ""
+		@echo "  Migration '$(name)' created and applied to postgres."
+		@echo "  Shared types rebuilt."
+		@echo "  Apply to running services: make restart"
 
 # --- Certificates generation --------------------------------
 
@@ -48,7 +71,6 @@ down: ## Stop and remove containers and networks (volumes and images are preserv
 	$(COMPOSE) -f $(COMPOSE_FILE) down
 
 restart: down up ## Full stop followed by a full start
-
 
 # --- Cleanup -------------------------------------------------
 

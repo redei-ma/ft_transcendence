@@ -11,8 +11,8 @@ prisma migrate deploy
 echo "Migrations complete."
 
 # Seeding 
-  echo "Running seed..."
-  prisma db seed
-  echo "Seeding complete."
+echo "Running seed..."
+prisma db seed
+echo "Seeding complete."
 
 echo "Database is ready! Shutting down db-migration."
