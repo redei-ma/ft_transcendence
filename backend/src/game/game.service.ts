@@ -106,7 +106,11 @@ export class GameService{
 		const gameId = game.getGameId();
 		if (!gameId)
 			this.logger.error('error, gameid is undefined')
-		this.redis.emit(NetworkConfig.MATCHMAKING.MATCH_EVENTS.END_GAME, gameId);
+
+		this.redis.emit(NetworkConfig.MATCHMAKING.MATCH_EVENTS.END_GAME, gameId).subscribe({
+            next: () => this.logger.log(`Evento END_GAME inviato con successo per il match ${gameId}`),
+            error: (err) => this.logger.error(`Errore nell'invio dell'evento END_GAME a Redis: ${err.message}`)
+        });
 
 		for (const socketId of game.socketToEntities.keys()){
 			this.socketToGame.delete(socketId);

@@ -15,7 +15,7 @@ export class MatchMakingController{
 
 	@Post(NetworkConfig.MATCHMAKING.MATCH_EVENTS.CREATE_MATCH)
 	async handleMatchCreation(
-		@Body() data: any) //CreateMatchDto)//,
+		@Body() data: CreateMatchDto)
 		//@Headers('authorization') authHeader: string)
 		{
 
@@ -32,7 +32,8 @@ export class MatchMakingController{
 		//La roba commentata va aggiunta per la sicurezza della rotta, oltre all https
 		this.logger.log('post http request recived by matchmaking, trying to create the match');
 
-		this.logger.log(`data recived from matchmaking gameId=${data.gameId}, players=${data.playersData}  matchMode=${data.matchMode}, matchType=${data.matchType}`);
+		this.logger.log(`post http request recived by matchmaking, trying to create the match.\n
+			data recived from matchmaking: gameId=${data.gameId}, players=${data.playersData}, matchMode=${data.matchMode}, matchType=${data.matchType}`);
 		const result: ExitStatus = this.gameService.prepareMatch(data.gameId, data.playersData, data.matchMode, data.matchType);
 
 		if (result.status !== SuccessCode.OK){
