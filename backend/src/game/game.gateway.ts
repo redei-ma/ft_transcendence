@@ -11,7 +11,6 @@ import { GameData, ErrorCode, SuccessCode, MatchType, MatchMode } from './interf
 import { GameExceptionFilter } from './game.WsGameExceptionFilter';
 import { ExitStatus } from './interfaces-enums/exitStatus.interface';
 
-
 //questo e' come dovra' essere alla fine
 //@WebSocketGateway({ cors:{
 //	origin: process.env.FRONT_END_URL,
@@ -73,7 +72,7 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect, On
 				}
 
 				this.gameService.setSocketToGame(socketId, gameData.gameId);
-				
+
 				this.logger.log(`New client arrived ${userDbId} in game ${gameData.gameId}`);
 				
 				client.join(gameData.gameId);
@@ -91,9 +90,6 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect, On
 					if (result.status !== SuccessCode.OK){
 						this.logger.warn(`${userDbId} is not in game list`);
 						this.sendErrorAndDisconnectClient(client, result);
-					}
-					else{
-						this.logger.log('player added');
 					}
 				}
 			}

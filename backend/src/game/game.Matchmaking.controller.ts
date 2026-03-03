@@ -2,7 +2,7 @@ import { BadRequestException, Body, Controller, Logger, Post, Headers, Unauthori
 import { GameService } from "./game.service";
 import { NetworkConfig } from "./configs";
 import { CreateMatchDto } from "./dto/matchMaking.dto";
-import { ErrorCode, SuccessCode } from "./interfaces-enums";
+import { SuccessCode } from "./interfaces-enums";
 import { ExitStatus } from "./interfaces-enums/exitStatus.interface";
 import { ConfigService } from '@nestjs/config';
 
@@ -30,7 +30,6 @@ export class MatchMakingController{
 			//});
 		//}
 		//La roba commentata va aggiunta per la sicurezza della rotta, oltre all https
-		this.logger.log('post http request recived by matchmaking, trying to create the match');
 
 		this.logger.log(`post http request recived by matchmaking, trying to create the match.\n
 			data recived from matchmaking: gameId=${data.gameId}, players=${data.playersData}, matchMode=${data.matchMode}, matchType=${data.matchType}`);

@@ -1,82 +1,137 @@
 import { GameRules } from '../core/game.rules';
-import { getNewPlayer } from '../factories/player.factory';
-import { CharacterName, MatchType, Player, World } from '../interfaces-enums';
-import { randomUUID } from 'crypto';
+import { Player } from '../interfaces-enums';
+import { GameConfig } from '../configs/game.config';
 
 describe('GameRules', () => {
-  let gameRules: GameRules;
-  let dummyWorld: any; 
+    let gameRules: GameRules;
 
-  beforeEach(() => {
-    gameRules = new GameRules();
-    
-    // FIX 1: spawnPoints alla radice e usando 'z' invece di 'y'
-    dummyWorld = {
-      maxPlayers: 2,
-      spawnPoints: [
-        { x: 0, z: 0 },
-        { x: 100, z: 100 }
-      ]
-    };
-  });
-
-  describe('shouldGameStart()', () => {
-
-    it('dovrebbe ritornare FALSE se la lobby non è ancora piena (1 su 2)', () => {
-      const players = new Map<string, Player>();
-      const entityId1 = randomUUID();
-      
-      const player1 = getNewPlayer(
-        dummyWorld as unknown as World, 'socket-123', 0, CharacterName.ZEUS, 
-        1, entityId1, false, 0, MatchType.RANKED
-      );
-      players.set(entityId1, player1);
-
-      const result = gameRules.shouldGameStart(players, dummyWorld.maxPlayers);
-      expect(result).toBe(false); 
+    // Viene eseguito prima di ogni test
+    beforeEach(() => {
+        gameRules = new GameRules();
     });
 
-    it('dovrebbe ritornare TRUE se la lobby è piena (2 su 2)', () => {
-      const players = new Map<string, Player>();
-      
-      const entityId1 = randomUUID();
-      const player1 = getNewPlayer(
-        dummyWorld as unknown as World, 'socket-123', 0, CharacterName.ZEUS, 
-        1, entityId1, false, 0, MatchType.RANKED
-      );
-      players.set(entityId1, player1);
+    // ---------------------------------------------------------
+    // TEST PER: checkWinner
+    // ---------------------------------------------------------
+    describe('checkWinner', () => {
+        it('dovrebbe restituire null se nessuno ha raggiunto le kill massime e non c\'è overtime', () => {
+            const players = [
+                { teamId: 1, kill: GameConfig.SERVER.MAX_GAME_KILLS - 1 },
+                { teamId: 2, kill: GameConfig.SERVER.MAX_GAME_KILLS - 1 }
+            ] as unknown as Player[];
 
-      const entityId2 = randomUUID();
-      const player2 = getNewPlayer(
-        dummyWorld as unknown as World, 'socket-456', 1, CharacterName.ZEUS, 
-        2, entityId2, false, 1, MatchType.RANKED
-      );
-      players.set(entityId2, player2);
+            const winner = gameRules.checkWinner(players, false);
+            expect(winner).toBeNull();
+        });
 
-      const result = gameRules.shouldGameStart(players, dummyWorld.maxPlayers);
-      expect(result).toBe(true);
+        it('dovrebbe restituire il team vincente se ha raggiunto le kill massime (senza overtime)', () => {
+            const players = [
+                { teamId: 1, kill: GameConfig.SERVER.MAX_GAME_KILLS },
+                { teamId: 2, kill: 5 }
+            ] as unknown as Player[];
+
+            const winner = gameRules.checkWinner(players, false);
+            expect(winner).toBe(1); // Il team 1 ha vinto
+        });
+
+        it('dovrebbe restituire il team con più kill in OverTime (anche se non ha raggiunto il cap)', () => {
+            const players = [
+                { teamId: 1, kill: 4 },
+                { teamId: 2, kill: 7 } // Team 2 ha più kill
+            ] as unknown as Player[];
+
+            const winner = gameRules.checkWinner(players, true);
+            expect(winner).toBe(2);
+        });
+
+        it('dovrebbe sommare le kill dei giocatori dello stesso team in OverTime', () => {
+            const players = [
+                { teamId: 1, kill: 2 },
+                { teamId: 1, kill: 3 }, // Totale Team 1 = 5
+                { teamId: 2, kill: 4 }  // Totale Team 2 = 4
+            ] as unknown as Player[];
+
+            const winner = gameRules.checkWinner(players, true);
+            expect(winner).toBe(1); // Vince il team 1 (5 kill totali contro 4)
+        });
     });
 
-  });
+    // ---------------------------------------------------------
+    // TEST PER: checkRemaningTeam
+    // ---------------------------------------------------------
+    describe('checkRemaningTeam', () => {
+        it('dovrebbe restituire null se ci sono ancora giocatori di team diversi', () => {
+            const players = [
+                { teamId: 1 },
+                { teamId: 2 }
+            ] as unknown as Player[];
 
-  describe('getSpawnPoint()', () => {
+            const winner = gameRules.checkRemaningTeam(players);
+            expect(winner).toBeNull();
+        });
 
-    it('dovrebbe ritornare 0 come spawn index per il primo giocatore', () => {
-      const players = new Map<string, Player>(); 
-      const spawnIndex = gameRules.getSpawnPoint(players, dummyWorld.maxPlayers);
-      expect(spawnIndex).toBe(0); 
+        it('dovrebbe restituire il teamId se tutti i giocatori rimasti appartengono allo stesso team', () => {
+            const players = [
+                { teamId: 2 },
+                { teamId: 2 }
+            ] as unknown as Player[];
+
+            const winner = gameRules.checkRemaningTeam(players);
+            expect(winner).toBe(2);
+        });
     });
 
-    it('dovrebbe ritornare -1 se provi a chiedere uno spawn ma la lobby è già piena', () => {
-      const players = new Map<string, Player>();
-      
-      // FIX 2: Assegniamo uno spawnIndex ai giocatori finti!
-      players.set(randomUUID(), { spawnIndex: 0 } as Player); 
-      players.set(randomUUID(), { spawnIndex: 1 } as Player);
+    // ---------------------------------------------------------
+    // TEST PER: shouldGameStart
+    // ---------------------------------------------------------
+    describe('shouldGameStart', () => {
+        it('dovrebbe restituire true se la mappa giocatori ha raggiunto il numero massimo', () => {
+            const playersMap = new Map<string, Player>();
+            playersMap.set('socket1', {} as Player);
+            playersMap.set('socket2', {} as Player);
 
-      const spawnIndex = gameRules.getSpawnPoint(players, dummyWorld.maxPlayers);
-      expect(spawnIndex).toBe(-1); 
+            const result = gameRules.shouldGameStart(playersMap, 2);
+            expect(result).toBe(true);
+        });
+
+        it('dovrebbe restituire false se mancano giocatori', () => {
+            const playersMap = new Map<string, Player>();
+            playersMap.set('socket1', {} as Player);
+
+            const result = gameRules.shouldGameStart(playersMap, 4);
+            expect(result).toBe(false);
+        });
     });
 
-  });
+    // ---------------------------------------------------------
+    // TEST PER: getSpawnPoint
+    // ---------------------------------------------------------
+    describe('getSpawnPoint', () => {
+        it('dovrebbe restituire 0 se la mappa è vuota', () => {
+            const playersMap = new Map<string, Player>();
+            const spawnPoint = gameRules.getSpawnPoint(playersMap, 2);
+            expect(spawnPoint).toBe(0);
+        });
+
+        it('dovrebbe restituire il primo indice libero se alcuni sono occupati', () => {
+            const playersMap = new Map<string, Player>();
+            // Il giocatore 1 occupa l'indice 0
+            playersMap.set('socket1', { spawnIndex: 0 } as unknown as Player);
+            // Il giocatore 2 occupa l'indice 2
+            playersMap.set('socket2', { spawnIndex: 2 } as unknown as Player);
+
+            // Il primo libero deve essere l'1
+            const spawnPoint = gameRules.getSpawnPoint(playersMap, 4);
+            expect(spawnPoint).toBe(1);
+        });
+
+        it('dovrebbe restituire -1 se tutti gli slot di spawn sono occupati', () => {
+            const playersMap = new Map<string, Player>();
+            playersMap.set('socket1', { spawnIndex: 0 } as unknown as Player);
+            playersMap.set('socket2', { spawnIndex: 1 } as unknown as Player);
+
+            const spawnPoint = gameRules.getSpawnPoint(playersMap, 2);
+            expect(spawnPoint).toBe(-1);
+        });
+    });
 });

@@ -1,4 +1,4 @@
-import { Inject, Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger, OnModuleDestroy } from '@nestjs/common';
 import { Interval } from '@nestjs/schedule';
 import { Server } from 'socket.io';
 import { GameConfig, NetworkConfig } from './configs';
@@ -11,7 +11,7 @@ import { ExitStatus } from './interfaces-enums/exitStatus.interface';
 
 // Game Engine Service
 @Injectable()
-export class GameService{
+export class GameService implements OnModuleDestroy{
 
 	private readonly logger: Logger = new Logger(GameService.name);
 	
@@ -273,6 +273,21 @@ export class GameService{
 
 	removeOldSocket(socketId: string){
 		this.socketToGame.delete(socketId);
+	}
+
+	async onModuleDestroy(){
+		this.logger.warn('the server is in shutdown, cleaning up all resources');
+
+		for (const [gameId, session] of this.games.entries()){
+			this.removeSession(session);
+
+			session.server.to(gameId).emit('exception',{
+				status: 'error',
+				erroCode: ErrorCode.SERVER_SHUTDOWN,
+				message: 'server in shutdown, returning in lobby',
+			});
+			session.server.in(gameId).disconnectSockets(true);
+		}
 	}
 }
 

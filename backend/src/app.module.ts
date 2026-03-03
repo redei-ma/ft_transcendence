@@ -22,11 +22,6 @@ import { ConfigModule} from '@nestjs/config'
 				ttl: 60000,
 				limit: 5,
 			},
-			{
-				name: SocketEvents.INPUT,
-				ttl: 1000,
-				limit: 250,
-			},
 			]),
 		ConfigModule.forRoot({isGlobal: true})
 		],

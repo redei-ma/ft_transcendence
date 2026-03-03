@@ -1,39 +1,42 @@
-import { Injectable } from "@nestjs/common";
-import { ThrottlerGuard, ThrottlerRequest } from "@nestjs/throttler";
+import { ExecutionContext, Injectable } from "@nestjs/common";
+import { ThrottlerGuard, ThrottlerException } from "@nestjs/throttler";
+import { GameException } from "./game.exception";
+import { ErrorCode } from "./interfaces-enums";
+import { SocketEvents } from "./configs";
 
 @Injectable()
 export class WsThrottlerGuard extends ThrottlerGuard {
-	async handleRequest(requestProps: ThrottlerRequest): Promise<boolean> {
-		const { context, limit, ttl, throttler, blockDuration, generateKey } = requestProps;
+    
+    protected getRequestResponse(context: ExecutionContext) {
+        const client = context.switchToWs().getClient();
+        return { req: client, res: {} };
+    }
 
-		// I check if the event is the same that the guardian is checking
-		if (context.switchToWs().getPattern() !== throttler.name!) return true;
+	protected async getTracker(req: Record<string, any>): Promise<string> {
+        if (req.isAiPlayer) {
+            return `AI_${req.id}`;
+        }
+        return req.conn?.remoteAddress || req._socket?.remoteAddress || req.id;
+    }
 
-		// Extract the client's IP address from the WebSocket context
-		const client = context.switchToWs().getClient();
+    async handleRequest(requestProps: any): Promise<boolean> {
+        const context = requestProps.context;
+        const eventName = context.switchToWs().getPattern();
 
-		if (!client || !client.conn) return true;
-		if (client.isAiPlayer) return true;
+        if (eventName === SocketEvents.INPUT) {
+            return true; 
+        }
 
-		const tracker = client.conn.remoteAddress || client._socket.remoteAddress;
-		const key = generateKey(context, tracker, throttler.name!);
-		const { totalHits, timeToExpire, isBlocked, timeToBlockExpire } =
-			await this.storageService.increment(key, ttl, limit, blockDuration, throttler.name!);
-
-		// Throw an error when the user reached their limit.
-		if (isBlocked) {
-			await this.throwThrottlingException(context, {
-				limit,
-				ttl,
-				key,
-				tracker,
-				totalHits,
-				timeToExpire,
-				isBlocked,
-				timeToBlockExpire,
-			});
-		}
-
-		return true;
-	}
+        try {
+            return await super.handleRequest(requestProps);
+        } catch (error) {
+            if (error instanceof ThrottlerException || error.name === 'ThrottlerException') {
+                throw new GameException(
+                    ErrorCode.INVALID_INPUT, 
+                    "too many message",
+                );
+            }
+            throw error;
+        }
+    }
 }

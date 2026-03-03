@@ -15,7 +15,9 @@ RUN npm install @nestjs/websockets \
 	@nestjs/microservices \
 	@nestjs/config \
 	@nestjs/throttler \
-	@types/node
+	@types/node \
+	@types/jest \
+	@nestjs/testing
 
 COPY . .
 
