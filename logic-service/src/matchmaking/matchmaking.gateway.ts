@@ -44,13 +44,37 @@ export class MatchmakingGateway implements OnGatewayInit, OnGatewayConnection, O
             this.socketToUser.delete(client.id);
         }
     }*/
-    
+
+    @OnEvent('match.found.internal')
+    handleMatchFoundInternal(payload: { socketId: string; data: any }) {
+        const clientSocket = this.server.sockets.sockets.get(payload.socketId);
+        if (clientSocket) {
+            clientSocket.emit('match_found', payload.data);
+            console.log(`[Socket] Notifica inviata al socket: ${payload.socketId}`);
+        } else {
+            console.warn(`[Socket] Impossibile trovare il socket ${payload.socketId} per inviare il match`);
+        }
+    }
+   
     @SubscribeMessage('join_ranked')
     async handleJoinRanked(@MessageBody() data: JoinQueueDto, @ConnectedSocket() client: Socket) {
         this.registerUserSocket(client.id, data.userDbId);
         data.socketId = client.id;
         return await this.matchmakingService.processQueue(data);
     }
+
+    @SubscribeMessage('join_unranked')
+    async handleJoinUnranked(@MessageBody() data: JoinQueueDto, @ConnectedSocket() client: Socket) {
+        data.socketId = client.id;
+        console.log(`[Gateway] Utente ${data.userDbId} richiede coda Unranked (Socket: ${client.id})`);
+        return await this.matchmakingService.processUnrankedQueue(data);
+    }
+    @Post('join_unranked')
+  async joinUnrankedQueueHttp(@Body() data: JoinQueueDto) {
+    console.log(`[HTTP] Ricevuta richiesta Unranked per utente: ${data.userDbId}`);
+    return await this.matchmakingService.processUnrankedQueue(data);
+  }
+
 
     @SubscribeMessage('leave_queue')
     async handleLeaveQueue(@MessageBody() data: JoinQueueDto, @ConnectedSocket() client: Socket) {
@@ -76,16 +100,6 @@ export class MatchmakingGateway implements OnGatewayInit, OnGatewayConnection, O
         return await this.matchmakingService.startLocalMatch(data);
     }
 
-    @OnEvent('match.found.internal')
-    handleMatchFoundInternal(payload: { socketId: string; data: any }) {
-        const clientSocket = this.server.sockets.sockets.get(payload.socketId);
-        if (clientSocket) {
-            clientSocket.emit('match_found', payload.data);
-            console.log(`[Socket] Notifica inviata al socket: ${payload.socketId}`);
-        } else {
-            console.warn(`[Socket] Impossibile trovare il socket ${payload.socketId} per inviare il match`);
-        }
-    }
 
     @SubscribeMessage('create_challenge')
     async handleCreateChallenge(

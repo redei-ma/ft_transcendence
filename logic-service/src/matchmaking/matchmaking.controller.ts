@@ -27,6 +27,12 @@ export class MatchmakingController {
     return this.matchmakingService.processQueue(data); 
   }
 
+  @Post('join_unranked')
+  async joinUnrankedQueueHttp(@Body() data: JoinQueueDto) {
+    console.log(`[HTTP] Ricevuta richiesta Unranked per utente: ${data.userDbId}`);
+    return await this.matchmakingService.processUnrankedQueue(data);
+  }
+
   @MessagePattern('join_ai') 
   async handleJoinAi(@Payload() data: any) { 
       console.log(`[Logic] Utente ${data.userDbId} ha richiesto un match contro IA`);
