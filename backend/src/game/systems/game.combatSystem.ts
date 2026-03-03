@@ -8,8 +8,24 @@ export class CombatSystem{
 
 	private tmpBulletDisplacement = new Vector(0, 0);
 	private tmpAttackCenter = new Vector(0, 0);
+	
+	public updateCooldowns(player: Player, dt: number): void {
+		const stats = CHARACTER_DATA[player.characterName];
 
-	handleSpellAttack(attacker: Player, gameWorld: World): void{
+		if (player.spellAttackCooldown < stats.COOLDOWN_SPELL_ATTACK) {
+			player.spellAttackCooldown += dt;
+		}
+
+		if (player.meleeAttackCooldown < stats.COOLDOWN_MELEE_ATTACK) {
+			player.meleeAttackCooldown += dt;
+		}
+
+		if (player.defenceAttackCooldown < stats.COOLDOWN_DEFENCE_ATTACK) {
+			player.defenceAttackCooldown += dt;
+		}
+	}
+
+	public handleSpellAttack(attacker: Player, gameWorld: World): void{
 
 		this.calculateBulletDisplacement(attacker);
 		this.calculateAttackImpactPoint(attacker, AttackType.SPELL_ATTACK);
@@ -18,39 +34,21 @@ export class CombatSystem{
 			attacker.spellAttackspeed, attacker.spellAttackHitboxRadius)
 	}
 
-	calculateBulletDisplacement(attacker: Player): void{
-
-		const displacementX = Math.cos(attacker.rotation);
-		const displacementZ = Math.sin(attacker.rotation);
-
-		this.tmpBulletDisplacement.set(displacementX, displacementZ);
-	}
-
-	handleMeleeAttack(attacker: Player, players: Map<string, Player>): void{
-
+	public handleMeleeAttack(attacker: Player, players: Map<string, Player>): void{
+		
 		const attackType: AttackType | undefined = attacker.attackType;
 		if (!attackType) return;
-
+		
 		this.tmpAttackCenter.set(attacker.position.x, attacker.position.z);
 		for (const target of players.values()){
-				if (target.entityId === attacker.entityId || target.isDead) continue;
-				if (this.isTargetInHitbox(target, attacker, this.tmpAttackCenter)){
-					this.applyDamage(target, attacker, AttackType.MELEE_ATTACK);
-				}
+			if (target.entityId === attacker.entityId || target.isDead) continue;
+			if (this.isTargetInHitbox(target, attacker, this.tmpAttackCenter)){
+				this.applyDamage(target, attacker, AttackType.MELEE_ATTACK);
 			}
+		}
 	}
-
-	isTargetInHitbox(victim: Player, attacker: Player, attackCenter: Vector): boolean{
-		const dx = attackCenter.x - victim.position.x;
-		const dz = attackCenter.z - victim.position.z;
-		const distanceSquared = dx * dx + dz * dz;
-		const radiiSum = victim.radius + attacker.meleeAttackHitboxRadius;
-		if (distanceSquared <= radiiSum * radiiSum)
-			return (true);
-		return (false);
-	}
-
-	applyDamage(victim: Player | undefined, attacker: Player, attackType: AttackType): void{
+	
+	public applyDamage(victim: Player | undefined, attacker: Player, attackType: AttackType): void{
 
 		if (!victim) return ;
 
@@ -66,14 +64,36 @@ export class CombatSystem{
 		}
 
 		if (victim.hp <= 0){
-			victim.isGhost = true;
-			victim.isDead = true;
-			victim.deads++;
-			attacker.kill++;
+			this.handleDeath(victim, attacker);
+		}
+	}
 
-			if (attacker.hp <= (GameConfig.PLAYER.DEFAULT_HP * GameConfig.ACHIEVEMENT.CLUTCHMASTER)){
-				attacker.clutchMasterAchievement = true;
-			}
+	private calculateBulletDisplacement(attacker: Player): void{
+
+		const displacementX = Math.cos(attacker.rotation);
+		const displacementZ = Math.sin(attacker.rotation);
+
+		this.tmpBulletDisplacement.set(displacementX, displacementZ);
+	}
+
+	private isTargetInHitbox(victim: Player, attacker: Player, attackCenter: Vector): boolean{
+		const dx = attackCenter.x - victim.position.x;
+		const dz = attackCenter.z - victim.position.z;
+		const distanceSquared = dx * dx + dz * dz;
+		const radiiSum = victim.radius + attacker.meleeAttackHitboxRadius;
+		if (distanceSquared <= radiiSum * radiiSum)
+			return (true);
+		return (false);
+	}
+
+	private handleDeath(victim: Player, attacker: Player){
+		victim.isGhost = true;
+		victim.isDead = true;
+		victim.deads++;
+		attacker.kill++;
+
+		if (attacker.hp <= (GameConfig.PLAYER.DEFAULT_HP * GameConfig.ACHIEVEMENT.CLUTCHMASTER)){
+			attacker.clutchMasterAchievement = true;
 		}
 	}
 
@@ -92,21 +112,5 @@ export class CombatSystem{
 		const offsetZ = Math.sin(attacker.rotation) * attackDistance;
 
 		this.tmpAttackCenter.set(attacker.position.x + offsetX, attacker.position.z + offsetZ);
-	}
-
-	updateCooldowns(player: Player, dt: number): void {
-		const stats = CHARACTER_DATA[player.characterName];
-
-		if (player.spellAttackCooldown < stats.COOLDOWN_SPELL_ATTACK) {
-			player.spellAttackCooldown += dt;
-		}
-
-		if (player.meleeAttackCooldown < stats.COOLDOWN_MELEE_ATTACK) {
-			player.meleeAttackCooldown += dt;
-		}
-
-		if (player.defenceAttackCooldown < stats.COOLDOWN_DEFENCE_ATTACK) {
-			player.defenceAttackCooldown += dt;
-		}
 	}
 }

@@ -14,9 +14,6 @@ describe('GameSession', () => {
     let mockGameService: any;
 
     beforeEach(() => {
-        jest.spyOn(session['logger'], 'log').mockImplementation(() => {});
-        jest.spyOn(session['logger'], 'warn').mockImplementation(() => {});
-
         mockServer = {
             to: jest.fn().mockReturnThis(),
             emit: jest.fn(),
@@ -46,7 +43,8 @@ describe('GameSession', () => {
             MatchMode.RANKED,
             mockGameService
         );
-
+        jest.spyOn(session['logger'], 'log').mockImplementation(() => {});
+        jest.spyOn(session['logger'], 'warn').mockImplementation(() => {});
         jest.spyOn(session.engine, 'handleGameOver').mockImplementation(() => {});
     });
 

@@ -58,6 +58,9 @@ describe('GameService', () => {
 
         service = module.get<GameService>(GameService);
         service.setServer(mockServer); // Inseriamo il finto server
+        jest.spyOn(service['logger'], 'log').mockImplementation(() => {});
+        jest.spyOn(service['logger'], 'error').mockImplementation(() => {});
+        jest.spyOn(service['logger'], 'warn').mockImplementation(() => {});
     });
 
     // ---------------------------------------------------------

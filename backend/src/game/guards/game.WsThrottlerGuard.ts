@@ -6,7 +6,7 @@ import { SocketEvents } from "../configs";
 
 @Injectable()
 export class WsThrottlerGuard extends ThrottlerGuard {
-    
+
     protected getRequestResponse(context: ExecutionContext) {
         const client = context.switchToWs().getClient();
         return { req: client, res: {} };

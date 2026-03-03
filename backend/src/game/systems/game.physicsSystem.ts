@@ -14,7 +14,7 @@
 			const nextZ = bullet.position.z + bullet.displacement.z * bullet.speed * dt;
 			this.recicleVector.set(nextX, bullet.position.z);
 
-			if (!gameWorld.isWallCollision(this.recicleVector, bullet.radius) && !this.isPillarCollision(this.recicleVector, bullet.radius, gameWorld)){
+			if (!this.isEnvironmentCollision(this.recicleVector, bullet.radius, gameWorld)){
 					bullet.position.x = nextX;
 			}
 			else{
@@ -29,7 +29,7 @@
 				bullet.hit = BulletHit.PLAYER_HIT;
 				return ;
 			}
-			if (!gameWorld.isWallCollision(this.recicleVector, bullet.radius) && !this.isPillarCollision(this.recicleVector, bullet.radius, gameWorld)){
+			if (!this.isEnvironmentCollision(this.recicleVector, bullet.radius, gameWorld)){
 					bullet.position.z = nextZ;
 			}
 			else{
@@ -47,7 +47,7 @@
 			const nextZ = entity.position.z + entity.displacement.z * entity.speed * dt;
 			this.recicleVector.set(nextX, entity.position.z);
 
-			if (!gameWorld.isWallCollision(this.recicleVector, entity.radius) && !this.isPillarCollision(this.recicleVector, entity.radius, gameWorld)){
+			if (!this.isEnvironmentCollision(this.recicleVector, entity.radius, gameWorld)){
 				if (entity.isGhost)
 					entity.position.x = nextX;
 				else if (!this.isPlayerCollision(entity.entityId, this.recicleVector, entity.radius, players.values())){
@@ -57,7 +57,7 @@
 
 			/* i recicle the old vector to avoid waste of memory */
 			this.recicleVector.set(entity.position.x, nextZ);
-			if (!gameWorld.isWallCollision(this.recicleVector, entity.radius) && !this.isPillarCollision(this.recicleVector, entity.radius, gameWorld)){
+			if (!this.isEnvironmentCollision(this.recicleVector, entity.radius, gameWorld)){
 				if (entity.isGhost)
 					entity.position.z = nextZ;
 				else if (!this.isPlayerCollision(entity.entityId, this.recicleVector, entity.radius, players.values())){
@@ -100,5 +100,9 @@
 					}
 			}
 			return (undefined);
+		}
+
+		private isEnvironmentCollision(pos: Vector, radius: number, world: World): boolean {
+    		return world.isWallCollision(pos, radius) || this.isPillarCollision(pos, radius, world);
 		}
 	}

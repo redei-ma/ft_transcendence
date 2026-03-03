@@ -101,7 +101,7 @@ export class World implements GameWorld{
 		for (let wall of this.walls.values()){
 			/* Convert world coordinates (meters) into grid indices.
 				We determine the range of cells (Start -> End) covered by this wall. 
-				Formula: Index = floor(Posizione / DimensioneCella) => Bounding Box 
+				Formula: Index = floor(position / cellSize) => Bounding Box 
 				Subtracting 0.1 prevents selecting the next cell if the wall ends exactly on the border */
 			const startCellX: number = Math.floor(wall.position.x / GameConfig.MAP.CELL_SIZE);
 			const endCellX: number = Math.floor((wall.position.x + wall.width - 0.1) / GameConfig.MAP.CELL_SIZE);
@@ -119,42 +119,53 @@ export class World implements GameWorld{
 		}
 	}
 
-	isWallCollision(position: Vector, radius: number): boolean{
+    public isWallCollision(position: Vector, radius: number): boolean {
+        // Convert the entity's bounding box from world coordinates to grid cell indices
+        const minCellX = Math.floor((position.x - radius) / GameConfig.MAP.CELL_SIZE);
+        const maxCellX = Math.floor((position.x + radius) / GameConfig.MAP.CELL_SIZE);
+        const minCellZ = Math.floor((position.z - radius) / GameConfig.MAP.CELL_SIZE);
+        const maxCellZ = Math.floor((position.z + radius) / GameConfig.MAP.CELL_SIZE);
 
-		/* the player isn t a point, but an entity with a radius, i write a rectangle to check all the cell that include the player */
-		let minCellX = Math.floor((position.x - radius) / GameConfig.MAP.CELL_SIZE);
-		let maxCellX = Math.floor((position.x + radius) / GameConfig.MAP.CELL_SIZE);
+        // Iterate through all grid cells covered by the entity's bounding box
+        for (let z = minCellZ; z <= maxCellZ; z++) {
+            for (let x = minCellX; x <= maxCellX; x++) {
+                // Ensure the cell is within the actual map boundaries
+                if (x >= 0 && x < this.gridWidth && z >= 0 && z < this.gridDepth) {
+                    // Check if the current cell is marked as a wall (1)
+                    if (this.grid[x + (z * this.gridWidth)] === 1) {
+                        
+                        // Find the point on the wall cell that is closest to the circle's center
+                        const closest = this.getClosestPointOnCell(position, x, z);
 
-		let minCellZ = Math.floor((position.z - radius) / GameConfig.MAP.CELL_SIZE);
-		let maxCellZ = Math.floor((position.z + radius) / GameConfig.MAP.CELL_SIZE);
+                        // Calculate the distance vector between the center and the closest point
+                        const dx = position.x - closest.x;
+                        const dz = position.z - closest.z;
 
-		for (let z = minCellZ; z <= maxCellZ; z++){
-			for(let x = minCellX; x <= maxCellX; x++){
-				if (x >= 0 && x < this.gridWidth && z >= 0 && z < this.gridDepth){
-					let index = x + (z * this.gridWidth);
-						if (this.grid[index] == 1){
-						/* Thanks to the grid I can calculate the ends of the wall and calculate collisions precisely */
-						let wallLeft = x * GameConfig.MAP.CELL_SIZE;
-						let wallRight = wallLeft +  GameConfig.MAP.CELL_SIZE;
-						let wallTop = z * GameConfig.MAP.CELL_SIZE;
-						let wallBottom = wallTop + GameConfig.MAP.CELL_SIZE;
+                        // Use the Pythagorean theorem (squared) to determine if the distance 
+                        // is less than or equal to the radius
+                        if ((dx * dx + dz * dz) <= radius * radius) {
+                            return true; // Collision detected
+                        }
+                    }
+                }
+            }
+        }
+        return false; // No collision found in any nearby cell
+    }
 
-						/* I use clamping to force the player's position between the ends of the walls */
-						const closestX = Math.max(wallLeft, Math.min(position.x, wallRight));
-						const closestZ = Math.max(wallTop, Math.min(position.z, wallBottom));
+    private getClosestPointOnCell(position: Vector, cellX: number, cellZ: number): {x: number, z: number} {
+        // Determine the world-space boundaries of the grid cell
+        const wallLeft = cellX * GameConfig.MAP.CELL_SIZE;
+        const wallRight = wallLeft + GameConfig.MAP.CELL_SIZE;
+        const wallTop = cellZ * GameConfig.MAP.CELL_SIZE;
+        const wallBottom = wallTop + GameConfig.MAP.CELL_SIZE;
 
-						/* I use the Pythagorean theorem, but without using the square root, which is slow for the PC */
-						let dx = position.x - closestX;
-						let dz = position.z - closestZ;
-						let distanceSquared = dx * dx + dz * dz;
-						if (distanceSquared <= radius * radius)
-							return (true);
-					}
-				}
-			}
-		}
-		return (false);
-	}
+        // Clamp the position coordinates to the cell's boundaries to find the closest point
+        return {
+            x: Math.max(wallLeft, Math.min(position.x, wallRight)),
+            z: Math.max(wallTop, Math.min(position.z, wallBottom))
+        };
+    }
 
 	getMaxPlayers(): number{
 		return (this.maxPlayers);

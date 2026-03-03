@@ -21,7 +21,6 @@ export class MatchmakingGuard implements CanActivate {
         message: 'Secret key failure, disconnecting',
       });
     }
-
     return true;
   }
 }
