@@ -1,4 +1,0 @@
-se vedete che le partite rimangono bloccate in attesa della mappa utilizzate questo comando per svuotare redis, non avendo ancora i dati DEL DB A VOLTE SI IMPALLA{
-docker exec -it redis redis-cli flushall
-}
-
