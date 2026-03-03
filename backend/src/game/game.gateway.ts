@@ -74,7 +74,7 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect, On
 				this.gameService.setSocketToGame(socketId, gameData.gameId);
 
 				this.logger.log(`New client arrived ${userDbId} in game ${gameData.gameId}`);
-				
+
 				client.join(gameData.gameId);
 
 				this.logger.log('player added in socket room')
@@ -123,7 +123,7 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect, On
 	handleInput(
 		@ConnectedSocket() client: Socket,
 		@MessageBody() input: GameInputDto): void{
-		
+
 		const socketId = client.id;
 		if (!socketId){
 			this.logger.error('invalid socket reached, ignoring');	

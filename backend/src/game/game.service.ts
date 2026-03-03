@@ -64,7 +64,6 @@ export class GameService implements OnModuleDestroy{
 				}
 			});
 			this.timeAccumulator -= this.TIME_STEPS;
-
 		}
 		this.games.forEach((game) =>{
 			if (game.isGameOver() && game.canShutdown()){
