@@ -358,7 +358,7 @@ export class MatchmakingService {
         const payload = {
             gameId: matchId,
             playersData: [participant1, participant2],
-            matchType: 'unranked',
+            matchType: 'ffa',
             matchMode: player.matchMode
         };
 

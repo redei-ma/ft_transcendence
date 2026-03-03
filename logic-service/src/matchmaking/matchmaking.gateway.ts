@@ -69,12 +69,6 @@ export class MatchmakingGateway implements OnGatewayInit, OnGatewayConnection, O
         console.log(`[Gateway] Utente ${data.userDbId} richiede coda Unranked (Socket: ${client.id})`);
         return await this.matchmakingService.processUnrankedQueue(data);
     }
-    @Post('join_unranked')
-  async joinUnrankedQueueHttp(@Body() data: JoinQueueDto) {
-    console.log(`[HTTP] Ricevuta richiesta Unranked per utente: ${data.userDbId}`);
-    return await this.matchmakingService.processUnrankedQueue(data);
-  }
-
 
     @SubscribeMessage('leave_queue')
     async handleLeaveQueue(@MessageBody() data: JoinQueueDto, @ConnectedSocket() client: Socket) {
