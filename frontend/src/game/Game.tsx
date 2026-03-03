@@ -1,4 +1,5 @@
 import { Canvas } from '@react-three/fiber';
+import { useLoader } from '@react-three/fiber';
 import { useGameSocket } from '../hooks/useGameSocket';
 import { InputManager } from './input/inputManager';
 import { useEffect, useRef } from 'react';
@@ -10,6 +11,8 @@ import { BulletEntity } from './entities/BulletEntity';
 import { GameOverOverlay } from './UI/components/GameOverOverlay';
 import GameChat  from './UI/components/GameChat';
 import { EffectComposer, Bloom } from '@react-three/postprocessing';
+import * as THREE from 'three';
+import mapTexture from '../assets/mapTexture.png';
 
 interface GameProps {
   selectedCharacter: 'zeus' | 'ade';
@@ -42,7 +45,19 @@ export default function Game({ selectedCharacter, selectedMode, onPlayAgain, onQ
   const centerZ = mapDepth / 2;
 
   return (
-    <div style={{ position: 'relative', width: '100vw', height: '100vh', overflow: 'hidden' }}>
+    <div style={{
+      position: 'fixed',
+      inset: 0,
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundImage: `url(${mapTexture})`,
+      backgroundSize: 'cover',
+      backgroundPosition: 'center',
+      backgroundRepeat: 'no-repeat',
+      overflow: 'hidden',
+    }}>
       <Canvas
         orthographic
         camera={{
@@ -59,6 +74,11 @@ export default function Game({ selectedCharacter, selectedMode, onPlayAgain, onQ
       >
         <ambientLight intensity={0.6} />
         <directionalLight position={[50, 100, 50]} intensity={0.8} />
+
+        <gridHelper
+            args={[mapWidth, 20, 0xffffff, 0x444444]}
+            position={[centerX, 0, centerZ]}
+        />
 
         <gridHelper
           args={[mapWidth, 20, 0xffffff, 0x444444]}
