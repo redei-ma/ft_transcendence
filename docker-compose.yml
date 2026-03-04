@@ -38,6 +38,12 @@ services:
         volumes:
             - ./shared/prisma:/app/prisma
 
+    redis:
+        image: redis:alpine
+        container_name: redis_container
+        networks:
+            - transcendence_net
+
     auth-service:
         container_name: transcendence_auth_service
         image: transcendence_auth_service:20-alpine
@@ -115,12 +121,15 @@ services:
         depends_on:
             db-migration:
                 condition: service_completed_successfully
+            redis:
+                condition: service_started
         networks:
             - backend-network
         expose:
             - "3000"
         env_file:
             - .env.shared
+            - .env
         volumes:
             - ./game-service/src:/app/game-service/src
             - ./shared/prisma/schema.prisma:/app/prisma/schema.prisma:ro
@@ -135,6 +144,32 @@ services:
             retries: 5
             start_period: 30s
 
+    matchmaking-service:
+        build: ./logic-service # Assicurati che il percorso sia corretto rispetto a dove metti questo file
+        container_name: matchmaking_container
+        ports:
+            - "3500"
+        depends_on:
+            - redis
+        environment:
+            - REDIS_HOST=redis
+            - REDIS_PORT=6379
+            - NODE_ENV=development
+        networks:
+            - backend-network
+
+    frontend:
+        build: ./frontend
+        container_name: game_client
+        ports:
+            - "5173"
+        volumes:
+            - ./frontend:/usr/src/app/
+            - /usr/src/app/node_modules
+        environment:
+            - VITE_API_URL=http://localhost:3000
+        networks:
+            - backend-network
     gateway:
         container_name: api_gateway
         image: nginx:stable-alpine
@@ -146,15 +181,19 @@ services:
                 condition: service_healthy
             game-service:
                 condition: service_healthy
+            matchmaking-service:
+                condition: service_started
+            frontend:
+                condition: service_started
         networks:
             - backend-network
         ports:
             - "2443:2443"
         volumes:
             - ./frontend:/usr/share/nginx/html:ro
-            - ./nginix/nginx.conf:/etc/nginx/nginx.conf:ro
+            - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
             - ./certs:/etc/nginx/certs
-            - uploads_data:/upl
+            - uploads_data:/uploads
 
     ngrok:
         container_name: ngrok

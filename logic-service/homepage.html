@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+<body>
+    <h3>Test Matchmaking Socket.io</h3>
+    <div id="status">Disconnesso</div>
+    <button onclick="join()">Entra in Coda (Ranked)</button>
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <script>
+        const socket = io('http://localhost:3500', { transports: ['websocket'] });
+
+        socket.on('connect', () => {
+            document.getElementById('status').innerText = 'CONNESSO! ID: ' + socket.id;
+            console.log('Connesso al server');
+        });
+
+        socket.on('match_found', (data) => {
+            alert('MATCH TROVATO! ID Partita: ' + data.matchId);
+        });
+
+        function join() {
+            const data = { 
+                userDbId: "4", 
+                characterName: "ade", 
+                rank: 100, 
+                rankRange: 50, 
+                matchType: "ffa", 
+                matchMode: "ranked", 
+                isAiPlayer: false 
+            };
+            // Usa il nome dell'evento che hai messo nel Gateway (@SubscribeMessage)
+            socket.emit('join_ranked', data, (response) => {
+                console.log('Risposta dal server:', response);
+            });
+        }
+    </script>
+</body>
+</html>

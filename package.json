@@ -1,0 +1,32 @@
+{
+  "name": "clash_of_olympus",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "sync": "copyfiles -u 3 \"backend/src/game/interfaces/**/*\" \"backend/src/game/dto/**/*\" frontend/src/shared/",
+    "play": "npm run sync && docker-compose up --build"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@types/jest": "^30.0.0",
+    "copyfiles": "^2.4.1",
+    "jest": "^30.2.0",
+    "ts-jest": "^29.4.6"
+  },
+  "dependencies": {
+    "@nestjs/config": "^4.0.3",
+    "@nestjs/microservices": "^11.1.15",
+    "@nestjs/platform-socket.io": "^11.1.15",
+    "@nestjs/schedule": "^6.1.1",
+    "@nestjs/testing": "^11.1.15",
+    "@nestjs/throttler": "^6.5.0",
+    "@nestjs/websockets": "^11.1.15",
+    "@react-three/drei": "^10.7.7",
+    "@react-three/postprocessing": "^3.0.4",
+    "class-validator": "^0.15.1",
+    "socket.io": "^4.8.3"
+  }
+}
