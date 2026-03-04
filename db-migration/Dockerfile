@@ -18,6 +18,8 @@ RUN npx prisma generate
 COPY db-migration/. .
 RUN chmod +x entrypoint.sh
 
+ENV PATH="/app/node_modules/.bin:$PATH"
+
 USER appuser
 
 ENTRYPOINT [ "./entrypoint.sh" ]
