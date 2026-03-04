@@ -44,7 +44,7 @@ services:
         build:
             context: .
             dockerfile: ./auth-service/Dockerfile
-            target: build
+            target: build # Dev mode: uses build stage with volume mounts
         command: npm run start:dev
         restart: unless-stopped
         depends_on:
@@ -76,7 +76,7 @@ services:
         build:
             context: .
             dockerfile: ./user-service/Dockerfile
-            target: build
+            target: build # Dev mode: uses build stage with volume mounts
         command: sh -c "npm run prisma:generate && npm run start:dev"
         restart: unless-stopped
         depends_on:
@@ -86,8 +86,6 @@ services:
             - backend-network
         expose:
             - "3001"
-        ports:
-            - "127.0.0.1:3001:3001"
         env_file:
             - .env.shared
         volumes:
@@ -111,7 +109,7 @@ services:
         build:
             context: .
             dockerfile: ./game-service/Dockerfile
-            target: build
+            target: build # Dev mode: uses build stage with volume mounts
         command: sh -c "npm run prisma:generate && npm run start:dev"
         restart: unless-stopped
         depends_on:

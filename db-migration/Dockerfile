@@ -1,8 +1,9 @@
 FROM node:20-alpine
 
+RUN addgroup -g 1001 -S appgroup && adduser -u 1001 -S appuser -G appgroup
+
 WORKDIR /app
 
-# Install OpenSSL for Prisma
 RUN apk add --no-cache openssl
 
 # Copy dependency files and install dependencies
@@ -17,6 +18,6 @@ RUN npx prisma generate
 COPY db-migration/. .
 RUN chmod +x entrypoint.sh
 
-ENV PATH="/app/node_modules/.bin:$PATH"
+USER appuser
 
 ENTRYPOINT [ "./entrypoint.sh" ]
