@@ -2,7 +2,7 @@ import { PassportStrategy } from '@nestjs/passport';
 import { Strategy, ExtractJwt } from 'passport-jwt';
 import { Injectable, UnauthorizedException} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { JwtRefreshPayloadDto, REFRESH_COOKIE_NAME } from '@game/auth-shared';
+import { JwtRefreshPayloadDto, REFRESH_COOKIE_NAME } from '@transcendence/auth';
 import { UserClient } from '../../user/user.client';
 
 @Injectable()

@@ -2,7 +2,7 @@
 import { PassportStrategy } from '@nestjs/passport';
 import { Strategy, ExtractJwt } from 'passport-jwt';
 import { Injectable } from '@nestjs/common';
-import { AUTH_COOKIE_NAME, JwtAccessPayloadDto } from '@game/auth-shared';
+import { AUTH_COOKIE_NAME, JwtAccessPayloadDto } from '@transcendence/auth';
 import { ConfigService } from '@nestjs/config';
 
 @Injectable()

@@ -16,10 +16,7 @@ import { Type } from "class-transformer";
  * Query parameters for finding a user by ID, email, or username.
  */
 export class FindUserQueryDto {
-	@ApiPropertyOptional({
-		description: "Find user by ID",
-		example: 1,
-	})
+	@ApiPropertyOptional({ description: "Find user by ID", example: 1 })
 	@IsOptional()
 	@Type(() => Number)
 	@IsInt({ message: "id must be an integer" })
@@ -78,7 +75,7 @@ export class CheckUsernameQueryDto {
  */
 export class LeaderboardQueryDto {
 	@ApiPropertyOptional({
-		description: "Number of the page to retrieve (starting from 1)",
+		description: "Page number (starting from 1)",
 		example: 1,
 		default: 1,
 	})

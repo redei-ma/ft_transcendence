@@ -1,13 +1,8 @@
 import { Module } from '@nestjs/common';
-import { JwtModule } from '@nestjs/jwt';
-import { PassportModule } from '@nestjs/passport';
-import { JwtStrategy } from './jwt/jwt.strategy';
+import { JwtAuthGuard } from '@transcendence/auth';
 
 @Module({
-  imports: [
-    PassportModule,
-    JwtModule.register({}),
-  ],
-  providers: [JwtStrategy],
+  providers: [JwtAuthGuard],
+  exports: [JwtAuthGuard],
 })
 export class AuthModule {}

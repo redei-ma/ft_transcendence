@@ -22,8 +22,8 @@ while ((match = enumRegex.exec(schema)) !== null) {
 		.map((v) => v.trim())
 		.filter((v) => v && !v.startsWith("//"));
 
-	const content = `// AUTO-GENERATED — non modificare a mano
-// Sorgente: shared/prisma/schema.prisma
+	const content = `// AUTO-GENERATED — do not edit manually
+// Source: shared/prisma/schema.prisma
 
 export const ${enumName} = {
 ${values.map((v) => `  ${v}: '${v}'`).join(",\n")}
@@ -35,15 +35,15 @@ export type ${enumName} = typeof ${enumName}[keyof typeof ${enumName}];
 	const fileName = `${enumName.toLowerCase()}.enum.ts`;
 	fs.writeFileSync(path.join(outputDir, fileName), content);
 	generatedEnums.push(enumName);
-	console.log(`Generato: ${fileName}`);
+	console.log(`Generated: ${fileName}`);
 }
 
-// Genera index.ts automaticamente
-const indexContent = `// AUTO-GENERATED — non modificare a mano
+// Generate index.ts automatically
+const indexContent = `// AUTO-GENERATED — do not edit manually
 
 ${generatedEnums.map((e) => `export * from './${e.toLowerCase()}.enum';`).join("\n")}
 `;
 
 fs.writeFileSync(path.join(outputDir, "index.ts"), indexContent);
-console.log("Generato: index.ts");
-console.log(`\n${generatedEnums.length} enum generati da schema.prisma`);
+console.log("Generated: index.ts");
+console.log(`\n${generatedEnums.length} enums generated from schema.prisma`);

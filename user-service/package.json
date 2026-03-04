@@ -15,10 +15,12 @@
 		"prisma:generate": "prisma generate --schema=../prisma/schema.prisma"
 	},
 	"dependencies": {
+		"@transcendence/auth": "file:../shared/auth",
 		"@nestjs/common": "^11.1.12",
+		"@nestjs/websockets": "^11.0.0",
+		"socket.io": "^4.0.0",
 		"@nestjs/config": "^4.0.2",
 		"@nestjs/core": "^11.1.12",
-		"@nestjs/jwt": "^11.0.0",
 		"@nestjs/platform-express": "^11.1.12",
 		"@nestjs/swagger": "^11.0.0",
 		"@nestjs/terminus": "^11.0.0",

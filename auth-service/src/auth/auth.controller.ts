@@ -2,8 +2,8 @@
 import { Body, Controller, Post, Res, Req, UseGuards, Get, Query, BadRequestException} from '@nestjs/common';
 import { AuthService } from './auth.service';
 import type { Response } from 'express';
-import type { AuthenticatedRequest, } from '@game/auth-shared';
-import {AUTH_COOKIE_NAME, REFRESH_COOKIE_NAME } from '@game/auth-shared';
+import type { AuthenticatedRequest, } from '@transcendence/auth';
+import {AUTH_COOKIE_NAME, REFRESH_COOKIE_NAME } from '@transcendence/auth';
 import { JwtRefreshGuard } from './jwt/jwt-refresh.guard';
 import { JwtAuthGuard } from './jwt/jwt.guard';
 import { ConfigService } from '@nestjs/config';

@@ -1,7 +1,7 @@
 import { Controller, Get, Req, UseGuards } from '@nestjs/common';
 import type { Request } from 'express';
 import { JwtAuthGuard } from './auth/jwt/jwt.guard';
-import type { AuthenticatedRequest } from '@game/auth-shared';
+import type { AuthenticatedRequest } from '@transcendence/auth';
 
 @Controller()
 export class AppController {

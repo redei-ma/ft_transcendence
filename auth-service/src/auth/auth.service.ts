@@ -2,7 +2,7 @@
 import { Injectable, UnauthorizedException, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
-import { JwtAccessPayloadDto, JwtRefreshPayloadDto} from '@game/auth-shared';
+import { JwtAccessPayloadDto, JwtRefreshPayloadDto} from '@transcendence/auth';
 import { ConfigService } from '@nestjs/config';
 import { MailService } from './mail/mail.service';
 import { UserClient } from '../user/user.client';

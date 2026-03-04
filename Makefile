@@ -9,10 +9,11 @@ COMPOSE_FILE := docker-compose.yml
 
 CERTS_DIR    := ./certs
 TYPES_DIR    := ./shared/types
+AUTH_DIR     := ./shared/auth
 
 # --- Phony targets -------------------------------------------
 
-.PHONY: all generate certs up down restart clean fclean re rebuild prune logs ps help 
+.PHONY: all generate certs up down restart clean fclean re rebuild prune logs ps help
 
 # --- Default target ------------------------------------------
 
@@ -20,7 +21,8 @@ all: up
 
 # --- Types generation ----------------------------------------
 
-generate: ## Generate enums from schema.prisma and build @transcendence/types
+generate: ## Generate enums from schema.prisma and build shared packages
+	cd $(AUTH_DIR) && npm install && npm run build
 	cd $(TYPES_DIR) && npm install && npm run build
 
 # --- Certificates generation --------------------------------
@@ -58,14 +60,15 @@ clean: down ## Stop services and remove stopped containers
 fclean: down ## clean + remove named volumes and locally built images
 	$(COMPOSE) -f $(COMPOSE_FILE) down -v --rmi local
 
-re: fclean up ## Full wipe followed by a fresh build and start
+re: fclean rebuild ## Full wipe followed by a fresh build and start
 
-rebuild: ## Force a full image rebuild without cache, then start services
+rebuild: certs generate ## Force a full image rebuild without cache, then start services
 	$(COMPOSE) -f $(COMPOSE_FILE) build --no-cache
 	$(COMPOSE) -f $(COMPOSE_FILE) up -d
 
-prune: fclean ## fclean + wipe entire Docker build cache (WARNING: host-wide)
-	docker system prune -af --volumes
+prune: down ## Remove ALL project resources (containers, volumes, networks, images) — project-only, does not affect other projects
+	$(COMPOSE) -f $(COMPOSE_FILE) down -v --rmi all
+	docker image prune -f
 
 # --- Observability -------------------------------------------
 

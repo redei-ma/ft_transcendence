@@ -1,5 +1,5 @@
-// AUTO-GENERATED — non modificare a mano
-// Sorgente: shared/prisma/schema.prisma
+// AUTO-GENERATED — do not edit manually
+// Source: shared/prisma/schema.prisma
 
 export const Provider = {
   LOCAL: 'LOCAL',

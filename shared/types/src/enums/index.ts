@@ -1,4 +1,4 @@
-// AUTO-GENERATED — non modificare a mano
+// AUTO-GENERATED — do not edit manually
 
 export * from './userstatus.enum';
 export * from './matchmode.enum';

@@ -19,7 +19,7 @@ import {
 	ApiParam,
 	ApiBearerAuth,
 } from "@nestjs/swagger";
-import { JwtAuthGuard, CurrentUser } from "../../guard";
+import { JwtAuthGuard, CurrentUser } from "@transcendence/auth";
 import { UserService } from "../services/user.service";
 import {
 	UpdateUsernameDto,
@@ -69,7 +69,7 @@ export class PublicUserController {
 			"User not found (e.g., account deleted but token still valid)",
 	})
 	async getMyProfile(
-		@CurrentUser("id") userId: number,
+		@CurrentUser("sub") userId: number,
 	): Promise<UserProfileResponseDto> {
 		return this.userService.getMyProfile(userId);
 	}
@@ -95,7 +95,7 @@ export class PublicUserController {
 		description: "User or stats not found",
 	})
 	async getMyStats(
-		@CurrentUser("id") userId: number,
+		@CurrentUser("sub") userId: number,
 	): Promise<UserStatsResponseDto> {
 		return this.userService.getMyStats(userId);
 	}
@@ -121,7 +121,7 @@ export class PublicUserController {
 		description: "User not found",
 	})
 	async getMySettings(
-		@CurrentUser("id") userId: number,
+		@CurrentUser("sub") userId: number,
 	): Promise<UserSettingsResponseDto> {
 		return this.userService.getMySettings(userId);
 	}
@@ -149,7 +149,7 @@ export class PublicUserController {
 		description: "Username already in use",
 	})
 	async updateUsername(
-		@CurrentUser("id") userId: number,
+		@CurrentUser("sub") userId: number,
 		@Body() dto: UpdateUsernameDto,
 	): Promise<UserProfileResponseDto> {
 		return this.userService.updateUsername(userId, dto);
@@ -182,7 +182,7 @@ export class PublicUserController {
 		description: "Email already in use",
 	})
 	async updateEmail(
-		@CurrentUser("id") userId: number,
+		@CurrentUser("sub") userId: number,
 		@Body() dto: UpdateEmailDto,
 	): Promise<void> {
 		return this.userService.updateEmail(userId, dto);
@@ -205,7 +205,7 @@ export class PublicUserController {
 		description: "Missing or invalid JWT",
 	})
 	async updateAvatar(
-		@CurrentUser("id") userId: number,
+		@CurrentUser("sub") userId: number,
 		@Body() dto: UpdateAvatarDto,
 	): Promise<UserProfileResponseDto> {
 		return this.userService.updateAvatar(userId, dto);
@@ -227,7 +227,7 @@ export class PublicUserController {
 		status: HttpStatus.UNAUTHORIZED,
 		description: "Missing or invalid JWT",
 	})
-	async deleteMyAccount(@CurrentUser("id") userId: number): Promise<void> {
+	async deleteMyAccount(@CurrentUser("sub") userId: number): Promise<void> {
 		return this.userService.deleteUser(userId);
 	}
 
