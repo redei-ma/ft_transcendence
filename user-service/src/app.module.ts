@@ -12,7 +12,7 @@ import { CleanupModule } from "./modules/cleanup/cleanup.module";
 	imports: [
 		ConfigModule.forRoot({
 			isGlobal: true,
-			envFilePath: ".env",
+			envFilePath: ".env.shared",
 		}),
 		ScheduleModule.forRoot(),
 		ThrottlerModule.forRoot([
