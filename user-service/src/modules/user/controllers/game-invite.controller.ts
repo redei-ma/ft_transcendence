@@ -17,7 +17,7 @@ import {
 	ApiParam,
 	ApiBearerAuth,
 } from "@nestjs/swagger";
-import { JwtAuthGuard, CurrentUser } from "../../guard";
+import { JwtAuthGuard, CurrentUser } from "@transcendence/auth";
 import { GameInviteService } from "../services/game-invite.service";
 import {
 	SendGameInviteDto,
@@ -51,7 +51,7 @@ export class GameInviteController {
 	})
 	@ApiResponse({ status: HttpStatus.UNAUTHORIZED })
 	async sendInvite(
-		@CurrentUser("id") userId: number,
+		@CurrentUser("sub") userId: number,
 		@Param("targetId", ParseIntPipe) targetId: number,
 		@Body() dto: SendGameInviteDto,
 	): Promise<GameInviteResponseDto> {
@@ -63,7 +63,7 @@ export class GameInviteController {
 	@ApiResponse({ status: HttpStatus.OK, type: GameInviteListResponseDto })
 	@ApiResponse({ status: HttpStatus.UNAUTHORIZED })
 	async getPendingInvites(
-		@CurrentUser("id") userId: number,
+		@CurrentUser("sub") userId: number,
 	): Promise<GameInviteListResponseDto> {
 		return this.gameInviteService.getPendingInvites(userId);
 	}
@@ -81,7 +81,7 @@ export class GameInviteController {
 	@ApiResponse({ status: HttpStatus.FORBIDDEN })
 	@ApiResponse({ status: HttpStatus.UNAUTHORIZED })
 	async respondInvite(
-		@CurrentUser("id") userId: number,
+		@CurrentUser("sub") userId: number,
 		@Param("id", ParseIntPipe) inviteId: number,
 		@Body() dto: RespondGameInviteDto,
 	): Promise<void> {

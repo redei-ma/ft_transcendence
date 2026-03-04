@@ -17,7 +17,7 @@ import {
 	ApiParam,
 	ApiBearerAuth,
 } from "@nestjs/swagger";
-import { JwtAuthGuard, CurrentUser } from "../../guard";
+import { JwtAuthGuard, CurrentUser } from "@transcendence/auth";
 import { NotificationService } from "../services/notification.service";
 import {
 	NotificationsQueryDto,
@@ -36,7 +36,7 @@ export class NotificationController {
 	@ApiResponse({ status: HttpStatus.OK, type: NotificationListResponseDto })
 	@ApiResponse({ status: HttpStatus.UNAUTHORIZED })
 	async getNotifications(
-		@CurrentUser("id") userId: number,
+		@CurrentUser("sub") userId: number,
 		@Query() query: NotificationsQueryDto,
 	): Promise<NotificationListResponseDto> {
 		return this.notificationService.getNotifications(userId, query);
@@ -48,7 +48,7 @@ export class NotificationController {
 	@ApiOperation({ summary: "Mark all notifications as read" })
 	@ApiResponse({ status: HttpStatus.NO_CONTENT })
 	@ApiResponse({ status: HttpStatus.UNAUTHORIZED })
-	async markAllAsRead(@CurrentUser("id") userId: number): Promise<void> {
+	async markAllAsRead(@CurrentUser("sub") userId: number): Promise<void> {
 		return this.notificationService.markAllAsRead(userId);
 	}
 
@@ -61,7 +61,7 @@ export class NotificationController {
 	@ApiResponse({ status: HttpStatus.FORBIDDEN })
 	@ApiResponse({ status: HttpStatus.UNAUTHORIZED })
 	async markAsRead(
-		@CurrentUser("id") userId: number,
+		@CurrentUser("sub") userId: number,
 		@Param("id", ParseIntPipe) notificationId: number,
 	): Promise<void> {
 		return this.notificationService.markAsRead(userId, notificationId);
@@ -76,7 +76,7 @@ export class NotificationController {
 	@ApiResponse({ status: HttpStatus.FORBIDDEN })
 	@ApiResponse({ status: HttpStatus.UNAUTHORIZED })
 	async deleteNotification(
-		@CurrentUser("id") userId: number,
+		@CurrentUser("sub") userId: number,
 		@Param("id", ParseIntPipe) notificationId: number,
 	): Promise<void> {
 		return this.notificationService.deleteNotification(

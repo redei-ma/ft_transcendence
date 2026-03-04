@@ -18,7 +18,7 @@ import {
 	ApiParam,
 	ApiBearerAuth,
 } from "@nestjs/swagger";
-import { JwtAuthGuard, CurrentUser } from "../../guard";
+import { JwtAuthGuard, CurrentUser } from "@transcendence/auth";
 import { FriendshipService } from "../services/friendship.service";
 import {
 	RespondFriendRequestDto,
@@ -41,7 +41,7 @@ export class FriendshipController {
 	@ApiResponse({ status: HttpStatus.OK, type: FriendListResponseDto })
 	@ApiResponse({ status: HttpStatus.UNAUTHORIZED })
 	async getFriends(
-		@CurrentUser("id") userId: number,
+		@CurrentUser("sub") userId: number,
 	): Promise<FriendListResponseDto> {
 		return this.friendshipService.getFriends(userId);
 	}
@@ -51,7 +51,7 @@ export class FriendshipController {
 	@ApiResponse({ status: HttpStatus.OK, type: FriendRequestsResponseDto })
 	@ApiResponse({ status: HttpStatus.UNAUTHORIZED })
 	async getFriendRequests(
-		@CurrentUser("id") userId: number,
+		@CurrentUser("sub") userId: number,
 	): Promise<FriendRequestsResponseDto> {
 		return this.friendshipService.getFriendRequests(userId);
 	}
@@ -76,7 +76,7 @@ export class FriendshipController {
 	})
 	@ApiResponse({ status: HttpStatus.UNAUTHORIZED })
 	async sendFriendRequest(
-		@CurrentUser("id") userId: number,
+		@CurrentUser("sub") userId: number,
 		@Param("targetId", ParseIntPipe) targetId: number,
 	): Promise<FriendResponseDto> {
 		return this.friendshipService.sendFriendRequest(userId, targetId);
@@ -93,7 +93,7 @@ export class FriendshipController {
 	})
 	@ApiResponse({ status: HttpStatus.UNAUTHORIZED })
 	async respondFriendRequest(
-		@CurrentUser("id") userId: number,
+		@CurrentUser("sub") userId: number,
 		@Param("targetId", ParseIntPipe) targetId: number,
 		@Body() dto: RespondFriendRequestDto,
 	): Promise<void> {
@@ -119,7 +119,7 @@ export class FriendshipController {
 	})
 	@ApiResponse({ status: HttpStatus.UNAUTHORIZED })
 	async removeFriend(
-		@CurrentUser("id") userId: number,
+		@CurrentUser("sub") userId: number,
 		@Param("targetId", ParseIntPipe) targetId: number,
 	): Promise<void> {
 		return this.friendshipService.removeFriend(userId, targetId);

@@ -1,6 +1,6 @@
 import { PrismaClient } from "@prisma/client";
 import { seedTestData } from "./seeds/test-data";
-import { seedAchievementData } from "./seeds/achievements-data";
+import { seedAchievementData } from "./seeds/achievements";
 
 const prisma = new PrismaClient();
 
