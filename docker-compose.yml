@@ -42,7 +42,7 @@ services:
         image: redis:alpine
         container_name: redis_container
         networks:
-            - transcendence_net
+            - backend-network
 
     auth-service:
         container_name: transcendence_auth_service
@@ -129,7 +129,7 @@ services:
             - "3000"
         env_file:
             - .env.shared
-            - .env
+            - ./game-service/.env
         volumes:
             - ./game-service/src:/app/game-service/src
             - ./shared/prisma/schema.prisma:/app/prisma/schema.prisma:ro
@@ -145,8 +145,9 @@ services:
             start_period: 30s
 
     matchmaking-service:
-        build: ./logic-service # Assicurati che il percorso sia corretto rispetto a dove metti questo file
+        build: ./matchmaking-service # Assicurati che il percorso sia corretto rispetto a dove metti questo file
         container_name: matchmaking_container
+        restart: unless-stopped
         ports:
             - "3500"
         depends_on:
@@ -166,8 +167,6 @@ services:
         volumes:
             - ./frontend:/usr/src/app/
             - /usr/src/app/node_modules
-        environment:
-            - VITE_API_URL=http://localhost:3000
         networks:
             - backend-network
     gateway:
@@ -189,8 +188,8 @@ services:
             - backend-network
         ports:
             - "2443:2443"
+            - "2080:2080"
         volumes:
-            - ./frontend:/usr/share/nginx/html:ro
             - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
             - ./certs:/etc/nginx/certs
             - uploads_data:/uploads

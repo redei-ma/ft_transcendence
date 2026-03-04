@@ -145,7 +145,7 @@ An **Isometric Low-Poly Brawler** where players control mythological avatars.
 │   ├── auth-service/   # JWT, 42API, Google Auth
 │   ├── game-service/   # Socket.io, Physics Engine
 │   ├── user-service/   # DB, Friends, Profile API
-│   └── logic-service/  # AI, Stats Calculation
+│   └── matchmaking-service/  # AI, Stats Calculation
 ├── frontend/           # React + Vite + Three.js
 ├── database/           # PostgreSQL Init scripts
 ├── nginx/              # Reverse Proxy Configuration

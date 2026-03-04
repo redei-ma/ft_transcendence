@@ -9,7 +9,7 @@ class MatchmakingSocket {
       return this.socket;
     }
 
-    this.socket = io('http://localhost', {
+    this.socket = io(window.location.origin, {
       path: "/matchmaking_api/socket.io",
       transports: ['websocket'],
       reconnection: false, // se si disconnette = leave queue

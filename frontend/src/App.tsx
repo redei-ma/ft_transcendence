@@ -24,7 +24,7 @@ function App() {
 
   const handleMatchFound = () => {
     console.log('[App] MATCH_FOUND received — connecting to Giovanni');
-    socketService.connect('http://localhost', userDbId);
+    socketService.connect(window.location.origin, userDbId);
     matchmakingSocket.disconnect();
     setCurrentScene('game');
   };
