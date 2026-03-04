@@ -17,29 +17,35 @@
 	"dependencies": {
 		"@nestjs-modules/ioredis": "^2.0.2",
 		"@nestjs/axios": "^4.0.0",
-		"@nestjs/common": "^11.0.1",
-		"@nestjs/config": "^4.0.0",
-		"@nestjs/core": "^11.0.1",
+		"@nestjs/common": "^11.1.12",
+		"@nestjs/config": "^4.0.2",
+		"@nestjs/core": "^11.1.12",
 		"@nestjs/event-emitter": "^3.0.0",
-		"@nestjs/microservices": "^11.0.1",
-		"@nestjs/platform-express": "^11.0.1",
-		"@nestjs/platform-socket.io": "^11.0.1",
-		"@nestjs/websockets": "^11.0.1",
-		"axios": "^1.7.9",
-		"ioredis": "^5.5.0",
+		"@nestjs/microservices": "^11.1.13",
+		"@nestjs/platform-express": "^11.1.12",
+		"@nestjs/platform-socket.io": "^11.1.12",
+		"@nestjs/websockets": "^11.1.12",
+		"axios": "^1.13.5",
+		"ioredis": "^5.9.2",
 		"reflect-metadata": "^0.2.2",
-		"rxjs": "^7.8.1",
-		"socket.io": "^4.8.1"
+		"rxjs": "^7.8.2",
+		"socket.io": "^4.8.3"
 	},
 	"devDependencies": {
+		"@eslint/js": "^9.18.0",
 		"@nestjs/cli": "^11.0.0",
 		"@nestjs/schematics": "^11.0.0",
 		"@nestjs/testing": "^11.0.1",
-		"@types/node": "^22.10.7",
+		"@types/node": "^22.19.7",
+		"eslint": "^9.18.0",
+		"eslint-plugin-prettier": "^5.2.2",
+		"globals": "^16.0.0",
+		"prettier": "^3.4.2",
 		"source-map-support": "^0.5.21",
 		"ts-loader": "^9.5.2",
 		"ts-node": "^10.9.2",
 		"tsconfig-paths": "^4.2.0",
-		"typescript": "^5.7.3"
+		"typescript": "^5.7.3",
+		"typescript-eslint": "^8.20.0"
 	}
 }
