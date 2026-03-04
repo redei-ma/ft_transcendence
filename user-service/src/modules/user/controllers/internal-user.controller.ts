@@ -31,8 +31,11 @@ import {
 	Setup2faDto,
 	FindUserQueryDto,
 	UserWithAccountsResponseDto,
+	UserEloResponseDto,
 	SuccessResponseDto,
+	CreateNotificationDto,
 } from "@transcendence/types";
+import { NotificationService } from "../services/notification.service";
 
 /**
  * Controller for internal user management endpoints.
@@ -41,7 +44,10 @@ import {
 @ApiTags("Internal Users")
 @Controller("internal/users")
 export class InternalUserController {
-	constructor(private readonly userService: UserService) {}
+	constructor(
+		private readonly userService: UserService,
+		private readonly notificationService: NotificationService,
+	) {}
 
 	// ─── Create user ───────────────────────────────────────────────────────────────────────────────
 
@@ -152,6 +158,27 @@ export class InternalUserController {
 		@Param("oauthId") oauthId: string,
 	): Promise<UserWithAccountsResponseDto> {
 		return this.userService.findUserOauth(provider, oauthId);
+	}
+
+	/**
+	 * Returns only the current ELO of a user.
+	 */
+	@Get(":id/elo")
+	@ApiOperation({ summary: "Get current ELO of a user (for matchmaking)" })
+	@ApiParam({ name: "id", type: Number })
+	@ApiResponse({
+		status: HttpStatus.OK,
+		description: "ELO rating of the user",
+		type: UserEloResponseDto,
+	})
+	@ApiResponse({
+		status: HttpStatus.NOT_FOUND,
+		description: "User stats not found",
+	})
+	async getUserElo(
+		@Param("id", ParseIntPipe) id: number,
+	): Promise<UserEloResponseDto> {
+		return this.userService.getUserElo(id);
 	}
 
 	// ─── Update user ───────────────────────────────────────────────────────────────────────────────
@@ -391,5 +418,26 @@ export class InternalUserController {
 	})
 	async disable2fa(@Param("id", ParseIntPipe) id: number): Promise<void> {
 		return this.userService.disable2fa(id);
+	}
+
+	// ─── Notifications ────────────────────────────────────────────────────────
+
+	/**
+	 * Creates a notification for a user.
+	 * Called by game-service after unlocking an achievement, or by friendship flows.
+	 */
+	@Post(":id/notifications")
+	@HttpCode(HttpStatus.NO_CONTENT)
+	@ApiOperation({ summary: "Create a notification for a user (internal)" })
+	@ApiParam({ name: "id", type: Number })
+	@ApiResponse({
+		status: HttpStatus.NO_CONTENT,
+		description: "Notification created",
+	})
+	async createNotification(
+		@Param("id", ParseIntPipe) id: number,
+		@Body() dto: CreateNotificationDto,
+	): Promise<void> {
+		return this.notificationService.createNotification(id, dto);
 	}
 }

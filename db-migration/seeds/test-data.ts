@@ -1,18 +1,3 @@
-/**
- * @file seeds/test-data.ts
- * @description Seeds test data for development and testing.
- *
- * Creates a realistic dataset covering all entity types and edge cases:
- * - Users with different account setups (LOCAL, GOOGLE, both)
- * - Matches in all modes (RANKED, UNRANKED, LOCAL, AI)
- * - Friendships in all states (PENDING, ACCEPTED, REJECTED)
- * - Notifications read and unread
- * - Some achievements unlocked
- * - Varied user stats
- *
- * Only runs when NODE_ENV !== "production".
- * Uses upsert/findFirst checks to be safely re-runnable.
- */
 import {
 	PrismaClient,
 	Provider,
@@ -457,35 +442,33 @@ export async function seedTestData(prisma: PrismaClient): Promise<void> {
 
 	// ─── Achievements ─────────────────────────────────────────────
 
-	const firstBlood = await prisma.achievement.findUnique({
+	const firstBlood = await prisma.achievement.findUniqueOrThrow({
 		where: { name: "First Blood" },
 	});
-	const flawless = await prisma.achievement.findUnique({
+	const flawless = await prisma.achievement.findUniqueOrThrow({
 		where: { name: "Flawless Victory" },
 	});
-	const killMachine = await prisma.achievement.findUnique({
+	const killMachine = await prisma.achievement.findUniqueOrThrow({
 		where: { name: "Kill Machine" },
 	});
 
-	if (firstBlood && flawless && killMachine) {
-		await prisma.userAchievement.createMany({
-			skipDuplicates: true,
-			data: [
-				// Alice: 3 achievements
-				{ userId: alice.id, achievementId: firstBlood.id },
-				{ userId: alice.id, achievementId: flawless.id },
-				{ userId: alice.id, achievementId: killMachine.id },
-				// Bob: 1 achievement
-				{ userId: bob.id, achievementId: firstBlood.id },
-				// Diana: 2 achievements
-				{ userId: diana.id, achievementId: firstBlood.id },
-				{ userId: diana.id, achievementId: flawless.id },
-			],
-		});
-		console.log(
-			"  ✓ Achievements unlocked (alice: 3, bob: 1, diana: 2, charlie: 0)",
-		);
-	}
+	await prisma.userAchievement.createMany({
+		skipDuplicates: true,
+		data: [
+			// Alice: 3 achievements
+			{ userId: alice.id, achievementId: firstBlood.id },
+			{ userId: alice.id, achievementId: flawless.id },
+			{ userId: alice.id, achievementId: killMachine.id },
+			// Bob: 1 achievement
+			{ userId: bob.id, achievementId: firstBlood.id },
+			// Diana: 2 achievements
+			{ userId: diana.id, achievementId: firstBlood.id },
+			{ userId: diana.id, achievementId: flawless.id },
+		],
+	});
+	console.log(
+		"  ✓ Achievements unlocked (alice: 3, bob: 1, diana: 2, charlie: 0)",
+	);
 
 	// ─── Notifications ────────────────────────────────────────────
 

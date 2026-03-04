@@ -8,6 +8,8 @@ RUN npm install && npm run build
 
 WORKDIR /app
 RUN apk add --no-cache openssl
+
+COPY shared/types ./shared/types
 COPY shared/prisma/schema.prisma ./prisma/schema.prisma
 
 # Install service dependencies (--install-links copies file: deps into node_modules)

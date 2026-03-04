@@ -1,5 +1,11 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
-import { IsEnum, IsOptional, IsString, IsUrl, MinLength } from "class-validator";
+import {
+	IsEnum,
+	IsOptional,
+	IsString,
+	IsUrl,
+	MinLength,
+} from "class-validator";
 import { UserStatus } from "../enums";
 import {
 	IsEmailField,
@@ -41,22 +47,6 @@ export class UpdateUsernameDto {
 export class UpdateEmailDto {
 	@IsEmailField()
 	email: string;
-}
-
-/**
- * Input DTO for updating avatar.
- */
-export class UpdateAvatarDto {
-	@ApiPropertyOptional({
-		description:
-			"New avatar URL. Omit or send null to reset to default DiceBear avatar.",
-		example: "https://example.com/my-avatar.png",
-		nullable: true,
-	})
-	@IsOptional()
-	@IsString()
-	@IsUrl({}, { message: "Invalid avatar URL" })
-	avatarUrl?: string | null;
 }
 
 /**

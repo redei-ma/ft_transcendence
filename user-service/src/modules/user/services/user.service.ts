@@ -13,7 +13,6 @@ import {
 	UpdatePasswordDto,
 	UpdateUsernameDto,
 	UpdateEmailDto,
-	UpdateAvatarDto,
 	UpdateStatusDto,
 	LinkOAuthDto,
 	Setup2faDto,
@@ -26,7 +25,12 @@ import {
 	PublicProfileResponseDto,
 	LeaderboardResponseDto,
 	CheckAvailabilityResponseDto,
+	UserEloResponseDto,
 } from "@transcendence/types";
+import { unlink, mkdir, writeFile } from "fs/promises";
+import { randomUUID } from "crypto";
+import { join } from "path";
+import sharp from "sharp";
 /**
  * Select Prisma fields for user queries that include accounts.
  */
@@ -58,6 +62,11 @@ const generateDefaultAvatar = (seed: string): string =>
 /** Checks if the given URL is a default avatar. */
 const isDefaultAvatar = (url: string): boolean =>
 	url.startsWith("https://api.dicebear.com/");
+
+/** Checks if the given URL points to a user-uploaded avatar stored on the server. */
+const isUploadedAvatar = (url: string): boolean => url.startsWith("/uploads/");
+
+const UPLOAD_DIR = "/uploads/avatars";
 
 @Injectable()
 export class UserService {
@@ -212,6 +221,26 @@ export class UserService {
 		}
 
 		return user;
+	}
+
+	/**
+	 * Returns only the current ELO of a user, for use by the matchmaking service.
+	 *
+	 * @param id - ID of the user.
+	 * @returns UserEloResponseDto — eloCurrent.
+	 * @throws NotFoundException (404) — if the user stats record does not exist.
+	 */
+	async getUserElo(id: number): Promise<UserEloResponseDto> {
+		const stats = await this.prisma.userStats.findUnique({
+			where: { userId: id },
+			select: { eloCurrent: true },
+		});
+
+		if (!stats) {
+			throw new NotFoundException("User stats not found");
+		}
+
+		return stats;
 	}
 
 	// ─── Update user ───────────────────────────────────────────────────────────────────────────────
@@ -758,34 +787,57 @@ export class UserService {
 	}
 
 	/**
-	 * Updates the avatar of the authenticated user.
-	 *
-	 * - If `avatarUrl` is provided, it is set as the custom avatar.
-	 * - If `avatarUrl` is omitted or null, the avatar is reset to the
-	 *   DiceBear default generated from the current username.
+	 * Saves an uploaded avatar file after sanitizing it with Sharp.
+	 * Sharp re-encodes the image to JPEG 512×512, stripping all metadata
+	 * and rejecting any buffer that is not a valid image.
+	 * If the user previously had a custom uploaded avatar, the old file is deleted.
 	 *
 	 * @param userId - ID of the authenticated user (from JWT).
-	 * @param dto - avatarUrl (optional).
-	 * @returns UserProfileResponseDto — updated profile.
+	 * @param fileBuffer - Raw buffer of the uploaded file.
+	 * @returns UserProfileResponseDto — updated profile with new avatarUrl.
 	 * @throws NotFoundException (404) — if the user does not exist.
+	 * @throws BadRequestException (400) — if the uploaded file is not a valid image.
 	 */
-	async updateAvatar(
+	async uploadAvatar(
 		userId: number,
-		dto: UpdateAvatarDto,
+		fileBuffer: Buffer,
 	): Promise<UserProfileResponseDto> {
 		const user = await this.prisma.user.findUnique({
 			where: { id: userId },
-			select: { id: true, username: true },
+			select: { id: true, avatarUrl: true },
 		});
 
 		if (!user) {
 			throw new NotFoundException("User not found");
 		}
 
-		const avatarUrl = dto.avatarUrl ?? generateDefaultAvatar(user.username);
+		let sanitizedBuffer: Buffer;
+		try {
+			sanitizedBuffer = await sharp(fileBuffer)
+				.resize({ width: 512, height: 512, fit: "cover" })
+				.jpeg({ quality: 85 })
+				.toBuffer();
+		} catch {
+			throw new BadRequestException(
+				"Invalid image file: could not process the uploaded content",
+			);
+		}
+
+		await mkdir(UPLOAD_DIR, { recursive: true });
+
+		const fileName = `${randomUUID()}.jpg`;
+		const filePath = join(UPLOAD_DIR, fileName);
+		const publicUrl = `/uploads/avatars/${fileName}`;
+
+		await writeFile(filePath, sanitizedBuffer);
+
+		if (isUploadedAvatar(user.avatarUrl)) {
+			await unlink(join("/", user.avatarUrl)).catch(() => undefined);
+		}
+
 		return this.prisma.user.update({
 			where: { id: userId },
-			data: { avatarUrl },
+			data: { avatarUrl: publicUrl },
 			select: {
 				id: true,
 				email: true,
@@ -798,11 +850,50 @@ export class UserService {
 	}
 
 	/**
+	 * Resets the user's avatar to the DiceBear default.
+	 * If the user had a custom uploaded avatar, the file is deleted from disk.
+	 *
+	 * @param userId - ID of the authenticated user (from JWT).
+	 * @returns UserProfileResponseDto — updated profile with default avatarUrl.
+	 * @throws NotFoundException (404) — if the user does not exist.
+	 */
+	async resetAvatar(userId: number): Promise<UserProfileResponseDto> {
+		const user = await this.prisma.user.findUnique({
+			where: { id: userId },
+			select: { id: true, username: true, avatarUrl: true },
+		});
+
+		if (!user) {
+			throw new NotFoundException("User not found");
+		}
+
+		if (isUploadedAvatar(user.avatarUrl)) {
+			await unlink(join("/", user.avatarUrl)).catch(() => undefined);
+		}
+
+		return this.prisma.user.update({
+			where: { id: userId },
+			data: { avatarUrl: generateDefaultAvatar(user.username) },
+			select: {
+				id: true,
+				email: true,
+				username: true,
+				avatarUrl: true,
+				status: true,
+				createdAt: true,
+			},
+		});
+	}
+
+	// ─── Delete account ────────────────────────────────────────────────────────
+
+	/**
 	 * Permanently deletes the user and all associated data.
 	 *
 	 * Cascade (onDelete: Cascade) automatically removes:
 	 * Account, UserStats, CharacterStats, Friendship,
 	 * GameInvite, UserAchievement, Notification.
+	 * Removes the avatar file if it was a custom upload.
 	 *
 	 * SetNull (onDelete: SetNull) preserves match history:
 	 * Match.winnerId and MatchParticipant.userId are set to null.
@@ -811,7 +902,19 @@ export class UserService {
 	 * @throws NotFoundException (404) — if the user does not exist.
 	 */
 	async deleteUser(id: number): Promise<void> {
-		await this.findUser({ id });
+		const user = await this.prisma.user.findUnique({
+			where: { id },
+			select: { id: true, avatarUrl: true },
+		});
+
+		if (!user) {
+			throw new NotFoundException("User not found");
+		}
+
+		if (isUploadedAvatar(user.avatarUrl)) {
+			await unlink(join("/", user.avatarUrl)).catch(() => undefined);
+		}
+
 		await this.prisma.user.delete({ where: { id } });
 	}
 

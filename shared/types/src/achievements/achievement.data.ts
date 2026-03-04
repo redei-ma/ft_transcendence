@@ -1,5 +1,5 @@
-import { AchievementType } from "@prisma/client";
-import { AchievementConfig } from "../../types/achievement.config";
+import { AchievementType } from "../enums/achievementtype.enum";
+import { AchievementConfig } from "./achievement.config";
 
 const a = AchievementConfig.achievements;
 
