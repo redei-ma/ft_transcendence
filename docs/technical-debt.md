@@ -39,6 +39,38 @@ La config dei livelli è in `main.ts` di ogni servizio tramite `NODE_ENV`.
 
 ---
 
+## TypeScript `any`
+
+### Standard da seguire
+
+- Vietato usare `any` in tutto il progetto (regola CLAUDE.md)
+- Usare tipi espliciti, interfacce o generics al posto di `any`
+- Per oggetti NestJS/Socket.io usare i tipi forniti dal framework (es. `Socket` da `socket.io`)
+
+### Fix da fare
+
+**Check globale da eseguire:**
+```bash
+grep -rn ": any\|<any>\|as any" --include="*.ts" \
+  auth-service/src user-service/src game-service/src matchmaking-service/src \
+  | grep -v node_modules | grep -v ".spec.ts"
+```
+
+Eseguire il comando e tipizzare ogni occorrenza trovata.
+
+**Casi già noti:**
+
+#### matchmaking-service
+
+- `matchmaking.gateway.ts` riga 30 — `handleConnection(client: any)` → `(client: Socket)`
+- `matchmaking.gateway.ts` riga 49 — `data: any` nel payload `match.found.internal` → creare interfaccia
+- `matchmaking.gateway.ts` righe 80, 91 — `data: any` nei handler `join_ai` e `join_local` → creare DTO
+- `matchmaking.service.ts` riga 12 — `client: any` (campo inutilizzato) → rimuovere
+- `matchmaking.service.ts` riga 641 — `startLocalMatch(data: any)` → creare `LocalMatchDto`
+- `matchmaking.service.ts` riga 704 — `startAiMatch(data: any)` → creare `AiMatchDto`
+
+---
+
 ## ENV & Validation
 
 ### Standard da seguire
