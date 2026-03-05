@@ -108,7 +108,7 @@ services:
             test:
                 [
                     "CMD-SHELL",
-                    "wget -qO- http://localhost:3002/health || exit 1",
+                    "wget -qO- http://127.0.0.1:3002/health || exit 1",
                 ]
             <<: *healthcheck
 
@@ -139,7 +139,7 @@ services:
             test:
                 [
                     "CMD-SHELL",
-                    "wget -qO- http://localhost:3001/health || exit 1",
+                    "wget -qO- http://127.0.0.1:3001/health || exit 1",
                 ]
             <<: *healthcheck
 
@@ -169,7 +169,7 @@ services:
             test:
                 [
                     "CMD-SHELL",
-                    "wget -qO- http://localhost:3000/health || exit 1",
+                    "wget -qO- http://127.0.0.1:3000/health || exit 1",
                 ]
             <<: *healthcheck
 
@@ -196,7 +196,7 @@ services:
             test:
                 [
                     "CMD-SHELL",
-                    "wget -qO- http://localhost:3500/health || exit 1",
+                    "wget -qO- http://127.0.0.1:3500/health || exit 1",
                 ]
             <<: *healthcheck
 
@@ -224,7 +224,7 @@ services:
         volumes:
             - ./frontend/src:/app/src
         healthcheck:
-            test: ["CMD-SHELL", "wget -qO- http://localhost:5173/ || exit 1"]
+            test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:5173/ || exit 1"]
             <<: *healthcheck
 
     # ---------------------------------------------------------
