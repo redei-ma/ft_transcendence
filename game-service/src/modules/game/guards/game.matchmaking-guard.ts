@@ -12,7 +12,7 @@ export class MatchmakingGuard implements CanActivate {
     const request = context.switchToHttp().getRequest();
     const authHeader = request.headers['authorization'];
 
-    const secretKey = this.configService.get<string>('MATCHMAKING_SECRET');
+    const secretKey = this.configService.get<string>('INTERNAL_SERVICE_SECRET');
 
     if (!authHeader || authHeader !== secretKey) {
       this.logger.warn(`Unothorized connection reached with ip: ${request.ip}`);

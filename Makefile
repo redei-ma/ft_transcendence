@@ -5,7 +5,11 @@
 # --- Variables -----------------------------------------------
 
 COMPOSE      := docker compose
-COMPOSE_FILE := docker-compose.yml
+
+# docker-compose.override.yml is loaded automatically when present,
+# switching all services to dev mode (watch + hot reload).
+# COMPOSE_PROD forces production-only config by ignoring the override.
+COMPOSE_PROD := docker compose -f docker-compose.yml
 
 CERTS_DIR    := ./certs
 TYPES_DIR    := ./shared/types
@@ -21,10 +25,10 @@ BOLD   := \033[1m
 
 # --- Phony targets -------------------------------------------
 
-.PHONY: all generate certs up down restart clean fclean re rebuild \
+.PHONY: all generate certs up up-prod down restart clean fclean re rebuild \
         prune logs ps status help \
-        logs-auth logs-user logs-game logs-db \
-        shell-auth shell-user shell-game shell-db
+        logs-auth logs-user logs-game logs-matchmaking logs-frontend logs-db \
+        shell-auth shell-user shell-game shell-matchmaking shell-db
 
 # --- Default target ------------------------------------------
 
@@ -32,7 +36,7 @@ all: up
 
 # --- Shared packages build -----------------------------------
 
-generate: ## Build shared packages (@transcendence/auth + @transcendence/types)
+generate: ##@Setup — Build shared packages (@transcendence/auth + @transcendence/types)
 	@printf "$(CYAN)>>> Building @transcendence/auth...$(RESET)\n"
 	@cd $(AUTH_DIR) && npm install --silent && npm run build || \
 		(printf "$(RED)>>> FAILED: @transcendence/auth build$(RESET)\n" && exit 1)
@@ -43,7 +47,7 @@ generate: ## Build shared packages (@transcendence/auth + @transcendence/types)
 
 # --- Certificates generation ---------------------------------
 
-certs: ## Generate self-signed TLS certificates if missing
+certs: ##@Setup — Generate self-signed TLS certificates if missing
 	@mkdir -p $(CERTS_DIR)
 	@if [ ! -f $(CERTS_DIR)/cert.key ]; then \
 		printf "$(CYAN)>>> Generating self-signed certificates...$(RESET)\n"; \
@@ -51,7 +55,8 @@ certs: ## Generate self-signed TLS certificates if missing
 			-keyout $(CERTS_DIR)/cert.key \
 			-out $(CERTS_DIR)/cert.crt \
 			-days 365 \
-			-subj "/CN=localhost" 2>/dev/null; \
+			-subj "/CN=localhost" \
+			-addext "subjectAltName=DNS:localhost,IP:127.0.0.1" 2>/dev/null; \
 		printf "$(GREEN)>>> Certificates created.$(RESET)\n"; \
 	else \
 		printf "$(YELLOW)>>> Certificates already present, skipping.$(RESET)\n"; \
@@ -59,82 +64,105 @@ certs: ## Generate self-signed TLS certificates if missing
 
 # --- Lifecycle -----------------------------------------------
 
-up: certs generate ## Build images and start all services
-	@printf "$(CYAN)>>> Starting services...$(RESET)\n"
-	@$(COMPOSE) -f $(COMPOSE_FILE) up -d --build
+up: certs generate ##@Docker — Build images and start all services in DEV mode (override.yml auto-loaded)
+	@printf "$(CYAN)>>> Starting services in dev mode...$(RESET)\n"
+	@$(COMPOSE) up -d --build
 	@printf "$(GREEN)>>> All services started. Use 'make logs' to follow output.$(RESET)\n"
 
-down: ## Stop and remove containers (volumes preserved)
+up-prod: certs generate ##@Docker — Build images and start all services in PRODUCTION mode (override.yml ignored)
+	@printf "$(CYAN)>>> Starting services in production mode...$(RESET)\n"
+	@$(COMPOSE_PROD) up -d --build
+	@printf "$(GREEN)>>> All services started in production mode.$(RESET)\n"
+
+down: ##@Docker — Stop and remove containers (volumes preserved)
 	@printf "$(YELLOW)>>> Stopping services...$(RESET)\n"
-	@$(COMPOSE) -f $(COMPOSE_FILE) down
+	@$(COMPOSE) down
 
-restart: down up ## Full stop + start
+restart: down up ##@Docker — Full stop + start (dev mode)
 
-rebuild: certs generate ## Force rebuild without cache (DB preserved), then start
+rebuild: certs generate ##@Docker — Force rebuild without cache (DB preserved), then start
 	@printf "$(CYAN)>>> Rebuilding without cache...$(RESET)\n"
-	@$(COMPOSE) -f $(COMPOSE_FILE) build --no-cache
-	@$(COMPOSE) -f $(COMPOSE_FILE) up -d
+	@$(COMPOSE) build --no-cache
+	@$(COMPOSE) up -d
 	@printf "$(GREEN)>>> Rebuild complete.$(RESET)\n"
 
-re: fclean up ## Full wipe (DB included) + fresh build
+re: fclean up ##@Docker — Full wipe (DB included) + fresh build
 
 # --- Cleanup -------------------------------------------------
 
-clean: down ## Stop services and remove stopped containers
-	@$(COMPOSE) -f $(COMPOSE_FILE) rm -f
+clean: down ##@Cleanup — Stop services and remove stopped containers
+	@$(COMPOSE) rm -f
 
-fclean: ## Remove containers, volumes, and locally built images
+fclean: ##@Cleanup — Remove containers, volumes, and locally built images
 	@printf "$(RED)>>> Full cleanup: containers, volumes, images...$(RESET)\n"
-	@$(COMPOSE) -f $(COMPOSE_FILE) down -v --rmi local
+	@$(COMPOSE) down -v --rmi local
 	@printf "$(GREEN)>>> Cleanup complete.$(RESET)\n"
 
-prune: ## Remove ALL project resources (containers, volumes, networks, images)
-	@$(COMPOSE) -f $(COMPOSE_FILE) down -v --rmi all
+prune: ##@Cleanup — Remove ALL project resources (containers, volumes, networks, images)
+	@$(COMPOSE) down -v --rmi all
 	@docker image prune -f
 
 # --- Observability -------------------------------------------
 
-logs: ## Stream logs from all services
-	@$(COMPOSE) -f $(COMPOSE_FILE) logs -f
+logs: ##@Status — Stream logs from all services
+	@$(COMPOSE) logs -f
 
-ps: ## Show container status
-	@$(COMPOSE) -f $(COMPOSE_FILE) ps
+ps: ##@Status — Show container status
+	@$(COMPOSE) ps
 
-status: ps ## Alias for ps
+status: ps ##@Status — Alias for ps
 
 # --- Per-service logs ----------------------------------------
 
-logs-auth: ## Stream auth-service logs
-	@$(COMPOSE) -f $(COMPOSE_FILE) logs -f auth-service
+logs-auth: ##@Logs — Stream auth-service logs
+	@$(COMPOSE) logs -f auth-service
 
-logs-user: ## Stream user-service logs
-	@$(COMPOSE) -f $(COMPOSE_FILE) logs -f user-service
+logs-user: ##@Logs — Stream user-service logs
+	@$(COMPOSE) logs -f user-service
 
-logs-game: ## Stream game-service logs
-	@$(COMPOSE) -f $(COMPOSE_FILE) logs -f game-service
+logs-game: ##@Logs — Stream game-service logs
+	@$(COMPOSE) logs -f game-service
 
-logs-db: ## Stream postgres + db-migration logs
-	@$(COMPOSE) -f $(COMPOSE_FILE) logs -f postgres db-migration
+logs-matchmaking: ##@Logs — Stream matchmaking-service logs
+	@$(COMPOSE) logs -f matchmaking-service
+
+logs-frontend: ##@Logs — Stream frontend logs
+	@$(COMPOSE) logs -f frontend
+
+logs-db: ##@Logs — Stream postgres + db-migration logs
+	@$(COMPOSE) logs -f postgres db-migration
 
 # --- Shell access --------------------------------------------
 
-shell-auth: ## Open shell in auth-service
-	@$(COMPOSE) -f $(COMPOSE_FILE) exec auth-service sh
+shell-auth: ##@Shells — Open shell in auth-service
+	@$(COMPOSE) exec auth-service sh
 
-shell-user: ## Open shell in user-service
-	@$(COMPOSE) -f $(COMPOSE_FILE) exec user-service sh
+shell-user: ##@Shells — Open shell in user-service
+	@$(COMPOSE) exec user-service sh
 
-shell-game: ## Open shell in game-service
-	@$(COMPOSE) -f $(COMPOSE_FILE) exec game-service sh
+shell-game: ##@Shells — Open shell in game-service
+	@$(COMPOSE) exec game-service sh
 
-shell-db: ## Open psql shell in postgres
-	@$(COMPOSE) -f $(COMPOSE_FILE) exec postgres sh -c 'psql -U $$POSTGRES_USER -d $$POSTGRES_DB'
+shell-matchmaking: ##@Shells — Open shell in matchmaking-service
+	@$(COMPOSE) exec matchmaking-service sh
+
+shell-db: ##@Shells — Open psql shell in postgres
+	@$(COMPOSE) exec postgres sh -c 'psql -U $$POSTGRES_USER -d $$POSTGRES_DB'
 
 # --- Help ----------------------------------------------------
 
-help: ## Show this help
+help: ##@ Other — Show this help
 	@printf "\n$(BOLD)Usage:$(RESET) make $(CYAN)[target]$(RESET)\n\n"
-	@awk -F ':.*##' \
-		'/^[a-zA-Z_-]+:.*##/ { printf "  $(CYAN)%-14s$(RESET) %s\n", $$1, $$2 }' \
+	@awk -F '##@?' \
+		'BEGIN { section="" } \
+		 /^[a-zA-Z_-]+:.*##@/ { \
+		     split($$2, a, " — "); \
+		     split($$1, b, ":"); \
+		     if (a[1] != section) { printf "\n  $(BOLD)%s$(RESET)\n", a[1]; section=a[1] } \
+		     printf "    $(CYAN)%-20s$(RESET) %s\n", b[1], a[2] \
+		 } \
+		 /^[a-zA-Z_-]+:.*##[^@]/ { \
+		     if (section != "") printf "    $(CYAN)%-20s$(RESET) %s\n", $$1, $$2 \
+		 }' \
 		$(MAKEFILE_LIST)
 	@printf "\n"

@@ -1,27 +1,26 @@
-# Usiamo la stessa versione di Node del tuo amico per coerenza
-FROM node:latest
+# --- Stage 1: Build ---
+FROM node:20-alpine AS build
 
-# Cartella di lavoro all'interno del container
-WORKDIR /usr/src/app
+WORKDIR /app
 
-# Copiamo i file dei pacchetti per installare le dipendenze
 COPY package*.json ./
-
-# Installiamo le dipendenze base
 RUN npm install
 
-# Installiamo i pacchetti specifici per il TUO Matchmaking (Redis e Microservizi)
-RUN npm install @nestjs/microservices \
-    ioredis \
-    @nestjs-modules/ioredis \
-    class-validator \
-    class-transformer
-
-# Copiamo tutto il resto del tuo codice nel container
 COPY . .
+RUN npm run build
 
-# Esponiamo la porta 3000 (o quella che usi per il controller)
-EXPOSE 3000
+# --- Stage 2: Production ---
+FROM node:20-alpine AS production
 
-# Avviamo l'applicazione in modalità sviluppo per vedere i log in tempo reale
-CMD ["npm", "run", "start:dev"]
+RUN addgroup -g 1001 -S appgroup && adduser -u 1001 -S appuser -G appgroup
+
+WORKDIR /app
+
+COPY --from=build /app/node_modules ./node_modules
+COPY --from=build /app/package*.json ./
+COPY --from=build /app/dist ./dist
+
+USER appuser
+EXPOSE 3500
+
+CMD ["node", "dist/main"]

@@ -7,16 +7,10 @@ import { MatchmakingGateway } from './matchmaking.gateway';
 
 @Module({
   imports: [
-    // Permette al Service di emettere l'evento 'match.found.internal'
-    EventEmitterModule.forRoot(), 
-    // Permette al Service di fare chiamate HTTP verso il server di Giovanni
-    HttpModule, 
+    EventEmitterModule.forRoot(),
+    HttpModule,
   ],
   controllers: [MatchmakingController],
-  providers: [
-    MatchmakingService, 
-    // Questo è il "motore" che permette a Francesco di connettersi via Socket.io
-    MatchmakingGateway 
-  ],
+  providers: [MatchmakingService, MatchmakingGateway],
 })
 export class MatchmakingModule {}

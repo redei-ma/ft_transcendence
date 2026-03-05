@@ -1,0 +1,70 @@
+# =============================================================
+#  docker-compose.override.yml — DEVELOPMENT overrides
+#
+#  Docker Compose automatically merges this file on top of
+#  docker-compose.yml whenever both files are present.
+#  It is intentionally NOT committed to production environments.
+#
+#  What this file does:
+#  - Switches NestJS services to the "build" Docker stage so
+#    that source files are compiled at runtime (nest start --watch).
+#  - Mounts local source directories so code changes are picked
+#    up immediately without rebuilding the image.
+#  - Extends start_period to 120s to account for the ~2min
+#    TypeScript compilation on first startup.
+#
+#  To run WITHOUT this file (production mode):
+#    make up-prod
+#  or:
+#    docker compose -f docker-compose.yml up -d --build
+# =============================================================
+
+# Extended healthcheck start_period for dev — NestJS watch mode
+# needs ~2 minutes to compile TypeScript before the /health
+# endpoint becomes available.
+x-healthcheck-dev: &healthcheck-dev
+    start_period: 120s
+
+services:
+
+    auth-service:
+        build:
+            target: build
+        # Recompile and reload on every source file change.
+        command: npm run start:dev
+        volumes:
+            # Mount source so edits are reflected without image rebuild.
+            - ./auth-service/src:/app/auth-service/src
+        healthcheck:
+            <<: *healthcheck-dev
+
+    user-service:
+        build:
+            target: build
+        # Regenerate Prisma client before starting in case schema changed.
+        command: sh -c "npm run prisma:generate && npm run start:dev"
+        volumes:
+            - ./user-service/src:/app/user-service/src
+            # Mount schema read-only so Prisma generate sees live changes.
+            - ./shared/prisma/schema.prisma:/app/prisma/schema.prisma:ro
+        healthcheck:
+            <<: *healthcheck-dev
+
+    game-service:
+        build:
+            target: build
+        command: sh -c "npm run prisma:generate && npm run start:dev"
+        volumes:
+            - ./game-service/src:/app/game-service/src
+            - ./shared/prisma/schema.prisma:/app/prisma/schema.prisma:ro
+        healthcheck:
+            <<: *healthcheck-dev
+
+    matchmaking-service:
+        build:
+            target: build
+        command: npm run start:dev
+        volumes:
+            - ./matchmaking-service/src:/app/src
+        healthcheck:
+            <<: *healthcheck-dev
