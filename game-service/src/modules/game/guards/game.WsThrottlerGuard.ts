@@ -9,10 +9,19 @@ export class WsThrottlerGuard extends ThrottlerGuard {
 
     protected getRequestResponse(context: ExecutionContext) {
         const client = context.switchToWs().getClient();
-        return { req: client, res: {} };
+
+        const mockRes = {
+            header: () => {},
+            setHeader: () => {},
+            status: () => mockRes,
+            send: () => {},
+            json: () => {}
+        };
+
+        return { req: client, res: mockRes };
     }
 
-	protected async getTracker(req: Record<string, any>): Promise<string> {
+    protected async getTracker(req: Record<string, any>): Promise<string> {
         if (req.isAiPlayer) {
             return `AI_${req.id}`;
         }
