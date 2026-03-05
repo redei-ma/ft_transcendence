@@ -1,5 +1,6 @@
 import { NestFactory } from "@nestjs/core";
 import { Logger, ValidationPipe } from "@nestjs/common";
+import cookieParser from "cookie-parser";
 import { SwaggerModule, DocumentBuilder } from "@nestjs/swagger";
 import { ConfigService } from "@nestjs/config";
 import { AppModule } from "./app.module";
@@ -14,6 +15,8 @@ async function bootstrap() {
 
 	// Enable graceful shutdown
 	app.enableShutdownHooks();
+
+	app.use(cookieParser());
 
 	const configService = app.get(ConfigService);
 

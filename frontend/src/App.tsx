@@ -2,17 +2,19 @@ import { useState, useEffect } from 'react';
 import { matchmakingSocket } from './services/matchmakingSocket';
 import { socketService } from './services/socketServices';
 import { GameEvents } from './game/game.events';
+import LoginScene from './scenes/loginScene';
 import WelcomeScene from './scenes/welcomeScene';
+import DashboardScene from './scenes/dashboardScene';
 import ModeSelectScene from './scenes/modeSelectScene';
 import CharacterSelectScene from './scenes/characterSelectScene';
 import QueueScene from './scenes/queueScene';
 import Game from './game/Game';
 import { MatchMode } from './types/game.types';
 
-type Scene = 'welcome' | 'mode-select' | 'character-select' | 'queue' | 'game';
+type Scene = 'login' | 'welcome' | 'dashboard' | 'mode-select' | 'character-select' | 'queue' | 'game';
 
 function App() {
-  const [currentScene, setCurrentScene] = useState<Scene>('welcome');
+  const [currentScene, setCurrentScene] = useState<Scene>('login');
   const [selectedMode, setSelectedMode] = useState<MatchMode | null>(null);
   const [selectedCharacterP1, setSelectedCharacterP1] = useState<'zeus' | 'ade'>('zeus');
   const [selectedCharacterP2, setSelectedCharacterP2] = useState<'zeus' | 'ade'>('ade');
@@ -51,6 +53,17 @@ function App() {
     setCurrentScene('welcome');
   };
 
+  const handleLogout = async () => {
+    try {
+      await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
+    } catch {
+      // ignore network errors — proceed to login anyway
+    }
+    socketService.disconnect();
+    matchmakingSocket.disconnect();
+    setCurrentScene('login');
+  };
+
   const handleCharacterConfirm = (p1: 'zeus' | 'ade', p2: 'zeus' | 'ade') => {
     setSelectedCharacterP1(p1);
     setSelectedCharacterP2(p2);
@@ -68,8 +81,22 @@ function App() {
     setCurrentScene('mode-select');
   };
 
+  if (currentScene === 'login') {
+    return <LoginScene onLogin={() => setCurrentScene('welcome')} />;
+  }
+
   if (currentScene === 'welcome') {
-    return <WelcomeScene onStart={() => setCurrentScene('mode-select')} />;
+    return (
+      <WelcomeScene
+        onStart={() => setCurrentScene('mode-select')}
+        onLogout={() => void handleLogout()}
+        onDashboard={() => setCurrentScene('dashboard')}
+      />
+    );
+  }
+
+  if (currentScene === 'dashboard') {
+    return <DashboardScene onBack={() => setCurrentScene('welcome')} />;
   }
 
   if (currentScene === 'mode-select') {

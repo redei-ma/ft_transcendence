@@ -4,9 +4,11 @@ import welcomeScene from '../assets/welcomeScene.png';
 
 interface WelcomeSceneProps {
   onStart: () => void;
+  onLogout: () => void;
+  onDashboard: () => void;
 }
 
-export default function WelcomeScene({ onStart }: WelcomeSceneProps) {
+export default function WelcomeScene({ onStart, onLogout, onDashboard }: WelcomeSceneProps) {
   const [hovered, setHovered] = useState(false);
 
   return (
@@ -27,6 +29,53 @@ export default function WelcomeScene({ onStart }: WelcomeSceneProps) {
       }}
       onClick={onStart}
     >
+      {/* Top-right controls */}
+      <div
+        style={{
+          position: 'absolute',
+          top: '20px',
+          right: '24px',
+          display: 'flex',
+          gap: '12px',
+          zIndex: 10,
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <button
+          onClick={onDashboard}
+          style={{
+            background: 'rgba(9, 23, 32, 0.7)',
+            border: `1px solid ${theme.colors.border}`,
+            borderRadius: '4px',
+            color: theme.colors.textSecondary,
+            fontFamily: theme.fonts.mono,
+            fontSize: '11px',
+            letterSpacing: '2px',
+            padding: '8px 14px',
+            cursor: 'pointer',
+            textTransform: 'uppercase',
+          }}
+        >
+          Dashboard
+        </button>
+        <button
+          onClick={onLogout}
+          style={{
+            background: 'rgba(9, 23, 32, 0.7)',
+            border: `1px solid ${theme.colors.border}`,
+            borderRadius: '4px',
+            color: theme.colors.dead,
+            fontFamily: theme.fonts.mono,
+            fontSize: '11px',
+            letterSpacing: '2px',
+            padding: '8px 14px',
+            cursor: 'pointer',
+            textTransform: 'uppercase',
+          }}
+        >
+          Logout
+        </button>
+      </div>
       {/* Titolo CLASH of OLYMPUS */}
       <div style={{
         marginTop: '75px',
