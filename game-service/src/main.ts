@@ -3,13 +3,14 @@ import { Logger, ValidationPipe } from "@nestjs/common";
 import { SwaggerModule, DocumentBuilder } from "@nestjs/swagger";
 import { ConfigService } from "@nestjs/config";
 import { AppModule } from "./app.module";
-import cookieParser from 'cookie-parser';
+import cookieParser from "cookie-parser";
 
 async function bootstrap() {
 	const app = await NestFactory.create(AppModule, {
-		logger: process.env.NODE_ENV === 'production'
-			? ['error', 'warn', 'log']
-			: ['error', 'warn', 'log', 'debug', 'verbose'],
+		logger:
+			process.env.NODE_ENV === "production"
+				? ["error", "warn", "log"]
+				: ["error", "warn", "log", "debug", "verbose"],
 	});
 	app.enableShutdownHooks();
 
@@ -37,15 +38,15 @@ async function bootstrap() {
 	SwaggerModule.setup("api/docs", app, document);
 
 	app.enableCors({
-		origin: configService.get<string>('FRONTEND_URL'),
+		origin: configService.get<string>("FRONTEND_URL"),
 		credentials: true,
 	});
 
 	app.use(cookieParser());
 
-	const port = configService.get<number>('PORT');
-	await app.listen(port, '0.0.0.0');
-	new Logger('Bootstrap').log(`Game Service running on port ${port}`);
+	const port = configService.get<number>("PORT") ?? 3000;
+	await app.listen(port, "0.0.0.0");
+	new Logger("Bootstrap").log(`Game Service running on port ${port}`);
 }
 
 bootstrap();

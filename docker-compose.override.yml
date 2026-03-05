@@ -26,7 +26,6 @@ x-healthcheck-dev: &healthcheck-dev
     start_period: 120s
 
 services:
-
     auth-service:
         build:
             target: build

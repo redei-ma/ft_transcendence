@@ -4,7 +4,7 @@ export const envValidationSchema = Joi.object({
 	// Security
 	JWT_ACCESS_SECRET: Joi.string().min(32).required(),
 	JWT_REFRESH_SECRET: Joi.string().min(32).required(),
-	MATCHMAKING_SECRET: Joi.string().required(),
+	INTERNAL_SERVICE_SECRET: Joi.string().required(),
 
 	// Cors
 	FRONTEND_URL: Joi.string().uri().required(),

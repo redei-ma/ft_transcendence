@@ -6,9 +6,10 @@ import { AppModule } from "./app.module";
 
 async function bootstrap() {
 	const app = await NestFactory.create(AppModule, {
-		logger: process.env.NODE_ENV === 'production'
-			? ['error', 'warn', 'log']
-			: ['error', 'warn', 'log', 'debug', 'verbose'],
+		logger:
+			process.env.NODE_ENV === "production"
+				? ["error", "warn", "log"]
+				: ["error", "warn", "log", "debug", "verbose"],
 	});
 
 	// Enable graceful shutdown
@@ -41,9 +42,9 @@ async function bootstrap() {
 	const document = SwaggerModule.createDocument(app, config);
 	SwaggerModule.setup("api/docs", app, document);
 
-	const port = configService.get<number>('PORT');
-	await app.listen(port, '0.0.0.0');
-	new Logger('Bootstrap').log(`User Service running on port ${port}`);
+	const port = configService.get<number>("PORT") ?? 3001;
+	await app.listen(port, "0.0.0.0");
+	new Logger("Bootstrap").log(`User Service running on port ${port}`);
 }
 
 bootstrap();
