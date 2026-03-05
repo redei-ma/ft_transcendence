@@ -1,12 +1,19 @@
 import { NestFactory } from "@nestjs/core";
-import { ValidationPipe } from "@nestjs/common";
+import { Logger, ValidationPipe } from "@nestjs/common";
 import { SwaggerModule, DocumentBuilder } from "@nestjs/swagger";
+import { ConfigService } from "@nestjs/config";
 import { AppModule } from "./app.module";
 import cookieParser from 'cookie-parser';
 
 async function bootstrap() {
-	const app = await NestFactory.create(AppModule);
+	const app = await NestFactory.create(AppModule, {
+		logger: process.env.NODE_ENV === 'production'
+			? ['error', 'warn', 'log']
+			: ['error', 'warn', 'log', 'debug', 'verbose'],
+	});
 	app.enableShutdownHooks();
+
+	const configService = app.get(ConfigService);
 
 	app.useGlobalPipes(
 		new ValidationPipe({
@@ -30,14 +37,15 @@ async function bootstrap() {
 	SwaggerModule.setup("api/docs", app, document);
 
 	app.enableCors({
-		origin: true,
+		origin: configService.get<string>('FRONTEND_URL'),
 		credentials: true,
 	});
 
 	app.use(cookieParser());
 
-	const port = process.env.PORT || 3000;
-	await app.listen(port);
+	const port = configService.get<number>('PORT');
+	await app.listen(port, '0.0.0.0');
+	new Logger('Bootstrap').log(`Game Service running on port ${port}`);
 }
 
 bootstrap();

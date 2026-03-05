@@ -1,13 +1,20 @@
 import { NestFactory } from "@nestjs/core";
-import { ValidationPipe } from "@nestjs/common";
+import { Logger, ValidationPipe } from "@nestjs/common";
 import { SwaggerModule, DocumentBuilder } from "@nestjs/swagger";
+import { ConfigService } from "@nestjs/config";
 import { AppModule } from "./app.module";
 
 async function bootstrap() {
-	const app = await NestFactory.create(AppModule);
+	const app = await NestFactory.create(AppModule, {
+		logger: process.env.NODE_ENV === 'production'
+			? ['error', 'warn', 'log']
+			: ['error', 'warn', 'log', 'debug', 'verbose'],
+	});
 
 	// Enable graceful shutdown
 	app.enableShutdownHooks();
+
+	const configService = app.get(ConfigService);
 
 	// Global validation: rejects any request that doesn't match DTO rules
 	app.useGlobalPipes(
@@ -34,8 +41,9 @@ async function bootstrap() {
 	const document = SwaggerModule.createDocument(app, config);
 	SwaggerModule.setup("api/docs", app, document);
 
-	const port = process.env.PORT || 3001;
-	await app.listen(port);
+	const port = configService.get<number>('PORT');
+	await app.listen(port, '0.0.0.0');
+	new Logger('Bootstrap').log(`User Service running on port ${port}`);
 }
 
 bootstrap();

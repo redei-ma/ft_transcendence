@@ -13,6 +13,8 @@ export class CleanupService {
 		const cutoff = new Date();
 		cutoff.setDate(cutoff.getDate() - 3);
 
+		this.logger.log("Running unverified users cleanup...");
+
 		const result = await this.prisma.user.deleteMany({
 			where: {
 				isEmailVerified: false,
@@ -20,8 +22,6 @@ export class CleanupService {
 			},
 		});
 
-		this.logger.log(
-			`Cleanup: eliminati ${result.count} utenti non verificati`,
-		);
+		this.logger.log(`Cleanup: deleted ${result.count} unverified users`);
 	}
 }

@@ -24,7 +24,6 @@ x-healthcheck: &healthcheck
     start_period: 30s
 
 services:
-
     # ---------------------------------------------------------
     #  Infrastructure
     # ---------------------------------------------------------
@@ -101,8 +100,10 @@ services:
         expose:
             - "3002"
         env_file:
-            - ./auth-service/.env
             - .env.shared
+            - ./auth-service/.env
+        environment:
+            NODE_ENV: production
         healthcheck:
             test:
                 [
@@ -128,6 +129,9 @@ services:
             - "3001"
         env_file:
             - .env.shared
+            - ./user-service/.env
+        environment:
+            NODE_ENV: production
         volumes:
             # Upload directory must persist across restarts.
             - uploads_data:/uploads
@@ -159,6 +163,8 @@ services:
         env_file:
             - .env.shared
             - ./game-service/.env
+        environment:
+            NODE_ENV: production
         healthcheck:
             test:
                 [
@@ -184,6 +190,8 @@ services:
             - "3500"
         env_file:
             - .env.shared
+        environment:
+            NODE_ENV: production
         healthcheck:
             test:
                 [

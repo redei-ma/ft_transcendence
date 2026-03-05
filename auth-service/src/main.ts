@@ -1,6 +1,7 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { NestExpressApplication } from '@nestjs/platform-express';
+import { ValidationPipe } from '@nestjs/common';
 import cookieParser from 'cookie-parser';
 
 async function bootstrap() {
@@ -16,6 +17,8 @@ async function bootstrap() {
   });
 
   app.use(cookieParser());
+
+  app.useGlobalPipes(new ValidationPipe({ whitelist: true }));
 
   // Add global prefix "api"
   app.setGlobalPrefix('api', { exclude: ['health'] });

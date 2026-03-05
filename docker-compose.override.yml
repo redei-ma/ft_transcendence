@@ -32,6 +32,8 @@ services:
             target: build
         # Recompile and reload on every source file change.
         command: npm run start:dev
+        environment:
+            NODE_ENV: development
         volumes:
             # Mount source so edits are reflected without image rebuild.
             - ./auth-service/src:/app/auth-service/src
@@ -43,6 +45,8 @@ services:
             target: build
         # Regenerate Prisma client before starting in case schema changed.
         command: sh -c "npm run prisma:generate && npm run start:dev"
+        environment:
+            NODE_ENV: development
         volumes:
             - ./user-service/src:/app/user-service/src
             # Mount schema read-only so Prisma generate sees live changes.
@@ -54,6 +58,8 @@ services:
         build:
             target: build
         command: sh -c "npm run prisma:generate && npm run start:dev"
+        environment:
+            NODE_ENV: development
         volumes:
             - ./game-service/src:/app/game-service/src
             - ./shared/prisma/schema.prisma:/app/prisma/schema.prisma:ro
@@ -64,6 +70,8 @@ services:
         build:
             target: build
         command: npm run start:dev
+        environment:
+            NODE_ENV: development
         volumes:
             - ./matchmaking-service/src:/app/src
         healthcheck:
