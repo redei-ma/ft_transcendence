@@ -115,18 +115,3 @@ export class UserClient {
     );
   }
 }
-
-/* @Injectable()
-export class ProfileClient {
-  async upsertProfile(dto: { userId: number; avatar?: string }) {
-    await fetch("http://profile_service:3001/profile/sync", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-internal-key": process.env.INTERNAL_KEY!,
-      },
-      body: JSON.stringify(dto),
-    });
-  }
-}
- */
