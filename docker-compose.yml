@@ -177,8 +177,8 @@ services:
         container_name: transcendence-matchmaking
         image: transcendence-matchmaking:latest
         build:
-            context: ./matchmaking-service
-            dockerfile: Dockerfile
+            context: .
+            dockerfile: ./matchmaking-service/Dockerfile
             target: production
         restart: unless-stopped
         depends_on:

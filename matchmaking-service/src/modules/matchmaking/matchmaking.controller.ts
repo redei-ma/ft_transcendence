@@ -23,7 +23,7 @@ export class MatchmakingController {
 
   @MessagePattern('join_queue') 
   async handleJoinQueue(@Payload() data: JoinQueueDto) { 
-    console.log(`[Logic] Utente ${data.userDbId} (Rank: ${data.rank}) entrato in coda`);
+    console.log(`[Logic] Utente ${data.userDbId} ( entrato in coda`);
     return this.matchmakingService.processQueue(data); 
   }
 

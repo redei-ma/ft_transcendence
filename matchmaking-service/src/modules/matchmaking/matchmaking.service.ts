@@ -1,4 +1,4 @@
-import { Inject, Injectable } from '@nestjs/common'; // definizione della classe servizio, colui che elabora i dati
+import { Inject, Injectable, Logger } from '@nestjs/common'; // Importato Logger per il debugging professionale
 import { JoinQueueDto } from './dto/join-queue.dto'; // struttura del dato che ricevo
 import Redis from 'ioredis'; // client Redis per interagire col database
 import { InjectRedis } from '@nestjs-modules/ioredis'; // modulo per iniettare il client Redis
@@ -9,7 +9,9 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 
 @Injectable()
 export class MatchmakingService {
+  private readonly logger = new Logger(MatchmakingService.name); // Inizializzazione del logger NestJS
   client: any;
+
   constructor(
     @InjectRedis() private readonly redis: Redis,
     private readonly eventEmitter: EventEmitter2, // Nest la inietta qui
@@ -28,10 +30,20 @@ export class MatchmakingService {
 
     const currentStatusRaw = await this.redis.get(USER_STATUS_KEY);
     const statusData = currentStatusRaw ? JSON.parse(currentStatusRaw) : null;
-
+    let rank: string | null = null;
+    try {
+        rank = `http://user-service:3001/internal/users/${player.userDbId}/elo`; // L'indirizzo del suo container
+        await firstValueFrom(this.httpService.get(rank));
+        this.logger.log("Richiesta rank inviata con successo via HTTP");
+    } catch (error) {
+        this.logger.error("Errore nella richiesta del rank:", error.response?.data);
+    }
+    if (rank === null) {
+      return { status: 'ERROR_FETCHING_RANK' };
+    }
     // analizzo il JSON per vedere se è effettivamente in game
     if (statusData && (statusData.state === 'ingame' || statusData.state === 'searching')) {
-      console.log(`Player già esistente con stato ${currentStatusRaw}, verifico se è in partita...`);
+      this.logger.log(`Player già esistente con stato ${currentStatusRaw}, verifico se è in partita...`);
 
       if (statusData.state === 'ingame') {
         // troviamo che colui che ha cercato di fare il matchmaking, teoricamente sarebbe già in partita
@@ -40,10 +52,10 @@ export class MatchmakingService {
         const opponentStatusRaw = await this.redis.get(`status:${statusData.opponentId}`);
         // se non troviamo l'avversario, vuol dire che la partita è scaduta o è finita
         if (!opponentStatusRaw) {
-          console.log(`[Logic] Partita scaduta o avversario non trovato...`);
+          this.logger.warn(`[Logic] Partita scaduta o avversario non trovato...`);
           await this.redis.set(USER_STATUS_KEY, JSON.stringify({ 
             state: 'lobby', 
-            rank: player.rank,
+            rank: rank,
             characterName: player.characterName,
             isAiPlayer: player.isAiPlayer,
             socketId: player.socketId,
@@ -54,7 +66,7 @@ export class MatchmakingService {
         // se troviamo l'avversario, controlliamo che sia ancora in partita, se no vuol dire che la partita è finita
         const opponentData = JSON.parse(opponentStatusRaw);
         if (opponentData.state !== 'ingame') {
-          console.log(`[Logic] L'avversario è già in ${opponentData.state}. Partita conclusa.`);
+          this.logger.log(`[Logic] L'avversario è già in ${opponentData.state}. Partita conclusa.`);
           await this.redis.set(USER_STATUS_KEY, JSON.stringify({ 
             ...statusData, 
             state: 'lobby',
@@ -73,19 +85,19 @@ export class MatchmakingService {
                 { ...opponentData, userDbId: statusData.opponentId, playerIndex: opponentData.playerIndex || 1 }
             ],
             matchType: statusData.matchType || 'ranked',
-            matchMode: statusData.matchMode || 'standard'
+            matchMode: statusData.matchMode
         };
         try {
             const url = 'http://game-service:3000/matchmaking/create-match';
             await firstValueFrom(this.httpService.post(url, payload));
-        } catch (e) { console.error("Errore riconnessione HTTP"); }
+        } catch (e) { this.logger.error("Errore riconnessione HTTP"); }
 
         return { status: 'RECONNECTED_TO_GAME', matchId: statusData.matchId };
       }
 
       if (statusData.state === 'searching') {
         // controlliamo se c'è già qualcuno per lui senza riaggiungerlo
-        console.log(`[Logic] Aggiornamento ricerca per ${player.userDbId} con tolleranza ${RANK_TOLERANCE}`);
+        this.logger.log(`[Logic] Aggiornamento ricerca per ${player.userDbId} con tolleranza ${RANK_TOLERANCE}`);
         const updatedSearching = JSON.stringify({ 
           ...statusData, 
           socketId: player.socketId,
@@ -95,9 +107,9 @@ export class MatchmakingService {
       }
     }
     else {
-      console.log(`Nuovo player ${player.userDbId} aggiunto alla coda correttamente, in cerca di match. Rank: ${player.rank}, Tolleranza: ${RANK_TOLERANCE}`);
+      this.logger.log(`Nuovo player ${player.userDbId} aggiunto alla coda correttamente, in cerca di match. Rank: ${rank}, Tolleranza: ${RANK_TOLERANCE}`);
       const timestamp = Date.now();
-      const timeScore = player.rank + (timestamp / 10000000000000);
+      const timeScore = rank + (timestamp / 10000000000000);
 
       // aggiungiamo il player alla coda su Redis
       // zadd permette di aggiungere un elemento ad una sorted set, il primo parametro è il nome della coda, il secondo è il punteggio (rank) e il terzo è l'elemento (userDbId)
@@ -107,7 +119,7 @@ export class MatchmakingService {
       // Settiamo lo stato come "searching"
       const searchingStatus = JSON.stringify({ 
         state: 'searching', 
-        rank: player.rank,
+        rank: rank,
         characterName: player.characterName,
         isAiPlayer: player.isAiPlayer,
         socketId: player.socketId || undefined,
@@ -117,15 +129,15 @@ export class MatchmakingService {
     }
     
     // settiamo quanto vale un rank minimo e un rank massimo per ogni player
-    const minRank = player.rank - RANK_TOLERANCE;
-    const maxRank = player.rank + RANK_TOLERANCE;
+    const minRank = Number(rank) - RANK_TOLERANCE;
+    const maxRank = Number(rank) + RANK_TOLERANCE;
 
     // cerchiamo nella coda tutti i player che hanno un rank compreso tra minRank e maxRank
     const potentialOpponents = await this.redis.zrangebyscore(QUEUE_KEY, minRank, maxRank);
 
     // rimuoviamo il player stesso dalla lista degli avversari che si possono sfidare
     const opponents = potentialOpponents.filter(id => id !== player.userDbId);
-    console.log(`[Logic] Player ${player.userDbId} in cerca di match. Trovati ${opponents.length} potenziali avversari nella tolleranza (${minRank} - ${maxRank}).`);
+    this.logger.log(`[Logic] Player ${player.userDbId} in cerca di match. Trovati ${opponents.length} potenziali avversari nella tolleranza (${minRank} - ${maxRank}).`);
     // se troviamo almeno un avversario, creiamo la partita
     if (opponents.length >= 1) {
       const opponentId = opponents[0];
@@ -138,7 +150,7 @@ export class MatchmakingService {
         // così può riprovare subito senza aspettare il timeout
         await this.redis.set(USER_STATUS_KEY, JSON.stringify({ 
           state: 'lobby', 
-          rank: player.rank,
+          rank: rank,
           characterName: player.characterName,
           isAiPlayer: player.isAiPlayer,
           socketId: player.socketId,
@@ -154,7 +166,6 @@ export class MatchmakingService {
       // andiamo a creare un id univoco da assegnare alla partita
       const matchId = `match_${Math.random().toString(36).substring(7)}`;
 
-      // Prepariamo gli oggetti MatchPartecipantData per il compagno
       const playerChar = Array.isArray(player.characterName) ? player.characterName[0] : player.characterName;
       const opponentChar = Array.isArray(opponentData.characterName) ? opponentData.characterName[0] : opponentData.characterName;
 
@@ -162,12 +173,18 @@ export class MatchmakingService {
           characterName: playerChar,
           userDbId: String(player.userDbId),
           isAiPlayer: !!player.isAiPlayer,
+          rank: rank,
+          socketId: player.socketId,
+          playerIndex: 0,
       };
 
       const participant2 = {
           characterName: opponentChar,
           userDbId: String(opponentId),
           isAiPlayer: !!opponentData.isAiPlayer,
+          rank: opponentData.rank,
+          socketId: opponentData.socketId,
+          playerIndex: 1,
       };
 
       // creiamo i dati di stato per entrambi i player (Uniformato con matchMode e updatedAt)
@@ -176,7 +193,7 @@ export class MatchmakingService {
         ...participant1, 
         opponentId: opponentId, 
         matchId, 
-        matchMode: player.matchMode || 'standard',
+        matchMode: player.matchMode,
         matchType: player.matchType || 'ranked',
         updatedAt: Date.now()
       });
@@ -185,7 +202,7 @@ export class MatchmakingService {
         ...participant2, 
         opponentId: player.userDbId, 
         matchId, 
-        matchMode: player.matchMode || 'standard',
+        matchMode: player.matchMode,
         matchType: player.matchType || 'ranked',
         updatedAt: Date.now()
       });
@@ -195,7 +212,7 @@ export class MatchmakingService {
       await this.redis.set(`status:${player.userDbId}`, playerStatus, 'EX', 420);
       await this.redis.set(`status:${opponentId}`, opponentStatus, 'EX', 420);
       await this.redis.set(`match_players:${matchId}`, `${player.userDbId},${opponentId}`, 'EX', 3600);
-      console.log(`[Logic] Match trovato! ${player.userDbId} vs ${opponentId} (Rank: ${player.rank} vs ${opponentData.rank}) - MatchID: ${matchId}`);
+      this.logger.log(`[Logic] Match trovato! ${player.userDbId} vs ${opponentId} (Rank: ${rank} vs ${opponentData.rank}) - MatchID: ${matchId}`);
       // creiamo un array contente i due player che saranno dentro la partita
 
       const payload = {
@@ -209,12 +226,12 @@ export class MatchmakingService {
       try {
           const url = 'http://game-service:3000/matchmaking/create-match'; // L'indirizzo del suo container
           await firstValueFrom(this.httpService.post(url, payload));
-          console.log("Richiesta di creazione match inviata con successo via HTTP");
+          this.logger.log("Richiesta di creazione match inviata con successo via HTTP");
       } catch (error) {
-          console.error("Errore nella creazione del match su Game Server:", error.response?.data);
+          this.logger.error("Errore nella creazione del match su Game Server:", error.response?.data);
       }
 
-      console.log(`[RankedMatch] Match tra: ${player.userDbId} vs ${opponentId}`);
+      this.logger.log(`[RankedMatch] Match tra: ${player.userDbId} vs ${opponentId}`);
 
       // restituzione del match creato con id players e ID del match
       // const matchFoundData = { status: 'MATCH_FOUND', matchId, players: [participant1, participant2] };
@@ -240,21 +257,33 @@ export class MatchmakingService {
 
 /* ---------------------------------------------------------------------------------------------------------------- */
 
-async processUnrankedQueue(player: JoinQueueDto) {
+  async processUnrankedQueue(player: JoinQueueDto) {
     const QUEUE_KEY = 'matchmaking_queue_unranked'; 
     const USER_STATUS_KEY = `status:${player.userDbId}`;
-    
+
     const playerChar = Array.isArray(player.characterName) ? player.characterName[0] : player.characterName;
 
     const currentStatusRaw = await this.redis.get(USER_STATUS_KEY);
     const statusData = currentStatusRaw ? JSON.parse(currentStatusRaw) : null;
+
+    let rank: string | null = null;
+    try {
+        rank = `http://user-service:3001/internal/users/${player.userDbId}/elo`; // L'indirizzo del suo container
+        await firstValueFrom(this.httpService.get(rank));
+        this.logger.log("Richiesta rank inviata con successo via HTTP");
+    } catch (error) {
+        this.logger.error("Errore nella richiesta del rank:", error.response?.data);
+    }
+    if (rank === null) {
+      return { status: 'ERROR_FETCHING_RANK' };
+    }
 
     if (statusData && (statusData.state === 'ingame' || statusData.state === 'searching')) {
         if (statusData.state === 'ingame') {
             const opponentStatusRaw = await this.redis.get(`status:${statusData.opponentId}`);
             if (!opponentStatusRaw) {
                 await this.redis.set(USER_STATUS_KEY, JSON.stringify({ 
-                    state: 'lobby', rank: player.rank, characterName: playerChar,
+                    state: 'lobby', rank: rank, characterName: playerChar,
                     isAiPlayer: player.isAiPlayer, socketId: player.socketId, updatedAt: Date.now()
                 }), 'EX', 3600);
                 return { status: 'MATCH_EXPIRED_BACK_TO_LOBBY' };
@@ -269,15 +298,15 @@ async processUnrankedQueue(player: JoinQueueDto) {
             const payload = {
                 gameId: statusData.matchId,
                 playersData: [
-                    { characterName: playerChar, userDbId: String(player.userDbId), isAiPlayer: false, rank: player.rank, socketId: player.socketId, playerIndex: statusData.playerIndex || 0 },
+                    { characterName: playerChar, userDbId: String(player.userDbId), isAiPlayer: false, rank: rank, socketId: player.socketId, playerIndex: statusData.playerIndex || 0 },
                     { characterName: opponentChar, userDbId: String(statusData.opponentId), isAiPlayer: !!opponentData.isAiPlayer, rank: opponentData.rank, socketId: opponentData.socketId, playerIndex: opponentData.playerIndex || 1 }
                 ],
-                matchType: 'ffa',
-                matchMode: 'unranked'
+                matchType: 'unranked',
+                matchMode: statusData.matchMode
             };
             try {
                 await firstValueFrom(this.httpService.post('http://game-service:3000/matchmaking/create-match', payload));
-            } catch (e) { console.error("Errore riconnessione HTTP Unranked"); }
+            } catch (e) { this.logger.error("Errore riconnessione HTTP Unranked"); }
 
             return { status: 'RECONNECTED_TO_GAME', matchId: statusData.matchId };
         }
@@ -291,7 +320,7 @@ async processUnrankedQueue(player: JoinQueueDto) {
         await this.redis.zadd(QUEUE_KEY, timestamp, player.userDbId);
 
         const searchingStatus = JSON.stringify({ 
-            state: 'searching', rank: player.rank, characterName: playerChar,
+            state: 'searching', rank: rank, characterName: playerChar,
             isAiPlayer: player.isAiPlayer, socketId: player.socketId, updatedAt: Date.now()
         });
         await this.redis.set(USER_STATUS_KEY, searchingStatus, 'EX', 600);
@@ -320,21 +349,27 @@ async processUnrankedQueue(player: JoinQueueDto) {
             characterName: playerChar,
             userDbId: String(player.userDbId),
             isAiPlayer: false,
+            rank: rank,
+            socketId: player.socketId,
+            playerIndex: 0,
         };
 
         const participant2 = {
             characterName: opponentChar,
             userDbId: String(opponentId),
             isAiPlayer: !!opponentData.isAiPlayer,
+            rank: opponentData.rank,
+            socketId: opponentData.socketId,
+            playerIndex: 1,
         };
 
         const playerStatus = JSON.stringify({ 
             state: 'ingame', ...participant1, opponentId, matchId, 
-            matchMode: 'unranked', matchType: 'ffa', updatedAt: Date.now()
+            matchMode: player.matchMode, matchType: 'unranked', updatedAt: Date.now()
         });
         const opponentStatus = JSON.stringify({ 
             state: 'ingame', ...participant2, opponentId: player.userDbId, matchId, 
-            matchMode: 'unranked', matchType: 'ffa', updatedAt: Date.now()
+            matchMode: player.matchMode, matchType: 'unranked', updatedAt: Date.now()
         });
 
         await this.redis.set(`status:${player.userDbId}`, playerStatus, 'EX', 420);
@@ -344,14 +379,14 @@ async processUnrankedQueue(player: JoinQueueDto) {
         const payload = {
             gameId: matchId,
             playersData: [participant1, participant2],
-            matchType: 'ffa',
-            matchMode: 'unranked'
+            matchType: player.matchType,
+            matchMode: player.matchMode
         };
 
         try {
             await firstValueFrom(this.httpService.post('http://game-service:3000/matchmaking/create-match', payload));
         } catch (error) {
-            console.error("Errore creazione match Unranked:", error.response?.data);
+            this.logger.error("Errore creazione match Unranked:", error.response?.data);
         }
 
         const matchFoundData = { status: 'MATCH_FOUND', matchId };
@@ -362,7 +397,6 @@ async processUnrankedQueue(player: JoinQueueDto) {
         if (player.socketId) {
             this.eventEmitter.emit('match.found.internal', { socketId: player.socketId, data: matchFoundData });
         }
-
         return matchFoundData;
     }
 
@@ -379,11 +413,23 @@ async processUnrankedQueue(player: JoinQueueDto) {
     // ZREM rimuove l'elemento dal Sorted Set usando l'ID
     const result = await this.redis.zrem(QUEUE_KEY, player.userDbId);
 
+    let rank: string | null = null;
+    try {
+        rank = `http://user-service:3001/internal/users/${player.userDbId}/elo`; // L'indirizzo del suo container
+        await firstValueFrom(this.httpService.get(rank));
+        this.logger.log("Richiesta rank inviata con successo via HTTP");
+    } catch (error) {
+        this.logger.error("Errore nella richiesta del rank:", error.response?.data);
+    }
+    if (rank === null) {
+      return { status: 'ERROR_FETCHING_RANK' };
+    }
+
     // Prepariamo lo stato lobby mantenendo i dati che l'utente aveva nel DTO
     // In questo modo, tornando nella Home, il sistema si ricorda ancora chi è e che personaggio ha
     const lobbyStatus = JSON.stringify({ 
       state: 'lobby', 
-      rank: player.rank,
+      rank: rank,
       characterName: player.characterName,
       isAiPlayer: player.isAiPlayer,
       socketId: player.socketId || undefined,
@@ -391,15 +437,15 @@ async processUnrankedQueue(player: JoinQueueDto) {
     });
 
     // lo setto in qualsiasi caso nello stato di lobby, evitando problemi di player incastrati
-    // Usiamo una scadenza di 1 ora (3600 secondi)
+    // Usiamo una scadenza di 1 ora
     await this.redis.set(USER_STATUS_KEY, lobbyStatus, 'EX', 3600);
 
     // result è 1 se l'ID è stato trovato e rimosso, 0 se non c'era
     if (result === 1) {
-      console.log(`[Logic] Utente ${player.userDbId} rimosso dalla coda correttamente e riportato in lobby.`);
+      this.logger.log(`[Logic] Utente ${player.userDbId} rimosso dalla coda correttamente e riportato in lobby.`);
       return { status: 'LEFT_QUEUE_SUCCESS', userDbId: player.userDbId };
     } else {
-      console.log(`[Logic] Tentativo di rimozione: ${player.userDbId} non era in coda, ma lo stato è stato resettato a lobby.`);
+      this.logger.log(`[Logic] Tentativo di rimozione: ${player.userDbId} non era in coda, ma lo stato è stato resettato a lobby.`);
       return { status: 'NOT_IN_QUEUE', userDbId: player.userDbId };
     }
   }
@@ -407,24 +453,22 @@ async processUnrankedQueue(player: JoinQueueDto) {
 /* ---------------------------------------------------------------------------------------------------------------- */
 
   async finalizeMatch(matchId: string) {
-    // 1. Recuperiamo gli ID associati al match (es: "123" oppure "123,456")
+    // recuperiamo gli ID associati al match
     const playersRaw = await this.redis.get(`match_players:${matchId}`);
-    console.log(`[Cleanup] Avvio finalizzazione globale per MatchID: ${matchId}`);
+    this.logger.log(`[Cleanup] Avvio finalizzazione globale per MatchID: ${matchId}`);
 
     if (!playersRaw) {
-        console.log(`[Cleanup] Match ${matchId} non trovato o già rimosso.`);
+        this.logger.log(`[Cleanup] Match ${matchId} non trovato o già rimosso.`);
         return { status: 'MATCH_ALREADY_CLEANED' };
     }
 
-    // 2. Otteniamo la lista degli ID
+    // ottengo la lista degli ID
     const playerIds = playersRaw.split(',');
 
     for (const userId of playerIds) {
-        // SALTO IL BOT O IL GUEST:
-        // Se l'ID contiene "ai_bot" o "guest", non dobbiamo ripristinare uno stato lobby
-        // perché non sono utenti reali nel database.
+        // Se l'ID contiene "ai_bot" o "guest_", salto il ripristino in lobby, non sono utenti reali
         if (userId.includes('ai_bot') || userId.includes('guest_')) {
-            console.log(`[Cleanup] Skippato ripristino per entità non-user: ${userId}`);
+            this.logger.log(`[Cleanup] Skippato ripristino per entità non-user: ${userId}`);
             continue;
         }
 
@@ -434,28 +478,27 @@ async processUnrankedQueue(player: JoinQueueDto) {
         if (dataRaw) {
             const userData = JSON.parse(dataRaw);
             
-            // Creiamo lo stato lobby (Uniformato)
+            // creo stato lobby
             const lobbyStatus = JSON.stringify({ 
                 state: 'lobby', 
                 userDbId: String(userId),
                 characterName: userData.characterName,
-                // In lobby l'utente reale non è mai un AI player
                 isAiPlayer: false, 
                 rank: userData.rank,
                 socketId: userData.socketId || undefined,
                 updatedAt: Date.now() 
             });
 
-            // Riportiamo l'utente in lobby per 1 ora
+            // risettiamo lo stato lobby peer 1 ora
             await this.redis.set(USER_STATUS_KEY, lobbyStatus, 'EX', 3600);
-            console.log(`[Cleanup] Utente ${userId} riportato in lobby.`);
+            this.logger.log(`[Cleanup] Utente ${userId} riportato in lobby.`);
         }
     }
 
-    // 3. Eliminiamo l'indice del match per liberare memoria
+    // eilimino il match dalla lista dei match attivi
     await this.redis.del(`match_players:${matchId}`);
 
-    console.log(`[Cleanup] Match ${matchId} rimosso con successo.`);
+    this.logger.log(`[Cleanup] Match ${matchId} rimosso con successo.`);
     return { status: 'MATCH_FINALIZED', matchId };
   }
 
@@ -478,7 +521,7 @@ async processUnrankedQueue(player: JoinQueueDto) {
         return { status: 'ERROR_ALREADY_IN_GAME' };
     }
 
-    // Salviamo i dati del DTO su Redis senza forzare lo stato a 'searching' 
+    // salvo i dati del DTO su Redis senza forzare lo stato a 'searching' 
     // se l'utente era già in 'lobby', lo lasciamo in 'lobby' o creiamo un oggetto di supporto
     const challengeData = { 
       ...player, 
@@ -519,14 +562,26 @@ async processUnrankedQueue(player: JoinQueueDto) {
     // Estraiamo i dati del challenger (che avevamo salvato nel createChallenge)
     const challengerData = statusA ? JSON.parse(statusA) : {};
 
-    // Rimuoviamo ENTRAMBI dalla coda di matchmaking globale
+    // rimuovo entrambi dalla coda di matchmaking globale
     // Se erano in 'searching', questa operazione li "dirotta" ufficialmente verso la sfida privata
     await this.redis.zrem(QUEUE_KEY, challengerId, opponent.userDbId);
     
     // creiamo l'id univoco della partita privata
     const matchId = `private_${Math.random().toString(36).substring(7)}`;
+
+    let rank: string | null = null;
+    try {
+        rank = `http://user-service:3001/internal/users/${challengerId}/elo`; // L'indirizzo del suo container
+        await firstValueFrom(this.httpService.get(rank));
+        this.logger.log("Richiesta rank inviata con successo via HTTP");
+    } catch (error) {
+        this.logger.error("Errore nella richiesta del rank:", error.response?.data);
+    }
+    if (rank === null) {
+      return { status: 'ERROR_FETCHING_RANK' };
+    }
     
-    // Prepariamo gli oggetti partecipante usando il DTO per l'opponent e i dati Redis per il challenger
+    // prepariamo gli oggetti partecipante usando il DTO per l'opponent e i dati Redis per il challenger
     const participant1 = {
         characterName: challengerData.characterName,
         userDbId: String(challengerId),
@@ -540,19 +595,19 @@ async processUnrankedQueue(player: JoinQueueDto) {
         characterName: opponent.characterName,
         userDbId: String(opponent.userDbId),
         isAiPlayer: Boolean(opponent.isAiPlayer || false),
-        rank: opponent.rank || 0,
+        rank: rank || 0,
         socketId: opponent.socketId || undefined,
         playerIndex: 1,
     };
 
-    // Settiamo lo stato "ingame" per entrambi (Uniformato)
+    // Settiamo lo stato ingame per entrambi
     const playerStatus = JSON.stringify({ 
       state: 'ingame', 
       ...participant1, 
       opponentId: opponent.userDbId, 
       matchId,
       matchType: challengerData.matchType || 'unranked',
-      matchMode: challengerData.matchMode || 'standard',
+      matchMode: challengerData.matchMode,
       updatedAt: Date.now()
     });
     const opponentStatus = JSON.stringify({ 
@@ -561,34 +616,32 @@ async processUnrankedQueue(player: JoinQueueDto) {
       opponentId: challengerId, 
       matchId,
       matchType: challengerData.matchType || 'unranked',
-      matchMode: challengerData.matchMode || 'standard',
+      matchMode: challengerData.matchMode,
       updatedAt: Date.now()
     });
     
     await this.redis.set(`status:${challengerId}`, playerStatus, 'EX', 420);
     await this.redis.set(`status:${opponent.userDbId}`, opponentStatus, 'EX', 420);
     
-    // Notifichiamo Piro. Se erano in coda, la sfida privata vince e crea il game
+    // sfida privata vince sulle altre partite
     const payload = {
         gameId: String(matchId),
         playersData: [participant1, participant2],
-        matchType: challengerData.matchType || 'ffa', // Forziamo unranked se non specificato
-        matchMode: challengerData.matchMode || 'unranked' 
+        matchType: challengerData.matchType || 'unranked',
+        matchMode: challengerData.matchMode
     };
     try {
           const url = 'http://game-service:3000/matchmaking/create-match';
-          // Utilizziamo firstValueFrom per gestire l'Observable di httpService
           await firstValueFrom(this.httpService.post(url, payload));
-          console.log(`[HTTP] Match privato creato con successo sul Game Server: ${matchId}`);
+          this.logger.log(`[HTTP] Match privato creato con successo sul Game Server: ${matchId}`);
       } catch (error) {
-          console.error("Errore creazione match privato su Game Server:", error.response?.data || error.message);
-          // Opzionale: gestire qui il rollback dello stato redis se la creazione fallisce
+          this.logger.error("Errore creazione match privato su Game Server:", error.response?.data || error.message);
       }
 
-    // Pulizia della chiave sfida
+    // pulizia della chiave della sfida
     await this.redis.del(UNIQUE_CHALLENGE_KEY);
 
-    console.log(`[Logic] Sfida accettata: ${challengerId} e ${opponent.userDbId} dirottati dalla coda al match privato ${matchId}`);
+    this.logger.log(`[Logic] Sfida accettata: ${challengerId} e ${opponent.userDbId} dirottati dalla coda al match privato ${matchId}`);
 
     return { status: 'MATCH_FOUND', matchId, players: [participant1, participant2] };
   }
@@ -602,6 +655,18 @@ async processUnrankedQueue(player: JoinQueueDto) {
     // verifico se la sfida esiste ancora su Redis, se no vuol dire che è già scaduta o non esiste più, quindi ritorniamo un messaggio di errore
     const challengeExists = await this.redis.exists(UNIQUE_CHALLENGE_KEY);
 
+    let rank: string | null = null;
+    try {
+        rank = `http://user-service:3001/internal/users/${opponent}/elo`; // L'indirizzo del suo container
+        await firstValueFrom(this.httpService.get(rank));
+        this.logger.log("Richiesta rank inviata con successo via HTTP");
+    } catch (error) {
+        this.logger.error("Errore nella richiesta del rank:", error.response?.data);
+    }
+    if (rank === null) {
+      return { status: 'ERROR_FETCHING_RANK' };
+    }
+
     if (!challengeExists) {
       return { status: 'ERROR_CHALLENGE_NOT_FOUND', message: 'La sfida è già scaduta o non esiste più.' };
     }
@@ -609,7 +674,7 @@ async processUnrankedQueue(player: JoinQueueDto) {
     // se è ancora presente su redis, la eliminiamo per indicare che è stata rifiutata e non è più valida
     await this.redis.del(UNIQUE_CHALLENGE_KEY);
 
-    console.log(`[Logic] L'utente ${opponent.userDbId} (Rank: ${opponent.rank}) ha rifiutato la sfida di ${challengerId}.`);
+    this.logger.log(`[Logic] L'utente ${opponent.userDbId} (Rank: ${rank}) ha rifiutato la sfida di ${challengerId}.`);
 
     // ritorno lo stato di sfida rifiutata, con gli id dei player coinvolti
     return { status: 'CHALLENGE_REJECTED', challengerId, opponentId: opponent.userDbId };
@@ -623,6 +688,18 @@ async processUnrankedQueue(player: JoinQueueDto) {
 
     const challengeExists = await this.redis.exists(UNIQUE_CHALLENGE_KEY);
 
+    let rank: string | null = null;
+    try {
+        rank = `http://user-service:3001/internal/users/${player.userDbId}/elo`; // L'indirizzo del suo container
+        await firstValueFrom(this.httpService.get(rank));
+        this.logger.log("Richiesta rank inviata con successo via HTTP");
+    } catch (error) {
+        this.logger.error("Errore nella richiesta del rank:", error.response?.data);
+    }
+    if (rank === null) {
+      return { status: 'ERROR_FETCHING_RANK' };
+    }
+
     if (!challengeExists) {
       return { status: 'ERROR_CHALLENGE_NOT_FOUND', message: 'La sfida è già scaduta o non esiste più.' };
     }
@@ -631,7 +708,7 @@ async processUnrankedQueue(player: JoinQueueDto) {
     await this.redis.del(UNIQUE_CHALLENGE_KEY);
 
     // Logghiamo l'azione usando il DTO per avere più contesto se serve
-    console.log(`[Logic] L'utente ${player.userDbId} (Rank: ${player.rank}) ha annullato la sfida verso ${opponentId}.`);
+    this.logger.log(`[Logic] L'utente ${player.userDbId} (Rank: ${rank}) ha annullato la sfida verso ${opponentId}.`);
 
     return { status: 'CHALLENGE_CANCELLED', challengerId: player.userDbId, opponentId };
   }
@@ -652,12 +729,18 @@ async processUnrankedQueue(player: JoinQueueDto) {
         characterName: charP1,
         userDbId: String(data.userDbId),
         isAiPlayer: false,
+        rank: data.rank,
+        socketId: data.socketId,
+        playerIndex: 0,
     };
 
     const participant2 = {
         characterName: charP2, 
         userDbId: String(data.userDbId),
         isAiPlayer: false,
+        rank: data.rank,
+        socketId: data.socketId,
+        playerIndex: 1,
     };
 
     const playerStatus = JSON.stringify({ 
@@ -682,9 +765,9 @@ async processUnrankedQueue(player: JoinQueueDto) {
     try {
         const url = 'http://game-service:3000/matchmaking/create-match';
         await firstValueFrom(this.httpService.post(url, payload));
-        console.log(`[LocalMatch] Sessione locale inviata al Game Server per ${charP1.userDbId}`);
+        this.logger.log(`[LocalMatch] Sessione locale inviata al Game Server per ${data.userDbId}`);
     } catch (error) {
-        console.error("Errore invio match locale al Game Server:", error.response?.data || error.message);
+        this.logger.error("Errore invio match locale al Game Server:", error.response?.data || error.message);
     }
 
     await this.redis.set(`match_players:${matchId}`, `${data.userDbId}, guest_${data.userDbId}`, 'EX', 3600);
@@ -702,7 +785,7 @@ async processUnrankedQueue(player: JoinQueueDto) {
 /* ---------------------------------------------------------------------------------------------------------------- */
 
   async startAiMatch(data: any) {
-    console.log(`[Logic] inizio procedura match vs AI per ${data.userDbId} con rank ${data.rank} e personaggio ${data.characterName}`);
+    this.logger.log(`[Logic] inizio procedura match vs AI per ${data.userDbId} con rank ${data.rank} e personaggio ${data.characterName}`);
     const USER_STATUS_KEY = `status:${data.userDbId}`;
     
     // 1. Pulizia: rimuoviamo l'utente da eventuali code attive
@@ -721,13 +804,19 @@ async processUnrankedQueue(player: JoinQueueDto) {
         characterName: charP1,
         userDbId: String(data.userDbId),
         isAiPlayer: false,
+        rank: data.rank,
+        socketId: data.socketId,
+        playerIndex: 0,
     };
 
     // Il Bot
     const participant2 = {
         characterName: charP2,
-        userDbId: null, // ID virtuale per il cleanup
+        userDbId: `ai_bot_${matchId}`, // ID virtuale per il cleanup
         isAiPlayer: true, // Attiva la logica AI nel Game Server
+        rank: data.rank,
+        socketId: null,
+        playerIndex: 1,
     };
 
     // Salviamo lo stato su Redis (stato 'ingame', modalità 'ai')
@@ -755,9 +844,9 @@ async processUnrankedQueue(player: JoinQueueDto) {
     try {
         const url = 'http://game-service:3000/matchmaking/create-match';
         await firstValueFrom(this.httpService.post(url, payload));
-        console.log(`[AiMatch] Match vs AI inviato al Game Server per ${data.userDbId}`);
+        this.logger.log(`[AiMatch] Match vs AI inviato al Game Server per ${data.userDbId}`);
     } catch (error) {
-        console.error("Errore invio match AI al Game Server:", error.response?.data || error.message);
+        this.logger.error("Errore invio match AI al Game Server:", error.response?.data || error.message);
     }
 
     // Settiamo la chiave per il cleanup globale (User Reale + Bot ID)
@@ -772,7 +861,7 @@ async processUnrankedQueue(player: JoinQueueDto) {
         });
     }
 
-    console.log(`[AiMatch] Utente ${data.userDbId} vs AI avviato. GameId: ${matchId}`);
+    this.logger.log(`[AiMatch] Utente ${data.userDbId} vs AI avviato. GameId: ${matchId}`);
     return { status: 'AI_MATCH_STARTED', matchId };
   }
 

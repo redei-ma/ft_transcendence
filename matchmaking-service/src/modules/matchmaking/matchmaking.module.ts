@@ -4,6 +4,7 @@ import { HttpModule } from '@nestjs/axios';
 import { MatchmakingController } from './matchmaking.controller';
 import { MatchmakingService } from './matchmaking.service';
 import { MatchmakingGateway } from './matchmaking.gateway';
+import { JwtAuthGuard } from '@transcendence/auth';
 
 @Module({
   imports: [
@@ -11,6 +12,6 @@ import { MatchmakingGateway } from './matchmaking.gateway';
     HttpModule,
   ],
   controllers: [MatchmakingController],
-  providers: [MatchmakingService, MatchmakingGateway],
+  providers: [MatchmakingService, MatchmakingGateway, JwtAuthGuard],
 })
 export class MatchmakingModule {}
