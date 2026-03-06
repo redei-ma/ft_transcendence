@@ -18,6 +18,8 @@ export default function LoginScene({ onLogin }: LoginSceneProps) {
   const [pending2fa, setPending2fa] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [resendEmail, setResendEmail] = useState('');
+  const [resendMsg, setResendMsg] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -62,6 +64,17 @@ export default function LoginScene({ onLogin }: LoginSceneProps) {
       setError(json?.message ?? json?.error ?? 'Login failed');
     }
     setLoading(false);
+  };
+
+  const handleResend = async () => {
+    setResendMsg('');
+    const res = await fetch('/api/auth/resend-verification', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: resendEmail }),
+    });
+    const json = await res.json() as { message?: string };
+    setResendMsg(json.message ?? 'Done');
   };
 
   const inputStyle: React.CSSProperties = {
@@ -258,6 +271,39 @@ export default function LoginScene({ onLogin }: LoginSceneProps) {
             >
               Forgot password?
             </a>
+          </div>
+
+          <div style={{ width: '100%', marginTop: '16px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <input
+              type="email"
+              value={resendEmail}
+              onChange={(e) => setResendEmail(e.target.value)}
+              placeholder="Email for verification resend"
+              style={{ ...inputStyle, fontSize: '12px', padding: '8px 12px' }}
+            />
+            <button
+              type="button"
+              onClick={handleResend}
+              style={{
+                padding: '8px',
+                background: 'transparent',
+                border: `1px solid ${theme.colors.border}`,
+                borderRadius: '4px',
+                color: theme.colors.textMuted,
+                fontFamily: theme.fonts.mono,
+                fontSize: '11px',
+                letterSpacing: '2px',
+                textTransform: 'uppercase',
+                cursor: 'pointer',
+              }}
+            >
+              Resend verification
+            </button>
+            {resendMsg && (
+              <p style={{ fontFamily: theme.fonts.mono, fontSize: '11px', color: theme.colors.textSecondary, textAlign: 'center', margin: 0 }}>
+                {resendMsg}
+              </p>
+            )}
           </div>
         </div>
       </div>

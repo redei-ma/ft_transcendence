@@ -23,6 +23,6 @@ async function bootstrap() {
   // Add global prefix "api"
   app.setGlobalPrefix('api', { exclude: ['health'] });
 
-  await app.listen(3002);
+  await app.listen(3002, "0.0.0.0");
 }
 bootstrap();

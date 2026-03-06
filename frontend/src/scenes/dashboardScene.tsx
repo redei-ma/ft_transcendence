@@ -3,6 +3,7 @@ import { theme } from '../configs/theme';
 
 interface DashboardSceneProps {
   onBack: () => void;
+  onLogout: () => void;
 }
 
 interface UserProfile {
@@ -12,6 +13,7 @@ interface UserProfile {
   avatarUrl: string;
   status: string;
   createdAt: string;
+  is2faEnabled: boolean;
 }
 
 interface CharacterStats {
@@ -84,11 +86,41 @@ async function apiFetch<T>(url: string): Promise<T> {
       method: 'POST',
       credentials: 'include',
     });
-    if (!refreshed.ok) throw new Error('401 Unauthorized');
+    if (!refreshed.ok) {
+      const err = new Error('401 Unauthorized') as Error & { is401: boolean };
+      err.is401 = true;
+      throw err;
+    }
     res = await fetch(url, { credentials: 'include' });
   }
 
   if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+  return res.json() as Promise<T>;
+}
+
+async function apiPost<T>(url: string, body?: object): Promise<T> {
+  const opts: RequestInit = {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    ...(body !== undefined && { body: JSON.stringify(body) }),
+  };
+
+  let res = await fetch(url, opts);
+
+  if (res.status === 401) {
+    const refreshed = await fetch('/api/auth/refresh', {
+      method: 'POST',
+      credentials: 'include',
+    });
+    if (!refreshed.ok) throw new Error('401 Unauthorized');
+    res = await fetch(url, opts);
+  }
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({})) as { message?: string };
+    throw new Error(err.message ?? `${res.status} ${res.statusText}`);
+  }
   return res.json() as Promise<T>;
 }
 
@@ -130,13 +162,16 @@ function resultColor(result: 'WIN' | 'LOSS' | 'DRAW'): string {
   return theme.colors.afk;
 }
 
-export default function DashboardScene({ onBack }: DashboardSceneProps) {
+export default function DashboardScene({ onBack, onLogout }: DashboardSceneProps) {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [stats, setStats] = useState<UserStats | null>(null);
   const [leaderboard, setLeaderboard] = useState<LeaderboardData | null>(null);
   const [matchHistory, setMatchHistory] = useState<MatchHistory | null>(null);
-  const [error, setError] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(true);
+  const [twoFaStep, setTwoFaStep] = useState<'idle' | 'qr' | 'confirm'>('idle');
+  const [qrCode, setQrCode] = useState<string>('');
+  const [totpCode, setTotpCode] = useState<string>('');
+  const [twoFaMsg, setTwoFaMsg] = useState<string>('');
 
   useEffect(() => {
     const fetchAll = async () => {
@@ -152,15 +187,52 @@ export default function DashboardScene({ onBack }: DashboardSceneProps) {
       if (lbRes.status === 'fulfilled') setLeaderboard(lbRes.value);
       if (matchRes.status === 'fulfilled') setMatchHistory(matchRes.value);
 
-      const errors = [profileRes, statsRes, lbRes, matchRes]
-        .filter((r): r is PromiseRejectedResult => r.status === 'rejected')
-        .map((r) => (r.reason instanceof Error ? r.reason.message : String(r.reason)));
+      // If any auth request fails with 401 (refresh also failed), force logout
+      const has401 = [profileRes, statsRes, matchRes].some(
+        (r) => r.status === 'rejected' && (r.reason as { is401?: boolean }).is401 === true,
+      );
+      if (has401) { onLogout(); return; }
 
-      if (errors.length > 0) setError(errors.join(' | '));
       setLoading(false);
     };
     void fetchAll();
-  }, []);
+  }, [onLogout]);
+
+  const handleSetup2fa = async () => {
+    setTwoFaMsg('');
+    try {
+      const data = await apiPost<{ qrCode: string }>('/api/auth/2fa/setup');
+      setQrCode(data.qrCode);
+      setTwoFaStep('qr');
+    } catch (e) {
+      setTwoFaMsg(e instanceof Error ? e.message : 'Setup failed');
+    }
+  };
+
+  const handleEnable2fa = async () => {
+    setTwoFaMsg('');
+    try {
+      await apiPost('/api/auth/2fa/enable', { code: totpCode });
+      setProfile((prev) => prev ? { ...prev, is2faEnabled: true } : prev);
+      setTwoFaStep('idle');
+      setQrCode('');
+      setTotpCode('');
+      setTwoFaMsg('2FA enabled successfully.');
+    } catch (e) {
+      setTwoFaMsg(e instanceof Error ? e.message : 'Invalid code');
+    }
+  };
+
+  const handleDisable2fa = async () => {
+    setTwoFaMsg('');
+    try {
+      await apiPost('/api/auth/2fa/disable');
+      setProfile((prev) => prev ? { ...prev, is2faEnabled: false } : prev);
+      setTwoFaMsg('2FA disabled.');
+    } catch (e) {
+      setTwoFaMsg(e instanceof Error ? e.message : 'Disable failed');
+    }
+  };
 
   return (
     <div
@@ -211,13 +283,7 @@ export default function DashboardScene({ onBack }: DashboardSceneProps) {
         </p>
       )}
 
-      {error && (
-        <p style={{ fontFamily: theme.fonts.mono, color: theme.colors.dead, textAlign: 'center' }}>
-          {error}
-        </p>
-      )}
-
-      {!loading && !error && (
+      {!loading && (
         <div style={{ maxWidth: '900px', margin: '0 auto' }}>
 
           {/* Profile + Stats — two columns */}
@@ -271,6 +337,74 @@ export default function DashboardScene({ onBack }: DashboardSceneProps) {
               </div>
             )}
           </div>
+
+          {/* Security — 2FA */}
+          {profile && (
+            <div style={cardStyle}>
+              <p style={sectionTitle}>Security</p>
+              <div style={{ ...statRow, marginBottom: '16px' }}>
+                <span style={statLabel}>Two-Factor Authentication</span>
+                <span style={{ color: profile.is2faEnabled ? theme.colors.hpHigh : theme.colors.dead }}>
+                  {profile.is2faEnabled ? 'Enabled' : 'Disabled'}
+                </span>
+              </div>
+
+              {!profile.is2faEnabled && twoFaStep === 'idle' && (
+                <button
+                  onClick={() => { void handleSetup2fa(); }}
+                  style={{ padding: '8px 16px', background: 'transparent', border: `1px solid ${theme.colors.border}`, borderRadius: '4px', color: theme.colors.textSecondary, fontFamily: theme.fonts.mono, fontSize: '12px', letterSpacing: '2px', cursor: 'pointer' }}
+                >
+                  Enable 2FA
+                </button>
+              )}
+
+              {twoFaStep === 'qr' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  <p style={{ fontFamily: theme.fonts.mono, fontSize: '12px', color: theme.colors.textSecondary, margin: 0 }}>
+                    Scan this QR code with Google Authenticator, then enter the code below.
+                  </p>
+                  <img src={qrCode} alt="2FA QR Code" style={{ width: '160px', height: '160px', border: `1px solid ${theme.colors.border}`, borderRadius: '4px' }} />
+                  <input
+                    type="text"
+                    value={totpCode}
+                    onChange={(e) => setTotpCode(e.target.value)}
+                    placeholder="6-digit code"
+                    maxLength={6}
+                    style={{ padding: '8px 12px', background: 'rgba(9,23,32,0.8)', border: `1px solid ${theme.colors.border}`, borderRadius: '4px', color: theme.colors.gold, fontFamily: theme.fonts.mono, fontSize: '14px', width: '160px', outline: 'none' }}
+                  />
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <button
+                      onClick={() => { void handleEnable2fa(); }}
+                      style={{ padding: '8px 16px', background: 'transparent', border: `1px solid ${theme.colors.borderHover}`, borderRadius: '4px', color: theme.colors.gold, fontFamily: theme.fonts.mono, fontSize: '12px', letterSpacing: '2px', cursor: 'pointer' }}
+                    >
+                      Confirm
+                    </button>
+                    <button
+                      onClick={() => { setTwoFaStep('idle'); setQrCode(''); setTotpCode(''); setTwoFaMsg(''); }}
+                      style={{ padding: '8px 16px', background: 'transparent', border: `1px solid ${theme.colors.border}`, borderRadius: '4px', color: theme.colors.textMuted, fontFamily: theme.fonts.mono, fontSize: '12px', letterSpacing: '2px', cursor: 'pointer' }}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {profile.is2faEnabled && twoFaStep === 'idle' && (
+                <button
+                  onClick={() => { void handleDisable2fa(); }}
+                  style={{ padding: '8px 16px', background: 'transparent', border: `1px solid ${theme.colors.dead}`, borderRadius: '4px', color: theme.colors.dead, fontFamily: theme.fonts.mono, fontSize: '12px', letterSpacing: '2px', cursor: 'pointer' }}
+                >
+                  Disable 2FA
+                </button>
+              )}
+
+              {twoFaMsg && (
+                <p style={{ fontFamily: theme.fonts.mono, fontSize: '12px', color: theme.colors.textSecondary, margin: '12px 0 0' }}>
+                  {twoFaMsg}
+                </p>
+              )}
+            </div>
+          )}
 
           {/* Match History */}
           {matchHistory && (

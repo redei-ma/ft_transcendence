@@ -12,7 +12,6 @@ export class JoinQueueDto {
 	isAiPlayer: boolean;
 	matchType: MatchType;
 	matchMode: MatchMode;
-	rank: number;
 	rankRange: number;
 	socketId?: string;
 }

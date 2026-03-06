@@ -96,7 +96,12 @@ function App() {
   }
 
   if (currentScene === 'dashboard') {
-    return <DashboardScene onBack={() => setCurrentScene('welcome')} />;
+    return (
+      <DashboardScene
+        onBack={() => setCurrentScene('welcome')}
+        onLogout={() => void handleLogout()}
+      />
+    );
   }
 
   if (currentScene === 'mode-select') {
