@@ -1,30 +1,45 @@
+// frontend/src/services/matchmakingSocket.ts
 import { io, Socket } from 'socket.io-client';
 import { GameEvents } from '../game/game.events';
+import { refreshToken } from '../site/services/authService';
 
 class MatchmakingSocket {
   private socket: Socket | null = null;
 
   connect(): Socket {
-    if (this.socket?.connected) {
-      return this.socket;
-    }
+    if (this.socket?.connected) return this.socket;
 
-    this.socket = io(window.location.origin, {
+    this.socket = io('/', { 
       path: "/matchmaking_api/socket.io",
-      transports: ['websocket'],
-      reconnection: false, // se si disconnette = leave queue
+      transports: ['websocket', 'polling'],
+      withCredentials: true, // FONDAMENTALE PER IL JWT
+      reconnection: false,
     });
 
     this.socket.on('connect', () => {
-      console.log('[Matchmaking] Connected. Socket ID:', this.socket?.id);
+      console.log('✅ [Matchmaking] Connected. Socket ID:', this.socket?.id);
+    });
+
+    // Logica di Ale
+    this.socket.on("unauthorized", async () => {
+        console.warn("🔐 [Matchmaking] Socket unauthorized");
+        const refreshed = await refreshToken();
+        if (refreshed) {
+            console.log("🔄 Reconnecting Matchmaking socket");
+            this.socket?.connect();
+        }
+    });
+
+    this.socket.on('connect_error', async (error) => {
+      console.warn('⚠️ [Matchmaking] Connection error:', error.message);
+      if (error.message === "unauthorized" || error.message === "Authentication error") {
+          const refreshed = await refreshToken();
+          if (refreshed) this.socket?.connect();
+      }
     });
 
     this.socket.on('disconnect', (reason) => {
-      console.log('[Matchmaking] Disconnected:', reason);
-    });
-
-    this.socket.on('connect_error', (error) => {
-      console.error('[Matchmaking] Connection error:', error.message);
+      console.log('❌ [Matchmaking] Disconnected:', reason);
     });
 
     return this.socket;
@@ -39,18 +54,12 @@ class MatchmakingSocket {
   }
 
   emit(event: GameEvents, data?: any) {
-    if (!this.socket) {
-      console.error('[Matchmaking] Cannot emit: not connected.');
-      return;
-    }
+    if (!this.socket) return;
     this.socket.emit(event, data);
   }
 
   on(event: GameEvents | string, callback: (data: any) => void) {
-    if (!this.socket) {
-      console.error('[Matchmaking] Cannot listen: not connected.');
-      return;
-    }
+    if (!this.socket) return;
     this.socket.on(event, callback);
   }
 

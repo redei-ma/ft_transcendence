@@ -1,35 +1,61 @@
+// frontend/src/services/socketServices.ts
 import { io, Socket } from 'socket.io-client';
 import { GameEvents } from '../game/game.events';
+import { refreshToken } from '../site/services/authService';
 
 export class SocketService {
-    
     private socket: Socket | null = null;
 
     public getSocket(): Socket | null {
         return this.socket;
     }
-    connect(url: string, userDbId?: string): Socket{
-        if (this.socket?.connected){
+
+    connect(url: string, userDbId?: string): Socket {
+        if (this.socket?.connected) {
             console.log('Already connected.');
             return this.socket;
         }
+
         this.socket = io(url, {
             path: "/game_api/socket.io",
-            transports: ['websocket'],
-            reconnection:   true,
+            transports: ['websocket', 'polling'],
+            withCredentials: true,                // FONDAMENTALE PER IL JWT
+            reconnection: true,
             reconnectionAttempts: 5,
             reconnectionDelay: 1000,
             query: userDbId ? { userDbId } : {},
         });
+
         this.socket.on('connect', () => {
-            console.log('Connected. Socket ID is: ', this.socket?.id);
+            console.log('✅ Game Socket connected:', this.socket?.id);
         });
-        this.socket.on('disconnect', (reason) =>{
-            console.log('Disconnected: ', reason);
+
+        // Logica di Ale per l'autenticazione
+        this.socket.on("unauthorized", async () => {
+            console.warn("🔐 Game Socket unauthorized");
+            const refreshed = await refreshToken();
+            if (refreshed) {
+                console.log("🔄 Reconnecting Game socket");
+                this.socket?.connect();
+            } else {
+                console.warn("🚪 Auth failed, cannot connect socket");
+                // Qui potresti triggerare un logout visivo
+            }
         });
-        this.socket.on('connect_error', (error) =>{
-            console.error('Connection error: ', error.message);
+
+        // Alcuni backend emettono connect_error invece di unauthorized
+        this.socket.on('connect_error', async (err) => {
+            console.warn('⚠️ Game Socket connect error:', err.message);
+            if (err.message === "unauthorized" || err.message === "Authentication error") {
+                const refreshed = await refreshToken();
+                if (refreshed) this.socket?.connect();
+            }
         });
+
+        this.socket.on('disconnect', (reason) => {
+            console.log('❌ Game Socket disconnected:', reason);
+        });
+
         return this.socket;
     }
 
@@ -41,7 +67,7 @@ export class SocketService {
         }
     }
 
-    emit(event: GameEvents, data?: any){
+    emit(event: GameEvents, data?: any) {
         if (!this.socket) {
             console.error('Cannot emit: socket not connected.');
         }
@@ -49,17 +75,13 @@ export class SocketService {
     }
 
     on(event: GameEvents, callback: (data: any) => void) {
-        if (!this.socket) {
-            console.error('Cannot listen: socket not connected.');
-            return;
-        }
+        if (!this.socket) return;
         this.socket.on(event, callback);
     }
 
     off(event: GameEvents, callback?: (data: any) => void) {
         if (!this.socket) return;
-        this.socket.off(event, callback)
+        this.socket.off(event, callback);
     }
-
-};
+}
 export const socketService = new SocketService();

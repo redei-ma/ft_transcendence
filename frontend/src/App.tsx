@@ -1,152 +1,101 @@
 import { useState, useEffect } from 'react';
-import { matchmakingSocket } from './services/matchmakingSocket';
-import { socketService } from './services/socketServices';
-import { GameEvents } from './game/game.events';
-import LoginScene from './scenes/loginScene';
-import WelcomeScene from './scenes/welcomeScene';
-import DashboardScene from './scenes/dashboardScene';
-import ModeSelectScene from './scenes/modeSelectScene';
-import CharacterSelectScene from './scenes/characterSelectScene';
-import QueueScene from './scenes/queueScene';
-import Game from './game/Game';
-import { MatchMode } from './types/game.types';
+import './site/styles/site.css';
+import LoginPage from './site/pages/LoginPage';
+import DashboardPage from './site/pages/DashboardPage';
+import LeaderboardPage from './site/pages/LeaderboardPage';
+import ProfilePage from './site/pages/ProfilePage';
+import GameFlow from './site/pages/GameFlow';
+import Navbar from './site/components/Navbar';
+import { checkAuth, logout } from './site/services/authService';
+import { getMyProfile, UserProfile } from './site/services/apiService';
+import { theme } from './configs/theme';
 
-type Scene = 'login' | 'welcome' | 'dashboard' | 'mode-select' | 'character-select' | 'queue' | 'game';
+export default function App() {
+  // Sbloccato il flusso di auth reale, addio TestPlayer!
+  const [isLoggedIn, setIsLoggedIn] = useState(true);
+  // const [user, setUser] = useState<UserProfile | null>(null);
+  const [user, setUser] = useState<UserProfile | null>({
+  id: 1,
+  username: 'TestPlayer',
+  avatarUrl: 'https://api.dicebear.com/9.x/pixel-art/svg?seed=TestPlayer',
+  email: 'test@test.com',
+  status: 'ONLINE',
+  createdAt: '2025-01-01T00:00:00Z',
+});
+  const [currentPage, setCurrentPage] = useState('dashboard');
 
-function App() {
-  const [currentScene, setCurrentScene] = useState<Scene>('login');
-  const [selectedMode, setSelectedMode] = useState<MatchMode | null>(null);
-  const [selectedCharacterP1, setSelectedCharacterP1] = useState<'zeus' | 'ade'>('zeus');
-  const [selectedCharacterP2, setSelectedCharacterP2] = useState<'zeus' | 'ade'>('ade');
-  const [userDbId] = useState(() => Math.random().toString(36).substring(2, 10));
   useEffect(() => {
-    if (currentScene !== 'character-select' && currentScene !== 'queue') return;
+    checkAuth().then(async (ok) => {
+      if (ok) {
+        const profile = await getMyProfile();
+        if (profile) {
+          setUser(profile);
+          setIsLoggedIn(true);
+        }
+      }
+    });
+  }, []);
 
-    const socket = matchmakingSocket.connect();
-
-  const handleMatchFound = () => {
-    console.log('[App] MATCH_FOUND received — connecting to Giovanni');
-    socketService.connect(window.location.origin, userDbId);
-    matchmakingSocket.disconnect();
-    setCurrentScene('game');
-  };
-
-    matchmakingSocket.on(GameEvents.MATCH_FOUND, handleMatchFound);
-
-    return () => {
-      matchmakingSocket.off(GameEvents.MATCH_FOUND, handleMatchFound);
-    };
-  }, [currentScene]);
-
-  const handleModeSelect = (mode: MatchMode) => {
-    setSelectedMode(mode);
-    setCurrentScene('character-select');
-  };
-
-  const handlePlayAgain = () => {
-    socketService.disconnect();
-    setCurrentScene('mode-select');
-  };
-
-  const handleQuit = () => {
-    socketService.disconnect();
-    setCurrentScene('welcome');
+  const handleLogin = async () => {
+    const profile = await getMyProfile();
+    
+    if (profile) {
+      setUser(profile);
+      setIsLoggedIn(true);
+      setCurrentPage('dashboard');
+    } else {
+      // Qui l'ideale sarebbe mostrare un messaggio di errore visivo
+      console.error("Login riuscito, ma impossibile recuperare il profilo.");
+      await logout(); // Puliamo l'eventuale cookie rimasto appeso
+      setIsLoggedIn(false);
+    }
   };
 
   const handleLogout = async () => {
-    try {
-      await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
-    } catch {
-      // ignore network errors — proceed to login anyway
+    await logout();
+    setIsLoggedIn(false);
+    setUser(null);
+    setCurrentPage('dashboard');
+  };
+
+  if (!isLoggedIn) {
+    return <LoginPage onLogin={handleLogin} />;
+  }
+
+  if (currentPage === 'play') {
+    if (!user) {
+      alert("Errore di sessione: Dati utente mancanti. Effettua nuovamente il login."); // Sostitusci con una UI migliore
+      handleLogout(); 
+      return null; // Evitiamo render strani mentre l'app si ricarica verso il login
     }
-    socketService.disconnect();
-    matchmakingSocket.disconnect();
-    setCurrentScene('login');
-  };
+    return (
+      <GameFlow
+        userId={user.id}
+        username={user.username}
+        onExit={() => setCurrentPage('dashboard')}
+      />
+    );
+  }
 
-  const handleCharacterConfirm = (p1: 'zeus' | 'ade', p2: 'zeus' | 'ade') => {
-    setSelectedCharacterP1(p1);
-    setSelectedCharacterP2(p2);
-
-    // LOCAL e AI: Leonardo risponde subito, MATCH_FOUND arriverà quasi istantaneamente
-    // RANKED e UNRANKED: mostra la coda
-    if (selectedMode === MatchMode.RANKED || selectedMode === MatchMode.UNRANKED) {
-      setCurrentScene('queue');
+  const renderPage = () => {
+    switch (currentPage) {
+      case 'dashboard':   return <DashboardPage onNavigate={setCurrentPage} />;
+      case 'leaderboard': return <LeaderboardPage />;
+      case 'profile':     return <ProfilePage />;
+      default:            return <DashboardPage onNavigate={setCurrentPage} />;
     }
-    // Per LOCAL/AI non cambiamo scena qui — MATCH_FOUND la cambierà
   };
-
-  const handleQueueCancel = () => {
-    matchmakingSocket.disconnect();
-    setCurrentScene('mode-select');
-  };
-
-  if (currentScene === 'login') {
-    return <LoginScene onLogin={() => setCurrentScene('welcome')} />;
-  }
-
-  if (currentScene === 'welcome') {
-    return (
-      <WelcomeScene
-        onStart={() => setCurrentScene('mode-select')}
-        onLogout={() => void handleLogout()}
-        onDashboard={() => setCurrentScene('dashboard')}
-      />
-    );
-  }
-
-  if (currentScene === 'dashboard') {
-    return (
-      <DashboardScene
-        onBack={() => setCurrentScene('welcome')}
-        onLogout={() => void handleLogout()}
-      />
-    );
-  }
-
-  if (currentScene === 'mode-select') {
-    return (
-      <ModeSelectScene
-        onModeSelect={handleModeSelect}
-        onBack={() => setCurrentScene('welcome')}
-      />
-    );
-  }
-
-  if (currentScene === 'character-select') {
-    return (
-      <CharacterSelectScene
-        mode={selectedMode!}
-        userDbId={userDbId}
-        onConfirm={handleCharacterConfirm}
-        onBack={() => {
-          matchmakingSocket.disconnect();
-          setCurrentScene('mode-select');
-        }}
-      />
-    );
-  }
-
-  if (currentScene === 'queue') {
-    return (
-      <QueueScene
-        onMatchFound={() => {}} // gestito dal listener globale in App
-        onCancel={handleQueueCancel}
-      />
-    );
-  }
 
   return (
-    <Game
-      selectedCharacter={selectedCharacterP1}
-      selectedMode={selectedMode!}
-      p1Character={selectedCharacterP1}
-      p2Character={selectedCharacterP2}
-      onPlayAgain={handlePlayAgain}
-      onQuit={handleQuit}
-      myUserId={userDbId}
-    />
+    <div style={{ minHeight: '100vh', backgroundColor: theme.colors.bgDark }}>
+      <Navbar
+        currentPage={currentPage}
+        onNavigate={setCurrentPage}
+        onLogout={handleLogout}
+        username={user?.username || ''}
+        avatarUrl={user?.avatarUrl || ''}
+      />
+      {renderPage()}
+    </div>
   );
 }
-
-export default App;
