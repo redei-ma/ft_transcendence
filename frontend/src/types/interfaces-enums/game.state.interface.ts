@@ -1,10 +1,7 @@
-import { Logger } from "@nestjs/common";
 import { Vector } from "../game.types";
 import { AttackType } from ".";
 
 export interface IGameState{
-
-	logger: Logger;
 
 	name: string;
 

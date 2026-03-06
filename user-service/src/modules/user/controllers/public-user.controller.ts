@@ -61,6 +61,24 @@ export class PublicUserController {
 		private readonly achievementService: AchievementService,
 	) {}
 
+	// ─── ─────────────────────────────────────────────────────────────────────────────
+	/**
+	 * Get player leaderboard ordered by ELO (descending).
+	 */
+	@Get("leaderboard")
+	@ApiOperation({ summary: "Get ELO leaderboard" })
+	@ApiResponse({
+		status: HttpStatus.OK,
+		description: "Paginated leaderboard data",
+		type: LeaderboardResponseDto,
+	})
+	async getLeaderboard(
+		@Query() query: LeaderboardQueryDto,
+	): Promise<LeaderboardResponseDto> {
+		return this.userService.getLeaderboard(query);
+	}
+	// ─── ─────────────────────────────────────────────────────────────────────────────
+
 	// ─── Useer profile ─────────────────────────────────────────────────────────────────────────────
 
 	/**
@@ -371,22 +389,6 @@ export class PublicUserController {
 		@Param("id", ParseIntPipe) id: number,
 	): Promise<PublicProfileResponseDto> {
 		return this.userService.getPublicProfile(id);
-	}
-
-	/**
-	 * Get player leaderboard ordered by ELO (descending).
-	 */
-	@Get("leaderboard")
-	@ApiOperation({ summary: "Get ELO leaderboard" })
-	@ApiResponse({
-		status: HttpStatus.OK,
-		description: "Paginated leaderboard data",
-		type: LeaderboardResponseDto,
-	})
-	async getLeaderboard(
-		@Query() query: LeaderboardQueryDto,
-	): Promise<LeaderboardResponseDto> {
-		return this.userService.getLeaderboard(query);
 	}
 
 	// ─── Match history ─────────────────────────────────────────────────────────
