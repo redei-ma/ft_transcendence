@@ -64,7 +64,7 @@ export class GameGateway
 		}
 
 		client.data.user = verifyJwtToken(token);
-		const userDbId: string = client.data.user.sub as string;
+		const userDbId: string = String(client.data.user.sub);
 		this.logger.log(`New client arrived ${userDbId}`);
 
 		const gameData: GameData | undefined = this.gameService.hasPendingMatch(userDbId);

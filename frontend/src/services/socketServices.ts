@@ -17,7 +17,7 @@ export class SocketService {
 
         console.log(`🟡 [GameSocket] Initiating connection for UserDB ID: ${userDbId || 'None'}...`);
         this.socket = io(url, {
-            path: "/game_api/socket.io",
+            path: "/socket.io",
             transports: ['websocket', 'polling'],
             withCredentials: true,
             reconnection: true,
