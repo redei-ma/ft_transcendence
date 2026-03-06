@@ -134,6 +134,27 @@ export class InternalUserController {
 	}
 
 	/**
+	 * Returns only the current ELO of a user.
+	 */
+	@Get(":id/elo")
+	@ApiOperation({ summary: "Get current ELO of a user (for matchmaking)" })
+	@ApiParam({ name: "id", type: Number })
+	@ApiResponse({
+		status: HttpStatus.OK,
+		description: "ELO rating of the user",
+		type: UserEloResponseDto,
+	})
+	@ApiResponse({
+		status: HttpStatus.NOT_FOUND,
+		description: "User stats not found",
+	})
+	async getUserElo(
+		@Param("id", ParseIntPipe) id: number,
+	): Promise<UserEloResponseDto> {
+		return this.userService.getUserElo(id);
+	}
+
+	/**
 	 * Find a user by provider and oauthId
 	 */
 	@Get(":provider/:oauthId")
@@ -158,27 +179,6 @@ export class InternalUserController {
 		@Param("oauthId") oauthId: string,
 	): Promise<UserWithAccountsResponseDto> {
 		return this.userService.findUserOauth(provider, oauthId);
-	}
-
-	/**
-	 * Returns only the current ELO of a user.
-	 */
-	@Get(":id/elo")
-	@ApiOperation({ summary: "Get current ELO of a user (for matchmaking)" })
-	@ApiParam({ name: "id", type: Number })
-	@ApiResponse({
-		status: HttpStatus.OK,
-		description: "ELO rating of the user",
-		type: UserEloResponseDto,
-	})
-	@ApiResponse({
-		status: HttpStatus.NOT_FOUND,
-		description: "User stats not found",
-	})
-	async getUserElo(
-		@Param("id", ParseIntPipe) id: number,
-	): Promise<UserEloResponseDto> {
-		return this.userService.getUserElo(id);
 	}
 
 	// ─── Update user ───────────────────────────────────────────────────────────────────────────────

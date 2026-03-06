@@ -12,24 +12,38 @@ import { Server, Socket } from 'socket.io';
 import { OnEvent } from '@nestjs/event-emitter'; // <--- IMPORTANTE: serve per ascoltare il Service
 import { MatchmakingService } from './matchmaking.service';
 import { JoinQueueDto } from './dto/join-queue.dto';
-import { CurrentUser } from '@transcendence/auth';
+import { parseCookieHeader, verifyJwtToken, AUTH_COOKIE_NAME } from '@transcendence/auth';
+// CurrentUser decorator removed: not usable in WebSocket context without guard setup
+import { Logger } from '@nestjs/common';
 // join_ranked, join_unranked, join_ai, join_local
 // matchmaking.gateway.ts
 @WebSocketGateway({ cors: true })
 export class MatchmakingGateway implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect {
     @WebSocketServer()
     server: Server;
-    
+
+    private readonly logger = new Logger(MatchmakingGateway.name);
     private socketToUser = new Map<string, string>();
-    
+
     constructor(private readonly matchmakingService: MatchmakingService) {}
-    
+
     afterInit(server: Server) {
-    console.log('Matchmaking Gateway Initialized');
+        this.logger.log('Matchmaking Gateway Initialized');
     }
 
-    handleConnection(client: any, ...args: any[]) {
-        console.log(`Client connected: ${client.id}`); 
+    handleConnection(client: Socket) {
+        try {
+            const token = parseCookieHeader(client.handshake.headers.cookie, AUTH_COOKIE_NAME);
+            if (!token) {
+                client.disconnect();
+                return;
+            }
+            client.data.user = verifyJwtToken(token);
+            this.logger.log(`Client connected: ${client.id}, userId: ${client.data.user.sub}`);
+        } catch {
+            this.logger.warn(`Client connected without valid JWT: ${client.id}`);
+            client.disconnect();
+        }
     }
 
     async handleDisconnect(client: Socket) {
@@ -58,17 +72,21 @@ export class MatchmakingGateway implements OnGatewayInit, OnGatewayConnection, O
     }
    
     @SubscribeMessage('join_ranked')
-    async handleJoinRanked(@MessageBody() data: JoinQueueDto, @ConnectedSocket() client: Socket, @CurrentUser("sub") userDbId: string) {
+    async handleJoinRanked(@MessageBody() data: JoinQueueDto, @ConnectedSocket() client: Socket) {
+        const userDbId: string = client.data.user.sub;
         this.registerUserSocket(client.id, userDbId);
+        data.userDbId = userDbId;
         data.socketId = client.id;
         return await this.matchmakingService.processQueue(data);
     }
 
     @SubscribeMessage('join_unranked')
-    async handleJoinUnranked(@MessageBody() data: JoinQueueDto, @ConnectedSocket() client: Socket, @CurrentUser("sub") userDbId: string) {
+    async handleJoinUnranked(@MessageBody() data: JoinQueueDto, @ConnectedSocket() client: Socket) {
+        const userDbId: string = client.data.user.sub;
         this.registerUserSocket(client.id, userDbId);
+        data.userDbId = userDbId;
         data.socketId = client.id;
-        console.log(`[Gateway] Utente ${data.userDbId} richiede coda Unranked (Socket: ${client.id})`);
+        this.logger.log(`User ${userDbId} joining unranked queue (Socket: ${client.id})`);
         return await this.matchmakingService.processUnrankedQueue(data);
     }
 
@@ -79,19 +97,20 @@ export class MatchmakingGateway implements OnGatewayInit, OnGatewayConnection, O
     }
 
     @SubscribeMessage('join_ai')
-    async handleJoinAi(@MessageBody() data: any, @ConnectedSocket() client: Socket, @CurrentUser("sub") userDbId: string) {
-        // Registriamo il socket dell'utente come negli altri gateway
+    async handleJoinAi(@MessageBody() data: JoinQueueDto, @ConnectedSocket() client: Socket) {
+        const userDbId: string = client.data.user.sub;
         this.registerUserSocket(client.id, userDbId);
-        // Assegniamo il socketId ai dati
+        data.userDbId = userDbId;
         data.socketId = client.id;
-        // Chiamata al servizio per avviare il match contro l'IA
         return await this.matchmakingService.startAiMatch(data);
     }
 
     // 3. JOIN LOCAL (Partita 1vs1 locale)
     @SubscribeMessage('join_local')
-    async handleJoinLocal(@MessageBody() data: any, @ConnectedSocket() client: Socket, @CurrentUser("sub") userDbId: string) {
+    async handleJoinLocal(@MessageBody() data: JoinQueueDto, @ConnectedSocket() client: Socket) {
+        const userDbId: string = client.data.user.sub;
         this.registerUserSocket(client.id, userDbId);
+        data.userDbId = userDbId;
         data.socketId = client.id;
         return await this.matchmakingService.startLocalMatch(data);
     }

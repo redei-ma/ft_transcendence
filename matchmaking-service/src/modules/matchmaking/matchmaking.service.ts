@@ -20,6 +20,20 @@ export class MatchmakingService {
 
 /* ---------------------------------------------------------------------------------------------------------------- */
 
+  private async fetchPlayerElo(userId: string | number): Promise<number | null> {
+    try {
+      const url = `http://user-service:3001/internal/users/${userId}/elo`;
+      const response = await firstValueFrom(this.httpService.get<{ eloCurrent: number }>(url));
+      this.logger.log(`ELO fetched for player ${userId}: ${response.data.eloCurrent}`);
+      return response.data.eloCurrent;
+    } catch (error) {
+      this.logger.error(`Error fetching ELO for player ${userId}:`, error.response?.data);
+      return null;
+    }
+  }
+
+/* ---------------------------------------------------------------------------------------------------------------- */
+
   // metodo per processare la coda di matchmaking, ovviamente asincrono se no rischiamo di bloccare tutto nel attesa dei dati
   async processQueue(player: JoinQueueDto) {
     const QUEUE_KEY = 'matchmaking_queue'; // tutti i valori della coda verranno messi sotto questo nome
@@ -30,14 +44,7 @@ export class MatchmakingService {
 
     const currentStatusRaw = await this.redis.get(USER_STATUS_KEY);
     const statusData = currentStatusRaw ? JSON.parse(currentStatusRaw) : null;
-    let rank: string | null = null;
-    try {
-        rank = `http://user-service:3001/internal/users/${player.userDbId}/elo`; // L'indirizzo del suo container
-        await firstValueFrom(this.httpService.get(rank));
-        this.logger.log("Richiesta rank inviata con successo via HTTP");
-    } catch (error) {
-        this.logger.error("Errore nella richiesta del rank:", error.response?.data);
-    }
+    const rank = await this.fetchPlayerElo(player.userDbId);
     if (rank === null) {
       return { status: 'ERROR_FETCHING_RANK' };
     }
@@ -81,8 +88,8 @@ export class MatchmakingService {
         // prendiamo la stringa ricevuta e vediamo se è valida, in caso ad esempio fosse vuota o corrotta si restituisce una stringa vuota
         const payload = {
             playersData: [
-                { ...updatedStatus, userDbId: player.userDbId, playerIndex: statusData.playerIndex || 0 },
-                { ...opponentData, userDbId: statusData.opponentId, playerIndex: opponentData.playerIndex || 1 }
+                { characterName: updatedStatus.characterName, userDbId: player.userDbId, isAiPlayer: !!updatedStatus.isAiPlayer },
+                { characterName: opponentData.characterName, userDbId: statusData.opponentId, isAiPlayer: !!opponentData.isAiPlayer }
             ],
             matchType: statusData.matchType || 'ranked',
             matchMode: statusData.matchMode
@@ -136,7 +143,7 @@ export class MatchmakingService {
     const potentialOpponents = await this.redis.zrangebyscore(QUEUE_KEY, minRank, maxRank);
 
     // rimuoviamo il player stesso dalla lista degli avversari che si possono sfidare
-    const opponents = potentialOpponents.filter(id => id !== player.userDbId);
+    const opponents = potentialOpponents.filter(id => id !== String(player.userDbId));
     this.logger.log(`[Logic] Player ${player.userDbId} in cerca di match. Trovati ${opponents.length} potenziali avversari nella tolleranza (${minRank} - ${maxRank}).`);
     // se troviamo almeno un avversario, creiamo la partita
     if (opponents.length >= 1) {
@@ -217,7 +224,7 @@ export class MatchmakingService {
 
       const payload = {
           gameId: String(matchId),
-          playersData: [participant1, participant2],
+          playersData: [participant1, participant2].map(({ characterName, userDbId, isAiPlayer }) => ({ characterName, userDbId, isAiPlayer })),
           matchType: player.matchType, // Prendi il tipo dal primo giocatore
           matchMode: player.matchMode  // Prendi il mode dal primo giocatore
       };
@@ -266,14 +273,7 @@ export class MatchmakingService {
     const currentStatusRaw = await this.redis.get(USER_STATUS_KEY);
     const statusData = currentStatusRaw ? JSON.parse(currentStatusRaw) : null;
 
-    let rank: string | null = null;
-    try {
-        rank = `http://user-service:3001/internal/users/${player.userDbId}/elo`; // L'indirizzo del suo container
-        await firstValueFrom(this.httpService.get(rank));
-        this.logger.log("Richiesta rank inviata con successo via HTTP");
-    } catch (error) {
-        this.logger.error("Errore nella richiesta del rank:", error.response?.data);
-    }
+    const rank = await this.fetchPlayerElo(player.userDbId);
     if (rank === null) {
       return { status: 'ERROR_FETCHING_RANK' };
     }
@@ -298,8 +298,8 @@ export class MatchmakingService {
             const payload = {
                 gameId: statusData.matchId,
                 playersData: [
-                    { characterName: playerChar, userDbId: String(player.userDbId), isAiPlayer: false, rank: rank, socketId: player.socketId, playerIndex: statusData.playerIndex || 0 },
-                    { characterName: opponentChar, userDbId: String(statusData.opponentId), isAiPlayer: !!opponentData.isAiPlayer, rank: opponentData.rank, socketId: opponentData.socketId, playerIndex: opponentData.playerIndex || 1 }
+                    { characterName: playerChar, userDbId: String(player.userDbId), isAiPlayer: false },
+                    { characterName: opponentChar, userDbId: String(statusData.opponentId), isAiPlayer: !!opponentData.isAiPlayer }
                 ],
                 matchType: 'unranked',
                 matchMode: statusData.matchMode
@@ -378,7 +378,7 @@ export class MatchmakingService {
 
         const payload = {
             gameId: matchId,
-            playersData: [participant1, participant2],
+            playersData: [participant1, participant2].map(({ characterName, userDbId, isAiPlayer }) => ({ characterName, userDbId, isAiPlayer })),
             matchType: player.matchType,
             matchMode: player.matchMode
         };
@@ -413,14 +413,7 @@ export class MatchmakingService {
     // ZREM rimuove l'elemento dal Sorted Set usando l'ID
     const result = await this.redis.zrem(QUEUE_KEY, player.userDbId);
 
-    let rank: string | null = null;
-    try {
-        rank = `http://user-service:3001/internal/users/${player.userDbId}/elo`; // L'indirizzo del suo container
-        await firstValueFrom(this.httpService.get(rank));
-        this.logger.log("Richiesta rank inviata con successo via HTTP");
-    } catch (error) {
-        this.logger.error("Errore nella richiesta del rank:", error.response?.data);
-    }
+    const rank = await this.fetchPlayerElo(player.userDbId);
     if (rank === null) {
       return { status: 'ERROR_FETCHING_RANK' };
     }
@@ -569,14 +562,7 @@ export class MatchmakingService {
     // creiamo l'id univoco della partita privata
     const matchId = `private_${Math.random().toString(36).substring(7)}`;
 
-    let rank: string | null = null;
-    try {
-        rank = `http://user-service:3001/internal/users/${challengerId}/elo`; // L'indirizzo del suo container
-        await firstValueFrom(this.httpService.get(rank));
-        this.logger.log("Richiesta rank inviata con successo via HTTP");
-    } catch (error) {
-        this.logger.error("Errore nella richiesta del rank:", error.response?.data);
-    }
+    const rank = await this.fetchPlayerElo(challengerId);
     if (rank === null) {
       return { status: 'ERROR_FETCHING_RANK' };
     }
@@ -626,7 +612,7 @@ export class MatchmakingService {
     // sfida privata vince sulle altre partite
     const payload = {
         gameId: String(matchId),
-        playersData: [participant1, participant2],
+        playersData: [participant1, participant2].map(({ characterName, userDbId, isAiPlayer }) => ({ characterName, userDbId, isAiPlayer })),
         matchType: challengerData.matchType || 'unranked',
         matchMode: challengerData.matchMode
     };
@@ -655,14 +641,7 @@ export class MatchmakingService {
     // verifico se la sfida esiste ancora su Redis, se no vuol dire che è già scaduta o non esiste più, quindi ritorniamo un messaggio di errore
     const challengeExists = await this.redis.exists(UNIQUE_CHALLENGE_KEY);
 
-    let rank: string | null = null;
-    try {
-        rank = `http://user-service:3001/internal/users/${opponent}/elo`; // L'indirizzo del suo container
-        await firstValueFrom(this.httpService.get(rank));
-        this.logger.log("Richiesta rank inviata con successo via HTTP");
-    } catch (error) {
-        this.logger.error("Errore nella richiesta del rank:", error.response?.data);
-    }
+    const rank = await this.fetchPlayerElo(opponent.userDbId);
     if (rank === null) {
       return { status: 'ERROR_FETCHING_RANK' };
     }
@@ -688,14 +667,7 @@ export class MatchmakingService {
 
     const challengeExists = await this.redis.exists(UNIQUE_CHALLENGE_KEY);
 
-    let rank: string | null = null;
-    try {
-        rank = `http://user-service:3001/internal/users/${player.userDbId}/elo`; // L'indirizzo del suo container
-        await firstValueFrom(this.httpService.get(rank));
-        this.logger.log("Richiesta rank inviata con successo via HTTP");
-    } catch (error) {
-        this.logger.error("Errore nella richiesta del rank:", error.response?.data);
-    }
+    const rank = await this.fetchPlayerElo(player.userDbId);
     if (rank === null) {
       return { status: 'ERROR_FETCHING_RANK' };
     }
@@ -757,7 +729,7 @@ export class MatchmakingService {
 
     const payload = {
         gameId: matchId,
-        playersData: [participant1, participant2],
+        playersData: [participant1, participant2].map(({ characterName, userDbId, isAiPlayer }) => ({ characterName, userDbId, isAiPlayer })),
         matchType: 'ffa',
         matchMode: 'local'
     };
@@ -836,7 +808,7 @@ export class MatchmakingService {
     // Prepariamo il payload per il Game Server
     const payload = {
         gameId: matchId,
-        playersData: [participant1, participant2],
+        playersData: [participant1, participant2].map(({ characterName, userDbId, isAiPlayer }) => ({ characterName, userDbId, isAiPlayer })),
         matchType: 'ffa',
         matchMode: 'ai'
     };
