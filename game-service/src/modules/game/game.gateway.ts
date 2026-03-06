@@ -59,6 +59,7 @@ export class GameGateway
 				status: ErrorCode.UNAUTHORIZED,
 				message: 'invalid connection, disconnecting'
 			});
+			this.logger.warn('invalid token JWT reached');
 			return ;
 		}
 

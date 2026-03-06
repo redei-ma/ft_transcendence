@@ -21,7 +21,7 @@ export class MatchMakingController{
 		{
 
 		this.logger.log(`post http request recived by matchmaking, trying to create the match.\n
-			data recived from matchmaking: gameId=${data.gameId}, players=${data.playersData}, matchMode=${data.matchMode}, matchType=${data.matchType}`);
+			data recived from matchmaking: gameId=${data.gameId}, player1=${data.playersData[0].userDbId}, player2=${data.playersData[1].userDbId }, matchMode=${data.matchMode}, matchType=${data.matchType}`);
 		const result: ExitStatus = this.gameService.prepareMatch(data.gameId, data.playersData, data.matchMode, data.matchType);
 
 		if (result.status !== SuccessCode.OK){
