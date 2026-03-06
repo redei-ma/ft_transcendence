@@ -96,7 +96,7 @@ export async function seedTestData(prisma: PrismaClient): Promise<void> {
 		create: {
 			email: "charlie@test.com",
 			username: "charlie",
-			isEmailVerified: false,
+			isEmailVerified: true,
 			avatarUrl: "https://api.dicebear.com/9.x/shapes/svg?seed=charlie",
 			status: UserStatus.OFFLINE,
 			accounts: {
@@ -110,7 +110,7 @@ export async function seedTestData(prisma: PrismaClient): Promise<void> {
 			},
 		},
 	});
-	console.log("  ✓ charlie (LOCAL only, NOT verified, no matches)");
+	console.log("  ✓ charlie (LOCAL only, verified, no matches)");
 
 	const diana = await prisma.user.upsert({
 		where: { email: "diana@test.com" },
@@ -147,6 +147,72 @@ export async function seedTestData(prisma: PrismaClient): Promise<void> {
 		},
 	});
 	console.log("  ✓ diana (LOCAL + GOOGLE, verified, in_game)");
+
+	const eve = await prisma.user.upsert({
+		where: { email: "eve@test.com" },
+		update: {},
+		create: {
+			email: "eve@test.com",
+			username: "eve",
+			isEmailVerified: true,
+			avatarUrl: "https://api.dicebear.com/9.x/shapes/svg?seed=eve",
+			status: UserStatus.ONLINE,
+			accounts: {
+				create: {
+					provider: Provider.LOCAL,
+					passwordHash: TEST_PASSWORD_HASH,
+				},
+			},
+			stats: {
+				create: {
+					eloCurrent: 1100,
+					eloPeak: 1100,
+					totalWins: 8,
+					totalLosses: 8,
+					totalDraws: 0,
+					currentWinStreak: 1,
+					bestWinStreak: 3,
+					currentLoseStreak: 0,
+					totalKills: 30,
+					totalDeaths: 28,
+				},
+			},
+		},
+	});
+	console.log("  ✓ eve (LOCAL only, verified, online, elo 1100)");
+
+	const frank = await prisma.user.upsert({
+		where: { email: "frank@test.com" },
+		update: {},
+		create: {
+			email: "frank@test.com",
+			username: "frank",
+			isEmailVerified: true,
+			avatarUrl: "https://api.dicebear.com/9.x/shapes/svg?seed=frank",
+			status: UserStatus.OFFLINE,
+			accounts: {
+				create: {
+					provider: Provider.LOCAL,
+					passwordHash: TEST_PASSWORD_HASH,
+				},
+			},
+			stats: {
+				create: {
+					eloCurrent: 1100,
+					eloPeak: 1150,
+					totalWins: 7,
+					totalLosses: 9,
+					totalDraws: 1,
+					currentWinStreak: 0,
+					bestWinStreak: 4,
+					currentLoseStreak: 2,
+					totalKills: 27,
+					totalDeaths: 32,
+				},
+			},
+		},
+	});
+	console.log("  ✓ frank (LOCAL only, verified, offline, elo 1100)");
 
 	// ─── Character Stats ──────────────────────────────────────────
 

@@ -20,9 +20,6 @@ async function bootstrap() {
 
   app.useGlobalPipes(new ValidationPipe({ whitelist: true }));
 
-  // Add global prefix "api"
-  app.setGlobalPrefix('api', { exclude: ['health'] });
-
-  await app.listen(3002, "0.0.0.0");
+  await app.listen(3002, '0.0.0.0');
 }
 bootstrap();

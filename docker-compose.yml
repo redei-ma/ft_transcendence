@@ -221,6 +221,8 @@ services:
             - backend-network
         expose:
             - "5173"
+        env_file:
+            - .env.shared
         volumes:
             - ./frontend/src:/app/src
         healthcheck:

@@ -1,21 +1,33 @@
-
-import { Body, Controller, Post, Res, Req, UseGuards, Get, Query, BadRequestException} from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Post,
+  Res,
+  Req,
+  UseGuards,
+  Get,
+  Query,
+  BadRequestException,
+} from '@nestjs/common';
 import { AuthService } from './auth.service';
-import type { Response } from 'express';
-import type { AuthenticatedRequest, } from '@transcendence/auth';
-import {AUTH_COOKIE_NAME, REFRESH_COOKIE_NAME } from '@transcendence/auth';
+import type { Request, Response } from 'express';
+import type { AuthenticatedRequest } from '@transcendence/auth';
+import { AUTH_COOKIE_NAME, REFRESH_COOKIE_NAME } from '@transcendence/auth';
 import { JwtRefreshGuard } from './jwt/jwt-refresh.guard';
 import { JwtAuthGuard } from './jwt/jwt.guard';
 import { ConfigService } from '@nestjs/config';
 import { GoogleAuthGuard } from './jwt/google.guard';
 import { Throttle } from '@nestjs/throttler';
-import type { CreateLocalUserDto, CreateOAuthUserDto} from '@transcendence/types';
+import type {
+  CreateLocalUserDto,
+  CreateOAuthUserDto,
+} from '@transcendence/types';
 
-@Controller('auth')
+@Controller('api/auth')
 export class AuthController {
-  constructor (
+  constructor(
     private readonly authService: AuthService,
-    private readonly  config: ConfigService,
+    private readonly config: ConfigService,
   ) {}
 
   @Post('register')
@@ -36,7 +48,7 @@ export class AuthController {
     return this.authService.resendVerificationEmail(email);
   }
 
-/* @Post('login')
+  /* @Post('login')
 async login(@Body() body: { username: string; password: string; totp?: string }) {
   return this.authService.login(body.username, body.password, body.totp);
 } */
@@ -46,7 +58,6 @@ async login(@Body() body: { username: string; password: string; totp?: string })
     @Body() body: { username: string; password: string; totp?: string },
     @Res({ passthrough: true }) res: Response,
   ) {
-
     const result = await this.authService.login(
       body.username,
       body.password,
@@ -64,7 +75,7 @@ async login(@Body() body: { username: string; password: string; totp?: string })
       secure: true,
       sameSite: 'none',
       path: '/',
-      maxAge: 15 * 60 * 1000
+      maxAge: 15 * 60 * 1000,
     });
 
     res.cookie(REFRESH_COOKIE_NAME || 'refresh_token', refreshToken, {
@@ -88,12 +99,17 @@ async login(@Body() body: { username: string; password: string; totp?: string })
   @Get('google/callback')
   @Throttle({ default: { limit: 5, ttl: 60_000 } })
   @UseGuards(GoogleAuthGuard)
-  async googleCallback(@Req() req: Request & {user: CreateOAuthUserDto}, @Res() res: Response) {
-
+  async googleCallback(
+    @Req() req: Request & { user: CreateOAuthUserDto },
+    @Res() res: Response,
+  ) {
     if (!req.user) {
-      return res.redirect(`${this.config.get('PUBLIC_URL')}/index.html?error=google_failed`);
+      return res.redirect(
+        `${this.config.get('PUBLIC_URL')}/index.html?error=google_failed`,
+      );
     }
-    const { accessToken, refreshToken } = await this.authService.loginWithGoogle(req.user);
+    const { accessToken, refreshToken } =
+      await this.authService.loginWithGoogle(req.user);
 
     res.cookie(AUTH_COOKIE_NAME || 'auth_token', accessToken, {
       httpOnly: true,
@@ -118,18 +134,17 @@ async login(@Body() body: { username: string; password: string; totp?: string })
     @Req() req: AuthenticatedRequest,
     @Res({ passthrough: true }) res: Response,
   ) {
+    const accessToken = await this.authService.refresh(req.user);
 
-      const accessToken = await this.authService.refresh( req.user );
+    res.cookie(AUTH_COOKIE_NAME || 'auth_token', accessToken, {
+      httpOnly: true,
+      secure: true,
+      sameSite: 'none',
+      path: '/',
+      maxAge: 15 * 60 * 1000,
+    });
 
-      res.cookie(AUTH_COOKIE_NAME || 'auth_token', accessToken, {
-        httpOnly: true,
-        secure: true,
-        sameSite: 'none',
-        path: '/',
-        maxAge: 15 * 60 * 1000,
-      });
-
-    return { ok: true  };
+    return { ok: true };
   }
 
   @Post('logout')
@@ -138,7 +153,7 @@ async login(@Body() body: { username: string; password: string; totp?: string })
     @Req() req: AuthenticatedRequest,
     @Res({ passthrough: true }) res: Response,
   ) {
-      await this.authService.logout(req.user.sub);
+    await this.authService.logout(req.user.sub);
 
     res.clearCookie('auth_token');
     res.clearCookie('refresh_token');
@@ -149,7 +164,6 @@ async login(@Body() body: { username: string; password: string; totp?: string })
   @Get('verify-email')
   @Throttle({ default: { limit: 5, ttl: 60_000 } })
   async verifyEmail(@Query('token') token: string) {
-
     //console.log('RAW TOKEN:', token);
     if (!token) {
       throw new BadRequestException('Missing token');
@@ -174,7 +188,7 @@ async login(@Body() body: { username: string; password: string; totp?: string })
 
   @Post('reset-password')
   @Throttle({ default: { limit: 5, ttl: 60_000 } })
-  async resetPassword( @Body() body: { token: string; newPassword: string }) {
+  async resetPassword(@Body() body: { token: string; newPassword: string }) {
     await this.authService.resetPassword(body.token, body.newPassword);
     return { ok: true };
   }
@@ -200,5 +214,22 @@ async login(@Body() body: { username: string; password: string; totp?: string })
   async disable2fa(@Req() req: AuthenticatedRequest) {
     await this.authService.disable2fa(req.user.sub);
     return { ok: true };
+  }
+
+  @Get()
+  getCookies(@Req() req: Request) {
+    return {
+      cookies: req.cookies,
+      signedCookies: req.signedCookies,
+    };
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('protected')
+  getProtected(@Req() req: AuthenticatedRequest) {
+    return {
+      msg: 'You are authenticated!',
+      user: req.user,
+    };
   }
 }

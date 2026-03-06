@@ -1,11 +1,11 @@
-import { Controller, Get, Req, UseGuards } from '@nestjs/common';
-import { JwtAuthGuard, AuthenticatedRequest } from '@transcendence/auth';
+import { Controller, Get, Req, UseGuards } from "@nestjs/common";
+import { JwtAuthGuard, AuthenticatedRequest } from "@transcendence/auth";
 
-@Controller('game')
+@Controller("api/game")
 @UseGuards(JwtAuthGuard)
 export class GameController {
-  @Get('me')
-  getMe(@Req() req: AuthenticatedRequest) {
-    return { user: req.user };
-  }
+	@Get("me")
+	getMe(@Req() req: AuthenticatedRequest) {
+		return { user: req.user };
+	}
 }
