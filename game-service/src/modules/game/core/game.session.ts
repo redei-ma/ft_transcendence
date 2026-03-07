@@ -50,9 +50,11 @@ export class GameSession{
 
 	addPlayer(player: MatchMakingData, socketId: string | undefined, ): ExitStatus{
 		if (this.currentState instanceof LobbyState){
+			this.logger.debug('trying to add player in lobbyState');
 			return this.currentState.addPlayer(player, socketId);
 		}
 		else if (this.currentState instanceof PlayState && player.userDbId && socketId){
+			this.logger.debug('trying to reconnect player in playState');
 			return this.currentState.reconnectPlayer(player.userDbId, socketId);
 		}
 		return ({status: ErrorCode.INTERNAL_ERROR, message: 'Internal server error, sorry for the issue'});
