@@ -52,6 +52,7 @@ export class PlayState implements IGameState{
 		this.logger.log("PlayState finished. Transitioning to EndState.");
 	}
 
+	//ancora da modificare e semplificare, non dovrei fare return se non ha un vecchio socket, deve sempre ricevere il
 	reconnectPlayer(userDbId: string, socketId: string): ExitStatus{
 
 		let players: Player[] = [];
@@ -61,8 +62,10 @@ export class PlayState implements IGameState{
 				players.push(currentPlayer);
 		}
 
-		if (!players || players.length <= 0)
+		if (!players || players.length <= 0){
+			this.logger.warn('unable to reconnect the player in the lobby, sorry for the issue');
 			return ({status: ErrorCode.PLAYER_NOT_FOUND, message: 'unable to reconnect the player in the lobby, sorry for the issue'});
+		}
 
 		let oldSocket: string | undefined = undefined;
 		players.forEach(player => {
@@ -70,44 +73,38 @@ export class PlayState implements IGameState{
 				oldSocket = player.socketId;
 			}
 			player.socketId = socketId;
+			player.isDisconnected = false;
+			player.disconnectionTimer = 0.0;
 		})
 
-		if (!oldSocket){
-			return {status: SuccessCode.OK};
+		if (oldSocket){
+			this.session.gameService.removeOldSocket(oldSocket);
+			this.session.socketToEntities.delete(oldSocket);
+		}
+	
+		// reconnection logic, i get the entityes end if i get something i delete the old reference end set the new one
+		const entitiesToControl = players.map(p => p.entityId);
+		if (!entitiesToControl){
+			this.logger.warn(`unable to reconnect the player with his entityes`);
+			return ({status: ErrorCode.PLAYER_NOT_FOUND, message: `unable to reconnect the player with his entityes`});
 		}
 
-		this.session.gameService.removeOldSocket(oldSocket);
-		// reconnection logic, i get the entityes end if i get something i delete the old reference end set the new one
-		const entityes: string[] | undefined = this.session.socketToEntities.get(oldSocket);
-		if (!entityes)
-			return ({status: ErrorCode.PLAYER_NOT_FOUND, message: `unable to reconnect the player with his entityes`});
-
-		this.session.socketToEntities.delete(oldSocket);
-		this.session.socketToEntities.set(socketId, entityes);
+		this.session.socketToEntities.set(socketId, entitiesToControl);
 
 		this.session.server.to(socketId).emit(SocketEvents.MAP_EMIT,{ map: this.session.gameWorld,
 			config:{playerRadius: GameConfig.PLAYER.RADIUS, playerSpeed: GameConfig.PLAYER.SPEED}});
 
-		if (!this.fullEvents || this.fullEvents.length === 0)
-			return ({status: ErrorCode.INTERNAL_ERROR, message: `Internal server error, sorry for the issue`});
-		const lastEvent = this.fullEvents[this.fullEvents.length - 1];
-
-		const remaningTime = Math.max(0, GameConfig.SERVER.MAX_GAME_DURATION - lastEvent.time);
-
-		/* sending the snapshots */
-		if (lastEvent.eventName === 'game-state'){
-			this.session.server.to(socketId).emit(SocketEvents.GAME_STATE, {entities: lastEvent.data, time: remaningTime});
+		if (this.fullEvents && this.fullEvents.length > 0){
+			const lastEvent = this.fullEvents[this.fullEvents.length - 1];
+			const remaningTime = Math.max(0, GameConfig.SERVER.MAX_GAME_DURATION - lastEvent.time);
+			/* sending the snapshots */
+			if (lastEvent.eventName === 'game-state'){
+				this.session.server.to(socketId).emit(SocketEvents.GAME_STATE, {entities: lastEvent.data, time: remaningTime});
+			}
 		}
-		else{
-			this.session.server.to(socketId).emit(SocketEvents.GAME_OVER, {entities: lastEvent.winnerData, time: remaningTime});
-		}
+
 		this.logger.log(`Reconnecting player - event map emit sended - map: ${this.session.gameWorld},
 			PlayerRadius:${GameConfig.PLAYER.RADIUS} PlayerSpeed: ${GameConfig.PLAYER.SPEED}`)
-
-		players.forEach(player => {
-			player.isDisconnected = false;
-			player.disconnectionTimer = 0.0;
-		})
 
 		return ({status: SuccessCode.OK});
 	}

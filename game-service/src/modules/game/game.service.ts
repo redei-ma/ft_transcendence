@@ -101,6 +101,7 @@ export class GameService implements OnModuleDestroy{
 	removeSession(game: GameSession): void {
 		// inviare i dati al database di renato
 		//sending the end_game event for the matchmaking
+		// controllare race condition a volte si blocca
 		const gameId = game.getGameId();
 		if (!gameId)
 			this.logger.error('error, gameid is undefined')
@@ -111,11 +112,18 @@ export class GameService implements OnModuleDestroy{
         });
 
 		for (const socketId of game.socketToEntities.keys()){
-			this.socketToGame.delete(socketId);
+			const gameIdToSocket: string | undefined = this.socketToGame.get(socketId);
+			if (gameIdToSocket && gameIdToSocket === gameId)
+				this.socketToGame.delete(socketId);
 		}
 
 		for (const userDbId of game.expectedUserDbIds) {
-			this.userToGameData.delete(userDbId);
+			const pendingData: GameData | undefined = this.userToGameData.get(userDbId);
+			if (pendingData && pendingData.gameId === gameId){
+				this.userToGameData.delete(userDbId);
+			}
+			else
+				this.logger.warn('saved a race condition in removeSession');
 		}
 		game.cleanUp();
 		this.games.delete(gameId);

@@ -3,10 +3,15 @@ import { AttackType, BulletHit } from "./game.enums";
 import { Player } from "./dynamic-entitys.interfaces";
 
 export interface PlayerSnapshot {
-	id: string;
+	//potremmo togliere dati superflui per alleggerire il pacchetto
 	type: string;
 	characterName: string;
+	id: string;
 	teamId: number;
+
+	//potremmo sostituire l oggetto vettore con due numeri, per alleggerire il pacchetto
+	//x: number
+	//z: number
 	position: Vector;
 	rotation: number;
 	hp: number;
@@ -21,10 +26,13 @@ export interface PlayerSnapshot {
 }
 
 export interface BulletSnapshot{
+	//stessa cosa del player
 	type: string;
 	id: string;
 	characterName: string;
 	position: Vector;
+	//x: number,
+	//z: number
 	entityHit: Player | undefined;
 	hit: BulletHit;
 }

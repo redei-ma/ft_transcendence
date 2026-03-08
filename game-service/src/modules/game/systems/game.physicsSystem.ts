@@ -21,14 +21,17 @@
 				bullet.hit = BulletHit.WALL_HIT;
 				return ;
 			}
+
+			let	victimHit: boolean = this.isVictimHit(bullet, players);
+			if (victimHit)
+				return ;
+ 
 			this.recicleVector.set(bullet.position.x, nextZ);
 
-			let victim = this.isPlayerCollision(bullet.ownerId, this.recicleVector, bullet.radius, players.values());
-			if (victim && !victim.isDead && victim.teamId !== bullet.teamId){
-				bullet.entityHit = victim;
-				bullet.hit = BulletHit.PLAYER_HIT;
+			victimHit = this.isVictimHit(bullet, players);
+			if (victimHit)
 				return ;
-			}
+
 			if (!this.isEnvironmentCollision(this.recicleVector, bullet.radius, gameWorld)){
 					bullet.position.z = nextZ;
 			}
@@ -39,6 +42,17 @@
 
 			bullet.lifeTime -= dt;
 			return ;
+		}
+
+		private isVictimHit(bullet: Bullet, players: Map<string, Player>){
+			let victim = this.isPlayerCollision(bullet.ownerId, this.recicleVector, bullet.radius, players.values());
+			if (victim && !victim.isDead && victim.teamId !== bullet.teamId){
+				bullet.entityHit = victim;
+				bullet.hit = BulletHit.PLAYER_HIT;
+				return (true);
+			}
+
+			return (false);
 		}
 
 		calculatePhysics(entity: Player, players: Map<string, Player>, gameWorld: World, dt: number): void{

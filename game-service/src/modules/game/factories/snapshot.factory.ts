@@ -9,10 +9,16 @@ export class Snapshot{
 		let fixedRotation: number = Math.round(player.rotation * 100) / 100;
 
 		let snapshot :PlayerSnapshot = {
+			//vedi game-states.interfaces.ts
+			//type e characterName si potrebbero togliere? chiedere a fra
 			type: 'player',
 			characterName: player.characterName,
+
+			//invece di entity id non e' meglio mandare userDbId?
 			id: player.entityId,
 			teamId: player.teamId,
+			//x: fixedX,
+			//z: fixedZ,
 			position: {x: fixedX, z: fixedZ} as Vector,
 			rotation: fixedRotation,
 			hp: player.hp,
@@ -33,10 +39,14 @@ export class Snapshot{
 		let fixedZ: number = Math.round(bullet.position.z * 100) / 100;
 
 		let snapshot: BulletSnapshot = {
+			//vedi game-states.interfaces.ts
+			//type e characterName si potrebbero togliere? chiedere a fra
 			type: 'bullet',
 			id: bullet.entityId,
 			characterName: bullet.characterName,
 			position: {x: fixedX, z: fixedZ} as Vector,
+			//x: number,
+			//z: number,
 			entityHit: bullet.entityHit,
 			hit: bullet.hit,
 		};

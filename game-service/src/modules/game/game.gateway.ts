@@ -97,7 +97,7 @@ export class GameGateway
 					const result = session.addPlayer(player, socketId);
 
 					if (result.status !== SuccessCode.OK) {
-						this.logger.warn(`${userDbId} is not in game list`);
+						this.logger.warn(`error=${result.status} message=${result.message} user=${userDbId} is not in game list`);
 						this.sendErrorAndDisconnectClient(client, result);
 					}
 				}
