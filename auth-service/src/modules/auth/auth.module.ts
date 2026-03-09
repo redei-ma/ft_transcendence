@@ -7,7 +7,7 @@ import { JwtStrategy } from './jwt/jwt.strategy';
 import { JwtRefreshStrategy } from './jwt/jwt-refresh.strategy';
 import { MailService } from './mail/mail.service';
 import { GoogleStrategy } from './jwt/google.strategy';
-import { UserModule } from 'src/modules/user/user.module';
+import { UserModule } from '../user/user.module';
 import { APP_GUARD } from '@nestjs/core';
 import { ThrottlerGuard } from '@nestjs/throttler';
 
