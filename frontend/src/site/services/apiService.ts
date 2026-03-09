@@ -187,3 +187,43 @@ export async function checkEmailAvailable(email: string): Promise<boolean> {
 		return false;
 	}
 }
+
+// --- 2FA SETUP ---
+
+export async function generate2fa() {
+  try {
+    // ⚡ Aggiornato con la rotta esatta di Giovanni
+    const res = await fetchWithAuthRetry("/api/auth/2fa/setup", { method: "POST" });
+    if (!res || !res.ok) return null;
+    return await res.json(); 
+  } catch (error) {
+    console.error("[API] Error generating 2FA:", error);
+    return null;
+  }
+}
+
+export async function turnOn2fa(code: string): Promise<boolean> {
+  try {
+    // ⚡ Aggiornato con la rotta esatta di Giovanni
+    const res = await fetchWithAuthRetry("/api/auth/2fa/enable", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ code }),
+    });
+    return !!res && res.ok;
+  } catch (error) {
+    console.error("[API] Error turning on 2FA:", error);
+    return false;
+  }
+}
+
+export async function turnOff2fa(): Promise<boolean> {
+  try {
+    // ⚡ Aggiornato con la rotta esatta di Giovanni
+    const res = await fetchWithAuthRetry("/api/auth/2fa/disable", { method: "POST" });
+    return !!res && res.ok;
+  } catch (error) {
+    console.error("[API] Error turning off 2FA:", error);
+    return false;
+  }
+}

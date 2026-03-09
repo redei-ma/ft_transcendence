@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { inputStyle, sectionTitleStyle } from '../styles/shared';
 import * as Icons from '../components/Icons';
 import * as api from '../services/apiService';
-import { UserProfile, UserStats, UserSettings } from '../services/apiService';
+import { UserProfile, UserStats, UserSettings, generate2fa, turnOn2fa, turnOff2fa } from '../services/apiService';
 import { theme } from '../../configs/theme';
 import { NAVBAR_HEIGHT } from '../components/Navbar';
 import {CharacterName} from '@transcendence/types';
@@ -69,7 +69,11 @@ export default function ProfilePage() {
   const [stats, setStats] = useState<UserStats | null>(null);
   const [settings, setSettings] = useState<UserSettings | null>(null);
   const [loading, setLoading] = useState(true);
-  
+  const [isSettingUp2fa, setIsSettingUp2fa] = useState(false);
+  const [qrCodeUrl, setQrCodeUrl] = useState<string | null>(null);
+  const [setupCode, setSetupCode] = useState('');
+  const [error2fa, setError2fa] = useState('');
+
   const [editingUsername, setEditingUsername] = useState(false);
   const [editingEmail, setEditingEmail] = useState(false);
   const [tempVal, setTempVal] = useState('');
@@ -96,6 +100,38 @@ export default function ProfilePage() {
       setProfile((p) => p ? { ...p, email: tempVal } : null); 
     }
     setEditingEmail(false); 
+  };
+
+const handleEnable2faClick = async () => {
+    setError2fa('');
+    const data = await generate2fa();
+
+    if (data && data.qrCode) { 
+      setQrCodeUrl(data.qrCode);
+      setIsSettingUp2fa(true);
+    } else {
+      setError2fa("Errore nella generazione del QR Code.");
+    }
+  };
+
+  const handleConfirm2fa = async () => {
+    setError2fa('');
+    const success = await turnOn2fa(setupCode);
+    if (success) {
+      setIsSettingUp2fa(false);
+      setQrCodeUrl(null);
+      setSetupCode('');
+      setSettings(prev => prev ? { ...prev, is2faEnabled: true } : null);
+    } else {
+      setError2fa("Codice errato. Riprova.");
+    }
+  };
+
+  const handleDisable2faClick = async () => {
+    const success = await turnOff2fa();
+    if (success) {
+      setSettings(prev => prev ? { ...prev, is2faEnabled: false } : null);
+    }
   };
 
   if (loading) return (
