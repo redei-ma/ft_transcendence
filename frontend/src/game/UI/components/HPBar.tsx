@@ -29,8 +29,8 @@ export default function HPBar({
   return (
     <div style={{
       position: 'absolute',
-      top: characterName === 'zeus' ? '20px' : 'auto',
-      bottom: characterName === 'ade' ? '20px' : 'auto',
+      top: characterName === 'ZEUS' ? '20px' : 'auto',
+      bottom: characterName === 'ADE' ? '20px' : 'auto',
       left: '20px',
       width: '120px',
       fontFamily: theme.fonts.mono,

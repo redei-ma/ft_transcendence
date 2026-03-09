@@ -43,8 +43,8 @@ export default function GameUI({
             key={`death-${player.id}`}
             style={{
               position: 'absolute',
-              top: player.characterName === 'zeus' ? '60px' : 'auto',
-              bottom: player.characterName === 'ade' ? '60px' : 'auto',
+              top: player.characterName === 'ZEUS' ? '60px' : 'auto',
+              bottom: player.characterName === 'ADE' ? '60px' : 'auto',
               left: '20px',
               pointerEvents: 'none',
               zIndex: 1001,

@@ -13,7 +13,7 @@ interface PlayerEntityProps {
 export function PlayerEntity({ snapshot }: PlayerEntityProps) {
   const groupRef = useRef<THREE.Group>(null);
 
-  const bodyColor = snapshot.teamId === 0 ? 0x00008b : 0x8b0000;
+  const bodyColor = snapshot.characterName === 'ZEUS' ? 0x00008b : 0x8b0000;
 
   useFrame((_, delta) => {
     if (!groupRef.current) return;
@@ -37,7 +37,7 @@ export function PlayerEntity({ snapshot }: PlayerEntityProps) {
       </mesh>
 
       {/* Aura specifica per personaggio */}
-      {snapshot.characterName === 'zeus' ? (
+      {snapshot.characterName === 'ZEUS' ? (
         <ZeusAura
           isAttacking={snapshot.isAttacking}
           attackType={snapshot.attackType}

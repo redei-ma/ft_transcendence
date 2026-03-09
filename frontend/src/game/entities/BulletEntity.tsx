@@ -128,7 +128,7 @@ export function BulletEntity({ snapshot }: BulletEntityProps) {
     return <ImpactEffect snapshot={snapshot} />;
   }
 
-  return snapshot.characterName === 'zeus'
+  return snapshot.characterName === 'ZEUS'
     ? <ZeusBullet snapshot={snapshot} />
     : <AdeBullet snapshot={snapshot} />;
 }

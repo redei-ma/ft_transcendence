@@ -182,7 +182,7 @@ function HeaderCell({ children, center }: { children: string; center?: boolean }
 }
 
 function PlayerRow({ player, isWinner }: { player: PlayerSnapshot; isWinner: boolean }) {
-  const playerColor = player.characterName === 'zeus' ? theme.colors.zeus : theme.colors.ade;
+  const playerColor = player.characterName === 'ZEUS' ? theme.colors.zeus : theme.colors.ade;
   const displayName = player.characterName.charAt(0).toUpperCase() + player.characterName.slice(1);
 
   return (

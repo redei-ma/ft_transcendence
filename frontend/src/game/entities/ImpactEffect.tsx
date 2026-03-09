@@ -34,7 +34,7 @@ export function ImpactEffect({ snapshot }: ImpactEffectProps) {
   const [expired, setExpired] = useState(false);
   const age = useRef(0);
 
-  const isZeus = snapshot.characterName === 'zeus';
+  const isZeus = snapshot.characterName === 'ZEUS';
 
   const particleColor = isZeus
     ? new THREE.Color(0, 4, 10)
