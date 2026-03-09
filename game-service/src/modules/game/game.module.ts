@@ -11,9 +11,11 @@ import { ClientsModule, Transport } from '@nestjs/microservices';
 import { NetworkConfig } from './configs/network.config';
 import { MatchMakingController } from './controllers/game.Matchmaking.controller';
 import { JwtAuthGuard } from '@transcendence/auth';
+import { MatchResultModule } from '../result/match-result.module';
 
 @Module({
 	imports: [
+		MatchResultModule,
 		ClientsModule.register([
 			{
 				name: NetworkConfig.MATCHMAKING.SERVICE.REDIS,

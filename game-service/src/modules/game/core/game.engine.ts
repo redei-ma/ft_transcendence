@@ -6,9 +6,8 @@ import { PlayerManager } from "../managers/playerManager/player.manager";
 import { BulletManager } from "../managers/bullet.manager";
 import {  MatchResult, 
 	Player, PlayerSnapshot, BulletSnapshot,
-	GameEndEvents, GameStateEvents,
-	EndReason, MatchType, 
-	MatchMode} from "../interfaces-enums";
+	GameEndEvents, GameStateEvents } from "../interfaces-enums";
+import { MatchMode, MatchType, EndReason } from "@transcendence/types";
 
 export class Engine{
 
@@ -127,12 +126,12 @@ export class Engine{
 			for (const player of this.players.values()){
 				if (player.userDbId){
 					this.endGameData.players.push({
-						userId: player.userDbId,
+						userId: Number(player.userDbId),
 						teamId: player.teamId,
 						characterName: player.characterName,
 						kills: player.kill,
 						deaths: player.deads,
-						clutchMasterAchievement: player.clutchMasterAchievement,
+						clutchMasterUnlook: player.clutchMasterUnlook,
 					});
 				}
 			}

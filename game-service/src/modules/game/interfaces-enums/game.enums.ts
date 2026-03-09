@@ -10,30 +10,6 @@ export enum BulletHit{
 	NONE = 'none',
 }
 
-export enum CharacterName{
-	ADE = 'ade',
-	ZEUS = 'zeus',
-	DEFAULT = 'default'
-}
-
-export enum EndReason{
-	TIMEOUT = 'timeout',
-	RESIGNATION = 'resignation',
-	KILLOUT = 'killout',
-}
-
-export enum MatchMode{
-	RANKED = 'ranked',
-	UNRANKED = 'unranked',
-	LOCAL = 'local',
-	AI = 'ai',
-}
-
-export enum MatchType{
-	TEAM = 'team',
-	FFA = 'ffa'
-}
-
 export enum ErrorCode {
 	PLAYER_NOT_FOUND = 'PLAYER_NOT_FOUND',
 	MATCH_ALREADY_STARTED = 'MATCH_ALREADY_STARTED',

@@ -52,14 +52,13 @@ export class PlayState implements IGameState{
 		this.logger.log("PlayState finished. Transitioning to EndState.");
 	}
 
-	//ancora da modificare e semplificare, non dovrei fare return se non ha un vecchio socket, deve sempre ricevere il
 	reconnectPlayer(userDbId: string, socketId: string): ExitStatus{
 
 		let players: Player[] = [];
 		for (let currentPlayer of this.session.players.values()){
 			if (currentPlayer.userDbId == userDbId)
 				if (currentPlayer)
-				players.push(currentPlayer);
+					players.push(currentPlayer);
 		}
 
 		if (!players || players.length <= 0){
@@ -91,8 +90,13 @@ export class PlayState implements IGameState{
 
 		this.session.socketToEntities.set(socketId, entitiesToControl);
 
+		this.resendData(socketId);
+		return ({status: SuccessCode.OK});
+	}
+
+	private resendData(socketId: string){
 		this.session.server.to(socketId).emit(SocketEvents.MAP_EMIT,{ map: this.session.gameWorld,
-			config:{playerRadius: GameConfig.PLAYER.RADIUS, playerSpeed: GameConfig.PLAYER.SPEED}});
+		config:{playerRadius: GameConfig.PLAYER.RADIUS, playerSpeed: GameConfig.PLAYER.SPEED}});
 
 		if (this.fullEvents && this.fullEvents.length > 0){
 			const lastEvent = this.fullEvents[this.fullEvents.length - 1];
@@ -105,7 +109,5 @@ export class PlayState implements IGameState{
 
 		this.logger.log(`Reconnecting player - event map emit sended - map: ${this.session.gameWorld},
 			PlayerRadius:${GameConfig.PLAYER.RADIUS} PlayerSpeed: ${GameConfig.PLAYER.SPEED}`)
-
-		return ({status: SuccessCode.OK});
 	}
 }

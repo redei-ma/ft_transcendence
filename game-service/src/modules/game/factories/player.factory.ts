@@ -1,7 +1,8 @@
 import { GameConfig } from "../configs";
 import { Vector } from "../utils";
 import { World } from "../core";
-import { CharacherStats, CharacterName, MatchType, Player } from "../interfaces-enums";
+import { CharacherStats, Player } from "../interfaces-enums";
+import { MatchMode, MatchType, CharacterName } from "@transcendence/types";
 
 export const CHARACTER_DATA: Record<CharacterName, CharacherStats> = {
 	[CharacterName.ZEUS]: {
@@ -18,14 +19,6 @@ export const CHARACTER_DATA: Record<CharacterName, CharacherStats> = {
 		SPELL_SPEED: 40.0,
 		COOLDOWN_MELEE_ATTACK: 1.2,
 		COOLDOWN_SPELL_ATTACK: 1.0,
-		COOLDOWN_DEFENCE_ATTACK: 6.0,
-	},
-	[CharacterName.DEFAULT]: {
-		MELEE_DAMAGE: 10.0,
-		SPELL_DAMAGE: 5.0,
-		SPELL_SPEED: 30.0,
-		COOLDOWN_MELEE_ATTACK: 1.2,
-		COOLDOWN_SPELL_ATTACK: 1.5,
 		COOLDOWN_DEFENCE_ATTACK: 6.0,
 	}
 }
@@ -52,7 +45,7 @@ export function getNewPlayer(
 	matchType: MatchType): Player{
 
 	const teamId: number = calculateTeamId(spawnIndex, matchType);	
-	const character = (characterName in CHARACTER_DATA) ? characterName : CharacterName.DEFAULT;
+	const character = (characterName in CHARACTER_DATA) ? characterName : CharacterName.ZEUS;
 
 	const stats = CHARACTER_DATA[character];
 
@@ -94,6 +87,6 @@ export function getNewPlayer(
 			isDisconnected: false,
 			inputQueue: [],
 			currentState: undefined,
-			clutchMasterAchievement: false,
+			clutchMasterUnlook: false,
 		};
 }

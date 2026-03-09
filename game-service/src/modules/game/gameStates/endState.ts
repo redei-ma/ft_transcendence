@@ -19,7 +19,7 @@ export class EndState implements IGameState{
 		this.shutdownTimer += dt;
 		if (this.shutdownTimer >= GameConfig.SERVER.SHUTDOWN_TIMER){
 			this.isReadyToClose = true;
-			this.logger.log(`Server is ready to be shutdown`);
+			this.logger.log(`Game is ready to be shutdown`);
 		}
 	}
 

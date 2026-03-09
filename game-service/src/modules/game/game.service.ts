@@ -1,17 +1,18 @@
-import { Inject, Injectable, Logger, OnModuleDestroy } from '@nestjs/common';
-import { Interval } from '@nestjs/schedule';
+import { Inject, Injectable, Logger, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
 import { Server } from 'socket.io';
 import { GameConfig, NetworkConfig } from './configs';
 import { GameSession, GameRules, World } from './core';
 import { Vector } from './utils';
 import { PlayerManager, MapManager, BulletManager } from './managers';
-import { AttackType, MatchType, Player, MapData, MatchMode, MatchMakingData, MatchResult, GameData, ErrorCode, SuccessCode } from './interfaces-enums';
+import { AttackType, Player, MapData, MatchMakingData, MatchResult, GameData, ErrorCode, SuccessCode } from './interfaces-enums';
 import { ClientProxy } from '@nestjs/microservices';
 import { ExitStatus } from './interfaces-enums/exitStatus.interface';
+import { MatchMode, MatchType } from "@transcendence/types";
+import { MatchResultService } from '../result/match-result.service';
 
 // Game Engine Service
 @Injectable()
-export class GameService implements OnModuleDestroy{
+export class GameService implements OnModuleInit, OnModuleDestroy{
 
 	private readonly logger: Logger = new Logger(GameService.name);
 	
@@ -29,28 +30,70 @@ export class GameService implements OnModuleDestroy{
 	private TIME_STEPS: number = (1 / 60);
 	private timeAccumulator: number = 0.0;
 
+	private isRunning: boolean = false;
+	private nextTickTimeout: NodeJS.Timeout;
 	constructor(
 		private readonly gameRules: GameRules,
 		private readonly mapManager: MapManager,
 		private readonly playerManager: PlayerManager,
 		private readonly bulletManager: BulletManager,
+		private readonly matchResultService: MatchResultService,
 		@Inject(NetworkConfig.MATCHMAKING.SERVICE.REDIS) private readonly redis: ClientProxy) {}
 
-	/* @Interval decorator creates a game loop that runs every 16ms */
-	@Interval(GameConfig.SERVER.TICK_RATE)
+	onModuleInit(){
+		this.logger.log('gameService class instanceted');
+		this.isRunning = true;
+		this.processNextTick()
+	}
+
+		//when there is an error and the server crashed, i free all data
+	async onModuleDestroy(){
+		this.logger.warn('the server is in shutdown, cleaning up all resources');
+
+		for (const [gameId, session] of this.games.entries()){
+			this.removeSession(session);
+
+			session.server.to(gameId).emit('exception',{
+				status: 'error',
+				erroCode: ErrorCode.SERVER_SHUTDOWN,
+				message: 'server in shutdown, returning in lobby',
+			});
+			session.server.in(gameId).disconnectSockets(true);
+		}
+
+		this.isRunning = false;
+		if (this.nextTickTimeout){
+			clearTimeout(this.nextTickTimeout);
+		}
+	}
+
+	private processNextTick(){
+		if (!this.isRunning) return ;
+
+		let startTime: number = performance.now();
+
+		this.gameLoop();
+
+		const executionTime: number = performance.now() - startTime;
+
+		const nextTickDelay = Math.max(0, GameConfig.SERVER.TICK_RATE - executionTime);
+
+		this.nextTickTimeout = setTimeout(() => this.processNextTick(), nextTickDelay);
+	}
+
 	gameLoop(): void {
 		/* SAFETY CAP - I calculate the real delta T to compensate for possible server lag */
 		const now: number = performance.now();
-		let framTime: number = (now - this.lastTime) / 1000;
+		let frameTime: number = (now - this.lastTime) / 1000;
 		this.lastTime = now;
 
 		/* if is too large i hard-code at 0.25 */
-		if (framTime > 0.25)
-			framTime = 0.25;
+		if (frameTime > 0.25)
+			frameTime = 0.25;
 
 		/* I use this accumulator to make sure the server calculates
 		the game physics every 16ms, thus avoiding tunneling. */
-		this.timeAccumulator += framTime;
+		this.timeAccumulator += frameTime;
 
 		while (this.timeAccumulator >= this.TIME_STEPS){
 			this.games.forEach((game) =>
@@ -98,13 +141,13 @@ export class GameService implements OnModuleDestroy{
 	}
 
 	/* Triggered by OnGatewayDisconnect. Removes the game from memory. */
-	removeSession(game: GameSession): void {
-		// inviare i dati al database di renato
+	async removeSession(game: GameSession): Promise< void > {
 		//sending the end_game event for the matchmaking
-		// controllare race condition a volte si blocca
 		const gameId = game.getGameId();
-		if (!gameId)
+		if (!gameId){
 			this.logger.error('error, gameid is undefined')
+			return ;
+		}
 
 		this.redis.emit(NetworkConfig.MATCHMAKING.MATCH_EVENTS.END_GAME, gameId).subscribe({
             next: () => this.logger.log(`event END_GAME inviated for game with id ${gameId}`),
@@ -130,8 +173,7 @@ export class GameService implements OnModuleDestroy{
 
 		//sending the end game data to the database
 		const endGameData: MatchResult = game.engine.endGameData;
-		//this.MatchResultModule.processMatchEnd(endGameData);
-
+		await this.matchResultService.processMatchEnd(endGameData);
 	}
 
 	removePlayerFromSession(socketId: string): void{
@@ -189,7 +231,9 @@ export class GameService implements OnModuleDestroy{
 				}
 			}
 		}
-		this.logger.log(`Players data in prepare match ${players}`);
+
+		this.logger.debug(`Players data in prepare match: ${JSON.stringify(players)}`);
+
 		const mapData: MapData | undefined = this.mapManager.getMap();
 		if (!mapData){
 			this.logger.error('Fatal error in loading the map');
@@ -283,22 +327,6 @@ export class GameService implements OnModuleDestroy{
 
 	removeOldSocket(socketId: string){
 		this.socketToGame.delete(socketId);
-	}
-
-	//when there is an error and the server crashed, i free all data
-	async onModuleDestroy(){
-		this.logger.warn('the server is in shutdown, cleaning up all resources');
-
-		for (const [gameId, session] of this.games.entries()){
-			this.removeSession(session);
-
-			session.server.to(gameId).emit('exception',{
-				status: 'error',
-				erroCode: ErrorCode.SERVER_SHUTDOWN,
-				message: 'server in shutdown, returning in lobby',
-			});
-			session.server.in(gameId).disconnectSockets(true);
-		}
 	}
 }
 

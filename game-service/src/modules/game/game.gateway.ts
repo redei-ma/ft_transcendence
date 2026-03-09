@@ -80,7 +80,7 @@ export class GameGateway
 
 				client.join(gameData.gameId);
 
-				this.logger.log("player added in socket room");
+				this.logger.debug("player added in socket room");
 				const session: GameSession | undefined =
 					this.gameService.getGameById(gameData.gameId);
 				if (!session) {
@@ -128,7 +128,7 @@ export class GameGateway
 	}
 
 	/* @SubscribeMessage: Listens for specific events named 'input'.
-	@MessageBody: Automatically extracts and parses the JSON payload into a Vector object.*/
+	@MessageBody: Automatically extracts and parses the JSON .*/
 	@SubscribeMessage(SocketEvents.INPUT)
 	handleInput(
 		@ConnectedSocket() client: Socket,
@@ -139,9 +139,17 @@ export class GameGateway
 			return;
 		}
 
+		if (!input || !isFinite(input.x) || !isFinite(input.z)){
+			this.logger.warn('invalid input reached')
+			return ;
+		}
+
+		const normalizedInput: Vector = Vector.fromData(input);
+		normalizedInput.normalize();
+
 		this.gameService.handleInput(
 			socketId,
-			Vector.fromData(input),
+			normalizedInput,
 			input.attackType,
 			input.playerIndex,
 		);

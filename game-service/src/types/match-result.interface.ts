@@ -1,4 +1,4 @@
-import { CharacterName, MatchMode, MatchType, EndReason } from "@prisma/client";
+import { MatchMode, MatchType, CharacterName, EndReason } from "@transcendence/types";
 
 export interface MatchResult {
 	mode: MatchMode; // RANKED, UNRANKED, LOCAL, AI

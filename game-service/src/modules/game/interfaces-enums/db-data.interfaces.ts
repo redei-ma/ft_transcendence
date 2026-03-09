@@ -1,4 +1,4 @@
-import { EndReason, MatchType, MatchMode, CharacterName } from "./game.enums";
+import { MatchMode, MatchType, CharacterName, EndReason } from "@transcendence/types";
 
 export interface MatchResult {
 	mode: MatchMode; // RANKED, LOCAL, AI
@@ -13,10 +13,10 @@ export interface MatchResult {
 }
 
 export interface PlayerResult {
-	userId: string | null; // null per i bot
+	userId: number | null; // null per i bot
 	teamId: number; // For INDIVIDUAL and FFA modes, each player has a unique teamId
 	characterName: CharacterName; // ADE, ZEUS
 	kills: number;
 	deaths: number;
-	clutchMasterAchievement: boolean;
+	clutchMasterUnlook: boolean;
 }

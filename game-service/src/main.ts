@@ -43,6 +43,7 @@ async function bootstrap() {
 	});
 
 	app.use(cookieParser());
+	//app.useWebSocketAdapter(new MsgpackIoAdapter(app));
 
 	const port = configService.get<number>("PORT") ?? 3000;
 	await app.listen(port, "0.0.0.0");

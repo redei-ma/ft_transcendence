@@ -11,6 +11,7 @@ RUN apk add --no-cache openssl
 COPY shared/types ./shared/types
 COPY shared/prisma/schema.prisma ./prisma/schema.prisma
 
+# socket.io-msgpack-parser da aggiungere quando metteremo il msg-serializer
 WORKDIR /app/game-service
 COPY game-service/package*.json ./
 RUN npm install --install-links

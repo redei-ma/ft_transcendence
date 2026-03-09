@@ -22,5 +22,6 @@ export class GameInputDto {
 	@IsOptional()
 	@IsNumber()
 	@IsNotEmpty()
+
 	playerIndex: number;
 }

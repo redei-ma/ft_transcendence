@@ -93,7 +93,7 @@ export class CombatSystem{
 		attacker.kill++;
 
 		if (attacker.hp <= (GameConfig.PLAYER.DEFAULT_HP * GameConfig.ACHIEVEMENT.CLUTCHMASTER)){
-			attacker.clutchMasterAchievement = true;
+			attacker.clutchMasterUnlook = true;
 		}
 	}
 

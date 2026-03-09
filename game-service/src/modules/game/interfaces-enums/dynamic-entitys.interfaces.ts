@@ -1,6 +1,7 @@
 import { IPlayerState } from "../managers/playerManager/playerStates/player.states.interfaces";
 import { Vector } from "../utils/game.vector";
-import { BulletHit, AttackType, CharacterName } from "./game.enums";
+import { BulletHit, AttackType } from "./game.enums";
+import { CharacterName } from "@transcendence/types";
 
 export interface	DynamicEntity{
 	entityId: string; // Unique identifier (Socket ID for players, UUID for projectiles)
@@ -70,7 +71,7 @@ export interface	Player extends DynamicEntity{
 	inputQueue: InputQueue[];
 
 	currentState: IPlayerState | undefined;
-	clutchMasterAchievement: boolean;
+	clutchMasterUnlook: boolean;
 }
 
 export interface CharacherStats{

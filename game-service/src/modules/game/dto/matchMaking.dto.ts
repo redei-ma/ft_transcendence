@@ -1,5 +1,5 @@
-import { IsEnum, IsOptional, IsNotEmpty, IsBoolean, IsArray, IsString, ValidateNested, ValidateIf } from "class-validator";
-import { CharacterName, MatchMode, MatchType } from "../interfaces-enums";
+import { IsEnum, IsNotEmpty, IsBoolean, IsArray, IsString, ValidateNested, ValidateIf } from "class-validator";
+import { MatchMode, MatchType, CharacterName } from "@transcendence/types";
 import { Type } from "class-transformer";
 
 export class MatchMakingDto{

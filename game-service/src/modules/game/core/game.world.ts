@@ -1,6 +1,7 @@
 import { Vector } from '../utils/game.vector';
 import { GameConfig } from "../configs/game.config";
-import { BulletHit, Bullet, GameWorld, StaticEntity, Pillar, MapData, CharacterName } from '../interfaces-enums';
+import { BulletHit, Bullet, GameWorld, StaticEntity, Pillar, MapData } from '../interfaces-enums';
+import { CharacterName } from "@transcendence/types";
 
 export class World implements GameWorld{
 	id: string;
@@ -38,7 +39,7 @@ export class World implements GameWorld{
 				entityId: `bullet-${i}`,
 				teamId: -1,
 				ownerId: '',
-				characterName: CharacterName.DEFAULT,
+				characterName: CharacterName.ZEUS,
 				speed: 0.0,
 				radius: 0.0,
 				position: new Vector(0.0, 0.0),
