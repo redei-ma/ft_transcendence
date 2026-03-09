@@ -1,4 +1,4 @@
-import { CharacterName, MatchMode, MatchType } from "./game.enums";
+import { CharacterName, MatchMode, MatchType } from "@transcendence/types";
 
 export interface MatchMakingData{
 	socketId: string | undefined;

@@ -1,6 +1,7 @@
 import { IPlayerState } from "./player.states.interfaces";
 import { Vector } from "../game.types";
-import { BulletHit, AttackType, CharacterName } from "./game.enums";
+import { BulletHit, AttackType } from "./game.enums";
+import { CharacterName } from '@transcendence/types';
 
 export interface	DynamicEntity{
 	entityId: string; // Unique identifier (Socket ID for players, UUID for projectiles)

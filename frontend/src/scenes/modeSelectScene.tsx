@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { MatchMode } from '../types/game.types';
+import { MatchMode } from '@transcendence/types';
 import { theme } from '../configs/theme';
 import Cerberus from '../assets/Cerberus.png';
 

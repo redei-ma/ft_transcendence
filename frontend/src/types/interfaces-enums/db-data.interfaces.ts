@@ -1,4 +1,4 @@
-import { EndReason, MatchType, MatchMode, CharacterName } from "./game.enums";
+import { EndReason, MatchType, MatchMode, CharacterName } from "@transcendence/types";
 
 export interface MatchResult {
 	mode: MatchMode; // RANKED, LOCAL, AI

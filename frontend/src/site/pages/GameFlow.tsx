@@ -5,7 +5,7 @@ import QueueScene from '../../scenes/queueScene';
 import Game from '../../game/Game';
 import { socketService } from '../../services/socketServices';
 import { matchmakingSocket } from '../../services/matchmakingSocket';
-import { MatchMode } from '../../types/game.types';
+import { MatchMode } from '@transcendence/types';
 
 type GameScene = 'mode-select' | 'character-select' | 'queue' | 'game';
 

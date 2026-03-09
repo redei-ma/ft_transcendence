@@ -39,30 +39,30 @@ export async function fetchWithAuthRetry(
 		console.error("[Auth] Fetch error:", error);
 		return null;
 	}
-}
-
-export async function login(
-	username: string,
-	password: string,
-	totp?: string,
-): Promise<AuthResult> {
-	const payload: Record<string, string> = { username, password };
-	if (totp) payload.totp = totp;
-
-	try {
-		const res = await fetch("/api/auth/login", {
-			method: "POST",
-			headers: { "Content-Type": "application/json" },
-			credentials: "include",
-			body: JSON.stringify(payload),
-		});
-
-		return { ok: res.ok, data: await res.json() };
-	} catch (error) {
-		console.error("[Auth] Login error:", error);
-		return { ok: false, data: { error: "Network error" } };
 	}
-}
+	
+	export async function login(
+		username: string,
+		password: string,
+		totp?: string,
+	): Promise<AuthResult> {
+		const payload: Record<string, string> = { username, password };
+		if (totp) payload.totp = totp;
+	
+		try {
+			const res = await fetch("/api/auth/login", {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				credentials: "include",
+				body: JSON.stringify(payload),
+			});
+		
+			return { ok: res.ok, data: await res.json() };
+		} catch (error) {
+			console.error("[Auth] Login error:", error);
+			return { ok: false, data: { error: "Network error" } };
+		}
+	}
 
 export async function register(
 	username: string,
@@ -78,7 +78,7 @@ export async function register(
 		});
 
 		return { ok: res.ok, data: await res.json() };
-	} catch (error) {
+	} catch (error) {1
 		console.error("[Auth] Register error:", error);
 		return { ok: false, data: { error: "Network error" } };
 	}
@@ -92,15 +92,6 @@ export async function logout(): Promise<void> {
 		});
 	} catch (error) {
 		console.error("[Auth] Logout error:", error);
-	}
-}
-
-export async function checkAuth(): Promise<boolean> {
-	try {
-		const res = await fetch("/api/protected", { credentials: "include" });
-		return res.ok;
-	} catch {
-		return false;
 	}
 }
 
@@ -138,4 +129,19 @@ export async function refreshToken(): Promise<boolean> {
 		console.error("Refresh error:", error);
 		return false;
 	}
+}
+
+export async function verify2fa(code: string): Promise<AuthResult> {
+  try {
+    const res = await fetch("/api/auth/2fa/verify", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include", // Vitale per farsi riconoscere dal backend!
+      body: JSON.stringify({ code }),
+    });
+    return { ok: res.ok, data: await res.json().catch(() => ({})) };
+  } catch (error) {
+    console.error('[Auth] Verify 2FA error:', error);
+    return { ok: false, data: { error: "Network error" } };
+  }
 }

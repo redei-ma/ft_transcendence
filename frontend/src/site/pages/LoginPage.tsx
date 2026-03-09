@@ -23,11 +23,34 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
 
     try {
       if (mode === "login") {
-        const { ok, data } = await authService.login(
-          formData.username, formData.password, show2fa ? formData.totp : undefined
-        );
-        if (data.requires2fa) { setShow2fa(true); setLoading(false); return; }
-        if (ok) { onLogin(); } else { setError(data.message || data.error || "Login failed"); }
+        
+        // ⚡ SE LA 2FA È GIÀ VISIBILE, VERIFICHIAMO SOLO IL CODICE
+        if (show2fa) {
+          const { ok, data } = await authService.verify2fa(formData.totp);
+          if (ok) {
+            onLogin(); // Codice corretto, entra!
+          } else {
+            setError(data.message || data.error || "Invalid 2FA code");
+          }
+          setLoading(false);
+          return;
+        }
+
+        // ⚡ ALTRIMENTI, FACCIAMO IL LOGIN NORMALE
+        const { ok, data } = await authService.login(formData.username, formData.password);
+        
+        // Se il backend ci dice che serve la 2FA (tramite un flag o uno status code)
+        if (data.requires2fa || data.message === '2FA required') { 
+          setShow2fa(true); 
+          setLoading(false); 
+          return; 
+        }
+        
+        if (ok) { 
+          onLogin(); 
+        } else { 
+          setError(data.message || data.error || "Login failed"); 
+        }
 
       } else if (mode === "register") {
         const { ok, data } = await authService.register(formData.username, formData.email, formData.password);

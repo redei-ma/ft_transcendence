@@ -2,7 +2,7 @@
 import { useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
-import { PlayerSnapshot, AttackType } from '../../types/game.types';
+import { PlayerSnapshot } from '../../types/game.types';
 import { ZeusAura } from './ZeusAura';
 import { AdeAura } from './AdeAura';
 

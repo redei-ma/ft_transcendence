@@ -1,4 +1,5 @@
 import { io, Socket } from "socket.io-client";
+// import * as msgpackParser from "socket.io-msgpack-parser";
 import { GameEvents } from "../game/game.events";
 import { refreshToken } from "../site/services/authService";
 
@@ -21,6 +22,7 @@ export class SocketService {
 		this.socket = io(url, {
 			path: "/ws/game/socket.io",
 			transports: ["websocket", "polling"],
+			// parser: msgpackParser,
 			withCredentials: true,
 			reconnection: true,
 			reconnectionAttempts: 5,

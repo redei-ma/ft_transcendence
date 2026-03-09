@@ -6,35 +6,27 @@ import LeaderboardPage from "./site/pages/LeaderboardPage";
 import ProfilePage from "./site/pages/ProfilePage";
 import GameFlow from "./site/pages/GameFlow";
 import Navbar from "./site/components/Navbar";
-import { checkAuth, logout } from "./site/services/authService";
+import { logout } from "./site/services/authService";
 import { getMyProfile, UserProfile } from "./site/services/apiService";
 import { theme } from "./configs/theme";
 
 export default function App() {
-	// Sbloccato il flusso di auth reale, addio TestPlayer!
+
 	const [isLoggedIn, setIsLoggedIn] = useState(false);
 	const [user, setUser] = useState<UserProfile | null>(null);
-	//   const [user, setUser] = useState<UserProfile | null>({
-	//   id: 1,
-	//   username: 'TestPlayer',
-	//   avatarUrl: 'https://api.dicebear.com/9.x/pixel-art/svg?seed=TestPlayer',
-	//   email: 'test@test.com',
-	//   status: 'ONLINE',
-	//   createdAt: '2025-01-01T00:00:00Z',
-	// });
 	const [currentPage, setCurrentPage] = useState("dashboard");
 
 	useEffect(() => {
-		checkAuth().then(async (ok) => {
-			if (ok) {
-				const profile = await getMyProfile();
-				if (profile) {
-					setUser(profile);
-					setIsLoggedIn(true);
-				}
-			}
-		});
-	}, []);
+    const initAuth = async () => {
+      	const profile = await getMyProfile();
+      		if (profile) {
+        		setUser(profile);
+        		setIsLoggedIn(true);
+      		}
+    	};
+    
+    	initAuth();
+  	}, []);
 
 	const handleLogin = async () => {
 		const profile = await getMyProfile();
