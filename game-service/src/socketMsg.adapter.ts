@@ -1,14 +1,17 @@
-//import { IoAdapter } from '@nestjs/platform-socket.io';
-//import { ServerOptions } from 'socket.io';
-//import * as msgpackParser from 'socket.io-msgpack-parser';
+import { IoAdapter } from '@nestjs/platform-socket.io';
+import { ServerOptions } from 'socket.io';
+import * as msgpackParser from 'socket.io-msgpack-parser';
+import { INestApplicationContext } from '@nestjs/common';
 
-//classe per abilitare il parser nel server verra' usata una volta che anche il frontend sara' allineato
-//export class MsgpackIoAdapter extends IoAdapter{
-//    createIOserver(port: number, options?: ServerOptions){
-//        const server = super.createIOserver(port, {
-//            ...options,
-//            parser: msgpackParser,
-//        });
-//        return server;
-//    }
-//}
+export class MsgpackIoAdapter extends IoAdapter{
+    constructor(app: INestApplicationContext) {
+        super(app);
+    }
+    createIOServer(port: number, options?: ServerOptions){
+        const server = super.createIOServer(port, {
+            ...options,
+            parser: msgpackParser,
+        });
+        return server;
+    }
+}

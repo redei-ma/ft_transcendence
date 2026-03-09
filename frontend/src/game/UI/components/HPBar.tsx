@@ -1,6 +1,6 @@
 import { Vector } from '../../../types/game.types';
 import { theme } from '../../../configs/theme';
-import {CharacherName} from '@transcendence/types';
+import {CharacterName} from '@transcendence/types';
 
 interface HPBarProps {
   characterName: string;

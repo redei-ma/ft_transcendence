@@ -1,7 +1,7 @@
-import { CharacterName, GameStatePayload, MapEmitPayload } from '../../types/game.types';
+import { GameStatePayload, MapEmitPayload } from '../../types/game.types';
 import { theme } from '../../configs/theme';
 import HPBar from './components/HPBar';
-import {CharacherName} from '@transcendence/types';
+import {CharacterName} from '@transcendence/types';
 
 interface GameUIProps {
   character: string;
@@ -44,7 +44,7 @@ export default function GameUI({
             key={`death-${player.id}`}
             style={{
               position: 'absolute',
-              top: player.characterName === CharacherName.ZEUS ? '60px' : 'auto',
+              top: player.characterName === CharacterName.ZEUS ? '60px' : 'auto',
               bottom: player.characterName === CharacterName.ADE ? '60px' : 'auto',
               left: '20px',
               pointerEvents: 'none',
