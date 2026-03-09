@@ -133,7 +133,6 @@ services:
         environment:
             NODE_ENV: production
         volumes:
-            # Upload directory must persist across restarts.
             - uploads_data:/uploads
         healthcheck:
             test:
@@ -201,11 +200,7 @@ services:
             <<: *healthcheck
 
     # ---------------------------------------------------------
-    #  Frontend
-    #  NOTE: kept in build/dev mode because nginx.conf (gateway)
-    #  proxies to frontend:5173 (Vite dev server). Switching to
-    #  the production stage (nginx on :80) also requires updating
-    #  nginx.conf — left as a future task.
+    #  Frontend — static files served by nginx on :80.
     # ---------------------------------------------------------
 
     frontend:
@@ -214,8 +209,7 @@ services:
         build:
             context: ./frontend
             dockerfile: Dockerfile
-            target: build
-        command: npm run dev -- --host
+            target: production
         restart: unless-stopped
         networks:
             - backend-network
@@ -223,8 +217,6 @@ services:
             - "5173"
         env_file:
             - .env.shared
-        volumes:
-            - ./frontend/src:/app/src
         healthcheck:
             test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:5173/ || exit 1"]
             <<: *healthcheck

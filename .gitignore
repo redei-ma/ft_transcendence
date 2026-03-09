@@ -45,10 +45,14 @@ certs/
 !.vscode/launch.json
 !.vscode/extensions.json
 
+# AI Assistants
+.claude/
+CLAUDE.md
+
 # OS
 .DS_Store
-**/.DS_Store
 Thumbs.db
+*Zone.Identifier
 
 # Logs
 logs/
@@ -70,7 +74,3 @@ pids/
 *.seed
 *.pid.lock
 report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
-
-
-CLAUDE.md
-.claude/

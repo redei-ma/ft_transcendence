@@ -64,7 +64,7 @@ export async function seedTestData(prisma: PrismaClient): Promise<void> {
 			email: "bob@test.com",
 			username: "bob",
 			isEmailVerified: true,
-			avatarUrl: "https://lh3.googleusercontent.com/a/bob-photo.jpg",
+			avatarUrl: "https://api.dicebear.com/9.x/shapes/svg?seed=bob",
 			status: UserStatus.OFFLINE,
 			accounts: {
 				create: {

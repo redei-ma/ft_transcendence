@@ -1,6 +1,7 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
-import { MatchMode, MatchType, CharacterName, Prisma } from "@prisma/client";
+import { MatchMode, MatchType, CharacterName } from "@transcendence/types";
+import { Prisma } from "@prisma/client";
 import { MatchResult, PlayerResult } from "../../types/match-result.interface";
 import {
 	AchievementService,

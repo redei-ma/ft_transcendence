@@ -8,10 +8,11 @@
 #  What this file does:
 #  - Switches NestJS services to the "build" Docker stage so
 #    that source files are compiled at runtime (nest start --watch).
+#  - Switches the frontend to Vite dev server with hot reload.
 #  - Mounts local source directories so code changes are picked
 #    up immediately without rebuilding the image.
-#  - Extends start_period to 120s to account for the ~2min
-#    TypeScript compilation on first startup.
+#  - Extends start_period to 120s (NestJS) / 15s (Vite) to account
+#    for TypeScript compilation on first startup.
 #
 #  To run WITHOUT this file (production mode):
 #    make up-prod
@@ -29,12 +30,10 @@ services:
     auth-service:
         build:
             target: build
-        # Recompile and reload on every source file change.
         command: npm run start:dev
         environment:
             NODE_ENV: development
         volumes:
-            # Mount source so edits are reflected without image rebuild.
             - ./auth-service/src:/app/auth-service/src
         healthcheck:
             <<: *healthcheck-dev
@@ -42,13 +41,11 @@ services:
     user-service:
         build:
             target: build
-        # Regenerate Prisma client before starting in case schema changed.
         command: sh -c "npm run prisma:generate && npm run start:dev"
         environment:
             NODE_ENV: development
         volumes:
             - ./user-service/src:/app/user-service/src
-            # Mount schema read-only so Prisma generate sees live changes.
             - ./shared/prisma/schema.prisma:/app/prisma/schema.prisma:ro
         healthcheck:
             <<: *healthcheck-dev
@@ -75,3 +72,15 @@ services:
             - ./matchmaking-service/src:/app/src
         healthcheck:
             <<: *healthcheck-dev
+
+    frontend:
+        build:
+            target: build
+        command: npm run dev -- --host
+        environment:
+            NODE_ENV: development
+        volumes:
+            - ./frontend/src:/app/src
+        healthcheck:
+            <<: *healthcheck-dev
+            start_period: 15s

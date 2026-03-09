@@ -26,9 +26,11 @@ BOLD   := \033[1m
 # --- Phony targets -------------------------------------------
 
 .PHONY: all generate certs up up-prod down restart clean fclean re rebuild \
-        prune logs ps status help \
-        logs-auth logs-user logs-game logs-matchmaking logs-frontend logs-db \
-        shell-auth shell-user shell-game shell-matchmaking shell-db
+        prune logs ps help \
+        logs-auth logs-user logs-game logs-matchmaking logs-frontend \
+        logs-postgres logs-migration logs-gateway logs-ngrok logs-redis \
+        shell-auth shell-user shell-game shell-matchmaking shell-postgres \
+        shell-frontend shell-gateway shell-redis
 
 # --- Default target ------------------------------------------
 
@@ -100,7 +102,6 @@ fclean: ##@Cleanup — Remove containers, volumes, and locally built images
 
 prune: ##@Cleanup — Remove ALL project resources (containers, volumes, networks, images)
 	@$(COMPOSE) down -v --rmi all
-	@docker image prune -f
 
 # --- Observability -------------------------------------------
 
@@ -109,8 +110,6 @@ logs: ##@Status — Stream logs from all services
 
 ps: ##@Status — Show container status
 	@$(COMPOSE) ps
-
-status: ps ##@Status — Alias for ps
 
 # --- Per-service logs ----------------------------------------
 
@@ -129,8 +128,20 @@ logs-matchmaking: ##@Logs — Stream matchmaking-service logs
 logs-frontend: ##@Logs — Stream frontend logs
 	@$(COMPOSE) logs -f frontend
 
-logs-db: ##@Logs — Stream postgres + db-migration logs
-	@$(COMPOSE) logs -f postgres db-migration
+logs-postgres: ##@Logs — Stream postgres logs
+	@$(COMPOSE) logs -f postgres
+
+logs-migration: ##@Logs — Stream db-migration logs
+	@$(COMPOSE) logs -f db-migration
+
+logs-gateway: ##@Logs — Stream gateway (nginx) logs
+	@$(COMPOSE) logs -f gateway
+
+logs-ngrok: ##@Logs — Stream ngrok tunnel logs
+	@$(COMPOSE) logs -f ngrok
+
+logs-redis: ##@Logs — Stream redis logs
+	@$(COMPOSE) logs -f redis
 
 # --- Shell access --------------------------------------------
 
@@ -146,8 +157,17 @@ shell-game: ##@Shells — Open shell in game-service
 shell-matchmaking: ##@Shells — Open shell in matchmaking-service
 	@$(COMPOSE) exec matchmaking-service sh
 
-shell-db: ##@Shells — Open psql shell in postgres
+shell-postgres: ##@Shells — Open psql shell in postgres
 	@$(COMPOSE) exec postgres sh -c 'psql -U $$POSTGRES_USER -d $$POSTGRES_DB'
+
+shell-frontend: ##@Shells — Open shell in frontend container
+	@$(COMPOSE) exec frontend sh
+
+shell-gateway: ##@Shells — Open shell in gateway (nginx) container
+	@$(COMPOSE) exec gateway sh
+
+shell-redis: ##@Shells — Open redis-cli in redis container
+	@$(COMPOSE) exec redis redis-cli
 
 # --- Help ----------------------------------------------------
 

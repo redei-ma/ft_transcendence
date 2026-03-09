@@ -105,7 +105,7 @@ async login(@Body() body: { username: string; password: string; totp?: string })
   ) {
     if (!req.user) {
       return res.redirect(
-        `${this.config.get('PUBLIC_URL')}/index.html?error=google_failed`,
+        `${this.config.get('FRONTEND_URL')}/index.html?error=google_failed`,
       );
     }
     const { accessToken, refreshToken } =
@@ -125,7 +125,7 @@ async login(@Body() body: { username: string; password: string; totp?: string })
       path: '/',
     });
 
-    return res.redirect(`${this.config.get('PUBLIC_URL')}/dashboard.html`);
+    return res.redirect(`${this.config.get('FRONTEND_URL')}/dashboard.html`);
   }
 
   @Post('refresh')

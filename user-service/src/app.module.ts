@@ -13,7 +13,6 @@ import { CleanupModule } from "./modules/cleanup/cleanup.module";
 	imports: [
 		ConfigModule.forRoot({
 			isGlobal: true,
-			envFilePath: ".env.shared",
 			validationSchema: envValidationSchema,
 		}),
 		ScheduleModule.forRoot(),

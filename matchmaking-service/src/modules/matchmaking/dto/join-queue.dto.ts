@@ -1,8 +1,4 @@
-import {
-	CharacterName,
-	MatchType,
-	MatchMode,
-} from "./interfaces-enums/game.enums";
+import { CharacterName, MatchType, MatchMode } from "@transcendence/types";
 
 /* Struttura del dato che ricevo quando qualcuno si vuole mettere in coda nel matchmaking */
 

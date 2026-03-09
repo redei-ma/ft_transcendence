@@ -57,7 +57,7 @@ const USER_WITH_ACCOUNTS_SELECT = {
 
 /** Generates a default avatar URL using the DiceBear Shapes API. */
 const generateDefaultAvatar = (seed: string): string =>
-	`https://api.dicebear.com/9.x/pixel-art/svg?seed=${encodeURIComponent(seed)}`;
+	`https://api.dicebear.com/9.x/shapes/svg?seed=${encodeURIComponent(seed)}`;
 
 /** Checks if the given URL is a default avatar. */
 const isDefaultAvatar = (url: string): boolean =>

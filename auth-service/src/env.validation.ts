@@ -13,6 +13,7 @@ export const envValidationSchema = Joi.object({
   SMTP_PORT: Joi.number().port().default(587).required(),
 
   PUBLIC_URL: Joi.string().uri().required(),
+  FRONTEND_URL: Joi.string().uri().required(),
 
   NODE_ENV: Joi.string()
     .valid('development', 'production', 'test')
