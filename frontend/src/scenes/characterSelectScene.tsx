@@ -1,12 +1,12 @@
 import { useState, useEffect, useRef } from 'react';
 import { matchmakingSocket } from '../services/matchmakingSocket';
 import { GameEvents } from '../game/game.events';
-import { MatchMode, MatchType } from '@transcendence/types';
+import { CharacterName, MatchMode, MatchType } from '@transcendence/types';
 import { theme } from '../configs/theme';
 import zeusImg from '../assets/ZeusSelection.png';
 import adeImg from '../assets/AdeSelection.png'; // Cambia in .png se necessario
 
-type Character = 'zeus' | 'ade';
+type Character = typeof CharacterName[keyof typeof CharacterName];
 
 interface CharacterSelectSceneProps {
   mode: MatchMode;
@@ -15,10 +15,10 @@ interface CharacterSelectSceneProps {
   onBack: () => void;
 }
 
-const CHARACTERS: Character[] = ['zeus', 'ade'];
+const CHARACTERS: Character[] = [CharacterName.ZEUS, CharacterName.ADE];
 const CHARACTER_IMAGES: Record<Character, string> = {
-  zeus: zeusImg,
-  ade: adeImg,
+  [CharacterName.ZEUS]: zeusImg,
+  [CharacterName.ADE]: adeImg,
 };
 
 const P1_COLOR = theme.colors.zeus;

@@ -6,6 +6,7 @@ import { ClientProxy } from "@nestjs/microservices";
 import { HttpService } from "@nestjs/axios";
 import { firstValueFrom } from "rxjs";
 import { EventEmitter2 } from "@nestjs/event-emitter";
+import { MatchMode, MatchType } from "@transcendence/types";
 
 @Injectable()
 export class MatchmakingService {
@@ -140,7 +141,7 @@ export class MatchmakingService {
 							isAiPlayer: !!opponentData.isAiPlayer,
 						},
 					],
-					matchType: statusData.matchType || "ranked",
+					matchType: statusData.matchType,
 					matchMode: statusData.matchMode,
 				};
 				try {
@@ -283,7 +284,7 @@ export class MatchmakingService {
 				opponentId: opponentId,
 				matchId,
 				matchMode: player.matchMode,
-				matchType: player.matchType || "ranked",
+				matchType: player.matchType,
 				updatedAt: Date.now(),
 			});
 			const opponentStatus = JSON.stringify({
@@ -292,7 +293,7 @@ export class MatchmakingService {
 				opponentId: player.userDbId,
 				matchId,
 				matchMode: player.matchMode,
-				matchType: player.matchType || "ranked",
+				matchType: player.matchType,
 				updatedAt: Date.now(),
 			});
 
@@ -451,7 +452,7 @@ export class MatchmakingService {
 							isAiPlayer: !!opponentData.isAiPlayer,
 						},
 					],
-					matchType: "unranked",
+					matchType: MatchType.FFA,
 					matchMode: statusData.matchMode,
 				};
 				try {
@@ -549,7 +550,7 @@ export class MatchmakingService {
 				opponentId,
 				matchId,
 				matchMode: player.matchMode,
-				matchType: "unranked",
+				matchType: MatchType.FFA,
 				updatedAt: Date.now(),
 			});
 			const opponentStatus = JSON.stringify({
@@ -558,7 +559,7 @@ export class MatchmakingService {
 				opponentId: player.userDbId,
 				matchId,
 				matchMode: player.matchMode,
-				matchType: "unranked",
+				matchType: MatchType.FFA,
 				updatedAt: Date.now(),
 			});
 
@@ -846,7 +847,7 @@ export class MatchmakingService {
 			...participant1,
 			opponentId: opponent.userDbId,
 			matchId,
-			matchType: challengerData.matchType || "unranked",
+			matchType: challengerData.matchType,
 			matchMode: challengerData.matchMode,
 			updatedAt: Date.now(),
 		});
@@ -855,7 +856,7 @@ export class MatchmakingService {
 			...participant2,
 			opponentId: challengerId,
 			matchId,
-			matchType: challengerData.matchType || "unranked",
+			matchType: challengerData.matchType,
 			matchMode: challengerData.matchMode,
 			updatedAt: Date.now(),
 		});
@@ -878,7 +879,7 @@ export class MatchmakingService {
 					isAiPlayer,
 				}),
 			),
-			matchType: challengerData.matchType || "unranked",
+			matchType: challengerData.matchType,
 			matchMode: challengerData.matchMode,
 		};
 		try {
@@ -1016,8 +1017,8 @@ export class MatchmakingService {
 
 		const playerStatus = JSON.stringify({
 			state: "ingame",
-			matchMode: "local",
-			matchType: "ffa",
+			matchMode: MatchMode.LOCAL,
+			matchType: MatchType.FFA,
 			matchId: matchId,
 			opponentId: "LOCAL_GUEST",
 			...participant1,
@@ -1035,8 +1036,8 @@ export class MatchmakingService {
 					isAiPlayer,
 				}),
 			),
-			matchType: "ffa",
-			matchMode: "local",
+			matchType: MatchType.FFA,
+			matchMode: MatchMode.LOCAL,
 		};
 
 		try {
@@ -1116,8 +1117,8 @@ export class MatchmakingService {
 		// Salviamo lo stato su Redis (stato 'ingame', modalità 'ai')
 		const playerStatus = JSON.stringify({
 			state: "ingame",
-			matchMode: "ai",
-			matchType: "unranked",
+			matchMode: MatchMode.AI,
+			matchType: MatchType.FFA,
 			matchId: matchId,
 			opponentId: "CPU_BOT",
 			...participant1,
@@ -1137,8 +1138,8 @@ export class MatchmakingService {
 					isAiPlayer,
 				}),
 			),
-			matchType: "ffa",
-			matchMode: "ai",
+			matchType: MatchType.FFA,
+			matchMode: MatchMode.AI,
 		};
 
 		try {
