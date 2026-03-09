@@ -4,16 +4,19 @@ FROM node:20-alpine AS build
 WORKDIR /app
 
 COPY shared/types ./shared/types
-COPY package*.json ./
+
+WORKDIR /app/frontend
+
+COPY frontend/package*.json ./
 RUN npm install
 
-COPY . .
+COPY frontend/ .
 RUN npm run build
 
 # --- Stage 2: Production (static files served by nginx unprivileged) ---
 FROM nginxinc/nginx-unprivileged:stable-alpine AS production
 
-COPY --from=build /app/dist /usr/share/nginx/html
+COPY --from=build /app/frontend/dist /usr/share/nginx/html
 
 # SPA routing: unknown paths fall back to index.html.
 RUN printf 'server {\n\

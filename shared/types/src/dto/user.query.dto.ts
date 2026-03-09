@@ -13,7 +13,7 @@ import {
 	IsBoolean,
 } from "class-validator";
 import { Type, Transform, TransformFnParams } from "class-transformer";
-import { MatchMode } from '@transcendence/types';
+import { MatchMode } from "../enums";
 
 /**
  * Query parameters for finding a user by ID, email, or username.

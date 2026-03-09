@@ -14,7 +14,6 @@ import { SocketEvents } from "./modules/game/configs/game.events";
 	imports: [
 		ConfigModule.forRoot({
 			isGlobal: true,
-			envFilePath: ".env.shared",
 			validationSchema: envValidationSchema,
 		}),
 		ScheduleModule.forRoot(),

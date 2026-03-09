@@ -4,8 +4,14 @@
   "private": true,
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/esm/index.js",
+      "require": "./dist/index.js"
+    }
+  },
   "scripts": {
-    "build": "tsc"
+    "build": "tsc && tsc -p tsconfig.esm.json"
   },
   "dependencies": {
     "jsonwebtoken": "^9.0.3"

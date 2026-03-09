@@ -19,6 +19,7 @@ bootstrap(); */
 
 import { NestFactory } from "@nestjs/core";
 import { MicroserviceOptions, Transport } from "@nestjs/microservices";
+import { ConfigService } from "@nestjs/config";
 import { AppModule } from "./app.module";
 
 async function bootstrap() {
@@ -27,12 +28,14 @@ async function bootstrap() {
 
 	app.enableShutdownHooks();
 
+	const configService = app.get(ConfigService);
+
 	// collego il Microservizio Redis
 	app.connectMicroservice<MicroserviceOptions>({
 		transport: Transport.REDIS,
 		options: {
-			host: "redis", // per parlare con il container bisogna che si chiami 'redis'
-			port: 6379,
+			host: configService.get<string>("REDIS_HOST"),
+			port: configService.get<number>("REDIS_PORT"),
 			retryAttempts: 10,
 			retryDelay: 3000,
 		},
@@ -40,7 +43,8 @@ async function bootstrap() {
 
 	// avvio microservizi e redis
 	await app.startAllMicroservices();
-	await app.listen(3500, "0.0.0.0"); // porta interna al container
-	console.log("LOGIC SERVICE ONLINE: HTTP su porta 3500 e Redis collegato");
+	const port = configService.get<number>("PORT") ?? 3500;
+	await app.listen(port, "0.0.0.0");
+	console.log(`LOGIC SERVICE ONLINE: HTTP su porta ${port} e Redis collegato`);
 }
 bootstrap();
