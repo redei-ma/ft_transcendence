@@ -1,5 +1,6 @@
 import { GameOverPayload, PlayerSnapshot } from '../../../types/game.types';
 import { theme } from '../../../configs/theme';
+import {CharacterName} from '@transcendence/types';
 
 interface GameOverOverlayProps {
   gameOver: GameOverPayload;
@@ -18,8 +19,8 @@ export function GameOverOverlay({ gameOver, players, onPlayAgain, onQuit }: Game
   const displayName = winnerName.charAt(0).toUpperCase() + winnerName.slice(1);
   const isDraw = winners.length === 0;
 
-  const color = winnerName === 'zeus' ? theme.colors.zeus : theme.colors.ade;
-  const glow = winnerName === 'zeus' ? theme.colors.zeusGlow : theme.colors.adeGlow;
+  const color = winnerName === CharacterName.ZEUS ? theme.colors.zeus : theme.colors.ade;
+  const glow = winnerName === CharacterName.ZEUS ? theme.colors.zeusGlow : theme.colors.adeGlow;
 
   return (
     <div style={{
@@ -182,7 +183,7 @@ function HeaderCell({ children, center }: { children: string; center?: boolean }
 }
 
 function PlayerRow({ player, isWinner }: { player: PlayerSnapshot; isWinner: boolean }) {
-  const playerColor = player.characterName === 'ZEUS' ? theme.colors.zeus : theme.colors.ade;
+  const playerColor = player.characterName === CharacterName.ZEUS ? theme.colors.zeus : theme.colors.ade;
   const displayName = player.characterName.charAt(0).toUpperCase() + player.characterName.slice(1);
 
   return (

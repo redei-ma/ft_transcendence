@@ -1,5 +1,6 @@
 import { Vector } from '../../../types/game.types';
 import { theme } from '../../../configs/theme';
+import {CharacherName} from '@transcendence/types';
 
 interface HPBarProps {
   characterName: string;
@@ -29,8 +30,8 @@ export default function HPBar({
   return (
     <div style={{
       position: 'absolute',
-      top: characterName === 'ZEUS' ? '20px' : 'auto',
-      bottom: characterName === 'ADE' ? '20px' : 'auto',
+      top: characterName === CharacterName.ZEUS ? '20px' : 'auto',
+      bottom: characterName === CharacterName.ADE ? '20px' : 'auto',
       left: '20px',
       width: '120px',
       fontFamily: theme.fonts.mono,

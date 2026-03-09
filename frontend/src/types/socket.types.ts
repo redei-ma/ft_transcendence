@@ -1,7 +1,8 @@
 import { PlayerSnapshot, BulletSnapshot, WinnerData } from './game.types';
+import { CharacterName } from '@transcendence/types';
 
 export interface JoinLobbyPayload {
-  characterName: 'Zeus' | 'Ade';
+  characterName: CharacterName;
 }
 
 export interface GameInputPayload {

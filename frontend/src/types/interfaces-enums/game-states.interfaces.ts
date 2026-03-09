@@ -1,11 +1,12 @@
 import { Vector } from "../game.types";
 import { AttackType, BulletHit } from "./game.enums";
 import { Player } from "./dynamic-entitys.interfaces";
+import { CharacterName } from '@transcendence/types';
 
 export interface PlayerSnapshot {
 	id: string;
 	type: string;
-	characterName: string;
+	characterName: CharacterName;
 	teamId: number;
 	position: Vector;
 	rotation: number;
@@ -23,7 +24,7 @@ export interface PlayerSnapshot {
 export interface BulletSnapshot{
 	type: string;
 	id: string;
-	characterName: string;
+	characterName: CharacterName;
 	position: Vector;
 	entityHit: Player | undefined;
 	hit: BulletHit;

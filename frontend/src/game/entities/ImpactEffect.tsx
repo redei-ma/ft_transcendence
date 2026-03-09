@@ -2,6 +2,7 @@ import { useRef, useMemo, useState } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { BulletSnapshot } from '../../types/game.types';
+import {CharacterName} from '@transcendence/types';
 
 interface ImpactEffectProps {
   snapshot: BulletSnapshot;
@@ -34,7 +35,7 @@ export function ImpactEffect({ snapshot }: ImpactEffectProps) {
   const [expired, setExpired] = useState(false);
   const age = useRef(0);
 
-  const isZeus = snapshot.characterName === 'ZEUS';
+  const isZeus = snapshot.characterName === CharacterName.ZEUS;
 
   const particleColor = isZeus
     ? new THREE.Color(0, 4, 10)

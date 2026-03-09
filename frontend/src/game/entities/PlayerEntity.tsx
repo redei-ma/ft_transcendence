@@ -3,6 +3,7 @@ import { useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { PlayerSnapshot } from '../../types/game.types';
+import {CharacterName} from '@transcendence/types';
 import { ZeusAura } from './ZeusAura';
 import { AdeAura } from './AdeAura';
 
@@ -13,7 +14,7 @@ interface PlayerEntityProps {
 export function PlayerEntity({ snapshot }: PlayerEntityProps) {
   const groupRef = useRef<THREE.Group>(null);
 
-  const bodyColor = snapshot.characterName === 'ZEUS' ? 0x00008b : 0x8b0000;
+  const bodyColor = snapshot.characterName === CharacterName.ZEUS ? 0x00008b : 0x8b0000;
 
   useFrame((_, delta) => {
     if (!groupRef.current) return;
@@ -37,7 +38,7 @@ export function PlayerEntity({ snapshot }: PlayerEntityProps) {
       </mesh>
 
       {/* Aura specifica per personaggio */}
-      {snapshot.characterName === 'ZEUS' ? (
+      {snapshot.characterName === CharacterName.ZEUS ? (
         <ZeusAura
           isAttacking={snapshot.isAttacking}
           attackType={snapshot.attackType}

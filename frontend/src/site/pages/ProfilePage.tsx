@@ -5,6 +5,7 @@ import * as api from '../services/apiService';
 import { UserProfile, UserStats, UserSettings } from '../services/apiService';
 import { theme } from '../../configs/theme';
 import { NAVBAR_HEIGHT } from '../components/Navbar';
+import {CharacterName} from '@transcendence/types';
 
 const statusColor = (s: string) => 
   s === 'ONLINE' ? theme.colors.hpHigh : 
@@ -158,7 +159,7 @@ export default function ProfilePage() {
               {s.characterStats.map((cs) => (
                 <div key={cs.characterName} style={{ padding: '20px', background: theme.colors.bgPanel, border: `1px solid ${theme.colors.border}`, borderRadius: '4px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
-                    <span style={{ fontSize: '20px' }}>{cs.characterName.toLowerCase() === 'zeus' ? '⚡' : '🔥'}</span>
+                    <span style={{ fontSize: '20px' }}>{cs.characterName === CharacterName.ZEUS ? '⚡' : '🔥'}</span>
                     <span style={{ fontFamily: theme.fonts.heading, fontWeight: 700, color: theme.colors.goldBright, letterSpacing: '1px', textTransform: 'uppercase' }}>{cs.characterName}</span>
                   </div>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px' }}>
