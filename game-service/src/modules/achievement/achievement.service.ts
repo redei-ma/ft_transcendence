@@ -1,7 +1,6 @@
 import { Injectable, OnModuleInit, Logger } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
-import { CharacterName } from "@prisma/client";
-import { AchievementConfig } from "@transcendence/types";
+import { CharacterName, AchievementConfig } from "@transcendence/types";
 import { MatchResult } from "../../types/match-result.interface";
 
 /** Stats snapshot after the match transaction has been committed */

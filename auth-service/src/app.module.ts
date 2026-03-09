@@ -1,9 +1,9 @@
 import { Module } from '@nestjs/common';
-import { AuthModule } from './auth/auth.module';
-import { UserModule } from './user/user.module';
+import { AuthModule } from './modules/auth/auth.module';
+import { UserModule } from './modules/user/user.module';
 import { ConfigModule } from '@nestjs/config';
 import { envValidationSchema } from './env.validation';
-import { HealthModule } from './health/health.module';
+import { HealthModule } from './modules/health/health.module';
 
 import { ThrottlerModule } from '@nestjs/throttler';
 
