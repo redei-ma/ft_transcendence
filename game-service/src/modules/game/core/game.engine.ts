@@ -4,10 +4,10 @@ import { GameRules } from "./game.rules";
 import { World } from "./game.world";
 import { PlayerManager } from "../managers/playerManager/player.manager";
 import { BulletManager } from "../managers/bullet.manager";
-import {  MatchResult, 
-	Player, PlayerSnapshot, BulletSnapshot,
+import { Player, PlayerSnapshot, BulletSnapshot,
 	GameEndEvents, GameStateEvents } from "../interfaces-enums";
 import { MatchMode, MatchType, EndReason } from "@transcendence/types";
+import { MatchResult } from "src/types/match-result.interface";
 
 export class Engine{
 
@@ -126,7 +126,7 @@ export class Engine{
 			for (const player of this.players.values()){
 				if (player.userDbId){
 					this.endGameData.players.push({
-						userId: Number(player.userDbId),
+						userId: parseInt(player.userDbId),
 						teamId: player.teamId,
 						characterName: player.characterName,
 						kills: player.kill,

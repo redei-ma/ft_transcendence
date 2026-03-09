@@ -89,8 +89,6 @@ export class PlayerManager{
 	}
 
 	private applyMovement(lastInput: InputQueue, player: Player): void{
-		/* anti-cheat (normalization of the input) to avoid max speed in diagonal > 1*/
-		lastInput.input.normalize();
 
 		/* Update the displacement vector */
 		player.displacement.set(lastInput.input.x, lastInput.input.z);
