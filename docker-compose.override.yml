@@ -69,7 +69,7 @@ services:
         environment:
             NODE_ENV: development
         volumes:
-            - ./matchmaking-service/src:/app/src
+            - ./matchmaking-service/src:/app/matchmaking-service/src
         healthcheck:
             <<: *healthcheck-dev
 
@@ -79,8 +79,9 @@ services:
         command: npm run dev -- --host
         environment:
             NODE_ENV: development
+            CHOKIDAR_USEPOLLING: "${CHOKIDAR_USEPOLLING:-false}"
         volumes:
-            - ./frontend/src:/app/src
+            - ./frontend/src:/app/frontend/src
         healthcheck:
             <<: *healthcheck-dev
             start_period: 15s
