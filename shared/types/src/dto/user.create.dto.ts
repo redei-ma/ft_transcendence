@@ -7,7 +7,22 @@ import {
 	IsPasswordHashField,
 	IsOAuthIdField,
 	IsOAuthProviderField,
+	IsPasswordField
 } from "./field-validators";
+
+/**
+ * Input DTO for local user registration.
+ */
+export class CreateLocalUserNoHashDto {
+	@IsEmailField()
+	email: string;
+
+	@IsUsernameField()
+	username: string;
+
+	@IsPasswordField()
+	password: string;
+}
 
 /**
  * Input DTO for local user registration.

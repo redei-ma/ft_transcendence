@@ -10,6 +10,21 @@ import {
 } from "class-validator";
 import { Provider } from "../enums";
 
+export function IsPasswordField() {
+    return applyDecorators(
+        ApiProperty({
+            example: "StrongP@ss123",
+            minLength: 10,
+            description: "At least 10 chars, 1 uppercase, 1 lowercase, 1 number, and 1 special char"
+        }),
+        IsString(),
+        MinLength(10, { message: "Password must be at least 10 characters long" }),
+        Matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]*$/, {
+            message: "Password is too weak. It must contain at least one uppercase letter, one lowercase letter, one number, and one special character: @$!%*?&",
+        }),
+    );
+}
+
 export function IsUsernameField() {
 	return applyDecorators(
 		ApiProperty({ example: "john_doe", minLength: 3, maxLength: 20 }),

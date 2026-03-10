@@ -17,8 +17,8 @@ import { JwtRefreshGuard } from './jwt/jwt-refresh.guard';
 import { JwtAuthGuard } from './jwt/jwt.guard';
 import { ConfigService } from '@nestjs/config';
 import { GoogleAuthGuard } from './jwt/google.guard';
-import type {
-  CreateLocalUserDto,
+import {
+  CreateLocalUserNoHashDto,
   CreateOAuthUserDto,
 } from '@transcendence/types';
 
@@ -31,13 +31,9 @@ export class AuthController {
 
   @Post('register')
   async register(
-    @Body() body: { username: string; email: string; password: string },
+    @Body() body: CreateLocalUserNoHashDto,
   ) {
-    return await this.authService.registerAndSendVerification(
-      body.username,
-      body.email,
-      body.password,
-    );
+    return await this.authService.registerAndSendVerification( body );
   }
 
   @Post('resend-verification')

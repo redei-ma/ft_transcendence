@@ -8,7 +8,7 @@ import { MailService } from './mail/mail.service';
 import { UserClient } from '../user/user.client';
 import * as speakeasy from 'speakeasy';
 import * as QRCode from 'qrcode';
-import type { CreateOAuthUserDto} from '@transcendence/types';
+import { CreateOAuthUserDto, CreateLocalUserNoHashDto } from '@transcendence/types';
 
 @Injectable()
 export class AuthService {
@@ -20,26 +20,21 @@ export class AuthService {
   ) {}
 
 
-async registerAndSendVerification(
-    username: string,
-    email: string,
-    password: string,
-  ) {
+async registerAndSendVerification( dto: CreateLocalUserNoHashDto) {
+/*     const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{10,}$/;
 
-    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
-
-    if (!password || password.length < 10) {
+    if (!dto.password || dto.password.length < 10) {
       throw new BadRequestException('Password must be at least 8 characters long.');
     }
 
-    if (!passwordRegex.test(password)) {
-      throw new BadRequestException('Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character.');
-    }
-/*     try { */
+    if (!passwordRegex.test(dto.password)) {
+      throw new BadRequestException('Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character: @$!%*?&');
+    } */
+    try {
 
-      const passwordHash = await bcrypt.hash(password, 10);
+      const passwordHash = await bcrypt.hash(dto.password, 10);
 
-      const user = await this.usersService.createUser({username, email, passwordHash});
+      const user = await this.usersService.createUser({username: dto.username, email: dto.email, passwordHash});
 
       const token = this.generateEmailVerificationToken(user.id);
 
@@ -52,13 +47,10 @@ async registerAndSendVerification(
         user: { username: user.username, email: user.email }
       };
 
-  /*   } catch (error) {
-      console.error('[AUTH] ERRORE CRITICO NELLA REGISTRAZIONE:', error.message);
-      if (error.response) {
-        console.error('[AUTH] Dettagli errore User-Service:', error.response.data);
-      }
-      throw error.message;
-    } */
+    } catch (error) {
+      //console.error('registration error:', error.message);
+      throw new BadRequestException('Registration failed.');
+    }
   }
 
   async resendVerificationEmail(email: string) {
@@ -66,11 +58,11 @@ async registerAndSendVerification(
 
     if (!user) {
       // Do NOT reveal user existence
-      return { message: 'If the email exists, a verification email was sent.' };
+      return { message: 'If an account with this email exists and is not verified, a verification email was sent.' };
     }
 
     if (user.isEmailVerified) {
-      return { message: 'Email already verified.' };
+      return { message: 'If an account with this email exists and is not verified, a verification email was sent.' };
     }
 
     const token = this.generateEmailVerificationToken(user.id);
@@ -79,7 +71,7 @@ async registerAndSendVerification(
 
     await this.mailService.sendVerifyEmail(user.email, verifyUrl);
 
-    return { message: 'If the email exists, a verification email was sent.' };
+    return { message: 'If an account with this email exists and is not verified, a verification email was sent.' };
   }
 
   async login(username: string, passwordHash: string, totp?: string) {
