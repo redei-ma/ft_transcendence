@@ -19,23 +19,24 @@ import {
 	ApiParam,
 	ApiQuery,
 } from "@nestjs/swagger";
-import { Provider } from "@transcendence/types";
-import { UserService } from "../services/user.service";
 import {
+	Provider,
 	CreateLocalUserDto,
 	CreateOAuthUserDto,
-	SetPasswordDto,
 	UpdatePasswordDto,
-	UpdateEmailDto,
-	UpdateStatusDto,
 	LinkOAuthDto,
 	Setup2faDto,
 	FindUserQueryDto,
 	UserWithAccountsResponseDto,
-	UserEloResponseDto,
-	SuccessResponseDto,
-	CreateNotificationDto,
 } from "@transcendence/types";
+import { UserService } from "../services/user.service";
+import {
+	SetPasswordDto,
+	UpdateEmailDto,
+	UpdateStatusDto,
+	UserEloResponseDto,
+	CreateNotificationDto,
+} from "../dto";
 import { NotificationService } from "../services/notification.service";
 
 /**

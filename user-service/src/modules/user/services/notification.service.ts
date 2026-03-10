@@ -8,7 +8,7 @@ import {
 	NotificationsQueryDto,
 	NotificationListResponseDto,
 	CreateNotificationDto,
-} from "@transcendence/types";
+} from "../dto";
 
 @Injectable()
 export class NotificationService {

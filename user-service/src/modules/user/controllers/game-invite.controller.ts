@@ -24,7 +24,7 @@ import {
 	RespondGameInviteDto,
 	GameInviteResponseDto,
 	GameInviteListResponseDto,
-} from "@transcendence/types";
+} from "../dto";
 
 @ApiTags("Game Invites")
 @Controller("api/users/me/invites")

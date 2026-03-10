@@ -43,7 +43,7 @@ import {
 	MatchHistoryQueryDto,
 	MatchHistoryResponseDto,
 	UserAchievementsResponseDto,
-} from "@transcendence/types";
+} from "../dto";
 import { MatchHistoryService } from "../services/match-history.service";
 import { AchievementService } from "../services/achievement.service";
 

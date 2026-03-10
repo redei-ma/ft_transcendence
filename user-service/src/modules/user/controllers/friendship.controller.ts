@@ -25,7 +25,7 @@ import {
 	FriendResponseDto,
 	FriendListResponseDto,
 	FriendRequestsResponseDto,
-} from "@transcendence/types";
+} from "../dto";
 
 @ApiTags("Friendships")
 @Controller("api/users/me/friends")

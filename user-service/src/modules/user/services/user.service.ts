@@ -5,20 +5,22 @@ import {
 	ConflictException,
 } from "@nestjs/common";
 import { PrismaService } from "../../prisma/prisma.service";
-import { Provider } from "@transcendence/types";
 import {
+	Provider,
 	CreateLocalUserDto,
 	CreateOAuthUserDto,
-	SetPasswordDto,
 	UpdatePasswordDto,
-	UpdateUsernameDto,
-	UpdateEmailDto,
-	UpdateStatusDto,
 	LinkOAuthDto,
 	Setup2faDto,
 	FindUserQueryDto,
-	LeaderboardQueryDto,
 	UserWithAccountsResponseDto,
+} from "@transcendence/types";
+import {
+	SetPasswordDto,
+	UpdateUsernameDto,
+	UpdateEmailDto,
+	UpdateStatusDto,
+	LeaderboardQueryDto,
 	UserProfileResponseDto,
 	UserStatsResponseDto,
 	UserSettingsResponseDto,
@@ -26,7 +28,7 @@ import {
 	LeaderboardResponseDto,
 	CheckAvailabilityResponseDto,
 	UserEloResponseDto,
-} from "@transcendence/types";
+} from "../dto";
 import { unlink, mkdir, writeFile } from "fs/promises";
 import { randomUUID } from "crypto";
 import { join } from "path";

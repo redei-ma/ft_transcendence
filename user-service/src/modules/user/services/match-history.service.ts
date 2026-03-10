@@ -4,7 +4,7 @@ import {
 	MatchHistoryQueryDto,
 	MatchHistoryResponseDto,
 	MatchHistoryEntryDto,
-} from "@transcendence/types";
+} from "../dto";
 
 @Injectable()
 export class MatchHistoryService {

@@ -1,6 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import { PrismaService } from "../../prisma/prisma.service";
-import { UserAchievementsResponseDto } from "@transcendence/types";
+import { UserAchievementsResponseDto } from "../dto";
 
 @Injectable()
 export class AchievementService {

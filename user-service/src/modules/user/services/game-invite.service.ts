@@ -12,7 +12,7 @@ import {
 	RespondGameInviteDto,
 	GameInviteResponseDto,
 	GameInviteListResponseDto,
-} from "@transcendence/types";
+} from "../dto";
 
 const INVITE_USER_SELECT = {
 	id: true,

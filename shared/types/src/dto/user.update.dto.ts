@@ -1,31 +1,11 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
-import {
-	IsEnum,
-	IsOptional,
-	IsString,
-	IsUrl,
-	MinLength,
-} from "class-validator";
-import { UserStatus } from "../enums";
-import {
-	IsEmailField,
-	IsUsernameField,
-	IsPasswordHashField,
-	IsOAuthIdField,
-} from "./field-validators";
-
-/**
- * Input DTO for setting a password.
- * Password must be pre-hashed by the auth-service.
- */
-export class SetPasswordDto {
-	@IsPasswordHashField()
-	passwordHash: string;
-}
+import { IsOptional, IsString, MinLength } from "class-validator";
+import { IsPasswordHashField, IsOAuthIdField } from "./field-validators";
 
 /**
  * Input DTO for updating a password.
  * Password must be pre-hashed by the auth-service.
+ * Used by auth-service to call user-service internal API.
  */
 export class UpdatePasswordDto {
 	@IsPasswordHashField()
@@ -33,39 +13,8 @@ export class UpdatePasswordDto {
 }
 
 /**
- * Update username.
- * If the user still has a default DiceBear avatar, it will be regenerated.
- */
-export class UpdateUsernameDto {
-	@IsUsernameField()
-	username: string;
-}
-
-/**
- * Input DTO for updating email.
- */
-export class UpdateEmailDto {
-	@IsEmailField()
-	email: string;
-}
-
-/**
- * Input DTO for updating user status.
- */
-export class UpdateStatusDto {
-	@ApiProperty({
-		description: "New user status",
-		enum: UserStatus,
-		example: "ONLINE",
-	})
-	@IsEnum(UserStatus, {
-		message: `Status must be one of: ${Object.values(UserStatus).join(", ")}`,
-	})
-	status: UserStatus;
-}
-
-/**
  * Input DTO for linking an OAuth account to an existing user.
+ * Used by auth-service to call user-service internal API.
  */
 export class LinkOAuthDto {
 	@IsOAuthIdField()
@@ -83,6 +32,7 @@ export class LinkOAuthDto {
 
 /**
  * Input DTO for setting up 2FA.
+ * Used by auth-service to call user-service internal API.
  */
 export class Setup2faDto {
 	@ApiProperty({
