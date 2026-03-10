@@ -1,7 +1,0 @@
-ORDINE PRIORITARIO
-
-- Leaderboard
-- 2FA
-- Revisione React State
-- Navbar non responsive
-- Lagcompensations
