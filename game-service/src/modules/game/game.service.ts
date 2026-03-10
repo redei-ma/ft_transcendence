@@ -174,6 +174,16 @@ export class GameService implements OnModuleInit, OnModuleDestroy{
 
 		//sending the end game data to the database
 		const endGameData: MatchResult = game.engine.endGameData;
+		this.logger.debug('endGameData playersData');
+		this.logger.debug(JSON.stringify(endGameData.players));
+
+		this.logger.debug('endGameData endREason');
+		this.logger.debug(endGameData.endReason);
+
+		this.logger.debug('endGameData winnerId');
+		this.logger.debug(endGameData.winningTeamId);
+
+
 		await this.matchResultService.processMatchEnd(endGameData);
 	}
 

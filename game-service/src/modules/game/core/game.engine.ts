@@ -125,8 +125,14 @@ export class Engine{
 			this.endGameData.endReason = reason;
 			for (const player of this.players.values()){
 				if (player.userDbId){
+
+					let userIdNumber: number | null = parseInt(player.userDbId);
+					if(isNaN(userIdNumber)){
+						continue ;
+					}
+
 					this.endGameData.players.push({
-						userId: parseInt(player.userDbId),
+						userId: userIdNumber,
 						teamId: player.teamId,
 						characterName: player.characterName,
 						kills: player.kill,
