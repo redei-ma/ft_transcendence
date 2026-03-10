@@ -1,5 +1,6 @@
 import { World } from "../core";
-import { Vector, CharacherStats, Player, MatchType, CharacterName, GameConfig } from "@transcendence/types";
+import { Vector, Player, MatchType, CharacterName, GameConfig } from "@transcendence/types";
+import { CharacherStats } from "../game-interfaces";
 
 export const CHARACTER_DATA: Record<CharacterName, CharacherStats> = {
 	[CharacterName.ZEUS]: {

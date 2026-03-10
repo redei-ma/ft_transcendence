@@ -4,10 +4,11 @@ import { GameSession, GameRules, World } from './core';
 import { PlayerManager, MapManager, BulletManager } from './managers';
 import { ClientProxy } from '@nestjs/microservices';
 import { NetworkConfig, Vector, MatchMode, MatchType, GameConfig, ExitStatus,
-	AttackType, Player, MapData, MatchMakingData, GameData, ErrorCode, SuccessCode } from "@transcendence/types";
+	AttackType, Player, ErrorCode, SuccessCode } from "@transcendence/types";
 
 import { MatchResultService } from '../result/match-result.service';
 import { MatchResult } from 'src/types/match-result.interface';
+import { GameData, MatchMakingData, MapData } from './game-interfaces';
 
 // Game Engine Service
 @Injectable()

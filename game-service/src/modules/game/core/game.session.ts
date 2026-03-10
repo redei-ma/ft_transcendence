@@ -13,7 +13,6 @@ import {
 	Vector,
 	Player,
 	AttackType,
-	MatchMakingData,
 	ErrorCode,
 	MatchMode,
 	MatchType,
@@ -22,6 +21,7 @@ import {
 } from "@transcendence/types";
 import { Logger } from "@nestjs/common";
 import { GameService } from "../game.service";
+import { MatchMakingData } from "../game-interfaces";
 
 /* the session dosn't know what state the game have, this class is only a game manager */
 export class GameSession {

@@ -1,4 +1,5 @@
-import { Vector, GameConfig, BulletHit, Bullet, GameWorld, StaticEntity, Pillar, MapData , CharacterName } from "@transcendence/types";
+import { Pillar, Vector, GameConfig, BulletHit, Bullet, CharacterName } from "@transcendence/types";
+import { GameWorld, StaticEntity, MapData } from "../game-interfaces";
 
 export class World implements GameWorld{
 	id: string;

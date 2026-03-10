@@ -2,6 +2,11 @@ import { Vector } from "../classes";
 import { AttackType, BulletHit, CharacterName } from "../enums";
 import { Player } from "./dynamic-entitys.interfaces";
 
+export interface WinnerData {
+	winnerTeam: number | null;
+	winnerPlayersIds: string[];
+}
+
 export interface PlayerSnapshot {
 	//potremmo togliere dati superflui per alleggerire il pacchetto
 	type: string;
@@ -35,24 +40,4 @@ export interface BulletSnapshot {
 	//z: number
 	entityHit: Player | undefined;
 	hit: BulletHit;
-}
-
-export interface WinnerData {
-	winnerTeam: number | null;
-	winnerPlayersIds: string[];
-}
-
-export interface GameStateEvents {
-	eventName: "game-state";
-	data: {
-		players: PlayerSnapshot[] | undefined;
-		bullets: BulletSnapshot[] | undefined;
-	};
-	time: number;
-}
-
-export interface GameEndEvents {
-	eventName: "game-over";
-	winnerData: WinnerData | undefined;
-	time: number;
 }

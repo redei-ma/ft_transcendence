@@ -4,9 +4,7 @@ import {
 	Vector,
 	GameConfig,
 	AttackType,
-	GameEndEvents,
 	ErrorCode,
-	GameStateEvents,
 	Player,
 	SuccessCode,
 	ExitStatus,
@@ -14,6 +12,7 @@ import {
 import { EndState } from "./endState";
 import { IGameState } from "./game.state.interface";
 import { Logger } from "@nestjs/common";
+import { GameEndEvents, GameStateEvents } from "../game-interfaces";
 
 export class PlayState implements IGameState {
 	logger: Logger = new Logger(PlayState.name);

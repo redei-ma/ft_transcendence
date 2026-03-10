@@ -1,12 +1,4 @@
-import {
-	ConnectedSocket,
-	MessageBody,
-	OnGatewayConnection,
-	OnGatewayDisconnect,
-	OnGatewayInit,
-	SubscribeMessage,
-	WebSocketGateway,
-} from "@nestjs/websockets";
+import { ConnectedSocket,MessageBody,OnGatewayConnection,OnGatewayDisconnect,OnGatewayInit,SubscribeMessage,WebSocketGateway } from "@nestjs/websockets";
 import { Server, Socket } from "socket.io";
 import { UseGuards, Logger, UseFilters } from "@nestjs/common";
 import { WsThrottlerGuard } from "./guards/game.WsThrottlerGuard";
@@ -14,19 +6,9 @@ import { GameService } from "./game.service";
 import { GameInputDto, GameMessageDto } from "./dto";
 import { GameSession } from "./core";
 import { GameExceptionFilter } from "./errorHandling/game.WsGameExceptionFilter";
-import {
-	Vector,
-	GameData,
-	ErrorCode,
-	SuccessCode,
-	ExitStatus,
-	GameEvents,
-} from "@transcendence/types";
-import {
-	parseCookieHeader,
-	verifyJwtToken,
-	AUTH_COOKIE_NAME,
-} from "@transcendence/auth";
+import { Vector,ErrorCode,SuccessCode,ExitStatus,GameEvents } from "@transcendence/types";
+import { parseCookieHeader,verifyJwtToken,AUTH_COOKIE_NAME } from "@transcendence/auth";
+import { GameData } from "./game-interfaces";
 
 /* @WebSocketGateway()
 Decorator that marks this class as a Gateway. It enables real-time, bidirectional

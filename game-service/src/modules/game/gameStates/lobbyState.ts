@@ -10,11 +10,11 @@ import {
 	GameConfig,
 	Player,
 	AttackType,
-	MatchMakingData,
 	ExitStatus,
 	SuccessCode,
 	ErrorCode,
 } from "@transcendence/types";
+import { MatchMakingData } from "../game-interfaces";
 
 export class LobbyState implements IGameState {
 	logger: Logger = new Logger(LobbyState.name);

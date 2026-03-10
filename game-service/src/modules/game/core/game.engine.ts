@@ -3,9 +3,9 @@ import { GameRules } from "./game.rules";
 import { World } from "./game.world";
 import { PlayerManager } from "../managers/playerManager/player.manager";
 import { BulletManager } from "../managers/bullet.manager";
-import { GameConfig, MatchMode, MatchType, EndReason,  Player, PlayerSnapshot, BulletSnapshot,
-	GameEndEvents, GameStateEvents } from "@transcendence/types";
+import { GameConfig, MatchMode, MatchType, EndReason,  Player, PlayerSnapshot, BulletSnapshot } from "@transcendence/types";
 import { MatchResult } from "src/types/match-result.interface";
+import { GameEndEvents, GameStateEvents } from "../game-interfaces";
 
 export class Engine{
 

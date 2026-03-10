@@ -1,4 +1,4 @@
-import { CharacterName } from "../enums";
+import { CharacterName } from "@transcendence/types";
 
 export interface MatchMakingData{
 	characterName: CharacterName;
