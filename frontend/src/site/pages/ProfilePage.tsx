@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, FormEvent } from 'react'; // Added FormEvent here
 import { inputStyle, sectionTitleStyle } from '../styles/shared';
 import * as Icons from '../components/Icons';
 import * as api from '../services/apiService';
@@ -6,9 +6,9 @@ import { UserProfile, UserStats, UserSettings } from '../services/apiService';
 import { theme } from '../../configs/theme';
 import { NAVBAR_HEIGHT } from '../components/Navbar';
 
-const statusColor = (s: string) => 
-  s === 'ONLINE' ? theme.colors.hpHigh : 
-  s === 'IN_GAME' ? theme.colors.zeus : 
+const statusColor = (s: string) =>
+  s === 'ONLINE' ? theme.colors.hpHigh :
+  s === 'IN_GAME' ? theme.colors.zeus :
   theme.colors.textMuted;
 
 function StatBox({ label, value, color = theme.colors.gold }: { label: string; value: string | number; color?: string }) {
@@ -36,12 +36,12 @@ function EditableField({ label, value, isEditing, onEdit, onSave, onCancel, temp
           {label}
         </div>
         {isEditing ? (
-          <input 
-            className="input-glow" 
-            value={tempVal} 
-            onChange={(e) => setTempVal(e.target.value)} 
-            style={{ ...inputStyle, padding: '6px 10px', fontSize: '14px', width: '100%' }} 
-            autoFocus 
+          <input
+            className="input-glow"
+            value={tempVal}
+            onChange={(e) => setTempVal(e.target.value)}
+            style={{ ...inputStyle, padding: '6px 10px', fontSize: '14px', width: '100%' }}
+            autoFocus
           />
         ) : (
           <div style={{ color: theme.colors.textPrimary, fontFamily: theme.fonts.mono, fontSize: '15px' }}>
@@ -68,33 +68,60 @@ export default function ProfilePage() {
   const [stats, setStats] = useState<UserStats | null>(null);
   const [settings, setSettings] = useState<UserSettings | null>(null);
   const [loading, setLoading] = useState(true);
-  
+
   const [editingUsername, setEditingUsername] = useState(false);
   const [editingEmail, setEditingEmail] = useState(false);
   const [tempVal, setTempVal] = useState('');
 
+  const [isChangingPass, setIsChangingPass] = useState(false);
+  const [passData, setPassData] = useState({ oldPass: '', newPass: '', confirmPass: '' });
+  const [passMsg, setPassMsg] = useState({ text: '', isError: false });
+
   useEffect(() => {
     Promise.all([api.getMyProfile(), api.getMyStats(), api.getMySettings()])
-      .then(([p, s, set]) => { 
-        if (p) setProfile(p); 
-        if (s) setStats(s); 
-        if (set) setSettings(set); 
+      .then(([p, s, set]) => {
+        if (p) setProfile(p);
+        if (s) setStats(s);
+        if (set) setSettings(set);
       })
       .finally(() => setLoading(false));
   }, []);
 
-  const handleSaveUsername = async () => { 
+  const handleSaveUsername = async () => {
     if (await api.updateUsername(tempVal)) {
-      setProfile((p) => p ? { ...p, username: tempVal } : null); 
+      setProfile((p) => p ? { ...p, username: tempVal } : null);
     }
-    setEditingUsername(false); 
+    setEditingUsername(false);
   };
-  
-  const handleSaveEmail = async () => { 
-    if (await api.updateEmail(tempVal)) {
-      setProfile((p) => p ? { ...p, email: tempVal } : null); 
+
+  const handleSaveEmail = async () => {
+    const result = await api.requestEmailChange(tempVal);
+    if (result.ok) {
+      alert(`A verification link has been sent to ${tempVal}. Check your inbox!`);
+    } else {
+      alert(result.message || "Failed to request email change");
     }
-    setEditingEmail(false); 
+    setEditingEmail(false);
+  };
+
+  const handlePasswordChange = async (e: FormEvent) => {
+    e.preventDefault();
+    if (passData.newPass !== passData.confirmPass) {
+      return setPassMsg({ text: "Passwords don't match", isError: true });
+    }
+
+    const result = await api.changePassword(passData.oldPass, passData.newPass);
+
+    if (result.ok) {
+      setPassMsg({ text: "Password updated! Other sessions logged out.", isError: false });
+      setTimeout(() => {
+        setIsChangingPass(false);
+        setPassData({ oldPass: '', newPass: '', confirmPass: '' });
+        setPassMsg({ text: '', isError: false });
+      }, 3000);
+    } else {
+      setPassMsg({ text: result.message || "Error updating password", isError: true });
+    }
   };
 
   if (loading) return (
@@ -108,16 +135,15 @@ export default function ProfilePage() {
   const avatarUrl = profile?.avatarUrl || `https://api.dicebear.com/9.x/pixel-art/svg?seed=${username}`;
   const userStatus = profile?.status || 'OFFLINE';
   const createdAt = profile?.createdAt || new Date().toISOString();
-  
+
   const s: UserStats = stats || { eloCurrent: 0, eloPeak: 0, totalWins: 0, totalLosses: 0, totalDraws: 0, bestWinStreak: 0, totalKills: 0, totalDeaths: 1, characterStats: [] };
   const total = s.totalWins + s.totalLosses + s.totalDraws;
   const winRate = total > 0 ? Math.round((s.totalWins / total) * 100) : 0;
-  
   const sec: UserSettings = settings || { is2faEnabled: false, isEmailVerified: false, linkedProviders: [] };
 
   return (
     <div className="animate-fadeIn" style={{ paddingTop: `${NAVBAR_HEIGHT}px`, maxWidth: '800px', margin: '0 auto', paddingBottom: '60px', paddingLeft: '24px', paddingRight: '24px' }}>
-      
+
       {/* Settings & Personalization */}
       <div id="profile-settings" style={{ paddingTop: '40px', scrollMarginTop: `${NAVBAR_HEIGHT}px` }}>
         <div style={{ textAlign: 'center', marginBottom: '40px' }}>
@@ -130,10 +156,10 @@ export default function ProfilePage() {
             Member since {new Date(createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long' })}
           </p>
         </div>
-        
+
         <h2 style={{ ...sectionTitleStyle, fontSize: '22px', marginBottom: '24px' }}>Settings & Personalization</h2>
         <EditableField label="USERNAME" value={username} isEditing={editingUsername} tempVal={tempVal} setTempVal={setTempVal} onEdit={() => setEditingUsername(true)} onSave={handleSaveUsername} onCancel={() => setEditingUsername(false)} />
-        <EditableField label="EMAIL" value={email} isEditing={editingEmail} tempVal={tempVal} setTempVal={setTempVal} onEdit={() => setEditingEmail(true)} onSave={handleSaveEmail} onCancel={() => setEditingEmail(false)} />
+        <EditableField label="EMAIL (REQUIRES VERIFICATION)" value={email} isEditing={editingEmail} tempVal={tempVal} setTempVal={setTempVal} onEdit={() => setEditingEmail(true)} onSave={handleSaveEmail} onCancel={() => setEditingEmail(false)} />
       </div>
 
       {/* Statistics */}
@@ -193,30 +219,66 @@ export default function ProfilePage() {
       {/* Security */}
       <div id="profile-security" style={{ paddingTop: '80px', paddingBottom: '40px', scrollMarginTop: `${NAVBAR_HEIGHT}px` }}>
         <h2 style={{ ...sectionTitleStyle, fontSize: '22px', marginBottom: '24px' }}>Security & 2FA</h2>
+
+        {/* Password Box */}
+        <div style={{ padding: '24px', background: theme.colors.bgPanel, border: `1px solid ${theme.colors.border}`, borderRadius: '4px', marginBottom: '12px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: isChangingPass ? '20px' : '0' }}>
+            <div>
+              <div style={{ fontFamily: theme.fonts.heading, fontSize: '14px', fontWeight: 600, color: theme.colors.textPrimary }}>Account Password</div>
+              <div style={{ fontFamily: theme.fonts.mono, fontSize: '12px', color: theme.colors.textMuted }}>Last changed: (hidden)</div>
+            </div>
+            <button
+              onClick={() => setIsChangingPass(!isChangingPass)}
+              style={{ padding: '8px 20px', background: 'none', border: `1px solid ${theme.colors.gold}`, color: theme.colors.gold, borderRadius: '2px', cursor: 'pointer', fontSize: '11px', fontWeight: 700 }}
+            >
+              {isChangingPass ? 'CANCEL' : 'CHANGE PASSWORD'}
+            </button>
+          </div>
+
+          {isChangingPass && (
+            <form onSubmit={handlePasswordChange} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <input type="password" placeholder="Current Password" required style={{ ...inputStyle, padding: '10px' }} value={passData.oldPass} onChange={e => setPassData({...passData, oldPass: e.target.value})} />
+              <input type="password" placeholder="New Password" required style={{ ...inputStyle, padding: '10px' }} value={passData.newPass} onChange={e => setPassData({...passData, newPass: e.target.value})} />
+              <input type="password" placeholder="Confirm New Password" required style={{ ...inputStyle, padding: '10px' }} value={passData.confirmPass} onChange={e => setPassData({...passData, confirmPass: e.target.value})} />
+              <button type="submit" style={{ padding: '10px', background: theme.colors.gold, border: 'none', color: theme.colors.bgDark, fontWeight: 700, cursor: 'pointer' }}>UPDATE PASSWORD</button>
+            </form>
+          )}
+          {passMsg.text && (
+            <div style={{ marginTop: '10px', fontSize: '12px', color: passMsg.isError ? theme.colors.dead : theme.colors.hpHigh }}>
+              {passMsg.text}
+            </div>
+          )}
+        </div>
+
+        {/* 2FA Box */}
         <div style={{ padding: '24px', background: theme.colors.bgPanel, border: `1px solid ${theme.colors.border}`, borderRadius: '4px', marginBottom: '12px' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div>
               <div style={{ fontFamily: theme.fonts.heading, fontSize: '14px', fontWeight: 600, color: theme.colors.textPrimary, marginBottom: '4px' }}>Two-Factor Authentication</div>
               <div style={{ fontFamily: theme.fonts.mono, fontSize: '13px', color: sec.is2faEnabled ? theme.colors.hpHigh : theme.colors.textSecondary }}>{sec.is2faEnabled ? '✓ Enabled' : 'Not enabled'}</div>
             </div>
-            <button className="btn-press" style={{ 
-              padding: '8px 20px', 
-              background: sec.is2faEnabled ? 'none' : `linear-gradient(180deg, ${theme.colors.gold}, ${theme.colors.goldDark})`, 
-              border: sec.is2faEnabled ? `1px solid ${theme.colors.dead}` : 'none', 
-              borderRadius: '2px', 
-              color: sec.is2faEnabled ? theme.colors.dead : theme.colors.bgDark, 
-              fontFamily: theme.fonts.heading, 
-              fontSize: '11px', 
-              fontWeight: 700, 
-              letterSpacing: '1px', 
-              cursor: 'pointer' 
+            <button className="btn-press" style={{
+              padding: '8px 20px',
+              background: sec.is2faEnabled ? 'none' : `linear-gradient(180deg, ${theme.colors.gold}, ${theme.colors.goldDark})`,
+              border: sec.is2faEnabled ? `1px solid ${theme.colors.dead}` : 'none',
+              borderRadius: '2px',
+              color: sec.is2faEnabled ? theme.colors.dead : theme.colors.bgDark,
+              fontFamily: theme.fonts.heading,
+              fontSize: '11px',
+              fontWeight: 700,
+              letterSpacing: '1px',
+              cursor: 'pointer'
             }}>{sec.is2faEnabled ? 'DISABLE' : 'ENABLE'}</button>
           </div>
         </div>
+
+        {/* Email Verification Box */}
         <div style={{ padding: '24px', background: theme.colors.bgPanel, border: `1px solid ${theme.colors.border}`, borderRadius: '4px', marginBottom: '12px' }}>
           <div style={{ fontFamily: theme.fonts.heading, fontSize: '14px', fontWeight: 600, color: theme.colors.textPrimary, marginBottom: '4px' }}>Email Verification</div>
           <div style={{ fontFamily: theme.fonts.mono, fontSize: '13px', color: sec.isEmailVerified ? theme.colors.hpHigh : theme.colors.dead }}>{sec.isEmailVerified ? '✓ Verified' : '✗ Not verified'}</div>
         </div>
+
+        {/* Linked Accounts Box */}
         <div style={{ padding: '24px', background: theme.colors.bgPanel, border: `1px solid ${theme.colors.border}`, borderRadius: '4px' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div>
@@ -232,7 +294,6 @@ export default function ProfilePage() {
           </div>
         </div>
       </div>
-      
     </div>
   );
 }

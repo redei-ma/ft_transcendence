@@ -27,11 +27,11 @@ async registerAndSendVerification(
   ) {
 
     const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
-  
+
     if (!password || password.length < 10) {
       throw new BadRequestException('Password must be at least 8 characters long.');
     }
-    
+
     if (!passwordRegex.test(password)) {
       throw new BadRequestException('Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character.');
     }
@@ -83,7 +83,11 @@ async registerAndSendVerification(
   }
 
   async login(username: string, passwordHash: string, totp?: string) {
-    const user = await this.usersService.findUser({ username });
+    let user = await this.usersService.findUser({ username });
+
+    if (!user) {
+      user = await this.usersService.findUser({ email: username });
+    }
 
     if (!user) {
       throw new UnauthorizedException('invalid credentials');
@@ -152,25 +156,6 @@ async registerAndSendVerification(
     };
   }
 
-	async refresh(user: JwtAccessPayloadDto) {
-
-		const accessPayload: JwtAccessPayloadDto = {
-      sub: user.sub,
-      username: user.username,
-    };
-		return this.jwtService.sign(
-			accessPayload, {
-			secret: this.config.getOrThrow<string>('JWT_ACCESS_SECRET'),
-   		expiresIn: '15m',
-			});
-	}
-
-	async logout(userId: number ) {
-		await this.usersService.invalidateRefreshTokens(userId);
-
-		return { ok: true };
-	}
-
   generateEmailVerificationToken(userId: number) {
     return this.jwtService.sign(
       {
@@ -203,6 +188,25 @@ async registerAndSendVerification(
 
     return { message: 'Email successfully verified. You can now log in.',/* ok: true */ };
   }
+
+	async refresh(user: JwtAccessPayloadDto) {
+
+		const accessPayload: JwtAccessPayloadDto = {
+      sub: user.sub,
+      username: user.username,
+    };
+		return this.jwtService.sign(
+			accessPayload, {
+			secret: this.config.getOrThrow<string>('JWT_ACCESS_SECRET'),
+   		expiresIn: '15m',
+			});
+	}
+
+	async logout(userId: number ) {
+		await this.usersService.invalidateRefreshTokens(userId);
+
+		return { ok: true };
+	}
 
   generatePasswordResetToken(userId: number) {
     return this.jwtService.sign(
@@ -296,11 +300,6 @@ async registerAndSendVerification(
       }
     }
 
-/*       await this.profileClient.upsertProfile({ //forse non va qui ma su strategy o piu prob che devo passare anche photos in googleuser
-        userId: user.id,
-        avatar: profile.photos?.[0]?.value,
-      }); */
-
     const accessToken = this.jwtService.sign(
       { sub: user.id, username: user.username },
       {
@@ -355,5 +354,72 @@ async registerAndSendVerification(
 
   async disable2fa(userId: number) {
     await this.usersService.disable2fa(userId);
+  }
+
+// --- EMAIL CHANGE LOGIC ---
+
+async requestEmailChange(userId: number, newEmail: string) {
+    // 1. Optional: Check if user exists and has LOCAL account (or rely on user-service check)
+
+    // 2. Generate a token that stores the new email
+    const token = this.jwtService.sign(
+      { sub: userId, newEmail, type: 'email-change' },
+      {
+        secret: this.config.getOrThrow('JWT_EMAIL_SECRET'),
+        expiresIn: '15m',
+      },
+    );
+
+    const verifyUrl = `${this.config.getOrThrow('PUBLIC_URL')}/api/auth/confirm-email-change?token=${encodeURIComponent(token)}`;
+
+    await this.mailService.sendVerifyEmail(newEmail, verifyUrl);
+    return { message: 'Confirmation email sent to your new address. You have 15minutes to confirm the new email, only then it will be modified' };
+  }
+
+  async confirmEmailChange(token: string) {
+    const payload = this.jwtService.verify(token, {
+      secret: this.config.getOrThrow('JWT_EMAIL_SECRET'),
+    });
+
+    if (payload.type !== 'email-change') {
+      throw new ForbiddenException('Invalid token type');
+    }
+
+    // Call user-service to finalize the change
+    await this.usersService.updateEmail(payload.sub, { email: payload.newEmail });
+
+    return { message: 'Email updated successfully.' };//mettere pagina anche qui?
+  }
+
+  // --- PASSWORD CHANGE LOGIC ---
+
+  async changePassword(userId: number, oldPass: string, newPass: string) {
+    // 1. Get user including the password hash
+    const user = await this.usersService.findUser({ id: userId });
+    const localAccount = user?.accounts.find(a => a.provider === 'LOCAL');
+
+    //aggiungere caso se uno e entrato con google?
+    if (!localAccount?.passwordHash) {
+      throw new BadRequestException('No local password set for this account.');
+    }
+
+    // 2. Verify old password
+    const isMatch = await bcrypt.compare(oldPass, localAccount.passwordHash);
+    if (!isMatch) {
+      throw new UnauthorizedException('Current password incorrect');
+    }
+
+    // 3. Validate new password (use your existing regex)
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+    if (newPass.length < 10 || !passwordRegex.test(newPass)) {
+      throw new BadRequestException('New password does not meet security requirements.');
+    }
+    //controllare che nuova pass sia diversa da vecchia?
+    // 4. Hash and Update
+    const hashed = await bcrypt.hash(newPass, 10);
+    await this.usersService.updatePassword(userId, { passwordHash: hashed });
+
+    // 5. Security: Invalidate existing sessions
+    await this.usersService.invalidateRefreshTokens(userId);
   }
 }

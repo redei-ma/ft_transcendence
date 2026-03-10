@@ -9,7 +9,6 @@ import { MailService } from './mail/mail.service';
 import { GoogleStrategy } from './jwt/google.strategy';
 import { UserModule } from '../user/user.module';
 import { APP_GUARD } from '@nestjs/core';
-import { ThrottlerGuard } from '@nestjs/throttler';
 
 @Module({
   imports: [PassportModule, JwtModule.register({}), UserModule],
@@ -20,10 +19,6 @@ import { ThrottlerGuard } from '@nestjs/throttler';
     JwtRefreshStrategy,
     MailService,
     GoogleStrategy,
-    {
-      provide: APP_GUARD,
-      useClass: ThrottlerGuard,
-    },
   ],
 })
 export class AuthModule {}

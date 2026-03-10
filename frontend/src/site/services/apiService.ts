@@ -187,3 +187,46 @@ export async function checkEmailAvailable(email: string): Promise<boolean> {
 		return false;
 	}
 }
+
+export async function requestEmailChange(newEmail: string): Promise<{ ok: boolean; message?: string }> {
+    try {
+        const res = await fetchWithAuthRetry("/api/auth/change-email-request", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ newEmail }),
+        });
+
+        if (!res) return { ok: false };
+        const data = await res.json();
+
+        return {
+            ok: res.ok,
+            message: data.message || (res.ok ? "Success" : "Failed")
+        };
+    } catch (error) {
+        console.error("[API] Error requesting email change:", error);
+        return { ok: false, message: "Network error" };
+    }
+}
+
+export async function changePassword(oldPass: string, newPass: string): Promise<{ ok: boolean; message?: string }> {
+    try {
+        const res = await fetchWithAuthRetry("/api/auth/change-password", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ oldPass, newPass }),
+        });
+
+        if (!res) return { ok: false };
+        const data = await res.json();
+
+        return {
+            ok: res.ok,
+            message: data.message || (res.ok ? "Success" : "Failed")
+        };
+    } catch (error) {
+        console.error("[API] Error changing password:", error);
+        return { ok: false, message: "Network error" };
+    }
+}
+
