@@ -1,14 +1,11 @@
-import { GameConfig } from "../configs/game.config";
 import { SocketEvents } from "../configs/game.events";
 import { GameSession } from "../core/game.session";
-import { Vector } from "../utils/game.vector";
 import { getNewPlayer } from "../factories/player.factory";
 import { IGameState } from "./game.state.interface";
 import { PlayState } from "./playState";
 import { Logger } from "@nestjs/common";
 import { randomUUID } from "crypto";
-import { Player, AttackType, MatchMakingData, SuccessCode, ErrorCode } from "../interfaces-enums";
-import { ExitStatus } from "../interfaces-enums/exitStatus.interface";
+import { Vector, GameConfig, Player, AttackType, MatchMakingData, ExitStatus, SuccessCode, ErrorCode } from "@transcendence/types";
 
 export class LobbyState implements IGameState{
 	logger: Logger = new Logger(LobbyState.name);

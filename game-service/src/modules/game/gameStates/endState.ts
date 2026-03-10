@@ -1,9 +1,7 @@
 import { Logger } from "@nestjs/common";
-import { GameConfig } from "../configs/game.config";
+import { Vector, GameConfig, AttackType } from "@transcendence/types";
 import { GameSession } from "../core/game.session";
-import { Vector } from "../utils/game.vector";
 import { IGameState } from "./game.state.interface";
-import { AttackType } from "../interfaces-enums";
 
 export class EndState implements IGameState{
 	logger: Logger = new Logger(EndState.name);

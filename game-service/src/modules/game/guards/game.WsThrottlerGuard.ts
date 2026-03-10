@@ -1,7 +1,7 @@
 import { ExecutionContext, Injectable } from "@nestjs/common";
 import { ThrottlerGuard, ThrottlerException } from "@nestjs/throttler";
 import { GameException } from "../errorHandling/game.exception";
-import { ErrorCode } from "../interfaces-enums";
+import { ErrorCode } from "@transcendence/types";
 import { SocketEvents } from "../configs";
 
 @Injectable()

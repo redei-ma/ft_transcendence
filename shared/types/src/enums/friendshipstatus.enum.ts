@@ -1,10 +1,11 @@
 // AUTO-GENERATED — do not edit manually
-// Source: shared/prisma/schema.prisma
+  // Source: shared/prisma/schema.prisma
 
-export const FriendshipStatus = {
-  PENDING: 'PENDING',
+  export const FriendshipStatus = {
+    PENDING: 'PENDING',
   ACCEPTED: 'ACCEPTED',
   REJECTED: 'REJECTED'
-} as const;
+  } as const;
 
-export type FriendshipStatus = typeof FriendshipStatus[keyof typeof FriendshipStatus];
+  export type FriendshipStatus = typeof FriendshipStatus[keyof typeof FriendshipStatus];
+  

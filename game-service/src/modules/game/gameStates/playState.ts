@@ -1,9 +1,6 @@
-import { GameConfig } from "../configs/game.config";
 import { SocketEvents } from "../configs/game.events";
 import { GameSession } from "../core/game.session";
-import { AttackType, GameEndEvents, ErrorCode, GameStateEvents, Player, SuccessCode } from "../interfaces-enums";
-import { ExitStatus } from "../interfaces-enums/exitStatus.interface";
-import { Vector } from "../utils/game.vector";
+import { Vector, GameConfig, AttackType, GameEndEvents, ErrorCode, GameStateEvents, Player, SuccessCode, ExitStatus } from "@transcendence/types";
 import { EndState } from "./endState";
 import { IGameState } from "./game.state.interface";
 import { Logger } from "@nestjs/common";

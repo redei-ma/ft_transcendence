@@ -1,0 +1,1 @@
+{"version":3,"file":"game.mapManager.d.ts","sourceRoot":"","sources":["game.mapManager.ts"],"names":[],"mappings":"AAAA,OAAO,EAAsB,YAAY,EAAE,MAAM,gBAAgB,CAAC;AAGlE,OAAO,EAAE,OAAO,EAAE,MAAM,sBAAsB,CAAC;AAE/C,qBACa,UAAW,YAAW,YAAY;IAE9C,MAAM,MAA+B;IACrC,OAAO,CAAC,OAAO,CAAU;IAEnB,YAAY;YAIJ,UAAU;IAexB,MAAM,IAAI,OAAO,GAAG,SAAS;CAO7B"}

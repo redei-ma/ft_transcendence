@@ -8,7 +8,7 @@
  */
 
 import * as THREE from 'three';
-import { GameConfig } from '../../configs/config';
+import { GameConfig } from '@transcendence/types';
 
 export class GameScene {
   public scene: THREE.Scene;

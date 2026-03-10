@@ -1,6 +1,4 @@
-import { GameConfig } from "../../../configs";
-import { Player } from "../../../interfaces-enums";
-import { IPlayerState } from "../..";
+import { GameConfig, Player, IPlayerState } from "@transcendence/types";
 
 export class DefenceAttack implements IPlayerState{
 

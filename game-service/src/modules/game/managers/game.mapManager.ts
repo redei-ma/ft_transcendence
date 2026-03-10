@@ -1,8 +1,7 @@
 import { Injectable, Logger, OnModuleInit } from "@nestjs/common";
-import * as path from "path"; // Usa * as path per sicurezza
+import * as path from "path";
 import * as fs from 'fs';
-import { ErrorCode, MapData } from "../interfaces-enums";
-import { GameException } from "../errorHandling/game.exception";
+import { MapData } from "@transcendence/types";
 
 @Injectable()
 export class MapManager implements OnModuleInit{

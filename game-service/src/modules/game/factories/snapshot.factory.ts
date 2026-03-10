@@ -1,5 +1,4 @@
-import { Player, Bullet, PlayerSnapshot, BulletSnapshot } from "../interfaces-enums";
-import { Vector } from "../utils";
+import { Vector, Player, Bullet, PlayerSnapshot, BulletSnapshot } from "@transcendence/types"
 
 export class Snapshot{
 	static toPlayerSnapshot(player: Player): PlayerSnapshot{

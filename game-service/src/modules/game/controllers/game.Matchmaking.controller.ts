@@ -1,9 +1,8 @@
-import { BadRequestException, Body, Controller, Logger, Post, Headers, UnauthorizedException, UseGuards } from "@nestjs/common";
+import { BadRequestException, Body, Controller, Logger, Post, UseGuards } from "@nestjs/common";
 import { GameService } from "../game.service";
 import { NetworkConfig } from "../configs";
 import { CreateMatchDto } from "../dto/matchMaking.dto";
-import { SuccessCode } from "../interfaces-enums";
-import { ExitStatus } from "../interfaces-enums/exitStatus.interface";
+import { ExitStatus, SuccessCode } from "@transcendence/types";
 import { ConfigService } from '@nestjs/config';
 //import { MatchmakingGuard } from "../guards/game.matchmaking-guard";
 

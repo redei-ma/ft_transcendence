@@ -3,7 +3,7 @@ import { useLoader } from '@react-three/fiber';
 import { useGameSocket } from '../hooks/useGameSocket';
 import { InputManager } from './input/inputManager';
 import { useEffect, useRef } from 'react';
-import { GameConfig } from '../configs/config';
+import { GameConfig } from '@transcendence/types';
 import { CharacterName, MatchMode } from '@transcendence/types';
 import GameUI from './UI/gameUI';
 import { PlayerEntity } from './entities/PlayerEntity';

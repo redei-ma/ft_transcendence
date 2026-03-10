@@ -1,0 +1,1 @@
+{"version":3,"file":"snapshot.factory.d.ts","sourceRoot":"","sources":["snapshot.factory.ts"],"names":[],"mappings":"AAAA,OAAO,EAAE,MAAM,EAAE,MAAM,EAAE,cAAc,EAAE,cAAc,EAAE,MAAM,sBAAsB,CAAC;AAGtF,qBAAa,QAAQ;IACpB,MAAM,CAAC,gBAAgB,CAAC,MAAM,EAAE,MAAM,GAAG,cAAc;IA+BvD,MAAM,CAAC,gBAAgB,CAAC,MAAM,EAAE,MAAM,GAAG,cAAc;CAoBvD"}

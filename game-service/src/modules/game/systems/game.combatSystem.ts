@@ -1,8 +1,6 @@
-import { GameConfig } from "../configs";
-import { Vector } from "../utils";
+import { Vector, GameConfig, Player, AttackType  } from "@transcendence/types";
 import { World } from "../core";
 import { CHARACTER_DATA } from "../factories";
-import { Player, AttackType } from "../interfaces-enums";
 
 export class CombatSystem{
 

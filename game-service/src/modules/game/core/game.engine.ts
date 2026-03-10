@@ -1,12 +1,10 @@
-import { GameConfig } from "../configs/game.config";
 import { Snapshot } from "../factories/snapshot.factory";
 import { GameRules } from "./game.rules";
 import { World } from "./game.world";
 import { PlayerManager } from "../managers/playerManager/player.manager";
 import { BulletManager } from "../managers/bullet.manager";
-import { Player, PlayerSnapshot, BulletSnapshot,
-	GameEndEvents, GameStateEvents } from "../interfaces-enums";
-import { MatchMode, MatchType, EndReason } from "@transcendence/types";
+import { GameConfig, MatchMode, MatchType, EndReason,  Player, PlayerSnapshot, BulletSnapshot,
+	GameEndEvents, GameStateEvents } from "@transcendence/types";
 import { MatchResult } from "src/types/match-result.interface";
 
 export class Engine{

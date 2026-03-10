@@ -1,10 +1,11 @@
 // AUTO-GENERATED — do not edit manually
-// Source: shared/prisma/schema.prisma
+  // Source: shared/prisma/schema.prisma
 
-export const EndReason = {
-  TIMEOUT: 'TIMEOUT',
+  export const EndReason = {
+    TIMEOUT: 'TIMEOUT',
   RESIGNATION: 'RESIGNATION',
   KILLOUT: 'KILLOUT'
-} as const;
+  } as const;
 
-export type EndReason = typeof EndReason[keyof typeof EndReason];
+  export type EndReason = typeof EndReason[keyof typeof EndReason];
+  

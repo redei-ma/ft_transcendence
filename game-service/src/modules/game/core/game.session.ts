@@ -1,21 +1,17 @@
 import { Server } from 'socket.io';
 import { World } from './game.world';
-import { Vector } from '../utils/game.vector';
 import { GameRules } from './game.rules';
 import { Engine } from './game.engine';
 import { IGameState } from '../gameStates/game.state.interface';
 import { LobbyState } from '../gameStates/lobbyState';
 import { EndState } from '../gameStates/endState';
 import { PlayState } from '../gameStates/playState';
-import { GameConfig } from '../configs/game.config';
 import { SocketEvents } from '../configs/game.events';
 import { PlayerManager } from '../managers/playerManager/player.manager';
 import { BulletManager } from '../managers/bullet.manager';
-import { Player, AttackType, MatchMakingData, ErrorCode } from '../interfaces-enums';
-import { MatchMode, MatchType } from "@transcendence/types";
+import { ExitStatus, Vector, Player, AttackType, MatchMakingData, ErrorCode, MatchMode, MatchType, GameConfig } from "@transcendence/types";
 import { Logger } from '@nestjs/common';
 import { GameService } from '../game.service';
-import { ExitStatus } from '../interfaces-enums/exitStatus.interface';
 
 /* the session dosn't know what state the game have, this class is only a game manager */
 export class GameSession{

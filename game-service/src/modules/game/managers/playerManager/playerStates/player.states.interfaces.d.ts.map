@@ -1,0 +1,1 @@
+{"version":3,"file":"player.states.interfaces.d.ts","sourceRoot":"","sources":["player.states.interfaces.ts"],"names":[],"mappings":"AAAA,OAAO,EAAE,MAAM,EAAE,MAAM,sBAAsB,CAAC;AAE9C,MAAM,WAAW,YAAY;IAE5B,OAAO,CAAC,MAAM,EAAE,MAAM,GAAG,IAAI,CAAC;IAE9B,MAAM,CAAC,MAAM,EAAE,MAAM,EAAE,EAAE,EAAE,MAAM,GAAG,OAAO,CAAC;CAC5C"}

@@ -1,7 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { World } from "../core";
 import { CombatSystem, PhysicsSystem } from "../systems";
-import { Player, BulletHit, AttackType } from "../interfaces-enums";
+import { Player, BulletHit, AttackType } from "@transcendence/types";
 
 @Injectable()
 export class BulletManager{

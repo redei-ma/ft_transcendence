@@ -3,13 +3,11 @@ import { Server, Socket } from "socket.io";
 import { UseGuards, Logger, UseFilters } from "@nestjs/common";
 import { WsThrottlerGuard } from "./guards/game.WsThrottlerGuard";
 import { GameService } from "./game.service";
-import { Vector } from "./utils";
 import { GameInputDto, GameMessageDto } from "./dto";
 import { SocketEvents } from "./configs";
 import { GameSession } from "./core";
-import { GameData, ErrorCode, SuccessCode } from "./interfaces-enums";
 import { GameExceptionFilter } from "./errorHandling/game.WsGameExceptionFilter";
-import { ExitStatus } from "./interfaces-enums/exitStatus.interface";
+import { Vector, GameData, ErrorCode, SuccessCode, ExitStatus } from "@transcendence/types";
 import { parseCookieHeader, verifyJwtToken, AUTH_COOKIE_NAME } from '@transcendence/auth';
 
 /* @WebSocketGateway()

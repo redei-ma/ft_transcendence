@@ -1,5 +1,5 @@
 import { IsNumber, Min, Max, IsNotEmpty, IsOptional, IsEnum } from 'class-validator';
-import { AttackType } from '../interfaces-enums';
+import { AttackType } from '@transcendence/types';
 
 export class GameInputDto {
 	@IsNotEmpty()

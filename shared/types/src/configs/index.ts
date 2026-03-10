@@ -1,0 +1,1 @@
+export { GameConfig } from './game.configs'
