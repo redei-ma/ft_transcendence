@@ -19,7 +19,7 @@ communication. It acts like a Controller but for WebSockets.
 @WebSocketGateway({
 	cors: {
 		origin: process.env.FRONTEND_URL,
-		methods: ["POST"],
+		methods: ["GET","POST"],
 		credentials: true,
 	},
 })
