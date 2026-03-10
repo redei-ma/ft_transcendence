@@ -2,9 +2,10 @@ import { useState, useEffect, FormEvent } from 'react'; // Added FormEvent here
 import { inputStyle, sectionTitleStyle } from '../styles/shared';
 import * as Icons from '../components/Icons';
 import * as api from '../services/apiService';
-import { UserProfile, UserStats, UserSettings } from '../services/apiService';
+import { UserProfile, UserStats, UserSettings, generate2fa, turnOn2fa, turnOff2fa } from '../services/apiService';
 import { theme } from '../../configs/theme';
 import { NAVBAR_HEIGHT } from '../components/Navbar';
+import { CharacterName } from '@transcendence/types';
 
 const statusColor = (s: string) =>
   s === 'ONLINE' ? theme.colors.hpHigh :
@@ -68,6 +69,10 @@ export default function ProfilePage() {
   const [stats, setStats] = useState<UserStats | null>(null);
   const [settings, setSettings] = useState<UserSettings | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isSettingUp2fa, setIsSettingUp2fa] = useState(false);
+  const [qrCodeUrl, setQrCodeUrl] = useState<string | null>(null);
+  const [setupCode, setSetupCode] = useState('');
+  const [error2fa, setError2fa] = useState('');
 
   const [editingUsername, setEditingUsername] = useState(false);
   const [editingEmail, setEditingEmail] = useState(false);
@@ -121,6 +126,40 @@ export default function ProfilePage() {
       }, 3000);
     } else {
       setPassMsg({ text: result.message || "Error updating password", isError: true });
+    }
+  };
+
+  // ⚡ LE FUNZIONI ORA SONO DENTRO IL COMPONENTE, DOVE DEVONO STARE
+  const handleEnable2faClick = async () => {
+    setError2fa('');
+
+    const data = await generate2fa();
+
+    if (data && data.qrCode) {
+      setQrCodeUrl(data.qrCode);
+      setIsSettingUp2fa(true);
+    } else {
+      alert("Il backend non ha risposto correttamente. Guarda la console (F12)!");
+    }
+  };
+
+  const handleConfirm2fa = async () => {
+    setError2fa('');
+    const success = await turnOn2fa(setupCode);
+    if (success) {
+      setIsSettingUp2fa(false);
+      setQrCodeUrl(null);
+      setSetupCode('');
+      setSettings(prev => prev ? { ...prev, is2faEnabled: true } : null);
+    } else {
+      setError2fa("Codice errato. Riprova.");
+    }
+  };
+
+  const handleDisable2faClick = async () => {
+    const success = await turnOff2fa();
+    if (success) {
+      setSettings(prev => prev ? { ...prev, is2faEnabled: false } : null);
     }
   };
 
@@ -184,7 +223,7 @@ export default function ProfilePage() {
               {s.characterStats.map((cs) => (
                 <div key={cs.characterName} style={{ padding: '20px', background: theme.colors.bgPanel, border: `1px solid ${theme.colors.border}`, borderRadius: '4px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
-                    <span style={{ fontSize: '20px' }}>{cs.characterName.toLowerCase() === 'zeus' ? '⚡' : '🔥'}</span>
+                    <span style={{ fontSize: '20px' }}>{cs.characterName === CharacterName.ZEUS ? '⚡' : '🔥'}</span>
                     <span style={{ fontFamily: theme.fonts.heading, fontWeight: 700, color: theme.colors.goldBright, letterSpacing: '1px', textTransform: 'uppercase' }}>{cs.characterName}</span>
                   </div>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px' }}>
@@ -257,22 +296,57 @@ export default function ProfilePage() {
               <div style={{ fontFamily: theme.fonts.heading, fontSize: '14px', fontWeight: 600, color: theme.colors.textPrimary, marginBottom: '4px' }}>Two-Factor Authentication</div>
               <div style={{ fontFamily: theme.fonts.mono, fontSize: '13px', color: sec.is2faEnabled ? theme.colors.hpHigh : theme.colors.textSecondary }}>{sec.is2faEnabled ? '✓ Enabled' : 'Not enabled'}</div>
             </div>
-            <button className="btn-press" style={{
-              padding: '8px 20px',
-              background: sec.is2faEnabled ? 'none' : `linear-gradient(180deg, ${theme.colors.gold}, ${theme.colors.goldDark})`,
-              border: sec.is2faEnabled ? `1px solid ${theme.colors.dead}` : 'none',
-              borderRadius: '2px',
-              color: sec.is2faEnabled ? theme.colors.dead : theme.colors.bgDark,
-              fontFamily: theme.fonts.heading,
-              fontSize: '11px',
-              fontWeight: 700,
-              letterSpacing: '1px',
-              cursor: 'pointer'
-            }}>{sec.is2faEnabled ? 'DISABLE' : 'ENABLE'}</button>
+
+            {!sec.is2faEnabled && !isSettingUp2fa && (
+              <button className="btn-press" onClick={handleEnable2faClick} style={{ padding: '8px 20px', background: `linear-gradient(180deg, ${theme.colors.gold}, ${theme.colors.goldDark})`, border: 'none', borderRadius: '2px', color: theme.colors.bgDark, fontFamily: theme.fonts.heading, fontSize: '11px', fontWeight: 700, letterSpacing: '1px', cursor: 'pointer' }}>
+                ENABLE
+              </button>
+            )}
+
+            {sec.is2faEnabled && (
+              <button className="btn-press" onClick={handleDisable2faClick} style={{ padding: '8px 20px', background: 'none', border: `1px solid ${theme.colors.dead}`, borderRadius: '2px', color: theme.colors.dead, fontFamily: theme.fonts.heading, fontSize: '11px', fontWeight: 700, letterSpacing: '1px', cursor: 'pointer' }}>
+                DISABLE
+              </button>
+            )}
           </div>
+
+          {/* Box con il QR Code */}
+          {isSettingUp2fa && (
+            <div style={{ marginTop: '24px', padding: '20px', border: `1px dashed ${theme.colors.goldDim}`, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px' }}>
+              <p style={{ fontFamily: theme.fonts.mono, fontSize: '12px', color: theme.colors.textPrimary, textAlign: 'center' }}>
+                1. Inquadra questo QR con un'app come Google Authenticator o Authy.
+              </p>
+
+              {qrCodeUrl && (
+                <div style={{ background: 'white', padding: '12px', borderRadius: '8px' }}>
+                  <img src={qrCodeUrl} alt="2FA QR Code" style={{ width: '160px', height: '160px' }} />
+                </div>
+              )}
+
+              <p style={{ fontFamily: theme.fonts.mono, fontSize: '12px', color: theme.colors.textPrimary, textAlign: 'center' }}>
+                2. Inserisci il codice a 6 cifre generato dall'app per confermare.
+              </p>
+
+              <input
+                className="input-glow"
+                type="text"
+                maxLength={6}
+                value={setupCode}
+                onChange={(e) => setSetupCode(e.target.value)}
+                placeholder="123456"
+                style={{ ...inputStyle, width: '140px', textAlign: 'center', letterSpacing: '8px', fontSize: '18px', fontWeight: 'bold' }}
+              />
+
+              {error2fa && <div style={{ color: theme.colors.dead, fontFamily: theme.fonts.mono, fontSize: '12px' }}>{error2fa}</div>}
+
+              <div style={{ display: 'flex', gap: '12px', marginTop: '8px' }}>
+                <button onClick={() => setIsSettingUp2fa(false)} style={{ padding: '8px 20px', background: 'none', border: `1px solid ${theme.colors.border}`, color: theme.colors.textMuted, cursor: 'pointer' }}>Annulla</button>
+                <button onClick={handleConfirm2fa} style={{ padding: '8px 20px', background: theme.colors.hpHigh, border: 'none', color: theme.colors.bgDark, fontWeight: 'bold', cursor: 'pointer' }}>Conferma</button>
+              </div>
+            </div>
+          )}
         </div>
 
-        {/* Email Verification Box */}
         <div style={{ padding: '24px', background: theme.colors.bgPanel, border: `1px solid ${theme.colors.border}`, borderRadius: '4px', marginBottom: '12px' }}>
           <div style={{ fontFamily: theme.fonts.heading, fontSize: '14px', fontWeight: 600, color: theme.colors.textPrimary, marginBottom: '4px' }}>Email Verification</div>
           <div style={{ fontFamily: theme.fonts.mono, fontSize: '13px', color: sec.isEmailVerified ? theme.colors.hpHigh : theme.colors.dead }}>{sec.isEmailVerified ? '✓ Verified' : '✗ Not verified'}</div>

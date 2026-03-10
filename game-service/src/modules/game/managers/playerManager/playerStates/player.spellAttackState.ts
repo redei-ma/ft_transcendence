@@ -1,8 +1,6 @@
-import { GameConfig } from "../../../configs";
+import { GameConfig, Player, IPlayerState } from "@transcendence/types"
 import { World } from "../../../core";
-import { Player } from "../../../interfaces-enums";
 import { CombatSystem } from "../../../systems";
-import { IPlayerState } from "../..";
 
 export class SpellAttackState implements IPlayerState{
 

@@ -1,16 +1,10 @@
-import { Vector } from "../game.types";
+import { Vector, Pillar } from "@transcendence/types";
 
 export interface	StaticEntity{
 	id: string;
 	position: Vector;
 	width: number;// Width
 	depth: number;// Depth
-}
-
-export interface	Pillar{
-	id: string;
-	position: Vector;
-	radius: number;
 }
 
 export interface	GameWorld extends StaticEntity{

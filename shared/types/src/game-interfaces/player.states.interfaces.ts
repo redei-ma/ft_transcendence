@@ -1,4 +1,4 @@
-import { Player } from "../../../interfaces-enums";
+import { Player } from "../game-interfaces";
 
 export interface IPlayerState{
 

@@ -1,7 +1,6 @@
-import { IPlayerState } from "./player.states.interfaces";
-import { Vector } from "../game.types";
-import { BulletHit, AttackType } from "./game.enums";
-import { CharacterName } from '@transcendence/types';
+import { IPlayerState } from "../game-interfaces";
+import { Vector } from "../classes";
+import { CharacterName, BulletHit, AttackType } from "../enums";
 
 export interface	DynamicEntity{
 	entityId: string; // Unique identifier (Socket ID for players, UUID for projectiles)
@@ -29,8 +28,8 @@ export interface InputQueue{
 export interface	Player extends DynamicEntity{
 	type: 'player';
 	socketId: string | undefined;
-	userDbId:  number | null;
-	
+	userDbId:  string | null;
+
 	rotation: number; // Orientation angle (in radians)
 
 	characterName: CharacterName;
@@ -48,15 +47,15 @@ export interface	Player extends DynamicEntity{
 
 	meleeAttackDamage: number;
 	spellAttackDamage: number;
-	
+
 	spellAttackspeed: number;
-	
+
 	meleeAttackCooldown: number;
 	spellAttackCooldown: number;
 	defenceAttackCooldown: number;
 
-	isAttacking: boolean;
 	attackType: AttackType | undefined,
+	isAttacking: boolean;
 
 	isDead: boolean;
 	isWinner: boolean;
@@ -71,13 +70,5 @@ export interface	Player extends DynamicEntity{
 	inputQueue: InputQueue[];
 
 	currentState: IPlayerState | undefined;
-}
-
-export interface CharacherStats{
-	MELEE_DAMAGE: number,
-	SPELL_DAMAGE:number,
-	SPELL_SPEED: number,
-	COOLDOWN_MELEE_ATTACK: number,
-	COOLDOWN_SPELL_ATTACK: number,
-	COOLDOWN_DEFENCE_ATTACK: number
+	clutchMasterUnlook: boolean;
 }

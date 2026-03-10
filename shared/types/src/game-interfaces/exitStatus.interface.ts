@@ -1,4 +1,4 @@
-import { ErrorCode, SuccessCode } from "./game.enums";
+import { ErrorCode, SuccessCode } from "../enums";
 
 export interface ExitStatus{
     status: ErrorCode | SuccessCode,

@@ -1,6 +1,6 @@
 import { Injectable, CanActivate, ExecutionContext, UnauthorizedException, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { ErrorCode } from '../interfaces-enums';
+import { ErrorCode } from '@transcendence/types';
 
 @Injectable()
 export class MatchmakingGuard implements CanActivate {

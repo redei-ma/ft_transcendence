@@ -6,6 +6,9 @@ export default defineConfig({
 	server: {
 		port: 5173,
 		host: true,
+		watch: {
+			usePolling: process.env.CHOKIDAR_USEPOLLING === "true",
+		},
 		allowedHosts: process.env.NGROK_DOMAIN
 			? [process.env.NGROK_DOMAIN]
 			: [],

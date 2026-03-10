@@ -2,7 +2,7 @@ import { useRef, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { AURA_CONFIG } from '../../configs/auraConfig';
-import { AttackType } from '../../types/game.types';
+import { AttackType } from '@transcendence/types';
 
 interface ZeusAuraProps {
   isAttacking: boolean;

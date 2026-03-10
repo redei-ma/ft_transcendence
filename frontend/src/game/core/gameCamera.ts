@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { GameConfig } from '../../configs/config';
+import { GameConfig } from '@transcendence/types';
 
 export class GameCamera {
   public camera: THREE.OrthographicCamera;

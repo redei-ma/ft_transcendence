@@ -1,9 +1,10 @@
 // AUTO-GENERATED — do not edit manually
-// Source: shared/prisma/schema.prisma
+  // Source: shared/prisma/schema.prisma
 
-export const MatchType = {
-  FFA: 'FFA',
+  export const MatchType = {
+    FFA: 'FFA',
   TEAM: 'TEAM'
-} as const;
+  } as const;
 
-export type MatchType = typeof MatchType[keyof typeof MatchType];
+  export type MatchType = typeof MatchType[keyof typeof MatchType];
+  

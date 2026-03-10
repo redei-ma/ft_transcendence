@@ -1,6 +1,6 @@
 import { socketService } from '../../services/socketServices';
 import { GameEvents } from '../game.events';
-import { AttackType } from '../../types/game.types';
+import { AttackType } from '@transcendence/types';
 import { log } from '../../configs/logger';
 
 interface GameInputPayload {

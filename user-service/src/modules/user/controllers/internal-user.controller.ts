@@ -26,6 +26,7 @@ import {
 	CreateOAuthUserDto,
 	SetPasswordDto,
 	UpdatePasswordDto,
+	UpdateEmailDto,
 	UpdateStatusDto,
 	LinkOAuthDto,
 	Setup2faDto,
@@ -248,6 +249,38 @@ export class InternalUserController {
 	})
 	async verifyEmail(@Param("id", ParseIntPipe) id: number): Promise<void> {
 		return this.userService.verifyEmail(id);
+	}
+
+	/**
+	 * Update email for a user (called by auth-service after re-verification flow).
+	 */
+	@Patch(":id/email")
+	@HttpCode(HttpStatus.NO_CONTENT)
+	@ApiOperation({ summary: "Update user email (requires re-verification)" })
+	@ApiParam({ name: "id", type: Number })
+	@ApiResponse({
+		status: HttpStatus.NO_CONTENT,
+		description:
+			"Email updated. Verification reset and OAuth providers unlinked.",
+	})
+	@ApiResponse({
+		status: HttpStatus.BAD_REQUEST,
+		description:
+			"No LOCAL account found (needed to prevent account lockout)",
+	})
+	@ApiResponse({
+		status: HttpStatus.NOT_FOUND,
+		description: "User not found",
+	})
+	@ApiResponse({
+		status: HttpStatus.CONFLICT,
+		description: "Email already in use",
+	})
+	async updateEmail(
+		@Param("id", ParseIntPipe) id: number,
+		@Body() dto: UpdateEmailDto,
+	): Promise<void> {
+		return this.userService.updateEmail(id, dto);
 	}
 
 	/**

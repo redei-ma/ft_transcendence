@@ -3,8 +3,8 @@ import { useLoader } from '@react-three/fiber';
 import { useGameSocket } from '../hooks/useGameSocket';
 import { InputManager } from './input/inputManager';
 import { useEffect, useRef } from 'react';
-import { GameConfig } from '../configs/config';
-import { MatchMode } from '@transcendence/types';
+import { GameConfig } from '@transcendence/types';
+import { CharacterName, MatchMode } from '@transcendence/types';
 import GameUI from './UI/gameUI';
 import { PlayerEntity } from './entities/PlayerEntity';
 import { BulletEntity } from './entities/BulletEntity';
@@ -15,10 +15,10 @@ import * as THREE from 'three';
 import mapTexture from '../assets/mapTexture.png';
 
 interface GameProps {
-  selectedCharacter: 'zeus' | 'ade';
+  selectedCharacter: CharacterName;
   selectedMode: MatchMode;
-  p1Character: 'zeus' | 'ade';
-  p2Character: 'zeus' | 'ade';
+  p1Character: CharacterName;
+  p2Character: CharacterName;
   onPlayAgain: () => void;
   onQuit: () => void;
   myUserId: string,

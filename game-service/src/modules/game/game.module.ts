@@ -8,7 +8,7 @@ import { MapManager } from './managers/game.mapManager';
 import { PlayerManager } from './managers/playerManager/player.manager';
 import { BulletManager } from './managers/bullet.manager';
 import { ClientsModule, Transport } from '@nestjs/microservices';
-import { NetworkConfig } from './configs/network.config';
+import { NetworkConfig } from '@transcendence/types';
 import { MatchMakingController } from './controllers/game.Matchmaking.controller';
 import { JwtAuthGuard } from '@transcendence/auth';
 import { MatchResultModule } from '../result/match-result.module';

@@ -74,3 +74,7 @@ pids/
 *.seed
 *.pid.lock
 report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
+
+# Personal notes (not for repo)
+docs/post.md
+to_do.txt

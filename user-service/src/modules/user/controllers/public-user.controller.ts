@@ -31,7 +31,6 @@ import { JwtAuthGuard, CurrentUser } from "@transcendence/auth";
 import { UserService } from "../services/user.service";
 import {
 	UpdateUsernameDto,
-	UpdateEmailDto,
 	CheckEmailQueryDto,
 	CheckUsernameQueryDto,
 	LeaderboardQueryDto,
@@ -187,39 +186,6 @@ export class PublicUserController {
 		@Body() dto: UpdateUsernameDto,
 	): Promise<UserProfileResponseDto> {
 		return this.userService.updateUsername(userId, dto);
-	}
-
-	/**
-	 * Update current user's email.
-	 */
-	@Patch("me/email")
-	@HttpCode(HttpStatus.NO_CONTENT)
-	@UseGuards(JwtAuthGuard)
-	@ApiBearerAuth()
-	@ApiOperation({ summary: "Update email (requires re-verification)" })
-	@ApiResponse({
-		status: HttpStatus.NO_CONTENT,
-		description:
-			"Email updated. Verification reset and OAuth providers unlinked.",
-	})
-	@ApiResponse({
-		status: HttpStatus.BAD_REQUEST,
-		description:
-			"No LOCAL account found (needed to prevent account lockout)",
-	})
-	@ApiResponse({
-		status: HttpStatus.UNAUTHORIZED,
-		description: "Missing or invalid JWT",
-	})
-	@ApiResponse({
-		status: HttpStatus.CONFLICT,
-		description: "Email already in use",
-	})
-	async updateEmail(
-		@CurrentUser("sub") userId: number,
-		@Body() dto: UpdateEmailDto,
-	): Promise<void> {
-		return this.userService.updateEmail(userId, dto);
 	}
 
 	/**

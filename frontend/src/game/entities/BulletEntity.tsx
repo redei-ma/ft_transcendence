@@ -1,7 +1,7 @@
 import { useRef, useMemo, useEffect } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
-import { BulletSnapshot, BulletHit } from '../../types/game.types';
+import { CharacterName, BulletSnapshot, BulletHit } from '@transcendence/types';
 import { ImpactEffect } from './ImpactEffect';
 
 interface BulletEntityProps {
@@ -128,7 +128,7 @@ export function BulletEntity({ snapshot }: BulletEntityProps) {
     return <ImpactEffect snapshot={snapshot} />;
   }
 
-  return snapshot.characterName === 'zeus'
+  return snapshot.characterName === CharacterName.ZEUS
     ? <ZeusBullet snapshot={snapshot} />
     : <AdeBullet snapshot={snapshot} />;
 }

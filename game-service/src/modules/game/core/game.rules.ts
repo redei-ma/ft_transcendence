@@ -1,5 +1,4 @@
-import { GameConfig } from "../configs/game.config";
-import { Player } from "../interfaces-enums";
+import { GameConfig, Player } from "@transcendence/types";
 
 function updateTeamKills(teamToKills: Map<number, number>, player: Player){
 	let kills = teamToKills.get(player.teamId) || 0;

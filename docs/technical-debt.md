@@ -50,6 +50,7 @@ La config dei livelli è in `main.ts` di ogni servizio tramite `NODE_ENV`.
 ### Fix da fare
 
 **Check globale da eseguire:**
+
 ```bash
 grep -rn ": any\|<any>\|as any" --include="*.ts" \
   auth-service/src user-service/src game-service/src matchmaking-service/src \
@@ -97,12 +98,6 @@ Eseguire il comando e tipizzare ogni occorrenza trovata.
 - Il servizio ha già `ConfigService` iniettato nel costruttore ma non lo usa qui
 - Fix: sostituire `process.env.EMAIL_USER` con `this.config.get('EMAIL_USER')`
 
-#### 3. game-service — `process.env` bypassano ConfigService
-
-- `game-service/src/modules/game/game.gateway.ts` riga 21: `process.env.FRONTEND_URL`
-- `game-service/src/modules/game/game.module.ts` riga 24: `process.env.REDIS_HOST`
-- Nota: `@WebSocketGateway` è un decorator valutato a compile time — `process.env` è l'unico modo per il gateway. Per `game.module.ts` invece ConfigService è iniettabile via `useFactory`
-
 ---
 
 ## Porte e URL inter-servizio
@@ -116,13 +111,7 @@ Eseguire il comando e tipizzare ogni occorrenza trovata.
 
 ### Fix da fare
 
-#### 1. ALTA — Redis port hardcodata in game-service
-
-- `game-service/src/modules/game/game.module.ts` riga 24: `host: process.env.REDIS_HOST` e `port: 6379` hardcodato
-- `REDIS_HOST` bypassa ConfigService; `REDIS_PORT` non viene letto affatto
-- Fix: usare `useFactory` con `ConfigService` come fa `matchmaking-service/app.module.ts`
-
-#### 2. MEDIA — URL inter-servizio ripetute
+#### 1. MEDIA — URL inter-servizio ripetute
 
 Hardcodare gli URL interni (`http://user-service:3001`) è un pattern accettato in
 Docker Compose: le porte sono fisse per architettura e cambiarle richiederebbe comunque

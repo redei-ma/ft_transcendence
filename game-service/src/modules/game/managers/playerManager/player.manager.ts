@@ -1,11 +1,9 @@
 import { Injectable } from "@nestjs/common";
-import { CHARACTER_DATA } from "../../factories/player.factory";
+import { CHARACTER_DATA } from "../../factories";
 import { CombatSystem, PhysicsSystem } from "../../systems";
 import { World } from "../../core";
-import { GameConfig } from "../../configs";
-import { Vector } from "../../utils";
 import { SpellAttackState, MeleeAttackState, DefenceAttack } from "..";
-import { Player, InputQueue, AttackType } from "../../interfaces-enums";
+import { Vector, GameConfig, Player, InputQueue, AttackType } from "@transcendence/types";
 
 @Injectable()
 export class PlayerManager{
@@ -89,8 +87,6 @@ export class PlayerManager{
 	}
 
 	private applyMovement(lastInput: InputQueue, player: Player): void{
-		/* anti-cheat (normalization of the input) to avoid max speed in diagonal > 1*/
-		lastInput.input.normalize();
 
 		/* Update the displacement vector */
 		player.displacement.set(lastInput.input.x, lastInput.input.z);

@@ -1,7 +1,5 @@
-import { GameConfig } from "../../../configs";
-import { Player } from "../../../interfaces-enums";
+import { GameConfig, Player, IPlayerState } from "@transcendence/types";
 import { CombatSystem } from "../../../systems";
-import { IPlayerState } from "../..";
 
 export class MeleeAttackState implements IPlayerState{
 

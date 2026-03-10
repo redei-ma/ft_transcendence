@@ -12,13 +12,14 @@ export const GameConfig = {
 	},
 	MAP: {
 		CELL_SIZE: 5.0,
+		WIDTH: 130,
+		DEPTH: 130,
 	},
 	PLAYER: {
 		DEFAULT_HP: 100,
 		SPEED: 40.0,
 		RADIUS: 1.6,
 		RESPAWN_TIMER: 5.0,
-		BOT_DB_ID: -1,
 	},
 	MATCH: {
 		DEFAULT_PLAYERS_FOR_TEAM: 2, // Per gestire 2vs2, 2vs2vs2, ecc.
@@ -34,5 +35,13 @@ export const GameConfig = {
 	},
 	ACHIEVEMENT: {
 		CLUTCHMASTER: 0.05,
-	}
+	},
+	RENDERING: {
+    	CAMERA: {
+      		ZOOM: 1,
+      		HEIGHT: 150,
+      		ANGLE: Math.PI / 4, // 45°
+    	},
+    	INTERPOLATION_SPEED: 0.15,
+  	},
 }

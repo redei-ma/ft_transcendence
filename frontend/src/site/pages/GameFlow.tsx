@@ -5,7 +5,7 @@ import QueueScene from '../../scenes/queueScene';
 import Game from '../../game/Game';
 import { socketService } from '../../services/socketServices';
 import { matchmakingSocket } from '../../services/matchmakingSocket';
-import { MatchMode } from '@transcendence/types';
+import { CharacterName, MatchMode } from '@transcendence/types';
 
 type GameScene = 'mode-select' | 'character-select' | 'queue' | 'game';
 
@@ -18,8 +18,8 @@ interface GameFlowProps {
 export default function GameFlow({ userId, username, onExit }: GameFlowProps) {
   const [scene, setScene] = useState<GameScene>('mode-select');
   const [selectedMode, setSelectedMode] = useState<MatchMode>(MatchMode.RANKED);
-  const [p1Character, setP1Character] = useState<'zeus' | 'ade'>('zeus');
-  const [p2Character, setP2Character] = useState<'zeus' | 'ade'>('ade');
+  const [p1Character, setP1Character] = useState<CharacterName>(CharacterName.ZEUS);
+  const [p2Character, setP2Character] = useState<CharacterName>(CharacterName.ADE);
 
   // Connetti matchmaking socket all'ingresso nel flusso di gioco
   useEffect(() => {
@@ -32,7 +32,7 @@ export default function GameFlow({ userId, username, onExit }: GameFlowProps) {
     setScene('character-select');
   };
 
-  const handleCharConfirm = (p1: 'zeus' | 'ade', p2: 'zeus' | 'ade') => {
+  const handleCharConfirm = (p1: CharacterName, p2: CharacterName) => {
     setP1Character(p1);
     setP2Character(p2);
     setScene('queue');

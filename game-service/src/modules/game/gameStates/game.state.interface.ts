@@ -1,6 +1,5 @@
 import { Logger } from "@nestjs/common";
-import { Vector } from "../utils/game.vector";
-import { AttackType } from "../interfaces-enums";
+import { Vector, AttackType } from "@transcendence/types";
 
 export interface IGameState{
 

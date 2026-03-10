@@ -1,13 +1,10 @@
-import { GameConfig } from "../configs/game.config";
-import { Snapshot } from "../factories/snapshot.factory";
+import { Snapshot } from "../factories";
 import { GameRules } from "./game.rules";
 import { World } from "./game.world";
-import { PlayerManager } from "../managers/playerManager/player.manager";
-import { BulletManager } from "../managers/bullet.manager";
-import {  MatchResult, 
-	Player, PlayerSnapshot, BulletSnapshot,
-	GameEndEvents, GameStateEvents } from "../interfaces-enums";
-import { MatchMode, MatchType, EndReason } from "@transcendence/types";
+import { PlayerManager, BulletManager } from "../managers";
+import { GameConfig, MatchMode, MatchType, EndReason,  Player, PlayerSnapshot, BulletSnapshot } from "@transcendence/types";
+import { MatchResult } from "src/types/match-result.interface";
+import { GameEndEvents, GameStateEvents } from "../game-interfaces";
 
 export class Engine{
 
@@ -125,8 +122,14 @@ export class Engine{
 			this.endGameData.endReason = reason;
 			for (const player of this.players.values()){
 				if (player.userDbId){
+
+					let userIdNumber: number | null = parseInt(player.userDbId);
+					if(isNaN(userIdNumber)){
+						continue ;
+					}
+
 					this.endGameData.players.push({
-						userId: Number(player.userDbId),
+						userId: userIdNumber,
 						teamId: player.teamId,
 						characterName: player.characterName,
 						kills: player.kill,

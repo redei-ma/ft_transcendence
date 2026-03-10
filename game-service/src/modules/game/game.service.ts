@@ -1,14 +1,14 @@
 import { Inject, Injectable, Logger, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
 import { Server } from 'socket.io';
-import { GameConfig, NetworkConfig } from './configs';
 import { GameSession, GameRules, World } from './core';
-import { Vector } from './utils';
 import { PlayerManager, MapManager, BulletManager } from './managers';
-import { AttackType, Player, MapData, MatchMakingData, MatchResult, GameData, ErrorCode, SuccessCode } from './interfaces-enums';
 import { ClientProxy } from '@nestjs/microservices';
-import { ExitStatus } from './interfaces-enums/exitStatus.interface';
-import { MatchMode, MatchType } from "@transcendence/types";
+import { NetworkConfig, Vector, MatchMode, MatchType, GameConfig, ExitStatus,
+	AttackType, Player, ErrorCode, SuccessCode } from "@transcendence/types";
+
 import { MatchResultService } from '../result/match-result.service';
+import { MatchResult } from 'src/types/match-result.interface';
+import { GameData, MatchMakingData, MapData } from './game-interfaces';
 
 // Game Engine Service
 @Injectable()
@@ -173,6 +173,16 @@ export class GameService implements OnModuleInit, OnModuleDestroy{
 
 		//sending the end game data to the database
 		const endGameData: MatchResult = game.engine.endGameData;
+		this.logger.debug('endGameData playersData');
+		this.logger.debug(JSON.stringify(endGameData.players));
+
+		this.logger.debug('endGameData endREason');
+		this.logger.debug(endGameData.endReason);
+
+		this.logger.debug('endGameData winnerId');
+		this.logger.debug(endGameData.winningTeamId);
+
+
 		await this.matchResultService.processMatchEnd(endGameData);
 	}
 

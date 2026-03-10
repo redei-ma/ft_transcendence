@@ -8,7 +8,7 @@ import { AchievementModule } from "./modules/achievement/achievement.module";
 import { HealthModule } from "./modules/health/health.module";
 import { GameModule } from "./modules/game/game.module";
 import { envValidationSchema } from "./env.validation";
-import { SocketEvents } from "./modules/game/configs/game.events";
+import { GameEvents } from "@transcendence/types";
 
 @Module({
 	imports: [
@@ -24,7 +24,7 @@ import { SocketEvents } from "./modules/game/configs/game.events";
 				limit: 10,
 			},
 			{
-				name: SocketEvents.GAME_MESSAGE,
+				name: GameEvents.GAME_MESSAGE,
 				ttl: 60000,
 				limit: 5,
 			},
