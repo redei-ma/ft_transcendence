@@ -1,8 +1,7 @@
 import { GameEvents } from "@transcendence/types";
-import { GameSession } from "../core/game.session";
-import { getNewPlayer } from "../factories/player.factory";
-import { IGameState } from "./game.state.interface";
-import { PlayState } from "./playState";
+import { GameSession } from "../core";
+import { getNewPlayer } from "../factories";
+import { IGameState, PlayState } from "../gameStates";
 import { Logger } from "@nestjs/common";
 import { randomUUID } from "crypto";
 import {

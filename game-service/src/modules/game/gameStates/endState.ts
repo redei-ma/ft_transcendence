@@ -1,6 +1,6 @@
 import { Logger } from "@nestjs/common";
 import { Vector, GameConfig, AttackType } from "@transcendence/types";
-import { GameSession } from "../core/game.session";
+import { GameSession } from "../core";
 import { IGameState } from "./game.state.interface";
 
 export class EndState implements IGameState{
