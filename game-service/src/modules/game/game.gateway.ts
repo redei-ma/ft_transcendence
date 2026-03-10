@@ -38,6 +38,29 @@ export class GameGateway
 		this.logger.log("Gateway instance created");
 	}
 
+	private securityVerify(client: Socket){
+		try {
+			const token = parseCookieHeader(
+				client.handshake.headers.cookie,
+				AUTH_COOKIE_NAME,
+			);
+			if (!token) {
+				this.sendErrorAndDisconnectClient(client, {status: ErrorCode.UNAUTHORIZED, message: 'Invalid token'});
+				this.logger.warn("invalid token JWT reached");
+				return false;
+			}
+	
+			client.data.user = verifyJwtToken(token);
+		}
+		catch(error){
+			this.sendErrorAndDisconnectClient(client, {status: ErrorCode.UNAUTHORIZED, message: 'Invalid token'});
+			this.logger.warn("invalid jwt token reached");
+			return false;
+		}
+
+		return true;
+	}
+
 	/* Implementation of the OnGatewayConnection interface.
 		Called automatically when a client connects.*/
 	handleConnection(@ConnectedSocket() client: Socket): void {
@@ -50,20 +73,9 @@ export class GameGateway
 			return;
 		}
 
-		const token = parseCookieHeader(
-			client.handshake.headers.cookie,
-			AUTH_COOKIE_NAME,
-		);
-		if (!token) {
-			this.sendErrorAndDisconnectClient(client, {
-				status: ErrorCode.UNAUTHORIZED,
-				message: "invalid connection, disconnecting",
-			});
-			this.logger.warn("invalid token JWT reached");
-			return;
-		}
+		const isVerified: boolean = this.securityVerify(client);
+		if (!isVerified) return ;
 
-		client.data.user = verifyJwtToken(token);
 		const userDbId: string = String(client.data.user.sub);
 		this.logger.log(`New client arrived ${userDbId}`);
 

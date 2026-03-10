@@ -90,6 +90,8 @@ export class CombatSystem{
 		victim.deads++;
 		attacker.kill++;
 
+		// da aggiungere, l achievement non vale in local o bot
+		// if (isLocal() || isBot()) return ;
 		if (attacker.hp <= (GameConfig.PLAYER.DEFAULT_HP * GameConfig.ACHIEVEMENT.CLUTCHMASTER)){
 			attacker.clutchMasterUnlook = true;
 		}

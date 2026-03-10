@@ -41,7 +41,6 @@ export class GameRules{
 		}
 
 		if (activeTeams.size === 1){
-			console.log('winner team reached')
 			return activeTeams.values().next().value;
 		}
 

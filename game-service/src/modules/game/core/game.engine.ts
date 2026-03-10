@@ -79,10 +79,12 @@ export class Engine{
 			winnerTeam = this.gameRules.checkWinner(Array.from(this.players.values()), overTime);
 			if (winnerTeam !== null){
 				this.pushEndGameEvent(winnerTeam, overTime ? EndReason.TIMEOUT : EndReason.KILLOUT);
+				return ;
 			}
 
 			if (winnerTeam === null && overTime){
-					this.pushEndGameEvent(-1, overTime ? EndReason.TIMEOUT : EndReason.KILLOUT);
+				this.pushEndGameEvent(-1, overTime ? EndReason.TIMEOUT : EndReason.KILLOUT);
+				return ;
 			}
 
 			winnerTeam = this.gameRules.checkRemaningTeam(this.players.values());
@@ -125,7 +127,7 @@ export class Engine{
 
 					let userIdNumber: number | null = parseInt(player.userDbId);
 					if(isNaN(userIdNumber)){
-						continue ;
+						userIdNumber = null ;
 					}
 
 					this.endGameData.players.push({

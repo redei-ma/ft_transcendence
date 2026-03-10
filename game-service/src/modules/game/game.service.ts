@@ -30,6 +30,8 @@ export class GameService implements OnModuleInit, OnModuleDestroy{
 	private TIME_STEPS: number = (1 / 60);
 	private timeAccumulator: number = 0.0;
 
+	private	sessionToDestroy: Set<GameSession> = new Set();
+
 	private isRunning: boolean = false;
 	private nextTickTimeout: NodeJS.Timeout;
 	constructor(
@@ -102,18 +104,26 @@ export class GameService implements OnModuleInit, OnModuleDestroy{
 					game.update(this.TIME_STEPS);
 				}
 				catch(error){
-					this.removeSession(game);
+					this.sessionToDestroy.add(game);
 					this.logger.error(`Critical error in game ${game.gameId}`, error.stack);
 				}
 			});
 			this.timeAccumulator -= this.TIME_STEPS;
 		}
+
 		this.games.forEach((game) =>{
 			if (game.isGameOver() && game.canShutdown()){
-					this.removeSession(game);
+					this.sessionToDestroy.add(game);
 					this.logger.log(`Game ${game.gameId} ended and removed`);
 				}
 		});
+
+		if (this.sessionToDestroy.size > 0){
+			for (const game of this.sessionToDestroy.values()){
+				this.removeSession(game);
+			}
+			this.sessionToDestroy.clear();
+		}
 	}
 
 	/* Triggered by handleDisconnect. Makes the player in disconnect mode. */
@@ -149,11 +159,6 @@ export class GameService implements OnModuleInit, OnModuleDestroy{
 			return ;
 		}
 
-		this.redis.emit(NetworkConfig.MATCHMAKING.MATCH_EVENTS.END_GAME, gameId).subscribe({
-            next: () => this.logger.log(`event END_GAME inviated for game with id ${gameId}`),
-            error: (err) => this.logger.error(`error in sending the event END_GAME with Redis: ${err.message}`)
-        });
-
 		for (const socketId of game.socketToEntities.keys()){
 			const gameIdToSocket: string | undefined = this.socketToGame.get(socketId);
 			if (gameIdToSocket && gameIdToSocket === gameId)
@@ -170,20 +175,6 @@ export class GameService implements OnModuleInit, OnModuleDestroy{
 		}
 		game.cleanUp();
 		this.games.delete(gameId);
-
-		//sending the end game data to the database
-		const endGameData: MatchResult = game.engine.endGameData;
-		this.logger.debug('endGameData playersData');
-		this.logger.debug(JSON.stringify(endGameData.players));
-
-		this.logger.debug('endGameData endREason');
-		this.logger.debug(endGameData.endReason);
-
-		this.logger.debug('endGameData winnerId');
-		this.logger.debug(endGameData.winningTeamId);
-
-
-		await this.matchResultService.processMatchEnd(endGameData);
 	}
 
 	removePlayerFromSession(socketId: string): void{
@@ -331,12 +322,29 @@ export class GameService implements OnModuleInit, OnModuleDestroy{
 	}
 
 	//utlis
-	hasPendingMatch(userDbId: string): GameData | undefined{
+	public	hasPendingMatch(userDbId: string): GameData | undefined{
 		return (this.userToGameData.get(userDbId));
 	}
 
-	removeOldSocket(socketId: string){
+	public	removeOldSocket(socketId: string){
 		this.socketToGame.delete(socketId);
+	}
+
+	public	notifyMatchmakingEndGame(gameId: string){
+		this.redis.emit(NetworkConfig.MATCHMAKING.MATCH_EVENTS.END_GAME, gameId).subscribe({
+			next: () => this.logger.log(`event END_GAME inviated for game with id ${gameId}`),
+			error: (err) => this.logger.error(`error in sending the event END_GAME with Redis: ${err.message}`)
+        });
+	}
+
+	async	saveMatchResult(endGameData: MatchResult){
+		try{
+			await this.matchResultService.processMatchEnd(endGameData);
+			this.logger.log(`Match result saved in DB successfully`);
+		}
+		catch(error){
+			this.logger.error(`error in sending the data to the database error=${error}`);
+		}
 	}
 }
 

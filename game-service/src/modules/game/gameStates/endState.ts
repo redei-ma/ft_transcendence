@@ -2,6 +2,7 @@ import { Logger } from "@nestjs/common";
 import { Vector, GameConfig, AttackType } from "@transcendence/types";
 import { GameSession } from "../core";
 import { IGameState } from "./game.state.interface";
+import { MatchResult } from "src/types/match-result.interface";
 
 export class EndState implements IGameState{
 	logger: Logger = new Logger(EndState.name);
@@ -10,7 +11,22 @@ export class EndState implements IGameState{
 	public isReadyToClose: boolean = false;
 	constructor(private readonly session: GameSession) {}
 	onEnter(): void {
-		this.logger.log("Game is over, shutdown the server")
+		this.logger.log("Game is over, shutdown the server");
+
+		this.session.gameService.notifyMatchmakingEndGame(this.session.gameId);
+
+		//sending the end game data to the database
+		const endGameData: MatchResult = this.session.engine.endGameData;
+		this.logger.debug('endGameData playersData');
+		this.logger.debug(JSON.stringify(endGameData.players));
+
+		this.logger.debug('endGameData endREason');
+		this.logger.debug(endGameData.endReason);
+
+		this.logger.debug('endGameData winnerId');
+		this.logger.debug(endGameData.winningTeamId);
+
+		this.session.gameService.saveMatchResult(endGameData);
 	}
 
 	update(dt: number): void {
