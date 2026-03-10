@@ -1,7 +1,7 @@
 import { useRef, useMemo, useEffect } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
-import { AttackType } from '../../types/game.types';
+import { AttackType } from '@transcendence/types';
 
 interface AdeAuraProps {
   isAttacking: boolean;

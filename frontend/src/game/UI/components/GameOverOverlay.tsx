@@ -1,6 +1,6 @@
-import { GameOverPayload, PlayerSnapshot } from '../../../types/game.types';
+import { GameOverPayload } from '../../../types/game.types';
 import { theme } from '../../../configs/theme';
-import {CharacterName} from '@transcendence/types';
+import { CharacterName, PlayerSnapshot } from '@transcendence/types';
 
 interface GameOverOverlayProps {
   gameOver: GameOverPayload;

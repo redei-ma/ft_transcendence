@@ -11,4 +11,5 @@ export * from './notificationtype.enum';
 export * from './endreason.enum';
 export * from './provider.enum';
 export * from './game.enum';
+export * from './gameevents.enum';
   

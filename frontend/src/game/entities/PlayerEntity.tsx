@@ -2,8 +2,7 @@
 import { useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
-import { PlayerSnapshot } from '../../types/game.types';
-import {CharacterName} from '@transcendence/types';
+import { CharacterName, PlayerSnapshot } from '@transcendence/types';
 import { ZeusAura } from './ZeusAura';
 import { AdeAura } from './AdeAura';
 

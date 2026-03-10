@@ -1,8 +1,7 @@
 import { useRef, useMemo, useState } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
-import { BulletSnapshot } from '../../types/game.types';
-import {CharacterName} from '@transcendence/types';
+import { CharacterName, BulletSnapshot } from '@transcendence/types';
 
 interface ImpactEffectProps {
   snapshot: BulletSnapshot;

@@ -1,3 +1,1 @@
-export * from './game.events'
-export * from './network.config'
-
+export * from "./network.config";

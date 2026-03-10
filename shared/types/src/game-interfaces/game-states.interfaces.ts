@@ -1,11 +1,11 @@
 import { Vector } from "../classes";
-import { AttackType, BulletHit } from "../enums";
+import { AttackType, BulletHit, CharacterName } from "../enums";
 import { Player } from "./dynamic-entitys.interfaces";
 
 export interface PlayerSnapshot {
 	//potremmo togliere dati superflui per alleggerire il pacchetto
 	type: string;
-	characterName: string;
+	characterName: CharacterName;
 	id: string;
 	teamId: number;
 
@@ -25,11 +25,11 @@ export interface PlayerSnapshot {
 	isDefending: boolean;
 }
 
-export interface BulletSnapshot{
+export interface BulletSnapshot {
 	//stessa cosa del player
 	type: string;
 	id: string;
-	characterName: string;
+	characterName: CharacterName;
 	position: Vector;
 	//x: number,
 	//z: number
@@ -37,22 +37,22 @@ export interface BulletSnapshot{
 	hit: BulletHit;
 }
 
-export interface WinnerData{
+export interface WinnerData {
 	winnerTeam: number | null;
 	winnerPlayersIds: string[];
 }
 
-export interface GameStateEvents{
-	eventName: 'game-state';
-	data:{
-		players: PlayerSnapshot[] | undefined,
-		bullets: BulletSnapshot[] | undefined,
+export interface GameStateEvents {
+	eventName: "game-state";
+	data: {
+		players: PlayerSnapshot[] | undefined;
+		bullets: BulletSnapshot[] | undefined;
 	};
 	time: number;
 }
 
-export interface GameEndEvents{
-	eventName: 'game-over';
+export interface GameEndEvents {
+	eventName: "game-over";
 	winnerData: WinnerData | undefined;
 	time: number;
 }
