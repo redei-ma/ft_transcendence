@@ -1,8 +1,7 @@
 import { BadRequestException, Body, Controller, Logger, Post, UseGuards } from "@nestjs/common";
 import { GameService } from "../game.service";
-import { NetworkConfig } from "../configs";
 import { CreateMatchDto } from "../dto/matchMaking.dto";
-import { ExitStatus, SuccessCode } from "@transcendence/types";
+import { ExitStatus, SuccessCode, NetworkConfig } from "@transcendence/types";
 import { ConfigService } from '@nestjs/config';
 //import { MatchmakingGuard } from "../guards/game.matchmaking-guard";
 
@@ -22,7 +21,7 @@ export class MatchMakingController{
 		this.logger.log(`post http request recived by matchmaking, trying to create the match.\n
 			data recived from matchmaking: gameId=${data.gameId}, player1=${data.playersData[0].userDbId},
 			player2=${data.playersData[1].userDbId }, matchMode=${data.matchMode}, matchType=${data.matchType}`);
-		
+
 		const result: ExitStatus = this.gameService.prepareMatch(data.gameId, data.playersData, data.matchMode, data.matchType);
 
 		if (result.status !== SuccessCode.OK){

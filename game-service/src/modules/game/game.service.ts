@@ -1,10 +1,9 @@
 import { Inject, Injectable, Logger, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
 import { Server } from 'socket.io';
-import { NetworkConfig } from './configs';
 import { GameSession, GameRules, World } from './core';
 import { PlayerManager, MapManager, BulletManager } from './managers';
 import { ClientProxy } from '@nestjs/microservices';
-import { Vector, MatchMode, MatchType, GameConfig, ExitStatus,
+import { NetworkConfig, Vector, MatchMode, MatchType, GameConfig, ExitStatus,
 	AttackType, Player, MapData, MatchMakingData, GameData, ErrorCode, SuccessCode } from "@transcendence/types";
 
 import { MatchResultService } from '../result/match-result.service';
