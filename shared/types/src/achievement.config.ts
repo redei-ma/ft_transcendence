@@ -1,4 +1,4 @@
-import { GameConfig } from "../configs";
+import { GameConfig } from "./configs";
 
 export const AchievementConfig = {
 	achievements: {

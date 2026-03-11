@@ -1,4 +1,4 @@
-import { Vector } from "../classes";
+import { Vector } from "../game.vector";
 
 export interface	Pillar{
 	id: string;

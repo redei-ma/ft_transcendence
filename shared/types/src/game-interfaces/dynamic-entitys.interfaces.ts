@@ -1,5 +1,5 @@
 import { IPlayerState } from "../game-interfaces";
-import { Vector } from "../classes";
+import { Vector } from "../game.vector";
 import { CharacterName, BulletHit, AttackType } from "../enums";
 
 export interface	DynamicEntity{

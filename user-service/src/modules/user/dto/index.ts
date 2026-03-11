@@ -1,4 +1,5 @@
 export * from "./user.response.dto";
+export * from "./elo-preview.dto";
 export * from "./user.update.dto";
 export * from "./user.query.dto";
 export * from "./friendship.dto";

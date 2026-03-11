@@ -1,6 +1,12 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
-import { MatchMode, MatchType, CharacterName } from "@transcendence/types";
+import {
+	MatchMode,
+	MatchType,
+	CharacterName,
+	calculateEloMulti,
+	ELO_DEFAULT,
+} from "@transcendence/types";
 import { Prisma } from "@prisma/client";
 import { MatchResult, PlayerResult } from "../../types/match-result.interface";
 import {
@@ -67,7 +73,7 @@ export class MatchResultService {
 						where: { userId: p.userId },
 						select: { eloCurrent: true },
 					});
-					eloMap.set(p.userId, s?.eloCurrent ?? 500);
+					eloMap.set(p.userId, s?.eloCurrent ?? ELO_DEFAULT);
 				}
 			}
 
@@ -135,7 +141,7 @@ export class MatchResultService {
 		// ─── ELO ──────────────────────────────────────────────
 		let eloChange = 0;
 		if (matchResult.mode === MatchMode.RANKED) {
-			const playerElo = eloMap.get(player.userId!) ?? 500;
+			const playerElo = eloMap.get(player.userId!) ?? ELO_DEFAULT;
 			let opponents: { elo: number; result: "win" | "loss" | "draw" }[];
 
 			if (matchResult.type === MatchType.FFA) {
@@ -147,7 +153,7 @@ export class MatchResultService {
 								p.userId !== null && p.userId !== player.userId,
 						)
 						.map((p) => ({
-							elo: eloMap.get(p.userId!) ?? 500,
+							elo: eloMap.get(p.userId!) ?? ELO_DEFAULT,
 							result: "draw" as const,
 						}));
 				} else if (isWinner) {
@@ -157,7 +163,7 @@ export class MatchResultService {
 							(p) =>
 								p.userId !== null && p.userId !== player.userId,
 						)
-						.map((p) => eloMap.get(p.userId!) ?? 500);
+						.map((p) => eloMap.get(p.userId!) ?? ELO_DEFAULT);
 					opponents =
 						realOpponentElos.length > 0
 							? [
@@ -174,7 +180,7 @@ export class MatchResultService {
 					);
 					const winnerElo =
 						winnerPlayer?.userId != null
-							? (eloMap.get(winnerPlayer.userId) ?? 500)
+							? (eloMap.get(winnerPlayer.userId) ?? ELO_DEFAULT)
 							: 500;
 					opponents = [{ elo: winnerElo, result: "loss" as const }];
 				}
@@ -198,11 +204,11 @@ export class MatchResultService {
 								: opponentIsWinner
 									? "loss"
 									: "draw";
-						return { elo: eloMap.get(p.userId!) ?? 500, result };
+						return { elo: eloMap.get(p.userId!) ?? ELO_DEFAULT, result };
 					});
 			}
 
-			eloChange = this.calculateElo(playerElo, opponents);
+			eloChange = calculateEloMulti(playerElo, opponents);
 		}
 
 		// Streak calculation
@@ -221,8 +227,8 @@ export class MatchResultService {
 			newLoseStreak = 0;
 		}
 
-		const newElo = (currentStats?.eloCurrent ?? 500) + eloChange;
-		const newEloPeak = Math.max(currentStats?.eloPeak ?? 500, newElo);
+		const newElo = (currentStats?.eloCurrent ?? ELO_DEFAULT) + eloChange;
+		const newEloPeak = Math.max(currentStats?.eloPeak ?? ELO_DEFAULT, newElo);
 		const newBestWinStreak = Math.max(
 			currentStats?.bestWinStreak ?? 0,
 			newWinStreak,
@@ -294,32 +300,4 @@ export class MatchResultService {
 		};
 	}
 
-	// ─── ELO Calculation ──────────────────────────────────────────
-
-	/**
-	 * Calculates ELO delta for a player after a ranked match.
-	 *
-	 * Formula per opponent:
-	 *   E = 1 / (1 + 10^((opponentElo - playerElo) / 400))
-	 *   delta = K * (actualScore - E)
-	 *
-	 * Delta is averaged across all opponents.
-	 * K-factor: 32.
-	 */
-	private calculateElo(
-		playerElo: number,
-		opponents: { elo: number; result: "win" | "loss" | "draw" }[],
-	): number {
-		if (opponents.length === 0) return 0;
-
-		const K = 32;
-
-		const totalDelta = opponents.reduce((sum, { elo: oppElo, result }) => {
-			const actual = result === "win" ? 1 : result === "draw" ? 0.5 : 0;
-			const expected = 1 / (1 + Math.pow(10, (oppElo - playerElo) / 400));
-			return sum + K * (actual - expected);
-		}, 0);
-
-		return Math.round(totalDelta / opponents.length);
-	}
 }
