@@ -28,11 +28,11 @@ import {
 	Setup2faDto,
 	FindUserQueryDto,
 	UserWithAccountsResponseDto,
+	SetPasswordDto,
+	UpdateEmailDto,
 } from "@transcendence/dto";
 import { InternalUserService } from "../services/internal-user.service";
 import {
-	SetPasswordDto,
-	UpdateEmailDto,
 	UpdateStatusDto,
 	UserEloResponseDto,
 	CreateNotificationDto,

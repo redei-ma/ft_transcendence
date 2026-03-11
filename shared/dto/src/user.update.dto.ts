@@ -1,6 +1,25 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { IsOptional, IsString, MinLength } from "class-validator";
-import { IsPasswordHashField, IsOAuthIdField } from "./field-validators";
+import { IsPasswordHashField, IsOAuthIdField, IsEmailField } from "./field-validators";
+
+/**
+ * Input DTO for setting a password (creates a new local account entry).
+ * Password must be pre-hashed by the auth-service.
+ * Used by auth-service to call user-service internal API.
+ */
+export class SetPasswordDto {
+	@IsPasswordHashField()
+	passwordHash: string;
+}
+
+/**
+ * Input DTO for updating email.
+ * Used by auth-service to call user-service internal API.
+ */
+export class UpdateEmailDto {
+	@IsEmailField()
+	email: string;
+}
 
 /**
  * Input DTO for updating a password.

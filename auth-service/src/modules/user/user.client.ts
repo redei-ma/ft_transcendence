@@ -8,6 +8,8 @@ import {
   Setup2faDto,
   FindUserQueryDto,
   UserWithAccountsResponseDto,
+  UpdateEmailDto,
+  SetPasswordDto,
 } from '@transcendence/dto';
 
 @Injectable()
@@ -114,4 +116,19 @@ export class UserClient {
       `http://user-service:3001/internal/users/${userId}/2fa/disable`,
     );
   }
+
+  async updateEmail(userId: number, dto: UpdateEmailDto): Promise<void> {
+    await this.http.axiosRef.patch(
+      `http://user-service:3001/internal/users/${userId}/email`,
+      dto
+    );
+  }
+
+  async setPassword(userId: number, dto: SetPasswordDto ): Promise<void> {
+    await this.http.axiosRef.post(
+      `http://user-service:3001/internal/users/${userId}/password/set`,
+      dto,
+    );
+  }
+
 }

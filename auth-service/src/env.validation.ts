@@ -12,6 +12,9 @@ export const envValidationSchema = Joi.object({
   SMTP_HOST: Joi.string().required(),
   SMTP_PORT: Joi.number().port().default(587).required(),
 
+  GOOGLE_CLIENT_SECRET: Joi.string().required(),
+  GOOGLE_CLIENT_ID: Joi.string().required(),
+
   PUBLIC_URL: Joi.string().uri().required(),
   FRONTEND_URL: Joi.string().uri().required(),
 

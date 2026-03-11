@@ -1,5 +1,5 @@
 import { GameEvents } from "@transcendence/types";
-import { GameSession } from "../core/game.session";
+import { GameSession } from "../core";
 import {
 	Vector,
 	GameConfig,
@@ -9,8 +9,7 @@ import {
 	SuccessCode,
 	ExitStatus,
 } from "@transcendence/types";
-import { EndState } from "./endState";
-import { IGameState } from "./game.state.interface";
+import { EndState, IGameState } from "../gameStates";
 import { Logger } from "@nestjs/common";
 import { GameEndEvents, GameStateEvents } from "../game-interfaces";
 

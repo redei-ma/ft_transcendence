@@ -1,8 +1,7 @@
-import { Snapshot } from "../factories/snapshot.factory";
+import { Snapshot } from "../factories";
 import { GameRules } from "./game.rules";
 import { World } from "./game.world";
-import { PlayerManager } from "../managers/playerManager/player.manager";
-import { BulletManager } from "../managers/bullet.manager";
+import { PlayerManager, BulletManager } from "../managers";
 import { GameConfig, MatchMode, MatchType, EndReason,  Player, PlayerSnapshot, BulletSnapshot } from "@transcendence/types";
 import { MatchResult } from "src/types/match-result.interface";
 import { GameEndEvents, GameStateEvents } from "../game-interfaces";

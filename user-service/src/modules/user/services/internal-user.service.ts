@@ -14,10 +14,10 @@ import {
 	Setup2faDto,
 	FindUserQueryDto,
 	UserWithAccountsResponseDto,
-} from "@transcendence/dto";
-import {
 	SetPasswordDto,
 	UpdateEmailDto,
+} from "@transcendence/dto";
+import {
 	UpdateStatusDto,
 	UserEloResponseDto,
 } from "../dto";

@@ -1,5 +1,5 @@
 import { Injectable } from "@nestjs/common";
-import { CHARACTER_DATA } from "../../factories/player.factory";
+import { CHARACTER_DATA } from "../../factories";
 import { CombatSystem, PhysicsSystem } from "../../systems";
 import { World } from "../../core";
 import { SpellAttackState, MeleeAttackState, DefenceAttack } from "..";

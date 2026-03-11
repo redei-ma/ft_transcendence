@@ -1,20 +1,7 @@
 import { ApiProperty } from "@nestjs/swagger";
 import { IsEnum } from "class-validator";
 import { UserStatus } from "@transcendence/types";
-import {
-	IsEmailField,
-	IsUsernameField,
-	IsPasswordHashField,
-} from "@transcendence/dto";
-
-/**
- * Input DTO for setting a password.
- * Password must be pre-hashed by the auth-service.
- */
-export class SetPasswordDto {
-	@IsPasswordHashField()
-	passwordHash: string;
-}
+import { IsUsernameField } from "@transcendence/dto";
 
 /**
  * Update username.
@@ -22,14 +9,6 @@ export class SetPasswordDto {
 export class UpdateUsernameDto {
 	@IsUsernameField()
 	username: string;
-}
-
-/**
- * Input DTO for updating email.
- */
-export class UpdateEmailDto {
-	@IsEmailField()
-	email: string;
 }
 
 /**

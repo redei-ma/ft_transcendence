@@ -2,12 +2,9 @@ import { Server } from "socket.io";
 import { World } from "./game.world";
 import { GameRules } from "./game.rules";
 import { Engine } from "./game.engine";
-import { IGameState } from "../gameStates/game.state.interface";
-import { LobbyState } from "../gameStates/lobbyState";
-import { EndState } from "../gameStates/endState";
-import { PlayState } from "../gameStates/playState";
-import { PlayerManager } from "../managers/playerManager/player.manager";
-import { BulletManager } from "../managers/bullet.manager";
+import {  } from "../gameStates/game.state.interface";
+import { PlayState, EndState, IGameState, LobbyState } from "../gameStates";
+import { PlayerManager, BulletManager } from "../managers";
 import {
 	ExitStatus,
 	Vector,
