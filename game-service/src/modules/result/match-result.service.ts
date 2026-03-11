@@ -4,8 +4,8 @@ import { MatchMode, MatchType, CharacterName } from "@transcendence/types";
 import { Prisma } from "@prisma/client";
 import { MatchResult, PlayerResult } from "../../types/match-result.interface";
 import {
-    AchievementService,
-    UpdatedPlayerStats,
+	AchievementService,
+	UpdatedPlayerStats,
 } from "../achievement/achievement.service";
 
 @Injectable()

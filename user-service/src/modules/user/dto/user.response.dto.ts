@@ -16,14 +16,16 @@ type MatchResult = "WIN" | "LOSS" | "DRAW";
 
 /**
  * Base profile of the authenticated user.
- * Returned after profile reads and update operations (username, avatar).
  * Does not include: stats, sensitive security fields.
  */
 export class UserProfileResponseDto {
 	@ApiProperty({ description: "Unique user identifier", example: 1 })
 	id: number;
 
-	@ApiProperty({ description: "Primary email address", example: "john@example.com" })
+	@ApiProperty({
+		description: "Primary email address",
+		example: "john@example.com",
+	})
 	email: string;
 
 	@ApiProperty({ description: "Unique username", example: "john_doe" })
@@ -35,7 +37,11 @@ export class UserProfileResponseDto {
 	})
 	avatarUrl: string;
 
-	@ApiProperty({ description: "Current online status", enum: UserStatus, example: "ONLINE" })
+	@ApiProperty({
+		description: "Current online status",
+		enum: UserStatus,
+		example: "ONLINE",
+	})
 	status: UserStatus;
 
 	@ApiProperty({ description: "Account registration timestamp" })
@@ -46,13 +52,22 @@ export class UserProfileResponseDto {
  * Security settings and linked authentication providers of the authenticated user.
  */
 export class UserSettingsResponseDto {
-	@ApiProperty({ description: "Primary email address", example: "john@example.com" })
+	@ApiProperty({
+		description: "Primary email address",
+		example: "john@example.com",
+	})
 	email: string;
 
-	@ApiProperty({ description: "Whether the email address has been verified", example: true })
+	@ApiProperty({
+		description: "Whether the email address has been verified",
+		example: true,
+	})
 	isEmailVerified: boolean;
 
-	@ApiProperty({ description: "Whether Two-Factor Authentication is currently enabled", example: false })
+	@ApiProperty({
+		description: "Whether Two-Factor Authentication is currently enabled",
+		example: false,
+	})
 	is2faEnabled: boolean;
 
 	@ApiProperty({
@@ -64,7 +79,8 @@ export class UserSettingsResponseDto {
 	hasLocalAccount: boolean;
 
 	@ApiProperty({
-		description: "List of linked OAuth providers. Empty array if none connected.",
+		description:
+			"List of linked OAuth providers. Empty array if none connected.",
 		enum: Provider,
 		isArray: true,
 		example: ["GOOGLE"],
@@ -76,28 +92,40 @@ export class UserSettingsResponseDto {
  * Per-character stats breakdown.
  */
 export class CharacterStatsResponseDto {
-	@ApiProperty({ description: "Playable character name", enum: CharacterName, example: "ZEUS" })
+	@ApiProperty({
+		description: "Playable character name",
+		enum: CharacterName,
+		example: "ZEUS",
+	})
 	characterName: CharacterName;
 
 	@ApiProperty({ description: "Total wins with this character", example: 42 })
 	wins: number;
 
-	@ApiProperty({ description: "Total losses with this character", example: 18 })
+	@ApiProperty({
+		description: "Total losses with this character",
+		example: 18,
+	})
 	losses: number;
 
 	@ApiProperty({ description: "Total draws with this character", example: 5 })
 	draws: number;
 
-	@ApiProperty({ description: "Total kills with this character", example: 130 })
+	@ApiProperty({
+		description: "Total kills with this character",
+		example: 130,
+	})
 	kills: number;
 
-	@ApiProperty({ description: "Total deaths with this character", example: 85 })
+	@ApiProperty({
+		description: "Total deaths with this character",
+		example: 85,
+	})
 	deaths: number;
 }
 
 /**
  * Full statistics of the authenticated user.
- * Includes ELO, win/loss/draw record, streaks, K/D ratio and per-character breakdown.
  */
 export class UserStatsResponseDto {
 	@ApiProperty({ description: "Current ELO rating", example: 1250 })
@@ -109,7 +137,10 @@ export class UserStatsResponseDto {
 	@ApiProperty({ description: "Total wins across all matches", example: 85 })
 	totalWins: number;
 
-	@ApiProperty({ description: "Total losses across all matches", example: 40 })
+	@ApiProperty({
+		description: "Total losses across all matches",
+		example: 40,
+	})
 	totalLosses: number;
 
 	@ApiProperty({ description: "Total draws across all matches", example: 10 })
@@ -124,19 +155,28 @@ export class UserStatsResponseDto {
 	@ApiProperty({ description: "Current consecutive loss streak", example: 0 })
 	currentLoseStreak: number;
 
-	@ApiProperty({ description: "Total kills across all matches", example: 340 })
+	@ApiProperty({
+		description: "Total kills across all matches",
+		example: 340,
+	})
 	totalKills: number;
 
-	@ApiProperty({ description: "Total deaths across all matches", example: 210 })
+	@ApiProperty({
+		description: "Total deaths across all matches",
+		example: 210,
+	})
 	totalDeaths: number;
 
-	@ApiProperty({ description: "Per-character breakdown of stats", type: [CharacterStatsResponseDto] })
+	@ApiProperty({
+		description: "Per-character breakdown of stats",
+		type: [CharacterStatsResponseDto],
+	})
 	characterStats: CharacterStatsResponseDto[];
 }
 
 /**
  * Public profile of another player.
- * Does not include: email, settings, or any sensitive field.
+ * Does not include any sensitive field.
  */
 export class PublicProfileResponseDto {
 	@ApiProperty({ description: "Unique player identifier", example: 42 })
@@ -151,14 +191,19 @@ export class PublicProfileResponseDto {
 	})
 	avatarUrl: string;
 
-	@ApiProperty({ description: "Current online status", enum: UserStatus, example: "ONLINE" })
+	@ApiProperty({
+		description: "Current online status",
+		enum: UserStatus,
+		example: "ONLINE",
+	})
 	status: UserStatus;
 
 	@ApiProperty({ description: "Account registration timestamp" })
 	createdAt: Date;
 
 	@ApiProperty({
-		description: "Player stats. Null if the player has not played any match yet.",
+		description:
+			"Player stats. Null if the player has not played any match yet.",
 		type: UserStatsResponseDto,
 		nullable: true,
 	})
@@ -219,16 +264,31 @@ export class UserEloResponseDto {
  * Single participant snapshot inside a match history entry.
  */
 export class MatchParticipantSummaryDto {
-	@ApiProperty({ description: "User ID, null if the account was deleted", nullable: true, example: 7 })
+	@ApiProperty({
+		description: "User ID, null if the account was deleted",
+		nullable: true,
+		example: 7,
+	})
 	userId: number | null;
 
-	@ApiProperty({ description: "Username, null if account deleted", nullable: true, example: "pro_gamer" })
+	@ApiProperty({
+		description: "Username, null if account deleted",
+		nullable: true,
+		example: "pro_gamer",
+	})
 	username: string | null;
 
-	@ApiProperty({ description: "Avatar URL, null if account deleted", nullable: true, example: "https://..." })
+	@ApiProperty({
+		description: "Avatar URL, null if account deleted",
+		nullable: true,
+		example: "https://...",
+	})
 	avatarUrl: string | null;
 
-	@ApiProperty({ description: "Team the participant belonged to", example: 1 })
+	@ApiProperty({
+		description: "Team the participant belonged to",
+		example: 1,
+	})
 	teamId: number;
 
 	@ApiProperty({ enum: CharacterName, example: "ZEUS" })
@@ -303,7 +363,9 @@ export class FriendUserDto {
 	@ApiProperty({ example: "pro_gamer" })
 	username: string;
 
-	@ApiProperty({ example: "https://api.dicebear.com/9.x/pixel-art/svg?seed=pro_gamer" })
+	@ApiProperty({
+		example: "https://api.dicebear.com/9.x/pixel-art/svg?seed=pro_gamer",
+	})
 	avatarUrl: string;
 
 	@ApiProperty({ enum: UserStatus, example: "ONLINE" })
@@ -317,14 +379,18 @@ export class FriendResponseDto {
 	@ApiProperty({ description: "Friendship record ID", example: 42 })
 	id: number;
 
-	@ApiProperty({ description: "The other user in this friendship", type: FriendUserDto })
+	@ApiProperty({
+		description: "The other user in this friendship",
+		type: FriendUserDto,
+	})
 	friend: FriendUserDto;
 
 	@ApiProperty({ enum: FriendshipStatus, example: "ACCEPTED" })
 	status: FriendshipStatus;
 
 	@ApiProperty({
-		description: "SENT = current user sent the request; RECEIVED = current user received it",
+		description:
+			"SENT = current user sent the request; RECEIVED = current user received it",
 		enum: ["SENT", "RECEIVED"],
 		example: "SENT",
 	})
@@ -352,10 +418,16 @@ export class FriendListResponseDto {
  * Pending friend requests split by direction.
  */
 export class FriendRequestsResponseDto {
-	@ApiProperty({ type: [FriendResponseDto], description: "Requests sent by the current user" })
+	@ApiProperty({
+		type: [FriendResponseDto],
+		description: "Requests sent by the current user",
+	})
 	sent: FriendResponseDto[];
 
-	@ApiProperty({ type: [FriendResponseDto], description: "Requests received by the current user" })
+	@ApiProperty({
+		type: [FriendResponseDto],
+		description: "Requests received by the current user",
+	})
 	received: FriendResponseDto[];
 }
 
@@ -427,7 +499,10 @@ export class NotificationListResponseDto {
 	@ApiProperty({ example: 50 })
 	total: number;
 
-	@ApiProperty({ example: 3, description: "Unread count across ALL pages, not just current" })
+	@ApiProperty({
+		example: 3,
+		description: "Unread count across ALL pages, not just current",
+	})
 	unreadCount: number;
 
 	@ApiProperty({ example: 1 })
