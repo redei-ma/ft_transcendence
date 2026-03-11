@@ -179,6 +179,7 @@ export default function ProfilePage() {
   const total = s.totalWins + s.totalLosses + s.totalDraws;
   const winRate = total > 0 ? Math.round((s.totalWins / total) * 100) : 0;
   const sec: UserSettings = settings || { is2faEnabled: false, isEmailVerified: false, linkedProviders: [] };
+  const hasLocalAccount = sec.linkedProviders?.includes('LOCAL');
 
   return (
     <div className="animate-fadeIn" style={{ paddingTop: `${NAVBAR_HEIGHT}px`, maxWidth: '800px', margin: '0 auto', paddingBottom: '60px', paddingLeft: '24px', paddingRight: '24px' }}>
@@ -270,18 +271,21 @@ export default function ProfilePage() {
               onClick={() => setIsChangingPass(!isChangingPass)}
               style={{ padding: '8px 20px', background: 'none', border: `1px solid ${theme.colors.gold}`, color: theme.colors.gold, borderRadius: '2px', cursor: 'pointer', fontSize: '11px', fontWeight: 700 }}
             >
-              {isChangingPass ? 'CANCEL' : 'CHANGE PASSWORD'}
+              {isChangingPass ? 'CANCEL' : (hasLocalAccount ? 'CHANGE PASSWORD' : 'ADD PASSWORD')}
             </button>
           </div>
 
           {isChangingPass && (
             <form onSubmit={handlePasswordChange} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              <input type="password" placeholder="Current Password" required style={{ ...inputStyle, padding: '10px' }} value={passData.oldPass} onChange={e => setPassData({...passData, oldPass: e.target.value})} />
-              <input type="password" placeholder="New Password" required style={{ ...inputStyle, padding: '10px' }} value={passData.newPass} onChange={e => setPassData({...passData, newPass: e.target.value})} />
-              <input type="password" placeholder="Confirm New Password" required style={{ ...inputStyle, padding: '10px' }} value={passData.confirmPass} onChange={e => setPassData({...passData, confirmPass: e.target.value})} />
-              <button type="submit" style={{ padding: '10px', background: theme.colors.gold, border: 'none', color: theme.colors.bgDark, fontWeight: 700, cursor: 'pointer' }}>UPDATE PASSWORD</button>
+              {/* ONLY show Current Password if they already have a local account */}
+              {hasLocalAccount && ( <input type="password"   placeholder="Current Password"   required   style={{ ...inputStyle, padding: '10px' }}   value={passData.oldPass}   onChange={e => setPassData({...passData, oldPass: e.target.value})} /> )}
+              <input type="password" placeholder={hasLocalAccount ? "New Password" : "Set Password"} required style={{ ...inputStyle, padding: '10px' }} value={passData.newPass} onChange={e => setPassData({...passData, newPass: e.target.value})} />
+              <input type="password" placeholder="Confirm Password" required style={{ ...inputStyle, padding: '10px' }} value={passData.confirmPass} onChange={e => setPassData({...passData, confirmPass: e.target.value})} />
+              <button type="submit" style={{ padding: '10px', background: theme.colors.gold, border: 'none', color: theme.colors.bgDark, fontWeight: 700, cursor: 'pointer' }}> {hasLocalAccount ? 'UPDATE PASSWORD' : 'SET PASSWORD'}
+              </button>
             </form>
           )}
+
           {passMsg.text && (
             <div style={{ marginTop: '10px', fontSize: '12px', color: passMsg.isError ? theme.colors.dead : theme.colors.hpHigh }}>
               {passMsg.text}

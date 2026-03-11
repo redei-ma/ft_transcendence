@@ -123,4 +123,11 @@ export class UserClient {
     );
   }
 
+  async setPassword(userId: number, dto: { passwordHash: string }): Promise<void> {
+    await this.http.axiosRef.post(
+      `http://user-service:3001/internal/users/${userId}/password/set`,
+      dto,
+    );
+  }
+
 }

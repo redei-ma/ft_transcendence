@@ -1,5 +1,5 @@
 
-import { Injectable, UnauthorizedException, ForbiddenException, BadRequestException } from '@nestjs/common';
+import { Injectable, UnauthorizedException, ForbiddenException, BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
 import { JwtAccessPayloadDto, JwtRefreshPayloadDto} from '@transcendence/auth';
@@ -350,10 +350,28 @@ async registerAndSendVerification( dto: CreateLocalUserNoHashDto) {
 
 // --- EMAIL CHANGE LOGIC ---
 
-async requestEmailChange(userId: number, newEmail: string) {
-    // 1. Optional: Check if user exists and has LOCAL account (or rely on user-service check)
+  async requestEmailChange(userId: number, newEmail: string) {
 
-    // 2. Generate a token that stores the new email
+    const user = await this.usersService.findUser({ id: userId });
+    if (!user) throw new NotFoundException('User not found');
+
+    const hasLocalAccount = user.accounts.some(a => a.provider === 'LOCAL');
+    if (!hasLocalAccount) {
+        throw new ForbiddenException(
+            'Accounts logged in exclusively with other Identity Providers cannot change their email. Add local password to be able to change your email.'
+        );
+    }
+
+    if (user.email === newEmail) {
+        throw new BadRequestException('The new email must be different from the current one.');
+    }
+
+    const existingUser = await this.usersService.findUser({ email: newEmail });
+    if (existingUser) {
+        throw new ConflictException('This email is already associated with another account.');
+    }
+
+
     const token = this.jwtService.sign(
       { sub: userId, newEmail, type: 'email-change' },
       {
@@ -365,7 +383,7 @@ async requestEmailChange(userId: number, newEmail: string) {
     const verifyUrl = `${this.config.getOrThrow('PUBLIC_URL')}/api/auth/confirm-email-change?token=${encodeURIComponent(token)}`;
 
     await this.mailService.sendVerifyEmail(newEmail, verifyUrl);
-    return { message: 'Confirmation email sent to your new address. You have 15minutes to confirm the new email, only then it will be modified' };
+    return { message: 'Confirmation email sent to your new address. You have 15 minutes to confirm the new email, only then it will be modified' };
   }
 
   async confirmEmailChange(token: string) {
@@ -377,7 +395,11 @@ async requestEmailChange(userId: number, newEmail: string) {
       throw new ForbiddenException('Invalid token type');
     }
 
-    // Call user-service to finalize the change
+    const existingUser = await this.usersService.findUser({ email: payload.newEmail });
+    if (existingUser) {
+        throw new ConflictException('Email update failed. This email is already associated with another account.');
+    }
+
     await this.usersService.updateEmail(payload.sub, { email: payload.newEmail });
 
     return { message: 'Email updated successfully.' };//mettere pagina anche qui?
@@ -385,7 +407,7 @@ async requestEmailChange(userId: number, newEmail: string) {
 
   // --- PASSWORD CHANGE LOGIC ---
 
-  async changePassword(userId: number, oldPass: string, newPass: string) {
+/*   async changePassword(userId: number, oldPass: string, newPass: string) {
     // 1. Get user including the password hash
     const user = await this.usersService.findUser({ id: userId });
     const localAccount = user?.accounts.find(a => a.provider === 'LOCAL');
@@ -412,6 +434,47 @@ async requestEmailChange(userId: number, newEmail: string) {
     await this.usersService.updatePassword(userId, { passwordHash: hashed });
 
     // 5. Security: Invalidate existing sessions
+    await this.usersService.invalidateRefreshTokens(userId);
+  } */
+
+  async changePassword(userId: number, oldPass: string, newPass: string) {
+    const user = await this.usersService.findUser({ id: userId });
+    const localAccount = user?.accounts.find(a => a.provider === 'LOCAL');
+
+    // 1. If they have a password, they MUST verify the old one
+    if (localAccount?.passwordHash) {
+        const isMatch = await bcrypt.compare(oldPass, localAccount.passwordHash);
+        if (!isMatch) {
+            throw new UnauthorizedException('Current password incorrect');
+        }
+
+        // Check if new password is same as old
+        if (await bcrypt.compare(newPass, localAccount.passwordHash)) {
+            throw new BadRequestException('New password must be different from the old one.');
+        }
+    }
+    // 2. If no local account exists yet, we will create one during updatePassword
+    // or update the existing LOCAL entry if it exists without a password.
+
+    // 3. Validate new password
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+    if (newPass.length < 10 || !passwordRegex.test(newPass)) {
+        throw new BadRequestException('New password does not meet security requirements.');
+    }
+
+    // 4. Hash and Update
+    const hashed = await bcrypt.hash(newPass, 10);
+
+    // BRANCHING LOGIC: Update vs Set
+    if (localAccount) {
+        // Account exists, just update it
+        await this.usersService.updatePassword(userId, { passwordHash: hashed });
+    } else {
+        // No local account row exists at all, create it
+        await this.usersService.setPassword(userId, { passwordHash: hashed });
+    }
+
+    // 5. Invalidate sessions
     await this.usersService.invalidateRefreshTokens(userId);
   }
 }
