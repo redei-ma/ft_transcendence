@@ -1,22 +1,19 @@
-import {
-	IsEmailField,
-	IsPasswordField,
-} from "@transcendence/types";
+import { IsEmailField, IsPasswordField } from '@transcendence/dto';
 
 /**
  * Input DTO for changing/adding email.
  */
 export class EmailDto {
-	@IsEmailField()
-	email: string;
+  @IsEmailField()
+  email: string;
 }
 
 /**
  * Input DTO for changing email.
  */
 export class NewEmailDto {
-	@IsEmailField()
-	newEmail: string;
+  @IsEmailField()
+  newEmail: string;
 }
 
 /**
@@ -24,11 +21,10 @@ export class NewEmailDto {
  * Password must not be hased yet
  */
 export class ChangePasswordDto {
+  oldPass: string;
 
-    oldPass: string;
-
-	@IsPasswordField()
-	newPass: string;
+  @IsPasswordField()
+  newPass: string;
 }
 
 /**
@@ -36,9 +32,8 @@ export class ChangePasswordDto {
  * Password must not be hased yet
  */
 export class ResetPasswordDto {
+  token: string;
 
-    token: string;
-
-	@IsPasswordField()
-	password: string;
+  @IsPasswordField()
+  password: string;
 }
