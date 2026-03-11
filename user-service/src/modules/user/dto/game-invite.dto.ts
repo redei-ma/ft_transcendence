@@ -24,3 +24,15 @@ export class RespondGameInviteDto {
 	@IsIn(["ACCEPTED", "REJECTED"])
 	action: "ACCEPTED" | "REJECTED";
 }
+
+/**
+ * Response when responding to a game invite.
+ * lobbyId is populated only when the invite is ACCEPTED and a lobby has been created.
+ */
+export class RespondGameInviteResponseDto {
+	@ApiPropertyOptional({
+		description: "Lobby ID to join for character selection (only when ACCEPTED)",
+		example: "lobby_abc123",
+	})
+	lobbyId: string | null;
+}

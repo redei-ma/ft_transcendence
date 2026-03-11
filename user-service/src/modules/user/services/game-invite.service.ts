@@ -10,6 +10,7 @@ import { InviteStatus } from "@transcendence/types";
 import {
 	SendGameInviteDto,
 	RespondGameInviteDto,
+	RespondGameInviteResponseDto,
 	GameInviteResponseDto,
 	GameInviteListResponseDto,
 } from "../dto";
@@ -116,23 +117,27 @@ export class GameInviteService {
 
 	/**
 	 * Accepts or rejects a received game invite.
+	 * When ACCEPTED, creates a direct lobby via matchmaking-service and notifies the sender.
 	 *
 	 * @param userId - ID of the receiver responding to the invite (from JWT).
 	 * @param inviteId - ID of the invite to respond to.
 	 * @param dto - Action to take: ACCEPTED or REJECTED.
+	 * @returns lobbyId when ACCEPTED (for character selection), null when REJECTED.
 	 * @throws NotFoundException (404) — if the invite does not exist.
 	 * @throws ForbiddenException (403) — if the invite belongs to another user.
 	 * @throws BadRequestException (400) — if the invite is no longer pending or has expired.
+	 * @throws ConflictException (409) — if either player is no longer available (in game or queue).
 	 */
 	async respondInvite(
 		userId: number,
 		inviteId: number,
 		dto: RespondGameInviteDto,
-	): Promise<void> {
+	): Promise<RespondGameInviteResponseDto> {
 		const invite = await this.prisma.gameInvite.findUnique({
 			where: { id: inviteId },
 			select: {
 				id: true,
+				senderId: true,
 				receiverId: true,
 				status: true,
 				expiresAt: true,
@@ -145,17 +150,40 @@ export class GameInviteService {
 			throw new BadRequestException("Invite is no longer pending");
 		}
 		if (invite.expiresAt < new Date()) {
+			await this.prisma.gameInvite.update({
+				where: { id: inviteId },
+				data: { status: InviteStatus.EXPIRED },
+			});
 			throw new BadRequestException("Invite has expired");
 		}
 
+		if (dto.action === "REJECTED") {
+			await this.prisma.gameInvite.update({
+				where: { id: inviteId },
+				data: { status: InviteStatus.REJECTED },
+			});
+			return { lobbyId: null };
+		}
+
+		// ACCEPTED flow
+
+		// TODO: check that both sender and receiver are ONLINE (not IN_GAME or IN_QUEUE)
+		// Query User.status for invite.senderId and userId, throw ConflictException if either is busy.
+
+		// TODO: call matchmaking-service POST /internal/matchmaking/direct-match/lobby
+		// Body: { senderId: invite.senderId, receiverId: userId }
+		// Returns: { lobbyId: string }
+		// Throw ConflictException if matchmaking returns 409 (race condition, player became busy).
+		const lobbyId = "TODO_MATCHMAKING_NOT_YET_IMPLEMENTED";
+
 		await this.prisma.gameInvite.update({
 			where: { id: inviteId },
-			data: {
-				status:
-					dto.action === "ACCEPTED"
-						? InviteStatus.ACCEPTED
-						: InviteStatus.REJECTED,
-			},
+			data: { status: InviteStatus.ACCEPTED },
 		});
+
+		// TODO: notify sender via notification WS: { event: "lobby_ready", lobbyId }
+		// Call user notification WS gateway to push event to invite.senderId.
+
+		return { lobbyId };
 	}
 }
