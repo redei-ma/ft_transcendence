@@ -6,15 +6,18 @@ WORKDIR /app
 
 RUN apk add --no-cache openssl
 
-COPY shared/types ./shared/types
+WORKDIR /app/shared
+COPY shared/prisma ./prisma
+
+WORKDIR /app/shared/types
+COPY shared/types/ .
+RUN npm install && npm run build
 
 WORKDIR /app/db-migration
-
 COPY db-migration/package*.json ./
 RUN npm ci --install-links
 
-COPY shared/prisma ./prisma/
-RUN npx prisma generate
+RUN npx prisma generate --schema=../shared/prisma/schema.prisma
 
 COPY db-migration/. .
 RUN chmod +x entrypoint.sh

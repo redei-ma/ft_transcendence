@@ -5,7 +5,7 @@ import {
 	IsEmailField,
 	IsUsernameField,
 	IsPasswordHashField,
-} from "@transcendence/types";
+} from "@transcendence/dto";
 
 /**
  * Input DTO for setting a password.

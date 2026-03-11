@@ -5,8 +5,8 @@ import {
 	ConflictException,
 } from "@nestjs/common";
 import { PrismaService } from "../../prisma/prisma.service";
+import { Provider } from "@transcendence/types";
 import {
-	Provider,
 	CreateLocalUserDto,
 	CreateOAuthUserDto,
 	UpdatePasswordDto,
@@ -14,7 +14,7 @@ import {
 	Setup2faDto,
 	FindUserQueryDto,
 	UserWithAccountsResponseDto,
-} from "@transcendence/types";
+} from "@transcendence/dto";
 import {
 	SetPasswordDto,
 	UpdateUsernameDto,

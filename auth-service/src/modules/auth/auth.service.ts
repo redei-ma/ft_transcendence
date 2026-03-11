@@ -1,58 +1,69 @@
-
-import { Injectable, UnauthorizedException, ForbiddenException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  UnauthorizedException,
+  ForbiddenException,
+  BadRequestException,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
-import { JwtAccessPayloadDto, JwtRefreshPayloadDto} from '@transcendence/auth';
+import { JwtAccessPayloadDto, JwtRefreshPayloadDto } from '@transcendence/auth';
 import { ConfigService } from '@nestjs/config';
 import { MailService } from './mail/mail.service';
 import { UserClient } from '../user/user.client';
 import * as speakeasy from 'speakeasy';
 import * as QRCode from 'qrcode';
-import type { CreateOAuthUserDto} from '@transcendence/types';
+import type { CreateOAuthUserDto } from '@transcendence/dto';
 
 @Injectable()
 export class AuthService {
   constructor(
-    private readonly  config: ConfigService,
+    private readonly config: ConfigService,
     private readonly jwtService: JwtService,
     private readonly mailService: MailService,
     private usersService: UserClient,
   ) {}
 
-
-async registerAndSendVerification(
+  async registerAndSendVerification(
     username: string,
     email: string,
     password: string,
   ) {
+    const passwordRegex =
+      /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
 
-    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
-  
     if (!password || password.length < 10) {
-      throw new BadRequestException('Password must be at least 8 characters long.');
+      throw new BadRequestException(
+        'Password must be at least 8 characters long.',
+      );
     }
-    
+
     if (!passwordRegex.test(password)) {
-      throw new BadRequestException('Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character.');
+      throw new BadRequestException(
+        'Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character.',
+      );
     }
-/*     try { */
+    /*     try { */
 
-      const passwordHash = await bcrypt.hash(password, 10);
+    const passwordHash = await bcrypt.hash(password, 10);
 
-      const user = await this.usersService.createUser({username, email, passwordHash});
+    const user = await this.usersService.createUser({
+      username,
+      email,
+      passwordHash,
+    });
 
-      const token = this.generateEmailVerificationToken(user.id);
+    const token = this.generateEmailVerificationToken(user.id);
 
-      const verifyUrl = `${this.config.getOrThrow<string>('PUBLIC_URL')}/api/auth/verify-email?token=${encodeURIComponent(token)}`;
+    const verifyUrl = `${this.config.getOrThrow<string>('PUBLIC_URL')}/api/auth/verify-email?token=${encodeURIComponent(token)}`;
 
-      await this.mailService.sendVerifyEmail(user.email, verifyUrl);
+    await this.mailService.sendVerifyEmail(user.email, verifyUrl);
 
-      return {
-        message: `Welcome ${user.username}! Please check your email.`,
-        user: { username: user.username, email: user.email }
-      };
+    return {
+      message: `Welcome ${user.username}! Please check your email.`,
+      user: { username: user.username, email: user.email },
+    };
 
-  /*   } catch (error) {
+    /*   } catch (error) {
       console.error('[AUTH] ERRORE CRITICO NELLA REGISTRAZIONE:', error.message);
       if (error.response) {
         console.error('[AUTH] Dettagli errore User-Service:', error.response.data);
@@ -94,7 +105,10 @@ async registerAndSendVerification(
       throw new UnauthorizedException('This account uses Google login');
     }
 
-    const isMatch = await bcrypt.compare(passwordHash, localAccount.passwordHash);
+    const isMatch = await bcrypt.compare(
+      passwordHash,
+      localAccount.passwordHash,
+    );
     if (!isMatch) {
       throw new UnauthorizedException('invalid credentials');
     }
@@ -144,7 +158,7 @@ async registerAndSendVerification(
 
     return {
       accessToken,
-			refreshToken,
+      refreshToken,
       user: {
         username: user.username,
         email: user.email,
@@ -152,24 +166,22 @@ async registerAndSendVerification(
     };
   }
 
-	async refresh(user: JwtAccessPayloadDto) {
-
-		const accessPayload: JwtAccessPayloadDto = {
+  async refresh(user: JwtAccessPayloadDto) {
+    const accessPayload: JwtAccessPayloadDto = {
       sub: user.sub,
       username: user.username,
     };
-		return this.jwtService.sign(
-			accessPayload, {
-			secret: this.config.getOrThrow<string>('JWT_ACCESS_SECRET'),
-   		expiresIn: '15m',
-			});
-	}
+    return this.jwtService.sign(accessPayload, {
+      secret: this.config.getOrThrow<string>('JWT_ACCESS_SECRET'),
+      expiresIn: '15m',
+    });
+  }
 
-	async logout(userId: number ) {
-		await this.usersService.invalidateRefreshTokens(userId);
+  async logout(userId: number) {
+    await this.usersService.invalidateRefreshTokens(userId);
 
-		return { ok: true };
-	}
+    return { ok: true };
+  }
 
   generateEmailVerificationToken(userId: number) {
     return this.jwtService.sign(
@@ -185,12 +197,12 @@ async registerAndSendVerification(
   }
 
   async verifyEmailToken(token: string) {
-  /*   let payload: any;//da levare l'any e da levare il try catch
+    /*   let payload: any;//da levare l'any e da levare il try catch
     try { */
-        let payload = this.jwtService.verify(token, {
-        secret: this.config.getOrThrow<string>('JWT_EMAIL_SECRET'),
-       });
-   /* } catch (e) {
+    let payload = this.jwtService.verify(token, {
+      secret: this.config.getOrThrow<string>('JWT_EMAIL_SECRET'),
+    });
+    /* } catch (e) {
       console.error('Verify email token error:', e.message);
       throw new BadRequestException('invalid or expired token');
     } */
@@ -201,7 +213,10 @@ async registerAndSendVerification(
 
     await this.usersService.markEmailVerified(payload.sub);
 
-    return { message: 'Email successfully verified. You can now log in.',/* ok: true */ };
+    return {
+      message:
+        'Email successfully verified. You can now log in.' /* ok: true */,
+    };
   }
 
   generatePasswordResetToken(userId: number) {
@@ -222,8 +237,7 @@ async registerAndSendVerification(
 
     const token = this.generatePasswordResetToken(user.id);
 
-    const resetUrl =
-      `${this.config.getOrThrow<string>('PUBLIC_URL')}/reset-password.html?token=${encodeURIComponent(token)}`;
+    const resetUrl = `${this.config.getOrThrow<string>('PUBLIC_URL')}/reset-password.html?token=${encodeURIComponent(token)}`;
 
     await this.mailService.sendResetPasswordEmail(user.email, resetUrl);
   }
@@ -247,7 +261,9 @@ async registerAndSendVerification(
 
     const hashed = await bcrypt.hash(newPassword, 10);
 
-    await this.usersService.updatePassword(payload.sub, {passwordHash: hashed});
+    await this.usersService.updatePassword(payload.sub, {
+      passwordHash: hashed,
+    });
 
     // Invalidate refresh tokens after password change
     await this.usersService.invalidateRefreshTokens(payload.sub);
@@ -276,15 +292,14 @@ async registerAndSendVerification(
       user = await this.usersService.findUser({ email: googleUser.email });
 
       if (user) {
-        await this.usersService.linkProvider(
-          user.id,
-          googleUser.provider,
-          {
-            oauthId: googleUser.oauthId,
-            avatarUrl: googleUser.avatarUrl,
-          });
+        await this.usersService.linkProvider(user.id, googleUser.provider, {
+          oauthId: googleUser.oauthId,
+          avatarUrl: googleUser.avatarUrl,
+        });
       } else {
-        const uniqueUsername = await this.generateUniqueUsername( googleUser.username );
+        const uniqueUsername = await this.generateUniqueUsername(
+          googleUser.username,
+        );
 
         user = await this.usersService.createOAuthUser({
           email: googleUser.email,
@@ -296,7 +311,7 @@ async registerAndSendVerification(
       }
     }
 
-/*       await this.profileClient.upsertProfile({ //forse non va qui ma su strategy o piu prob che devo passare anche photos in googleuser
+    /*       await this.profileClient.upsertProfile({ //forse non va qui ma su strategy o piu prob che devo passare anche photos in googleuser
         userId: user.id,
         avatar: profile.photos?.[0]?.value,
       }); */
@@ -328,7 +343,9 @@ async registerAndSendVerification(
 
     const qrCode = await QRCode.toDataURL(secret.otpauth_url);
 
-    await this.usersService.setup2fa(userId, {twoFactorSecret: secret.base32});
+    await this.usersService.setup2fa(userId, {
+      twoFactorSecret: secret.base32,
+    });
 
     return {
       qrCode,

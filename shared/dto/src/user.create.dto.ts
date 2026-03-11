@@ -1,6 +1,6 @@
 import { ApiPropertyOptional } from "@nestjs/swagger";
 import { IsOptional, IsString } from "class-validator";
-import { Provider } from "../enums";
+import { Provider } from "@transcendence/types";
 import {
 	IsEmailField,
 	IsUsernameField,

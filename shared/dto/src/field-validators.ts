@@ -8,7 +8,7 @@ import {
 	MaxLength,
 	Matches,
 } from "class-validator";
-import { Provider } from "../enums";
+import { Provider } from "@transcendence/types";
 
 export function IsUsernameField() {
 	return applyDecorators(

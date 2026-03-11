@@ -8,7 +8,7 @@ import {
   Setup2faDto,
   FindUserQueryDto,
   UserWithAccountsResponseDto,
-} from '@transcendence/types';
+} from '@transcendence/dto';
 
 @Injectable()
 export class UserClient {

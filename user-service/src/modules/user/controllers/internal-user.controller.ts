@@ -19,8 +19,8 @@ import {
 	ApiParam,
 	ApiQuery,
 } from "@nestjs/swagger";
+import { Provider } from "@transcendence/types";
 import {
-	Provider,
 	CreateLocalUserDto,
 	CreateOAuthUserDto,
 	UpdatePasswordDto,
@@ -28,7 +28,7 @@ import {
 	Setup2faDto,
 	FindUserQueryDto,
 	UserWithAccountsResponseDto,
-} from "@transcendence/types";
+} from "@transcendence/dto";
 import { UserService } from "../services/user.service";
 import {
 	SetPasswordDto,

@@ -12,8 +12,9 @@ COMPOSE      := docker compose
 COMPOSE_PROD := docker compose -f docker-compose.yml
 
 CERTS_DIR    := ./certs
-TYPES_DIR    := ./shared/types
 AUTH_DIR     := ./shared/auth
+DTO_DIR      := ./shared/dto
+TYPES_DIR    := ./shared/types
 
 # Colors
 GREEN  := \033[32m
@@ -38,13 +39,16 @@ all: up
 
 # --- Shared packages build -----------------------------------
 
-generate: ##@Setup — Build shared packages (@transcendence/auth + @transcendence/types)
-	@printf "$(CYAN)>>> Building @transcendence/auth...$(RESET)\n"
-	@cd $(AUTH_DIR) && npm install --silent && npm run build || \
-		(printf "$(RED)>>> FAILED: @transcendence/auth build$(RESET)\n" && exit 1)
+generate: ##@Setup — Build shared packages (@transcendence/types + @transcendence/dto + @transcendence/auth)
 	@printf "$(CYAN)>>> Building @transcendence/types...$(RESET)\n"
 	@cd $(TYPES_DIR) && npm install --silent && npm run build || \
 		(printf "$(RED)>>> FAILED: @transcendence/types build$(RESET)\n" && exit 1)
+	@printf "$(CYAN)>>> Building @transcendence/dto...$(RESET)\n"
+	@cd $(DTO_DIR) && npm install --silent && npm run build || \
+		(printf "$(RED)>>> FAILED: @transcendence/dto build$(RESET)\n" && exit 1)
+	@printf "$(CYAN)>>> Building @transcendence/auth...$(RESET)\n"
+	@cd $(AUTH_DIR) && npm install --silent && npm run build || \
+		(printf "$(RED)>>> FAILED: @transcendence/auth build$(RESET)\n" && exit 1)
 	@printf "$(GREEN)>>> Shared packages built successfully.$(RESET)\n"
 
 # --- Certificates generation ---------------------------------
@@ -66,12 +70,12 @@ certs: ##@Setup — Generate self-signed TLS certificates if missing
 
 # --- Lifecycle -----------------------------------------------
 
-up: certs generate ##@Docker — Build images and start all services in DEV mode (override.yml auto-loaded)
+up: certs ##@Docker — Build images and start all services in DEV mode (override.yml auto-loaded)
 	@printf "$(CYAN)>>> Starting services in dev mode...$(RESET)\n"
 	@$(COMPOSE) up -d --build
 	@printf "$(GREEN)>>> All services started. Use 'make logs' to follow output.$(RESET)\n"
 
-up-prod: certs generate ##@Docker — Build images and start all services in PRODUCTION mode (override.yml ignored)
+up-prod: certs ##@Docker — Build images and start all services in PRODUCTION mode (override.yml ignored)
 	@printf "$(CYAN)>>> Starting services in production mode...$(RESET)\n"
 	@$(COMPOSE_PROD) up -d --build
 	@printf "$(GREEN)>>> All services started in production mode.$(RESET)\n"
@@ -82,7 +86,7 @@ down: ##@Docker — Stop and remove containers (volumes preserved)
 
 restart: down up ##@Docker — Full stop + start (dev mode)
 
-rebuild: certs generate ##@Docker — Force rebuild without cache (DB preserved), then start
+rebuild: certs ##@Docker — Force rebuild without cache (DB preserved), then start
 	@printf "$(CYAN)>>> Rebuilding without cache...$(RESET)\n"
 	@$(COMPOSE) build --no-cache
 	@$(COMPOSE) up -d

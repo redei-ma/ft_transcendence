@@ -9,7 +9,7 @@ import {
 	FriendshipStatus,
 	InviteStatus,
 	NotificationType,
-} from "@prisma/client";
+} from "@transcendence/types";
 import bcrypt from "bcrypt";
 
 export async function seedTestData(prisma: PrismaClient): Promise<void> {

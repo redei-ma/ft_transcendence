@@ -6,12 +6,11 @@
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "import": "./dist/esm/index.js",
       "require": "./dist/index.js"
     }
   },
   "scripts": {
-    "build": "tsc && tsc -p tsconfig.esm.json"
+    "build": "tsc"
   },
   "dependencies": {
     "jsonwebtoken": "^9.0.3"

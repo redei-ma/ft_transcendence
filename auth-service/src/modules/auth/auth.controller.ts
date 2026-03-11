@@ -21,7 +21,7 @@ import { Throttle } from '@nestjs/throttler';
 import type {
   CreateLocalUserDto,
   CreateOAuthUserDto,
-} from '@transcendence/types';
+} from '@transcendence/dto';
 
 @Controller('api/auth')
 export class AuthController {
