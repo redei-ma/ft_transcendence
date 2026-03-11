@@ -9,6 +9,7 @@ import { UserClient } from '../user/user.client';
 import * as speakeasy from 'speakeasy';
 import * as QRCode from 'qrcode';
 import { CreateOAuthUserDto, CreateLocalUserNoHashDto } from '@transcendence/types';
+import { ResetPasswordDto, ChangePasswordDto, EmailDto, NewEmailDto } from '../../dto/input.dto';
 
 @Injectable()
 export class AuthService {
@@ -48,13 +49,12 @@ async registerAndSendVerification( dto: CreateLocalUserNoHashDto) {
       };
 
     } catch (error) {
-      //console.error('registration error:', error.message);
       throw new BadRequestException('Registration failed.');
     }
   }
 
-  async resendVerificationEmail(email: string) {
-    const user = await this.usersService.findUser({ email });
+  async resendVerificationEmail(dto: EmailDto ) {
+    const user = await this.usersService.findUser(dto);
 
     if (!user) {
       // Do NOT reveal user existence
@@ -178,7 +178,7 @@ async registerAndSendVerification( dto: CreateLocalUserNoHashDto) {
 
     await this.usersService.markEmailVerified(payload.sub);
 
-    return { message: 'Email successfully verified. You can now log in.',/* ok: true */ };
+    return { message: 'Email successfully verified. You can now log in.' };
   }
 
 	async refresh(user: JwtAccessPayloadDto) {
@@ -210,8 +210,8 @@ async registerAndSendVerification( dto: CreateLocalUserNoHashDto) {
     );
   }
 
-  async sendPasswordReset(email: string) {
-    const user = await this.usersService.findUser({ email });
+  async sendPasswordReset( dto: EmailDto ) {
+    const user = await this.usersService.findUser(dto);
 
     // Prevent email enumeration
     if (!user) return;
@@ -224,11 +224,11 @@ async registerAndSendVerification( dto: CreateLocalUserNoHashDto) {
     await this.mailService.sendResetPasswordEmail(user.email, resetUrl);
   }
 
-  async resetPassword(token: string, newPassword: string) {
+  async resetPassword(dto: ResetPasswordDto) {
     let payload: any;
 
     try {
-      payload = this.jwtService.verify(token, {
+      payload = this.jwtService.verify(dto.token, {
         secret: this.config.getOrThrow<string>('JWT_PASSWORD_RESET_SECRET'),
       });
     } catch (e) {
@@ -241,7 +241,7 @@ async registerAndSendVerification( dto: CreateLocalUserNoHashDto) {
 
     //to-do mettere controlli su psw
 
-    const hashed = await bcrypt.hash(newPassword, 10);
+    const hashed = await bcrypt.hash(dto.password, 10);
 
     await this.usersService.updatePassword(payload.sub, {passwordHash: hashed});
 
@@ -350,7 +350,7 @@ async registerAndSendVerification( dto: CreateLocalUserNoHashDto) {
 
 // --- EMAIL CHANGE LOGIC ---
 
-  async requestEmailChange(userId: number, newEmail: string) {
+  async requestEmailChange(userId: number, dto: NewEmailDto) {
 
     const user = await this.usersService.findUser({ id: userId });
     if (!user) throw new NotFoundException('User not found');
@@ -362,18 +362,18 @@ async registerAndSendVerification( dto: CreateLocalUserNoHashDto) {
         );
     }
 
-    if (user.email === newEmail) {
+    if (user.email === dto.newEmail) {
         throw new BadRequestException('The new email must be different from the current one.');
     }
 
-    const existingUser = await this.usersService.findUser({ email: newEmail });
+    const existingUser = await this.usersService.findUser({ email: dto.newEmail });
     if (existingUser) {
         throw new ConflictException('This email is already associated with another account.');
     }
 
 
     const token = this.jwtService.sign(
-      { sub: userId, newEmail, type: 'email-change' },
+      { sub: userId, newEmail: dto.newEmail, type: 'email-change' },
       {
         secret: this.config.getOrThrow('JWT_EMAIL_SECRET'),
         expiresIn: '15m',
@@ -382,7 +382,7 @@ async registerAndSendVerification( dto: CreateLocalUserNoHashDto) {
 
     const verifyUrl = `${this.config.getOrThrow('PUBLIC_URL')}/api/auth/confirm-email-change?token=${encodeURIComponent(token)}`;
 
-    await this.mailService.sendVerifyEmail(newEmail, verifyUrl);
+    await this.mailService.sendVerifyEmail(dto.newEmail, verifyUrl);
     return { message: 'Confirmation email sent to your new address. You have 15 minutes to confirm the new email, only then it will be modified' };
   }
 
@@ -401,6 +401,8 @@ async registerAndSendVerification( dto: CreateLocalUserNoHashDto) {
     }
 
     await this.usersService.updateEmail(payload.sub, { email: payload.newEmail });
+
+    await this.usersService.markEmailVerified(payload.sub);
 
     return { message: 'Email updated successfully.' };//mettere pagina anche qui?
   }
@@ -437,33 +439,33 @@ async registerAndSendVerification( dto: CreateLocalUserNoHashDto) {
     await this.usersService.invalidateRefreshTokens(userId);
   } */
 
-  async changePassword(userId: number, oldPass: string, newPass: string) {
+  async changePassword(userId: number, dto: ChangePasswordDto) {
     const user = await this.usersService.findUser({ id: userId });
     const localAccount = user?.accounts.find(a => a.provider === 'LOCAL');
 
-    // 1. If they have a password, they MUST verify the old one
+    // If they have a password, they MUST verify the old one
     if (localAccount?.passwordHash) {
-        const isMatch = await bcrypt.compare(oldPass, localAccount.passwordHash);
+        const isMatch = await bcrypt.compare(dto.oldPass, localAccount.passwordHash);
         if (!isMatch) {
             throw new UnauthorizedException('Current password incorrect');
         }
 
         // Check if new password is same as old
-        if (await bcrypt.compare(newPass, localAccount.passwordHash)) {
+        if (await bcrypt.compare(dto.newPass, localAccount.passwordHash)) {
             throw new BadRequestException('New password must be different from the old one.');
         }
     }
-    // 2. If no local account exists yet, we will create one during updatePassword
+    // If no local account exists yet, we will create one during updatePassword
     // or update the existing LOCAL entry if it exists without a password.
 
-    // 3. Validate new password
+    // Validate new password
     const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
-    if (newPass.length < 10 || !passwordRegex.test(newPass)) {
+    if (dto.newPass.length < 10 || !passwordRegex.test(dto.newPass)) {
         throw new BadRequestException('New password does not meet security requirements.');
     }
 
-    // 4. Hash and Update
-    const hashed = await bcrypt.hash(newPass, 10);
+    // Hash and Update
+    const hashed = await bcrypt.hash(dto.newPass, 10);
 
     // BRANCHING LOGIC: Update vs Set
     if (localAccount) {
@@ -474,7 +476,8 @@ async registerAndSendVerification( dto: CreateLocalUserNoHashDto) {
         await this.usersService.setPassword(userId, { passwordHash: hashed });
     }
 
-    // 5. Invalidate sessions
+    // Invalidate sessions
     await this.usersService.invalidateRefreshTokens(userId);
+    //cancellare anche cookies?
   }
 }

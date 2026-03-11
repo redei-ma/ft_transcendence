@@ -55,7 +55,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
       } else if (mode === "register") {
         const { ok, data } = await authService.register(formData.username, formData.email, formData.password);
         if (ok) { setMode("login"); setFormData({ username: "", email: "", password: "", totp: "" }); }
-        else { setError(data.error || data.message || "Registration failed"); }
+        else { setError( data.message || data.error || "Registration failed"); }
 
       } else if (mode === "forgot") {
         const ok = await authService.forgotPassword(formData.email);

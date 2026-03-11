@@ -9,6 +9,7 @@ import {
   FindUserQueryDto,
   UserWithAccountsResponseDto,
   UpdateEmailDto,
+  SetPasswordDto,
 } from '@transcendence/types';
 
 @Injectable()
@@ -118,12 +119,12 @@ export class UserClient {
 
   async updateEmail(userId: number, dto: UpdateEmailDto): Promise<void> {
     await this.http.axiosRef.patch(
-      `http://user-service:3001/me/email`,
+      `http://user-service:3001/internal/users/${userId}/email`,
       dto
     );
   }
 
-  async setPassword(userId: number, dto: { passwordHash: string }): Promise<void> {
+  async setPassword(userId: number, dto: SetPasswordDto ): Promise<void> {
     await this.http.axiosRef.post(
       `http://user-service:3001/internal/users/${userId}/password/set`,
       dto,

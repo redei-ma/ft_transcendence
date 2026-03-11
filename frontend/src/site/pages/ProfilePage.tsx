@@ -90,7 +90,8 @@ export default function ProfilePage() {
         if (set) setSettings(set);
       })
       .finally(() => setLoading(false));
-  }, []);
+      console.log("Current Settings:", settings); // Check if 'LOCAL' is in linkedProviders
+  }, [settings]);
 
   const handleSaveUsername = async () => {
     if (await api.updateUsername(tempVal)) {

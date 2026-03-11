@@ -12,15 +12,12 @@ import {
 import { AuthService } from './auth.service';
 import type { Request, Response } from 'express';
 import type { AuthenticatedRequest } from '@transcendence/auth';
-import { AUTH_COOKIE_NAME, REFRESH_COOKIE_NAME } from '@transcendence/auth';
+import { AUTH_COOKIE_NAME, REFRESH_COOKIE_NAME, JwtAuthGuard } from '@transcendence/auth';
 import { JwtRefreshGuard } from './jwt/jwt-refresh.guard';
-import { JwtAuthGuard } from './jwt/jwt.guard';
 import { ConfigService } from '@nestjs/config';
 import { GoogleAuthGuard } from './jwt/google.guard';
-import {
-  CreateLocalUserNoHashDto,
-  CreateOAuthUserDto,
-} from '@transcendence/types';
+import { CreateLocalUserNoHashDto, CreateOAuthUserDto } from '@transcendence/types';
+import { ResetPasswordDto, ChangePasswordDto, EmailDto, NewEmailDto } from '../../dto/input.dto';
 
 @Controller('api/auth')
 export class AuthController {
@@ -37,14 +34,10 @@ export class AuthController {
   }
 
   @Post('resend-verification')
-  async resendVerification(@Body('email') email: string) {
-    return this.authService.resendVerificationEmail(email);
+  async resendVerification(@Body('email') body: EmailDto) {
+    return this.authService.resendVerificationEmail(body);
   }
 
-  /* @Post('login')
-async login(@Body() body: { username: string; password: string; totp?: string }) {
-  return this.authService.login(body.username, body.password, body.totp);
-} */
   @Post('login')
   async login(
     @Body() body: { username: string; password: string; totp?: string },
@@ -169,14 +162,14 @@ async login(@Body() body: { username: string; password: string; totp?: string })
   }
 
   @Post('forgot-password')
-  async forgotPassword(@Body() body: { email: string }) {
-    await this.authService.sendPasswordReset(body.email);
+  async forgotPassword(@Body() body: EmailDto ) {
+    await this.authService.sendPasswordReset({ email: body.email });
     return { ok: true };
   }
 
   @Post('reset-password')
-  async resetPassword(@Body() body: { token: string; newPassword: string }) {
-    await this.authService.resetPassword(body.token, body.newPassword);
+  async resetPassword(@Body() body: ResetPasswordDto) {
+    await this.authService.resetPassword(body);
     return { ok: true };
   }
 
@@ -207,9 +200,9 @@ async login(@Body() body: { username: string; password: string; totp?: string })
   @Post('change-email-request')
   async requestEmailChange(
     @Req() req: AuthenticatedRequest,
-    @Body('newEmail') newEmail: string
+    @Body('newEmail') body: NewEmailDto
   ) {
-    return this.authService.requestEmailChange(req.user.sub, newEmail);
+    return this.authService.requestEmailChange(req.user.sub, body);
   }
 
   @Get('confirm-email-change')
@@ -222,9 +215,14 @@ async login(@Body() body: { username: string; password: string; totp?: string })
   @Post('change-password')
   async changePassword(
     @Req() req: AuthenticatedRequest,
-    @Body() body: { oldPass: string; newPass: string }
+    @Body() body: ChangePasswordDto,
+    @Res({ passthrough: true }) res: Response,
   ) {
-    await this.authService.changePassword(req.user.sub, body.oldPass, body.newPass);
+    await this.authService.changePassword(req.user.sub, body);
+
+    res.clearCookie('auth_token');
+    res.clearCookie('refresh_token');
+
     return { message: 'Password updated successfully' };
   }
 }
