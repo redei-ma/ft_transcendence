@@ -13,7 +13,7 @@ enum UserStatus {
   ONLINE
   OFFLINE
   IN_GAME
-  IN_LOBBY
+  IN_QUEUE
 }
 
 enum MatchMode {
