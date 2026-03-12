@@ -26,7 +26,7 @@ BOLD   := \033[1m
 
 # --- Phony targets -------------------------------------------
 
-.PHONY: all generate certs up up-prod down restart clean fclean re rebuild \
+.PHONY: all generate migrate certs up up-prod down restart clean fclean re rebuild \
         prune logs ps help \
         logs-auth logs-user logs-game logs-matchmaking logs-frontend \
         logs-postgres logs-migration logs-gateway logs-ngrok logs-redis \
@@ -50,6 +50,17 @@ generate: ##@Setup — Build shared packages (@transcendence/types + @transcende
 	@cd $(AUTH_DIR) && npm install --silent && npm run build || \
 		(printf "$(RED)>>> FAILED: @transcendence/auth build$(RESET)\n" && exit 1)
 	@printf "$(GREEN)>>> Shared packages built successfully.$(RESET)\n"
+
+# --- Database migrations -------------------------------------
+
+migrate: ##@DB — Create a new Prisma migration (usage: make migrate NAME=my_migration)
+	@test -n "$(NAME)" || (printf "$(RED)>>> ERROR: NAME is required. Usage: make migrate NAME=my_migration$(RESET)\n" && exit 1)
+	@printf "$(CYAN)>>> Creating migration: $(NAME)...$(RESET)\n"
+	@$(COMPOSE) run --rm --entrypoint "" \
+		db-migration npx prisma migrate dev \
+		--schema=/app/prisma/schema.prisma \
+		--name=$(NAME)
+	@printf "$(GREEN)>>> Migration created. Run 'make generate' to rebuild shared types.$(RESET)\n"
 
 # --- Certificates generation ---------------------------------
 
