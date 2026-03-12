@@ -1,21 +1,19 @@
 import { useEffect, useState } from 'react';
 import { socketService } from '../services/socketServices';
-import { GameEvents } from '../game/game.events';
-import { PlayerSnapshot, BulletSnapshot } from '@transcendence/types';
 import { GameStatePayload, GameOverPayload, MapEmitPayload } from '../types/game.types';
+import { PlayerSnapshot, BulletSnapshot, GameEvents } from '@transcendence/types';
 import { log } from '../configs/logger';
+import { useGameStore } from '../storage/gameStore';
 
 interface UseGameSocketReturn {
   isConnected: boolean;
   world: MapEmitPayload | null;
-  gameState: GameStatePayload | null;
   gameOver: GameOverPayload | null;
 }
 
 export function useGameSocket(): UseGameSocketReturn {
   const [isConnected, setIsConnected] = useState(false);
   const [world, setWorld] = useState<MapEmitPayload | null>(null);
-  const [gameState, setGameState] = useState<GameStatePayload | null>(null);
   const [gameOver, setGameOver] = useState<GameOverPayload | null>(null);
 
   useEffect(() => {
@@ -71,7 +69,7 @@ export function useGameSocket(): UseGameSocketReturn {
         characterName: Array.isArray(b.characterName) ? b.characterName[0] : b.characterName,
       }));
     
-      setGameState({ players, bullets, time: payload.time || 0 });
+      useGameStore.getState().setGameState({ players, bullets, time: payload.time || 0 });
     };
 
     const handleGameOver = (payload: any) => {
@@ -108,5 +106,5 @@ export function useGameSocket(): UseGameSocketReturn {
     };
   }, []);
 
-  return { isConnected, world, gameState, gameOver };
+  return { isConnected, world, gameOver };
 }

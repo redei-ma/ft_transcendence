@@ -12,7 +12,7 @@ import { theme } from "./configs/theme";
 
 export default function App() {
 
-	const [isLoggedIn, setIsLoggedIn] = useState(false);
+	const [isLoggedIn, setIsLoggedIn] = useState(true);
 	const [user, setUser] = useState<UserProfile | null>(null);
 	const [currentPage, setCurrentPage] = useState("dashboard");
 

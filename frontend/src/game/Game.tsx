@@ -1,18 +1,16 @@
 import { Canvas } from '@react-three/fiber';
-import { useLoader } from '@react-three/fiber';
 import { useGameSocket } from '../hooks/useGameSocket';
 import { InputManager } from './input/inputManager';
 import { useEffect, useRef } from 'react';
-import { GameConfig } from '@transcendence/types';
-import { CharacterName, MatchMode } from '@transcendence/types';
+import { CharacterName, MatchMode, GameConfig } from '@transcendence/types';
 import GameUI from './UI/gameUI';
 import { PlayerEntity } from './entities/PlayerEntity';
 import { BulletEntity } from './entities/BulletEntity';
 import { GameOverOverlay } from './UI/components/GameOverOverlay';
-import GameChat  from './UI/components/GameChat';
+import GameChat from './UI/components/GameChat';
 import { EffectComposer, Bloom } from '@react-three/postprocessing';
-import * as THREE from 'three';
 import mapTexture from '../assets/mapTexture.png';
+import { useGameStore } from '../storage/gameStore';
 
 interface GameProps {
   selectedCharacter: CharacterName;
@@ -21,18 +19,20 @@ interface GameProps {
   p2Character: CharacterName;
   onPlayAgain: () => void;
   onQuit: () => void;
-  myUserId: string,
+  myUserId: string;
 }
 
 export default function Game({ selectedCharacter, selectedMode, onPlayAgain, onQuit, myUserId }: GameProps) {
   const inputManagerRef = useRef<InputManager | null>(null);
-  const { isConnected, world, gameState, gameOver } = useGameSocket();
+  const { isConnected, world, gameOver } = useGameSocket();
+
+  const playerIds = useGameStore((state) => state.gameState?.players.map(p => p.id) || []);
+  const bulletIds = useGameStore((state) => state.gameState?.bullets.map(b => b.id) || []);
 
   useEffect(() => {
     const isLocal = selectedMode === MatchMode.LOCAL;
     const inputManager = new InputManager(isLocal);
     inputManagerRef.current = inputManager;
-
     return () => {
       inputManager.dispose();
       inputManagerRef.current = null;
@@ -46,25 +46,18 @@ export default function Game({ selectedCharacter, selectedMode, onPlayAgain, onQ
 
   return (
     <div style={{
-      position: 'fixed',
-      inset: 0,
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      justifyContent: 'center',
+      position: 'fixed', inset: 0,
+      display: 'flex', flexDirection: 'column',
+      alignItems: 'center', justifyContent: 'center',
       backgroundImage: `url(${mapTexture})`,
-      backgroundSize: 'cover',
-      backgroundPosition: 'center',
-      backgroundRepeat: 'no-repeat',
-      overflow: 'hidden',
+      backgroundSize: 'cover', backgroundPosition: 'center',
+      backgroundRepeat: 'no-repeat', overflow: 'hidden',
     }}>
       <Canvas
         orthographic
         camera={{
           position: [centerX + 80, 100, centerZ + 80],
-          zoom: 5,
-          near: 0.1,
-          far: 1000,
+          zoom: 5, near: 0.1, far: 1000,
         }}
         onCreated={({ camera }) => {
           camera.lookAt(centerX, 0, centerZ);
@@ -75,31 +68,18 @@ export default function Game({ selectedCharacter, selectedMode, onPlayAgain, onQ
         <ambientLight intensity={0.6} />
         <directionalLight position={[50, 100, 50]} intensity={0.8} />
 
-        <gridHelper
-            args={[mapWidth, 20, 0xffffff, 0x444444]}
-            position={[centerX, 0, centerZ]}
-        />
+        <gridHelper args={[mapWidth, 20, 0xffffff, 0x444444]} position={[centerX, 0, centerZ]} />
 
-        <gridHelper
-          args={[mapWidth, 20, 0xffffff, 0x444444]}
-          position={[centerX, 0, centerZ]}
-        />
-
-        {gameState?.players.map((player) => (
-          <PlayerEntity key={player.id} snapshot={player} />
+        {playerIds.map((id) => (
+          <PlayerEntity key={id} playerId={id} />
         ))}
 
-        {gameState?.bullets.map((bullet) => (
-          <BulletEntity key={bullet.id} snapshot={bullet} />
+        {bulletIds.map((id) => (
+          <BulletEntity key={id} bulletId={id} />
         ))}
 
         <EffectComposer>
-          <Bloom
-            luminanceThreshold={1}
-            luminanceSmoothing={0.9}
-            mipmapBlur
-            intensity={1.5}
-          />
+          <Bloom luminanceThreshold={1} luminanceSmoothing={0.9} mipmapBlur intensity={1.5} />
         </EffectComposer>
       </Canvas>
 
@@ -108,28 +88,26 @@ export default function Game({ selectedCharacter, selectedMode, onPlayAgain, onQ
           character={selectedCharacter}
           isConnected={isConnected}
           mapData={world}
-          playersCount={gameState?.players.length || 0}
           maxPlayers={world?.map?.maxPlayers || 2}
           gameOver={gameOver}
-          gameState={gameState}
         />
       )}
 
       {!gameOver && (selectedMode === MatchMode.RANKED || selectedMode === MatchMode.UNRANKED) && (
-        <GameChat
-          myUserId={myUserId}
-          isVisible={true}
-        />
+        <GameChat myUserId={myUserId} isVisible={true} />
       )}
 
-      {gameOver && gameState && (
-        <GameOverOverlay
-          gameOver={gameOver}
-          players={gameState.players}
-          onPlayAgain={onPlayAgain}
-          onQuit={onQuit}
-        />
+      {gameOver && (
+        <GameOverOverlayWrapper gameOver={gameOver} onPlayAgain={onPlayAgain} onQuit={onQuit} />
       )}
     </div>
   );
+}
+
+// Wrapper che legge i players dallo store solo quando serve (game over)
+function GameOverOverlayWrapper({ gameOver, onPlayAgain, onQuit }: {
+  gameOver: any; onPlayAgain: () => void; onQuit: () => void;
+}) {
+  const players = useGameStore((state) => state.gameState?.players || []);
+  return <GameOverOverlay gameOver={gameOver} players={players} onPlayAgain={onPlayAgain} onQuit={onQuit} />;
 }
