@@ -72,34 +72,6 @@ Eseguire il comando e tipizzare ogni occorrenza trovata.
 
 ---
 
-## ENV & Validation
-
-### Standard da seguire
-
-- Ogni servizio ha `src/env.validation.ts` con schema Joi
-- `app.module.ts` usa `validationSchema: envValidationSchema` nel `ConfigModule`
-- `main.ts` legge `PORT` e variabili critiche via `ConfigService` (non `process.env`)
-- `PORT` sta nel `.env` specifico del servizio (non in `.env.shared`)
-- `FRONTEND_URL` sta in `.env.shared` (condivisa)
-- `NODE_ENV` è settato in `docker-compose.yml` (production) e `docker-compose.override.yml` (development)
-- Usare `??` invece di `||` per i fallback (evita falsy su `0` e `""`)
-
-### Fix da fare
-
-#### 1. auth-service/env.validation.ts — Google OAuth non validato
-
-- `GOOGLE_CLIENT_ID` e `GOOGLE_CLIENT_SECRET` usati in `google.strategy.ts` ma non in Joi schema
-- Se mancano, il servizio parte ma Google OAuth crasha a runtime
-- Fix: aggiungere come `Joi.string().required()` (o `.optional()` se OAuth è opzionale)
-
-#### 2. auth-service — `process.env.EMAIL_USER` bypassa ConfigService
-
-- `auth-service/src/modules/auth/mail/mail.service.ts` righe 26, 39
-- Il servizio ha già `ConfigService` iniettato nel costruttore ma non lo usa qui
-- Fix: sostituire `process.env.EMAIL_USER` con `this.config.get('EMAIL_USER')`
-
----
-
 ## Porte e URL inter-servizio
 
 ### Standard da seguire
