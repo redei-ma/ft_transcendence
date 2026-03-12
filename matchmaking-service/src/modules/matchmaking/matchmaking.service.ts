@@ -299,7 +299,7 @@ export class MatchmakingService {
     }
     // se nessuno è è un player adatto, restituiamo lo stato di ricerca in corso
     return { status: 'SEARCHING_EQUILIBRATED_MATCH' };
-  }*/
+  }*/   
 
 	/* ---------------------------------------------------------------------------------------------------------------- */
 
