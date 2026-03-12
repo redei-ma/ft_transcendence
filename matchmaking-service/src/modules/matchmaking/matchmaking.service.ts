@@ -1448,7 +1448,7 @@ export class MatchmakingService {
 				}),
 			),
 			matchType: MatchType.FFA,
-			matchMode: MatchMode.LOCAL,
+			matchMode: MatchMode.AI,
 		};
 
 		try {
