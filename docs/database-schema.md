@@ -1,152 +1,147 @@
-# 🏛️ Blueprint Database - ft_transcendence
+# Database Schema — ft_transcendence
 
-Questo documento descrive lo schema ERD (Entity Relationship Diagram) aggiornato in base allo schema Prisma.
+Entity Relationship Diagram reflecting the final database design.
 
 ```mermaid
 erDiagram
-    %% --- ENTITÀ PRINCIPALI ---
+    %% ============ AUTHENTICATION ============
     User {
         int id PK
         string email UK
         string username UK
-        boolean is_email_verified "Default false"
         string avatar_url
-        string two_factor_secret "Secret for 2FA (null if disabled)"
+        boolean is_email_verified "Default false"
+        string two_factor_secret "Nullable"
         boolean is_2fa_enabled "Default false"
-        int token_version "Token version for invalidation"
-        UserStatus status "ONLINE, OFFLINE, IN_GAME"
+        int token_version "For session invalidation"
+        UserStatus status "ONLINE | OFFLINE | IN_GAME"
         timestamp created_at
     }
 
     Account {
         int id PK
-        int user_id FK "User ID"
-        Provider provider "LOCAL, GOOGLE"
-        string password_hash "hashed password (null for OAuth)"
-        string oauth_id "external Provider ID (null for LOCAL)"
+        int user_id FK
+        Provider provider "LOCAL | GOOGLE"
+        string password_hash "Nullable — used by LOCAL"
+        string provider_id "Nullable — used by OAuth"
     }
 
+    %% ============ STATISTICS ============
     UserStats {
         int id PK
-        int user_id FK "User ID"
-        int elo_current "Current ELO rating"
-        int elo_peak "Personal ELO record"
-        int total_wins "Total wins"
-        int total_losses "Total losses"
-        int total_draws "Total draws"
-        int current_win_streak "Current consecutive wins"
-        int best_win_streak "All-time best win streak"
-        int current_lose_streak "Current consecutive losses"
-        int total_kills "Total kills across all matches"
-        int total_deaths "Total deaths across all matches"
+        int user_id FK UK
+        int elo_current "Default 500"
+        int elo_peak "Default 500"
+        int total_wins "Default 0"
+        int total_losses "Default 0"
+        int total_draws "Default 0"
+        int current_win_streak "Default 0"
+        int best_win_streak "Default 0"
+        int current_lose_streak "Default 0"
+        int total_kills "Default 0"
+        int total_deaths "Default 0"
     }
 
     CharacterStats {
         int id PK
-        int user_id FK "User ID"
-        string character_name "e.g. 'ZEUS', 'ADE'"
-        int wins "Total wins with this character"
-        int losses "Total losses with this character"
-        int draws "Total draws with this character"
-        int kills "Total kills with this character"
-        int deaths "Total deaths with this character"
+        int user_id FK
+        CharacterName character_name "ADE | ZEUS"
+        int wins "Default 0"
+        int losses "Default 0"
+        int draws "Default 0"
+        int kills "Default 0"
+        int deaths "Default 0"
     }
 
-    %% --- GAMEPLAY ---
+    %% ============ GAMEPLAY ============
     Match {
         int id PK
         timestamp played_at
-        MatchMode mode "RANKED, UNRANKED, LOCAL, AI"
-        MatchType type "FFA. TEAM"
-        int duration_seconds "Match duration in seconds"
-        EndReason end_reason "TIMEOUT, RESIGNATION, KILLOUT"
-        int winning_team_id "Winning team ID (null for draw)"
-		%% NOTE: For INDIVIDUAL and FFA modes all participants have a different teamID
+        MatchMode mode "RANKED | UNRANKED | LOCAL | AI"
+        MatchType type "FFA | TEAM"
+        int duration_seconds
+        EndReason end_reason "TIMEOUT | RESIGNATION | KILLOUT"
+        int winner_team_id "Nullable — null on draw"
     }
 
     MatchParticipant {
         int id PK
-        int match_id FK "Match ID"
-        int user_id FK "Player User ID (null for AI)"
-		int team_id "Team ID"
-        CharacterName character_name "Character used"
-        int kills "Number of kills"
-        int deaths "Number of deaths"
+        int match_id FK
+        int user_id FK "Nullable — null for AI players"
+        int team_id "In FFA each player has a unique team_id"
+        CharacterName character_name
+        int kills "Default 0"
+        int deaths "Default 0"
     }
 
-    %% --- SOCIAL ---
+    %% ============ SOCIAL ============
     Friendship {
         int id PK
-        int sender_id FK "Requester ID"
-        int receiver_id FK "Receiver ID"
-        FriendshipStatus status "PENDING, ACCEPTED, REJECTED"
+        int sender_id FK
+        int receiver_id FK
+        FriendshipStatus status "PENDING | ACCEPTED | REJECTED"
         timestamp created_at
         timestamp updated_at
     }
 
     GameInvite {
         int id PK
-        int sender_id FK "Inviter ID"
-        int receiver_id FK "Invitee ID"
-        InviteStatus status "PENDING, ACCEPTED, REJECTED, EXPIRED"
+        int sender_id FK
+        int receiver_id FK
+        InviteStatus status "PENDING | ACCEPTED | REJECTED | EXPIRED"
         timestamp created_at
         timestamp expires_at
     }
 
-    %% --- GAMIFICATION ---
+    %% ============ GAMIFICATION ============
     Achievement {
         int id PK
-        string name UK "Achievement Name"
-        string description "Description"
-        string icon_path "Icon path"
-        AchievementType tier "BRONZE, SILVER, GOLD, PLATINUM"
+        string name UK
+        string description
+        string icon_path
+        AchievementType tier "BRONZE | SILVER | GOLD | PLATINUM"
     }
 
     UserAchievement {
         int id PK
-        int user_id FK "User ID"
-        int achievement_id FK "Achievement ID"
-        timestamp unlocked_at "When unlocked"
+        int user_id FK
+        int achievement_id FK
+        timestamp unlocked_at
     }
 
-    %% --- NOTIFICATIONS ---
+    %% ============ NOTIFICATIONS ============
     Notification {
         int id PK
-        int user_id FK "Recipient User ID"
-        NotificationType type "FRIEND_REQ, FRIEND_ACCEPTED, GAME_INVITE, ACHV_UNLOCKED"
-        string message "Notification text"
+        int user_id FK
+        NotificationType type "FRIEND_REQ | FRIEND_ACCEPTED | GAME_INVITE | ACHV_UNLOCKED"
+        string message
         boolean is_read "Default false"
         timestamp created_at
     }
 
-    %% --- RELATIONS ---
-    %% 1. Authentication & Statistics
-    User ||--o{ Account : "has_accounts"
-    User ||--|| UserStats : "has_stats"
-    User ||--o{ CharacterStats : "has_stats_for"
+    %% ============ RELATIONSHIPS ============
 
-    %% 2. Gameplay
-    %% A Match CONTAINS 1 or more participants (Cardinality |{ )
-    Match ||--|{ MatchParticipant : "includes_players"
+    %% Authentication: each user can have multiple login methods
+    User ||--o{ Account : "authenticates via"
 
-    %% A User PLAYS in 0 or more participation records (Cardinality o{ )
-    User ||--o{ MatchParticipant : "played_in"
+    %% Statistics: one stats row per user, multiple per character
+    User ||--|| UserStats : "has stats"
+    User ||--o{ CharacterStats : "has character stats"
 
-    %% A User WINS 0 or more matches (Direct convenience relationship)
-    User ||--o{ Match : "won_matches"
+    %% Gameplay: matches have N participants, users play in N matches
+    Match ||--|{ MatchParticipant : "has participants"
+    User ||--o{ MatchParticipant : "participated in"
 
-    %% 3. Social (Double relationship on the same table)
-    User ||--o{ Friendship : "sent_friend_req"
-    User ||--o{ Friendship : "received_friend_req"
+    %% Social: bidirectional friend requests and game invites
+    User ||--o{ Friendship : "sent friend request"
+    User ||--o{ Friendship : "received friend request"
+    User ||--o{ GameInvite : "sent invite"
+    User ||--o{ GameInvite : "received invite"
 
-    %% 4. Game Invites
-    User ||--o{ GameInvite : "sent_invite"
-    User ||--o{ GameInvite : "received_invite"
+    %% Gamification: many-to-many through join table
+    User ||--o{ UserAchievement : "unlocked"
+    Achievement ||--o{ UserAchievement : "awarded to"
 
-    %% 5. Gamification
-    User ||--o{ UserAchievement : "earned"
-    Achievement ||--o{ UserAchievement : "awarded_to"
-
-    %% 6. Notifications
+    %% Notifications
     User ||--o{ Notification : "receives"
 ```

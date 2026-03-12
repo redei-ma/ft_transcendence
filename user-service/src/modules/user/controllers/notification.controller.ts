@@ -22,7 +22,7 @@ import { NotificationService } from "../services/notification.service";
 import {
 	NotificationsQueryDto,
 	NotificationListResponseDto,
-} from "@transcendence/types";
+} from "../dto";
 
 @ApiTags("Notifications")
 @Controller("api/users/me/notifications")

@@ -3,7 +3,7 @@
 import { Controller, Post, Body } from "@nestjs/common";
 import { MessagePattern, Payload } from "@nestjs/microservices";
 import { MatchmakingService } from "./matchmaking.service";
-import { JoinQueueDto } from "./dto/join-queue.dto";
+import { JoinQueueDto } from "./DTO/join-queue.dto";
 
 @Controller()
 export class MatchmakingController {

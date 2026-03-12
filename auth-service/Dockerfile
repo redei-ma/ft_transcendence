@@ -5,8 +5,16 @@ WORKDIR /app/shared/auth
 COPY shared/auth/ .
 RUN npm install && npm run build
 
-WORKDIR /app
-COPY shared/types/ ./shared/types
+WORKDIR /app/shared
+COPY shared/prisma/schema.prisma ./prisma/schema.prisma
+
+WORKDIR /app/shared/types
+COPY shared/types/ .
+RUN npm install && npm run build
+
+WORKDIR /app/shared/dto
+COPY shared/dto/ .
+RUN npm install && npm run build
 
 WORKDIR /app/auth-service
 COPY auth-service/package*.json ./

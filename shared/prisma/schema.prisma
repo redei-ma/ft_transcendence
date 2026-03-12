@@ -88,15 +88,15 @@ model User {
   accounts        Account[]
   stats           UserStats?
   characterStats  CharacterStats[]
-  
+
   matchHistory    MatchParticipant[]
-  
+
   sentFriendships     Friendship[]   @relation("Sender")
   receivedFriendships Friendship[]   @relation("Receiver")
-  
+
   sentInvites         GameInvite[]   @relation("SenderInvite")
   receivedInvites     GameInvite[]   @relation("ReceiverInvite")
-  
+
   achievements    UserAchievement[]
   notifications   Notification[]
 
@@ -107,7 +107,7 @@ model Account {
   id           Int      @id @default(autoincrement())
   userId       Int      @map("user_id")
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+
   provider     Provider
   passwordHash  String?  @map("password_hash")
   oauthId    String?  @map("provider_id")
@@ -124,15 +124,15 @@ model UserStats {
 
   eloCurrent       Int @default(500) @map("elo_current")
   eloPeak          Int @default(500) @map("elo_peak")
-  
+
   totalWins             Int @default(0) @map("total_wins")
   totalLosses           Int @default(0) @map("total_losses")
   totalDraws            Int @default(0) @map("total_draws")
-  
+
   currentWinStreak Int @default(0) @map("current_win_streak")
   bestWinStreak    Int @default(0) @map("best_win_streak")
   currentLoseStreak Int @default(0) @map("current_lose_streak")
-  
+
   totalKills       Int @default(0) @map("total_kills")
   totalDeaths      Int @default(0) @map("total_deaths")
 
@@ -144,9 +144,9 @@ model CharacterStats {
   id             Int           @id @default(autoincrement())
   userId         Int           @map("user_id")
   user           User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+
   characterName  CharacterName @map("character_name")
-  
+
   wins           Int @default(0)
   losses         Int @default(0)
   draws          Int @default(0)
@@ -163,7 +163,7 @@ model Match {
   mode            MatchMode
   type				MatchType
   durationSeconds	Int       @map("duration_seconds")
-  
+
   endReason		EndReason?	@map("end_reason")
   winningTeamId	Int?		@map("winner_team_id")
 
@@ -174,10 +174,10 @@ model Match {
 
 model MatchParticipant {
   id            Int    @id @default(autoincrement())
-  
+
   matchId       Int    @map("match_id")
   match         Match  @relation(fields: [matchId], references: [id], onDelete: Cascade)
-  
+
   userId        Int?   @map("user_id")
   user          User?  @relation(fields: [userId], references: [id], onDelete: SetNull)
 
@@ -199,8 +199,8 @@ model Friendship {
   receiverId Int              @map("receiver_id")
   sender     User             @relation("Sender", fields: [senderId], references: [id], onDelete: Cascade)
   receiver   User             @relation("Receiver", fields: [receiverId], references: [id], onDelete: Cascade)
-  
-  status     FriendshipStatus @default(PENDING) 
+
+  status     FriendshipStatus @default(PENDING)
   createdAt  DateTime         @default(now()) @map("created_at")
   updatedAt  DateTime         @updatedAt @map("updated_at")
 
@@ -216,7 +216,7 @@ model GameInvite {
   receiverId Int          @map("receiver_id")
   sender     User         @relation("SenderInvite", fields: [senderId], references: [id], onDelete: Cascade)
   receiver   User         @relation("ReceiverInvite", fields: [receiverId], references: [id], onDelete: Cascade)
-  
+
   status     InviteStatus @default(PENDING)
   createdAt  DateTime     @default(now()) @map("created_at")
   expiresAt  DateTime     @map("expires_at")
@@ -252,8 +252,8 @@ model Notification {
   id        Int              @id @default(autoincrement())
   userId    Int              @map("user_id")
   user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
-  type      NotificationType 
+
+  type      NotificationType
   message   String
   isRead    Boolean          @default(false) @map("is_read")
   createdAt DateTime         @default(now()) @map("created_at")

@@ -29,6 +29,7 @@
 		"@nestjs/schedule": "^6.1.0",
 		"@nestjs/websockets": "^11.1.12",
 		"axios": "^1.13.5",
+		"class-validator": "^0.14.3",
 		"ioredis": "^5.9.2",
 		"reflect-metadata": "^0.2.2",
 		"rxjs": "^7.8.2",

@@ -12,16 +12,12 @@ import {
 import { AuthService } from './auth.service';
 import type { Request, Response } from 'express';
 import type { AuthenticatedRequest } from '@transcendence/auth';
-import { AUTH_COOKIE_NAME, REFRESH_COOKIE_NAME } from '@transcendence/auth';
+import { AUTH_COOKIE_NAME, REFRESH_COOKIE_NAME, JwtAuthGuard } from '@transcendence/auth';
 import { JwtRefreshGuard } from './jwt/jwt-refresh.guard';
-import { JwtAuthGuard } from './jwt/jwt.guard';
 import { ConfigService } from '@nestjs/config';
 import { GoogleAuthGuard } from './jwt/google.guard';
-import { Throttle } from '@nestjs/throttler';
-import type {
-  CreateLocalUserDto,
-  CreateOAuthUserDto,
-} from '@transcendence/types';
+import { CreateLocalUserNoHashDto, CreateOAuthUserDto } from '@transcendence/dto';
+import { ResetPasswordDto, ChangePasswordDto, EmailDto, NewEmailDto } from '../../dto/input.dto';
 
 @Controller('api/auth')
 export class AuthController {
@@ -31,29 +27,18 @@ export class AuthController {
   ) {}
 
   @Post('register')
-  @Throttle({ default: { limit: 5, ttl: 60_000 } })
   async register(
-    @Body() body: { username: string; email: string; password: string },
+    @Body() body: CreateLocalUserNoHashDto,
   ) {
-    return await this.authService.registerAndSendVerification(
-      body.username,
-      body.email,
-      body.password,
-    );
+    return await this.authService.registerAndSendVerification( body );
   }
 
   @Post('resend-verification')
-  @Throttle({ default: { limit: 3, ttl: 60_000 } }) // avoid spam
-  async resendVerification(@Body('email') email: string) {
-    return this.authService.resendVerificationEmail(email);
+  async resendVerification(@Body('email') body: EmailDto) {
+    return this.authService.resendVerificationEmail(body);
   }
 
-  /* @Post('login')
-async login(@Body() body: { username: string; password: string; totp?: string }) {
-  return this.authService.login(body.username, body.password, body.totp);
-} */
   @Post('login')
-  @Throttle({ default: { limit: 5, ttl: 60_000 } })
   async login(
     @Body() body: { username: string; password: string; totp?: string },
     @Res({ passthrough: true }) res: Response,
@@ -90,14 +75,12 @@ async login(@Body() body: { username: string; password: string; totp?: string })
   }
 
   @Get('google')
-  @Throttle({ default: { limit: 5, ttl: 60_000 } })
   @UseGuards(GoogleAuthGuard)
   async googleLogin() {
     // Redirects to Google
   }
 
   @Get('google/callback')
-  @Throttle({ default: { limit: 5, ttl: 60_000 } })
   @UseGuards(GoogleAuthGuard)
   async googleCallback(
     @Req() req: Request & { user: CreateOAuthUserDto },
@@ -105,7 +88,7 @@ async login(@Body() body: { username: string; password: string; totp?: string })
   ) {
     if (!req.user) {
       return res.redirect(
-        `${this.config.get('FRONTEND_URL')}/index.html?error=google_failed`,
+        `${this.config.getOrThrow('PUBLIC_URL')}/index.html?error=google_failed`,
       );
     }
     const { accessToken, refreshToken } =
@@ -125,7 +108,7 @@ async login(@Body() body: { username: string; password: string; totp?: string })
       path: '/',
     });
 
-    return res.redirect(`${this.config.get('FRONTEND_URL')}/dashboard.html`);
+    return res.redirect(`${this.config.getOrThrow('PUBLIC_URL')}/dashboard.html`);
   }
 
   @Post('refresh')
@@ -162,7 +145,6 @@ async login(@Body() body: { username: string; password: string; totp?: string })
   }
 
   @Get('verify-email')
-  @Throttle({ default: { limit: 5, ttl: 60_000 } })
   async verifyEmail(@Query('token') token: string) {
     //console.log('RAW TOKEN:', token);
     if (!token) {
@@ -180,16 +162,14 @@ async login(@Body() body: { username: string; password: string; totp?: string })
   }
 
   @Post('forgot-password')
-  @Throttle({ default: { limit: 5, ttl: 60_000 } })
-  async forgotPassword(@Body() body: { email: string }) {
-    await this.authService.sendPasswordReset(body.email);
+  async forgotPassword(@Body() body: EmailDto ) {
+    await this.authService.sendPasswordReset({ email: body.email });
     return { ok: true };
   }
 
   @Post('reset-password')
-  @Throttle({ default: { limit: 5, ttl: 60_000 } })
-  async resetPassword(@Body() body: { token: string; newPassword: string }) {
-    await this.authService.resetPassword(body.token, body.newPassword);
+  async resetPassword(@Body() body: ResetPasswordDto) {
+    await this.authService.resetPassword(body);
     return { ok: true };
   }
 
@@ -216,20 +196,33 @@ async login(@Body() body: { username: string; password: string; totp?: string })
     return { ok: true };
   }
 
-  @Get()
-  getCookies(@Req() req: Request) {
-    return {
-      cookies: req.cookies,
-      signedCookies: req.signedCookies,
-    };
+  @UseGuards(JwtAuthGuard)
+  @Post('change-email-request')
+  async requestEmailChange(
+    @Req() req: AuthenticatedRequest,
+    @Body('newEmail') body: NewEmailDto
+  ) {
+    return this.authService.requestEmailChange(req.user.sub, body);
+  }
+
+  @Get('confirm-email-change')
+  async confirmEmailChange(@Query('token') token: string) {
+    if (!token) throw new BadRequestException('Token missing');
+    return this.authService.confirmEmailChange(decodeURIComponent(token));
   }
 
   @UseGuards(JwtAuthGuard)
-  @Get('protected')
-  getProtected(@Req() req: AuthenticatedRequest) {
-    return {
-      msg: 'You are authenticated!',
-      user: req.user,
-    };
+  @Post('change-password')
+  async changePassword(
+    @Req() req: AuthenticatedRequest,
+    @Body() body: ChangePasswordDto,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    await this.authService.changePassword(req.user.sub, body);
+
+    res.clearCookie('auth_token');
+    res.clearCookie('refresh_token');
+
+    return { message: 'Password updated successfully' };
   }
 }

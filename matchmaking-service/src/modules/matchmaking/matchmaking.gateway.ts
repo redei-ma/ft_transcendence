@@ -11,7 +11,7 @@ import {
 import { Server, Socket } from "socket.io";
 import { OnEvent } from "@nestjs/event-emitter"; // <--- IMPORTANTE: serve per ascoltare il Service
 import { MatchmakingService } from "./matchmaking.service";
-import { JoinQueueDto } from "./dto/join-queue.dto";
+import { JoinQueueDto } from "./DTO/join-queue.dto"; // struttura del dato che ricevo
 import {
 	parseCookieHeader,
 	verifyJwtToken,

@@ -1,4 +1,4 @@
-import { Vector } from "../classes";
+import { Vector } from "../game.vector";
 import { AttackType, BulletHit, CharacterName } from "../enums";
 import { Player } from "./dynamic-entitys.interfaces";
 

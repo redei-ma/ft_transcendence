@@ -21,7 +21,7 @@
 		"@types/bcrypt": "^5.0.2"
 	},
 	"prisma": {
-		"schema": "prisma/schema.prisma",
+		"schema": "../shared/prisma/schema.prisma",
 		"seed": "tsx seed.ts"
 	}
 }

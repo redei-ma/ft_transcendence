@@ -6,7 +6,6 @@ import {
 	Param,
 	Body,
 	ParseIntPipe,
-	HttpCode,
 	HttpStatus,
 	UseGuards,
 } from "@nestjs/common";
@@ -22,9 +21,10 @@ import { GameInviteService } from "../services/game-invite.service";
 import {
 	SendGameInviteDto,
 	RespondGameInviteDto,
+	RespondGameInviteResponseDto,
 	GameInviteResponseDto,
 	GameInviteListResponseDto,
-} from "@transcendence/types";
+} from "../dto";
 
 @ApiTags("Game Invites")
 @Controller("api/users/me/invites")
@@ -69,13 +69,21 @@ export class GameInviteController {
 	}
 
 	@Patch(":id/respond")
-	@HttpCode(HttpStatus.NO_CONTENT)
 	@ApiOperation({ summary: "Accept or reject a game invite" })
 	@ApiParam({ name: "id", type: Number })
-	@ApiResponse({ status: HttpStatus.NO_CONTENT })
+	@ApiResponse({
+		status: HttpStatus.OK,
+		type: RespondGameInviteResponseDto,
+		description:
+			"lobbyId is set when ACCEPTED (join for character selection), null when REJECTED",
+	})
 	@ApiResponse({
 		status: HttpStatus.BAD_REQUEST,
 		description: "Invite expired or not pending",
+	})
+	@ApiResponse({
+		status: HttpStatus.CONFLICT,
+		description: "A player is no longer available (in game or queue)",
 	})
 	@ApiResponse({ status: HttpStatus.NOT_FOUND })
 	@ApiResponse({ status: HttpStatus.FORBIDDEN })
@@ -84,7 +92,7 @@ export class GameInviteController {
 		@CurrentUser("sub") userId: number,
 		@Param("id", ParseIntPipe) inviteId: number,
 		@Body() dto: RespondGameInviteDto,
-	): Promise<void> {
+	): Promise<RespondGameInviteResponseDto> {
 		return this.gameInviteService.respondInvite(userId, inviteId, dto);
 	}
 }

@@ -12,7 +12,7 @@ import {
 	FriendListResponseDto,
 	FriendRequestsResponseDto,
 	RespondFriendRequestDto,
-} from "@transcendence/types";
+} from "../dto";
 
 const FRIEND_USER_SELECT = {
 	id: true,

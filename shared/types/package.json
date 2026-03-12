@@ -6,7 +6,7 @@
 	"types": "./dist/index.d.ts",
 	"exports": {
 		".": {
-			"import": "./dist/esm/browser.js",
+			"import": "./dist/esm/index.js",
 			"require": "./dist/index.js"
 		}
 	},
@@ -14,17 +14,7 @@
 		"generate": "ts-node --skip-project --compiler-options '{\"module\":\"CommonJS\"}' generate-enums.ts",
 		"build": "npm run generate && tsc && tsc -p tsconfig.esm.json"
 	},
-	"peerDependencies": {
-		"@nestjs/common": "^11.0.0",
-		"@nestjs/swagger": "^11.2.6",
-		"class-transformer": "^0.5.1",
-		"class-validator": "^0.14.3"
-	},
 	"devDependencies": {
-		"@nestjs/common": "^11.0.0",
-		"@nestjs/swagger": "^11.2.6",
-		"class-transformer": "^0.5.1",
-		"class-validator": "^0.14.3",
 		"@types/node": "^20.0.0",
 		"ts-node": "^10.9.0",
 		"typescript": "^5.9.3"

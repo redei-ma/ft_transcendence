@@ -23,7 +23,7 @@ export class MailService {
 
   async sendVerifyEmail(email: string, link: string) {
     await this.transporter.sendMail({
-      from: `"Transcendence Game" <${process.env.EMAIL_USER}>`,
+      from: `"Transcendence Game" <${this.config.getOrThrow('EMAIL_USER')}>`,
       to: email,
       subject: 'Verify your email',
       html: `
@@ -36,7 +36,7 @@ export class MailService {
 
   async sendResetPasswordEmail(email: string, link: string) {
     await this.transporter.sendMail({
-      from: `"Transcendence Game" <${process.env.EMAIL_USER}>`,
+      from: `"Transcendence Game" <${this.config.getOrThrow('EMAIL_USER')}>`,
       to: email,
       subject: 'Reset your password',
       html: `

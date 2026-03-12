@@ -1,6 +1,7 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { Cron, CronExpression } from "@nestjs/schedule";
 import { PrismaService } from "../prisma/prisma.service";
+import { InviteStatus } from "@transcendence/types";
 
 @Injectable()
 export class CleanupService {
@@ -23,5 +24,20 @@ export class CleanupService {
 		});
 
 		this.logger.log(`Cleanup: deleted ${result.count} unverified users`);
+	}
+
+	@Cron(CronExpression.EVERY_HOUR)
+	async expireStaleInvites(): Promise<void> {
+		const result = await this.prisma.gameInvite.updateMany({
+			where: {
+				status: InviteStatus.PENDING,
+				expiresAt: { lt: new Date() },
+			},
+			data: { status: InviteStatus.EXPIRED },
+		});
+
+		if (result.count > 0) {
+			this.logger.log(`Cleanup: expired ${result.count} stale game invites`);
+		}
 	}
 }

@@ -1,22 +1,3 @@
-/* import { NestFactory } from '@nestjs/core';
-import { MicroserviceOptions, Transport } from '@nestjs/microservices';
-import { AppModule } from './app.module';
-
-async function bootstrap() {
-  // Configuriamo il servizio per "ascoltare" i messaggi su Redis
-  const app = await NestFactory.createMicroservice<MicroserviceOptions>(AppModule, {
-    transport: Transport.REDIS,
-    options: {
-      host: 'localhost', // Il Redis che abbiamo appena acceso con Docker
-      port: 6379,
-    },
-  });
-  
-  await app.listen();
-  console.log('CONNESSO A REDIS: Logic Service in attesa di giocatori...');
-}
-bootstrap(); */
-
 import { NestFactory } from "@nestjs/core";
 import { MicroserviceOptions, Transport } from "@nestjs/microservices";
 import { ConfigService } from "@nestjs/config";
@@ -45,6 +26,8 @@ async function bootstrap() {
 	await app.startAllMicroservices();
 	const port = configService.get<number>("PORT") ?? 3500;
 	await app.listen(port, "0.0.0.0");
-	console.log(`LOGIC SERVICE ONLINE: HTTP su porta ${port} e Redis collegato`);
+	console.log(
+		`LOGIC SERVICE ONLINE: HTTP su porta ${port} e Redis collegato`,
+	);
 }
 bootstrap();

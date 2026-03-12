@@ -20,22 +20,23 @@ import {
 	ApiQuery,
 } from "@nestjs/swagger";
 import { Provider } from "@transcendence/types";
-import { UserService } from "../services/user.service";
 import {
 	CreateLocalUserDto,
 	CreateOAuthUserDto,
-	SetPasswordDto,
 	UpdatePasswordDto,
-	UpdateEmailDto,
-	UpdateStatusDto,
 	LinkOAuthDto,
 	Setup2faDto,
 	FindUserQueryDto,
 	UserWithAccountsResponseDto,
+	SetPasswordDto,
+	UpdateEmailDto,
+} from "@transcendence/dto";
+import { InternalUserService } from "../services/internal-user.service";
+import {
+	UpdateStatusDto,
 	UserEloResponseDto,
-	SuccessResponseDto,
 	CreateNotificationDto,
-} from "@transcendence/types";
+} from "../dto";
 import { NotificationService } from "../services/notification.service";
 
 /**
@@ -46,7 +47,7 @@ import { NotificationService } from "../services/notification.service";
 @Controller("internal/users")
 export class InternalUserController {
 	constructor(
-		private readonly userService: UserService,
+		private readonly internalUserService: InternalUserService,
 		private readonly notificationService: NotificationService,
 	) {}
 
@@ -75,7 +76,7 @@ export class InternalUserController {
 	async createLocalUser(
 		@Body() dto: CreateLocalUserDto,
 	): Promise<UserWithAccountsResponseDto> {
-		return this.userService.createLocalUser(dto);
+		return this.internalUserService.createLocalUser(dto);
 	}
 
 	/**
@@ -102,7 +103,7 @@ export class InternalUserController {
 	async createOAuthUser(
 		@Body() dto: CreateOAuthUserDto,
 	): Promise<UserWithAccountsResponseDto> {
-		return this.userService.createOAuthUser(dto);
+		return this.internalUserService.createOAuthUser(dto);
 	}
 
 	// ─── Get user ──────────────────────────────────────────────────────────────────────────────────
@@ -131,7 +132,7 @@ export class InternalUserController {
 	async findUser(
 		@Query() query: FindUserQueryDto,
 	): Promise<UserWithAccountsResponseDto> {
-		return this.userService.findUser(query);
+		return this.internalUserService.findUser(query);
 	}
 
 	/**
@@ -152,7 +153,7 @@ export class InternalUserController {
 	async getUserElo(
 		@Param("id", ParseIntPipe) id: number,
 	): Promise<UserEloResponseDto> {
-		return this.userService.getUserElo(id);
+		return this.internalUserService.getUserElo(id);
 	}
 
 	/**
@@ -179,7 +180,7 @@ export class InternalUserController {
 		@Param("provider", new ParseEnumPipe(Provider)) provider: Provider,
 		@Param("oauthId") oauthId: string,
 	): Promise<UserWithAccountsResponseDto> {
-		return this.userService.findUserOauth(provider, oauthId);
+		return this.internalUserService.findUserOauth(provider, oauthId);
 	}
 
 	// ─── Update user ───────────────────────────────────────────────────────────────────────────────
@@ -207,7 +208,7 @@ export class InternalUserController {
 		@Param("id", ParseIntPipe) id: number,
 		@Body() dto: SetPasswordDto,
 	): Promise<void> {
-		return this.userService.setPassword(id, dto);
+		return this.internalUserService.setPassword(id, dto);
 	}
 
 	/**
@@ -229,7 +230,7 @@ export class InternalUserController {
 		@Param("id", ParseIntPipe) id: number,
 		@Body() dto: UpdatePasswordDto,
 	): Promise<void> {
-		return this.userService.changePassword(id, dto);
+		return this.internalUserService.changePassword(id, dto);
 	}
 
 	/**
@@ -248,7 +249,7 @@ export class InternalUserController {
 		description: "User not found",
 	})
 	async verifyEmail(@Param("id", ParseIntPipe) id: number): Promise<void> {
-		return this.userService.verifyEmail(id);
+		return this.internalUserService.verifyEmail(id);
 	}
 
 	/**
@@ -280,7 +281,7 @@ export class InternalUserController {
 		@Param("id", ParseIntPipe) id: number,
 		@Body() dto: UpdateEmailDto,
 	): Promise<void> {
-		return this.userService.updateEmail(id, dto);
+		return this.internalUserService.updateEmail(id, dto);
 	}
 
 	/**
@@ -301,7 +302,7 @@ export class InternalUserController {
 	async incrementTokenVersion(
 		@Param("id", ParseIntPipe) id: number,
 	): Promise<void> {
-		return this.userService.incrementTokenVersion(id);
+		return this.internalUserService.incrementTokenVersion(id);
 	}
 
 	/**
@@ -323,7 +324,7 @@ export class InternalUserController {
 		@Param("id", ParseIntPipe) id: number,
 		@Body() dto: UpdateStatusDto,
 	): Promise<void> {
-		return this.userService.updateStatus(id, dto);
+		return this.internalUserService.updateStatus(id, dto);
 	}
 
 	// ─── OAuth ─────────────────────────────────────────────────────────────────────────────────────
@@ -357,7 +358,7 @@ export class InternalUserController {
 		@Param("provider", new ParseEnumPipe(Provider)) provider: Provider,
 		@Body() dto: LinkOAuthDto,
 	): Promise<void> {
-		return this.userService.linkOAuth(id, provider, dto);
+		return this.internalUserService.linkOAuth(id, provider, dto);
 	}
 
 	/**
@@ -384,7 +385,7 @@ export class InternalUserController {
 		@Param("id", ParseIntPipe) id: number,
 		@Param("provider", new ParseEnumPipe(Provider)) provider: Provider,
 	): Promise<void> {
-		return this.userService.unlinkOAuth(id, provider);
+		return this.internalUserService.unlinkOAuth(id, provider);
 	}
 
 	// ─── 2FA ─────────────────────────────────────────────────────────────────────────────────────
@@ -405,7 +406,7 @@ export class InternalUserController {
 		@Param("id", ParseIntPipe) id: number,
 		@Body() dto: Setup2faDto,
 	): Promise<void> {
-		return this.userService.setup2fa(id, dto);
+		return this.internalUserService.setup2fa(id, dto);
 	}
 
 	/**
@@ -431,7 +432,7 @@ export class InternalUserController {
 		description: "User not found",
 	})
 	async enable2fa(@Param("id", ParseIntPipe) id: number): Promise<void> {
-		return this.userService.enable2fa(id);
+		return this.internalUserService.enable2fa(id);
 	}
 
 	/**
@@ -450,7 +451,7 @@ export class InternalUserController {
 		description: "User not found",
 	})
 	async disable2fa(@Param("id", ParseIntPipe) id: number): Promise<void> {
-		return this.userService.disable2fa(id);
+		return this.internalUserService.disable2fa(id);
 	}
 
 	// ─── Notifications ────────────────────────────────────────────────────────

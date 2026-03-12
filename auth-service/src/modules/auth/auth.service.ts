@@ -1,76 +1,82 @@
-
-import { Injectable, UnauthorizedException, ForbiddenException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  UnauthorizedException,
+  ForbiddenException,
+  BadRequestException,
+  ConflictException,
+  NotFoundException,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
-import { JwtAccessPayloadDto, JwtRefreshPayloadDto} from '@transcendence/auth';
+import { JwtAccessPayloadDto, JwtRefreshPayloadDto } from '@transcendence/auth';
 import { ConfigService } from '@nestjs/config';
 import { MailService } from './mail/mail.service';
 import { UserClient } from '../user/user.client';
 import * as speakeasy from 'speakeasy';
 import * as QRCode from 'qrcode';
-import type { CreateOAuthUserDto} from '@transcendence/types';
+import { CreateOAuthUserDto, CreateLocalUserNoHashDto } from '@transcendence/dto';
+import { ResetPasswordDto, ChangePasswordDto, EmailDto, NewEmailDto } from '../../dto/input.dto';
 
 @Injectable()
 export class AuthService {
   constructor(
-    private readonly  config: ConfigService,
+    private readonly config: ConfigService,
     private readonly jwtService: JwtService,
     private readonly mailService: MailService,
     private usersService: UserClient,
   ) {}
 
+  async registerAndSendVerification(dto: CreateLocalUserNoHashDto) {
+    const passwordRegex =
+      /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
 
-async registerAndSendVerification(
-    username: string,
-    email: string,
-    password: string,
-  ) {
-
-    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
-  
-    if (!password || password.length < 10) {
-      throw new BadRequestException('Password must be at least 8 characters long.');
-    }
-    
-    if (!passwordRegex.test(password)) {
-      throw new BadRequestException('Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character.');
-    }
-/*     try { */
-
-      const passwordHash = await bcrypt.hash(password, 10);
-
-      const user = await this.usersService.createUser({username, email, passwordHash});
-
-      const token = this.generateEmailVerificationToken(user.id);
-
-      const verifyUrl = `${this.config.getOrThrow<string>('PUBLIC_URL')}/api/auth/verify-email?token=${encodeURIComponent(token)}`;
-
-      await this.mailService.sendVerifyEmail(user.email, verifyUrl);
-
-      return {
-        message: `Welcome ${user.username}! Please check your email.`,
-        user: { username: user.username, email: user.email }
-      };
-
-  /*   } catch (error) {
-      console.error('[AUTH] ERRORE CRITICO NELLA REGISTRAZIONE:', error.message);
-      if (error.response) {
-        console.error('[AUTH] Dettagli errore User-Service:', error.response.data);
+    try {
+      if (!dto.password || dto.password.length < 10) {
+        throw new BadRequestException(
+          'Password must be at least 8 characters long.',
+        );
       }
-      throw error.message;
-    } */
+
+      if (!passwordRegex.test(dto.password)) {
+        throw new BadRequestException(
+          'Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character.',
+        );
+      }
+
+      const passwordHash = await bcrypt.hash(dto.password, 10);
+
+      const user = await this.usersService.createUser({
+        username: dto.username,
+        email: dto.email,
+        passwordHash,
+      });
+
+    const token = this.generateEmailVerificationToken(user.id);
+
+    const verifyUrl = `${this.config.getOrThrow<string>('PUBLIC_URL')}/api/auth/verify-email?token=${encodeURIComponent(token)}`;
+
+    await this.mailService.sendVerifyEmail(user.email, verifyUrl);
+
+    return {
+      message: `Welcome ${user.username}! Please check your email.`,
+      user: { username: user.username, email: user.email },
+    };
+
+    } catch (error) {
+      throw new BadRequestException('Registration failed.');
+    }
   }
 
-  async resendVerificationEmail(email: string) {
-    const user = await this.usersService.findUser({ email });
+  async resendVerificationEmail(dto: EmailDto ) {
+    const user = await this.usersService.findUser(dto);
 
     if (!user) {
       // Do NOT reveal user existence
-      return { message: 'If the email exists, a verification email was sent.' };
+      return { message: 'If an account with this email exists and is not verified, a verification email was sent.' };
     }
 
     if (user.isEmailVerified) {
-      return { message: 'Email already verified.' };
+      return { message: 'If an account with this email exists and is not verified, a verification email was sent.' };
     }
 
     const token = this.generateEmailVerificationToken(user.id);
@@ -79,11 +85,15 @@ async registerAndSendVerification(
 
     await this.mailService.sendVerifyEmail(user.email, verifyUrl);
 
-    return { message: 'If the email exists, a verification email was sent.' };
+    return { message: 'If an account with this email exists and is not verified, a verification email was sent.' };
   }
 
   async login(username: string, passwordHash: string, totp?: string) {
-    const user = await this.usersService.findUser({ username });
+    let user = await this.usersService.findUser({ username });
+
+    if (!user) {
+      user = await this.usersService.findUser({ email: username });
+    }
 
     if (!user) {
       throw new UnauthorizedException('invalid credentials');
@@ -94,7 +104,10 @@ async registerAndSendVerification(
       throw new UnauthorizedException('This account uses Google login');
     }
 
-    const isMatch = await bcrypt.compare(passwordHash, localAccount.passwordHash);
+    const isMatch = await bcrypt.compare(
+      passwordHash,
+      localAccount.passwordHash,
+    );
     if (!isMatch) {
       throw new UnauthorizedException('invalid credentials');
     }
@@ -144,12 +157,45 @@ async registerAndSendVerification(
 
     return {
       accessToken,
-			refreshToken,
+      refreshToken,
       user: {
         username: user.username,
         email: user.email,
       },
     };
+  }
+
+  generateEmailVerificationToken(userId: number) {
+    return this.jwtService.sign(
+      {
+        sub: userId,
+        type: 'email-verification',
+      },
+      {
+        secret: this.config.getOrThrow<string>('JWT_EMAIL_SECRET'),
+        expiresIn: '15m',
+      },
+    );
+  }
+
+  async verifyEmailToken(token: string) {
+    /*   let payload: any;//da levare l'any e da levare il try catch
+    try { */
+    let payload = this.jwtService.verify(token, {
+      secret: this.config.getOrThrow<string>('JWT_EMAIL_SECRET'),
+    });
+    /* } catch (e) {
+      console.error('Verify email token error:', e.message);
+      throw new BadRequestException('invalid or expired token');
+    } */
+
+    if (payload.type !== 'email-verification') {
+      throw new ForbiddenException('invalid token type');
+    }
+
+    await this.usersService.markEmailVerified(payload.sub);
+
+    return { message: 'Email successfully verified. You can now log in.' };
   }
 
 	async refresh(user: JwtAccessPayloadDto) {
@@ -171,39 +217,6 @@ async registerAndSendVerification(
 		return { ok: true };
 	}
 
-  generateEmailVerificationToken(userId: number) {
-    return this.jwtService.sign(
-      {
-        sub: userId,
-        type: 'email-verification',
-      },
-      {
-        secret: this.config.getOrThrow<string>('JWT_EMAIL_SECRET'),
-        expiresIn: '15m',
-      },
-    );
-  }
-
-  async verifyEmailToken(token: string) {
-  /*   let payload: any;//da levare l'any e da levare il try catch
-    try { */
-        let payload = this.jwtService.verify(token, {
-        secret: this.config.getOrThrow<string>('JWT_EMAIL_SECRET'),
-       });
-   /* } catch (e) {
-      console.error('Verify email token error:', e.message);
-      throw new BadRequestException('invalid or expired token');
-    } */
-
-    if (payload.type !== 'email-verification') {
-      throw new ForbiddenException('invalid token type');
-    }
-
-    await this.usersService.markEmailVerified(payload.sub);
-
-    return { message: 'Email successfully verified. You can now log in.',/* ok: true */ };
-  }
-
   generatePasswordResetToken(userId: number) {
     return this.jwtService.sign(
       { sub: userId, type: 'password-reset' },
@@ -214,25 +227,24 @@ async registerAndSendVerification(
     );
   }
 
-  async sendPasswordReset(email: string) {
-    const user = await this.usersService.findUser({ email });
+  async sendPasswordReset( dto: EmailDto ) {
+    const user = await this.usersService.findUser(dto);
 
     // Prevent email enumeration
     if (!user) return;
 
     const token = this.generatePasswordResetToken(user.id);
 
-    const resetUrl =
-      `${this.config.getOrThrow<string>('PUBLIC_URL')}/reset-password.html?token=${encodeURIComponent(token)}`;
+    const resetUrl = `${this.config.getOrThrow<string>('PUBLIC_URL')}/reset-password.html?token=${encodeURIComponent(token)}`;
 
     await this.mailService.sendResetPasswordEmail(user.email, resetUrl);
   }
 
-  async resetPassword(token: string, newPassword: string) {
+  async resetPassword(dto: ResetPasswordDto) {
     let payload: any;
 
     try {
-      payload = this.jwtService.verify(token, {
+      payload = this.jwtService.verify(dto.token, {
         secret: this.config.getOrThrow<string>('JWT_PASSWORD_RESET_SECRET'),
       });
     } catch (e) {
@@ -245,9 +257,11 @@ async registerAndSendVerification(
 
     //to-do mettere controlli su psw
 
-    const hashed = await bcrypt.hash(newPassword, 10);
+    const hashed = await bcrypt.hash(dto.password, 10);
 
-    await this.usersService.updatePassword(payload.sub, {passwordHash: hashed});
+    await this.usersService.updatePassword(payload.sub, {
+      passwordHash: hashed,
+    });
 
     // Invalidate refresh tokens after password change
     await this.usersService.invalidateRefreshTokens(payload.sub);
@@ -276,15 +290,14 @@ async registerAndSendVerification(
       user = await this.usersService.findUser({ email: googleUser.email });
 
       if (user) {
-        await this.usersService.linkProvider(
-          user.id,
-          googleUser.provider,
-          {
-            oauthId: googleUser.oauthId,
-            avatarUrl: googleUser.avatarUrl,
-          });
+        await this.usersService.linkProvider(user.id, googleUser.provider, {
+          oauthId: googleUser.oauthId,
+          avatarUrl: googleUser.avatarUrl,
+        });
       } else {
-        const uniqueUsername = await this.generateUniqueUsername( googleUser.username );
+        const uniqueUsername = await this.generateUniqueUsername(
+          googleUser.username,
+        );
 
         user = await this.usersService.createOAuthUser({
           email: googleUser.email,
@@ -295,11 +308,6 @@ async registerAndSendVerification(
         });
       }
     }
-
-/*       await this.profileClient.upsertProfile({ //forse non va qui ma su strategy o piu prob che devo passare anche photos in googleuser
-        userId: user.id,
-        avatar: profile.photos?.[0]?.value,
-      }); */
 
     const accessToken = this.jwtService.sign(
       { sub: user.id, username: user.username },
@@ -328,7 +336,9 @@ async registerAndSendVerification(
 
     const qrCode = await QRCode.toDataURL(secret.otpauth_url);
 
-    await this.usersService.setup2fa(userId, {twoFactorSecret: secret.base32});
+    await this.usersService.setup2fa(userId, {
+      twoFactorSecret: secret.base32,
+    });
 
     return {
       qrCode,
@@ -355,5 +365,138 @@ async registerAndSendVerification(
 
   async disable2fa(userId: number) {
     await this.usersService.disable2fa(userId);
+  }
+
+// --- EMAIL CHANGE LOGIC ---
+
+  async requestEmailChange(userId: number, dto: NewEmailDto) {
+
+    const user = await this.usersService.findUser({ id: userId });
+    if (!user) throw new NotFoundException('User not found');
+
+    const hasLocalAccount = user.accounts.some(a => a.provider === 'LOCAL');
+    if (!hasLocalAccount) {
+        throw new ForbiddenException(
+            'Accounts logged in exclusively with other Identity Providers cannot change their email. Add local password to be able to change your email.'
+        );
+    }
+
+    if (user.email === dto.newEmail) {
+        throw new BadRequestException('The new email must be different from the current one.');
+    }
+
+    const existingUser = await this.usersService.findUser({ email: dto.newEmail });
+    if (existingUser) {
+        throw new ConflictException('This email is already associated with another account.');
+    }
+
+
+    const token = this.jwtService.sign(
+      { sub: userId, newEmail: dto.newEmail, type: 'email-change' },
+      {
+        secret: this.config.getOrThrow('JWT_EMAIL_SECRET'),
+        expiresIn: '15m',
+      },
+    );
+
+    const verifyUrl = `${this.config.getOrThrow('PUBLIC_URL')}/api/auth/confirm-email-change?token=${encodeURIComponent(token)}`;
+
+    await this.mailService.sendVerifyEmail(dto.newEmail, verifyUrl);
+    return { message: 'Confirmation email sent to your new address. You have 15 minutes to confirm the new email, only then it will be modified' };
+  }
+
+  async confirmEmailChange(token: string) {
+    const payload = this.jwtService.verify(token, {
+      secret: this.config.getOrThrow('JWT_EMAIL_SECRET'),
+    });
+
+    if (payload.type !== 'email-change') {
+      throw new ForbiddenException('Invalid token type');
+    }
+
+    const existingUser = await this.usersService.findUser({ email: payload.newEmail });
+    if (existingUser) {
+        throw new ConflictException('Email update failed. This email is already associated with another account.');
+    }
+
+    await this.usersService.updateEmail(payload.sub, { email: payload.newEmail });
+
+    await this.usersService.markEmailVerified(payload.sub);
+
+    return { message: 'Email updated successfully.' };//mettere pagina anche qui?
+  }
+
+  // --- PASSWORD CHANGE LOGIC ---
+
+/*   async changePassword(userId: number, oldPass: string, newPass: string) {
+    // 1. Get user including the password hash
+    const user = await this.usersService.findUser({ id: userId });
+    const localAccount = user?.accounts.find(a => a.provider === 'LOCAL');
+
+    //aggiungere caso se uno e entrato con google?
+    if (!localAccount?.passwordHash) {
+      throw new BadRequestException('No local password set for this account.');
+    }
+
+    // 2. Verify old password
+    const isMatch = await bcrypt.compare(oldPass, localAccount.passwordHash);
+    if (!isMatch) {
+      throw new UnauthorizedException('Current password incorrect');
+    }
+
+    // 3. Validate new password (use your existing regex)
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+    if (newPass.length < 10 || !passwordRegex.test(newPass)) {
+      throw new BadRequestException('New password does not meet security requirements.');
+    }
+    //controllare che nuova pass sia diversa da vecchia?
+    // 4. Hash and Update
+    const hashed = await bcrypt.hash(newPass, 10);
+    await this.usersService.updatePassword(userId, { passwordHash: hashed });
+
+    // 5. Security: Invalidate existing sessions
+    await this.usersService.invalidateRefreshTokens(userId);
+  } */
+
+  async changePassword(userId: number, dto: ChangePasswordDto) {
+    const user = await this.usersService.findUser({ id: userId });
+    const localAccount = user?.accounts.find(a => a.provider === 'LOCAL');
+
+    // If they have a password, they MUST verify the old one
+    if (localAccount?.passwordHash) {
+        const isMatch = await bcrypt.compare(dto.oldPass, localAccount.passwordHash);
+        if (!isMatch) {
+            throw new UnauthorizedException('Current password incorrect');
+        }
+
+        // Check if new password is same as old
+        if (await bcrypt.compare(dto.newPass, localAccount.passwordHash)) {
+            throw new BadRequestException('New password must be different from the old one.');
+        }
+    }
+    // If no local account exists yet, we will create one during updatePassword
+    // or update the existing LOCAL entry if it exists without a password.
+
+    // Validate new password
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+    if (dto.newPass.length < 10 || !passwordRegex.test(dto.newPass)) {
+        throw new BadRequestException('New password does not meet security requirements.');
+    }
+
+    // Hash and Update
+    const hashed = await bcrypt.hash(dto.newPass, 10);
+
+    // BRANCHING LOGIC: Update vs Set
+    if (localAccount) {
+        // Account exists, just update it
+        await this.usersService.updatePassword(userId, { passwordHash: hashed });
+    } else {
+        // No local account row exists at all, create it
+        await this.usersService.setPassword(userId, { passwordHash: hashed });
+    }
+
+    // Invalidate sessions
+    await this.usersService.invalidateRefreshTokens(userId);
+    //cancellare anche cookies?
   }
 }

@@ -22,15 +22,17 @@ while ((match = enumRegex.exec(schema)) !== null) {
 		.map((v) => v.trim())
 		.filter((v) => v && !v.startsWith("//"));
 
-	const content = `// AUTO-GENERATED — do not edit manually
-  // Source: shared/prisma/schema.prisma
-
-  export const ${enumName} = {
-  ${values.map((v) => `  ${v}: '${v}'`).join(",\n")}
-  } as const;
-
-  export type ${enumName} = typeof ${enumName}[keyof typeof ${enumName}];
-  `;
+	const content = [
+		"// AUTO-GENERATED — do not edit manually",
+		"// Source: shared/prisma/schema.prisma",
+		"",
+		`export const ${enumName} = {`,
+		...values.map((v) => `\t${v}: '${v}',`),
+		"} as const;",
+		"",
+		`export type ${enumName} = typeof ${enumName}[keyof typeof ${enumName}];`,
+		"",
+	].join("\n");
 
 	const fileName = `${enumName.toLowerCase()}.enum.ts`;
 	fs.writeFileSync(path.join(outputDir, fileName), content);
@@ -55,10 +57,12 @@ const allExports = [
 ];
 
 // Generate index.ts automatically
-const indexContent = `// AUTO-GENERATED — do not edit manually
-
-  ${allExports.join("\n")}
-  `;
+const indexContent = [
+	"// AUTO-GENERATED — do not edit manually",
+	"",
+	...allExports,
+	"",
+].join("\n");
 
 fs.writeFileSync(path.join(outputDir, "index.ts"), indexContent);
 console.log("Generated: index.ts");

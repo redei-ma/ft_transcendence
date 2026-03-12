@@ -40,7 +40,7 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
       oauthId: profile.id,
       email: email,
       username: baseUsername,
-      avatarUrl: profile.photos?.[0]?.value,
+      avatarUrl: profile.photos?.[0]?.value?.replace(/=s\d+-c?$/, '=s512-c'),
     };
   }
 }
