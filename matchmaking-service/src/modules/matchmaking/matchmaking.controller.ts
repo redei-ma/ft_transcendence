@@ -1,9 +1,14 @@
 /* Controller che riceve i messaggi dal microservizio gateway riguardanti il matchmaking */
 
+
+// dividere il file in due: uno per i controller HTTP e uno per i controller microservizi (MessagePattern)
+
+
 import { Controller, Post, Body } from "@nestjs/common";
 import { MessagePattern, Payload } from "@nestjs/microservices";
 import { MatchmakingService } from "./matchmaking.service";
-import { JoinQueueDto } from "./DTO/join-queue.dto";
+import { JoinQueueDto } from "./dto/join-queue.dto";
+import { GameEvents } from "@transcendence/types";
 
 @Controller()
 export class MatchmakingController {
@@ -23,21 +28,21 @@ export class MatchmakingController {
 		return await this.matchmakingService.startLocalMatch(payload);
 	}
 
-	@MessagePattern("join_queue")
+	@MessagePattern(GameEvents.JOIN_QUEUE)
 	async handleJoinQueue(@Payload() data: JoinQueueDto) {
 		console.log(`[Logic] Utente ${data.userDbId} ( entrato in coda`);
 		return this.matchmakingService.processQueue(data);
 	}
 
 	@Post("join_unranked")
-	async joinUnrankedQueueHttp(@Body() data: JoinQueueDto) {
-		console.log(
-			`[HTTP] Ricevuta richiesta Unranked per utente: ${data.userDbId}`,
-		);
-		return await this.matchmakingService.processUnrankedQueue(data);
-	}
+    async joinUnrankedQueueHttp(@Body() data: JoinQueueDto) {
+        console.log(
+            `[HTTP] Ricevuta richiesta Unranked per utente: ${data.userDbId}`,
+        );
+        return await this.matchmakingService.processUnrankedQueue(data);
+    }
 
-	@MessagePattern("join_ai")
+	@MessagePattern(GameEvents.JOIN_AI)
 	async handleJoinAi(@Payload() data: any) {
 		console.log(
 			`[Logic] Utente ${data.userDbId} ha richiesto un match contro IA`,
@@ -47,17 +52,17 @@ export class MatchmakingController {
 		return this.matchmakingService.startAiMatch(data);
 	}
 
-	@MessagePattern("leave_queue")
+	@MessagePattern(GameEvents.LEAVE_QUEUE)
 	async handleLeaveQueue(@Payload() data: JoinQueueDto) {
 		return await this.matchmakingService.leaveQueue(data);
 	}
 
-	@MessagePattern("get_queue_count")
+	@MessagePattern(GameEvents.GET_QUEUE_COUNT)
 	async getQueueCount() {
 		return await this.matchmakingService.getQueueCount();
 	}
 
-	@MessagePattern("end-game")
+	@MessagePattern(GameEvents.END_GAME)
 	async handleMatchFinished(@Payload() data: any) {
 		const id =
 			typeof data === "string" ? data : data?.matchId || data?.gameId;

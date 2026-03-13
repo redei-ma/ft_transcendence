@@ -1,5 +1,5 @@
 import { socketService } from '../../services/socketServices';
-import { GameEvents } from '../game.events';
+import { GameEvents } from '@transcendence/types';
 import { AttackType } from '@transcendence/types';
 import { log } from '../../configs/logger';
 

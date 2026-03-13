@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { socketService } from '../../../services/socketServices';
-import { GameEvents } from '../../game.events';
+import { GameEvents } from '@transcendence/types';
 import { theme } from '../../../configs/theme';
 
 interface GameChatProps {
