@@ -1,7 +1,5 @@
-import {
-	IsEmailField,
-	IsPasswordField,
-} from "@transcendence/types";
+import { IsString, MinLength } from "class-validator";
+import { IsEmailField, IsPasswordField } from "@transcendence/types";
 
 /**
  * Input DTO for changing/adding email.
@@ -15,6 +13,11 @@ export class EmailDto {
  * Input DTO for changing email.
  */
 export class NewEmailDto {
+
+/* 	@IsString()
+	@MinLength(1)
+	password: string; */
+
 	@IsEmailField()
 	newEmail: string;
 }
@@ -25,7 +28,9 @@ export class NewEmailDto {
  */
 export class ChangePasswordDto {
 
-    oldPass: string;
+	@IsString()
+	@MinLength(1)
+	oldPass: string;
 
 	@IsPasswordField()
 	newPass: string;
@@ -37,7 +42,9 @@ export class ChangePasswordDto {
  */
 export class ResetPasswordDto {
 
-    token: string;
+	@IsString()
+	@MinLength(1)
+	token: string;
 
 	@IsPasswordField()
 	password: string;

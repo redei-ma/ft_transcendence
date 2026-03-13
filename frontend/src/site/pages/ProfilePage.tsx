@@ -180,7 +180,7 @@ export default function ProfilePage() {
   const total = s.totalWins + s.totalLosses + s.totalDraws;
   const winRate = total > 0 ? Math.round((s.totalWins / total) * 100) : 0;
   const sec: UserSettings = settings || { is2faEnabled: false, isEmailVerified: false, linkedProviders: [] };
-  const hasLocalAccount = sec.linkedProviders?.includes('LOCAL');
+  const hasLocalAccount = true;
 
   return (
     <div className="animate-fadeIn" style={{ paddingTop: `${NAVBAR_HEIGHT}px`, maxWidth: '800px', margin: '0 auto', paddingBottom: '60px', paddingLeft: '24px', paddingRight: '24px' }}>

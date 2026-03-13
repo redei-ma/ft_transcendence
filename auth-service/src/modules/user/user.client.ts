@@ -10,6 +10,7 @@ import {
   UserWithAccountsResponseDto,
   UpdateEmailDto,
   SetPasswordDto,
+  UpdateStatusDto,
 } from '@transcendence/types';
 
 @Injectable()
@@ -128,6 +129,19 @@ export class UserClient {
     await this.http.axiosRef.post(
       `http://user-service:3001/internal/users/${userId}/password/set`,
       dto,
+    );
+  }
+
+  async updateStatus(userId: number, dto: UpdateStatusDto ): Promise<void> {
+    await this.http.axiosRef.patch(
+      `http://user-service:3001/internal/users/${userId}/status`,
+      dto,
+    );
+  }
+
+  async unlinkOAuth(userId: number, provider: string) {
+    this.http.axiosRef.delete(
+      `http://user-service:3001/internal/users/${userId}/oauth/${provider}`,
     );
   }
 
