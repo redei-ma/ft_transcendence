@@ -1,13 +1,13 @@
 export enum AttackType {
-	MELEE_ATTACK = "MELEE_ATTACK",
-	SPELL_ATTACK = "SPELL_ATTACK",
-	DEFENCE_ATTACK = "DEFENCE_ATTACK",
+	MELEE_ATTACK = "melee-attack",
+	SPELL_ATTACK = "spell-attack",
+	DEFENCE_ATTACK = "defence-attack",
 }
 
 export enum BulletHit {
-	PLAYER_HIT = "PLAYER_HIT",
-	WALL_HIT = "WALL_HIT",
-	NONE = "NONE",
+	PLAYER_HIT = "player-hit",
+	WALL_HIT = "wall-hit",
+	NONE = "none",
 }
 
 export enum ErrorCode {

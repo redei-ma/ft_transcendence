@@ -34,7 +34,7 @@ export class MatchResultService {
 	async processMatchEnd(
 		matchResult: MatchResult,
 	): Promise<{ userId: number; achievementName: string }[]> {
-		const isLocal = matchResult.mode === MatchMode.LOCAL;
+		const skipStats = matchResult.mode === MatchMode.LOCAL || matchResult.mode === MatchMode.AI;
 
 		// Step 1: transaction — save match + update stats
 		const playersStats = await this.prisma.$transaction(async (tx) => {
@@ -61,8 +61,8 @@ export class MatchResultService {
 				})),
 			});
 
-			// LOCAL mode: save match only, no stats
-			if (isLocal) return [];
+			// LOCAL / AI mode: save match only, no stats
+			if (skipStats) return [];
 
 			// Pre-fetch current ELO for all real players (needed for ELO calculation)
 			const eloMap = new Map<number, number>();
@@ -95,8 +95,8 @@ export class MatchResultService {
 			return updatedStats;
 		});
 
-		// Step 2: check achievements (skip for LOCAL)
-		if (isLocal || playersStats.length === 0) return [];
+		// Step 2: check achievements (skip for LOCAL / AI)
+		if (skipStats || playersStats.length === 0) return [];
 
 		const unlocked = await this.achievementService.checkAchievements(
 			matchResult,

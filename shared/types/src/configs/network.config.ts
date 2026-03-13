@@ -1,15 +1,15 @@
 export const NetworkConfig = {
 	MATCHMAKING: {
 		PLAYER_STATUS: {
-			LOBBY: "LOBBY",
-			PLAYING: "PLAYING",
+			LOBBY: "lobby",
+			PLAYING: "ingame",
 		},
 		MATCH_EVENTS: {
-			CREATE_MATCH: "CREATE_MATCH",
-			END_GAME: "END_GAME",
+			CREATE_MATCH: "create-match",
+			END_GAME: "end-game",
 		},
 		SERVICE: {
-			REDIS: "REDIS",
+			REDIS: "redis",
 		},
 	},
 };

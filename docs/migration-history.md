@@ -121,7 +121,7 @@ The leaderboard page was doing a full table scan on `user_stats` to sort by ELO.
 Security hardening as the final migration. Adds two-factor authentication (`two_factor_secret`, `is_2fa_enabled`), email verification, token versioning for session invalidation, and an online status indicator.
 
 **Altered:** `users` (new security columns)
-**Enums:** `UserStatus` (ONLINE, OFFLINE, IN_GAME)
+**Enums:** `UserStatus` (ONLINE, OFFLINE, IN_GAME, IN_QUEUE)
 
 ---
 
