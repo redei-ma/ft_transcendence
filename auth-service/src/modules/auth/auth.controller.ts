@@ -200,7 +200,7 @@ export class AuthController {
   @Post('change-email-request')
   async requestEmailChange(
     @Req() req: AuthenticatedRequest,
-    @Body('newEmail') body: NewEmailDto
+    @Body() body: NewEmailDto
   ) {
     return this.authService.requestEmailChange(req.user.sub, body);
   }

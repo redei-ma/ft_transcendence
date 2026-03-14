@@ -17,10 +17,7 @@ import {
 	SetPasswordDto,
 	UpdateEmailDto,
 } from "@transcendence/dto";
-import {
-	UpdateStatusDto,
-	UserEloResponseDto,
-} from "../dto";
+import { UpdateStatusDto, UserEloResponseDto } from "../dto";
 import {
 	USER_WITH_ACCOUNTS_SELECT,
 	generateDefaultAvatar,
@@ -381,7 +378,7 @@ export class InternalUserService {
 				where: { id: userId },
 				data: {
 					email: dto.email,
-					isEmailVerified: false,
+					isEmailVerified: true,
 				},
 			}),
 		]);
