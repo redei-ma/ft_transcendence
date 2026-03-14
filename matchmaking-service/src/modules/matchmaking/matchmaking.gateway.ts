@@ -89,15 +89,14 @@ export class MatchmakingGateway
 		}
 	}
 
+
 	@SubscribeMessage(GameEvents.JOIN_RANKED)
 	async handleJoinRanked(
 		@MessageBody() data: JoinQueueDto,
 		@ConnectedSocket() client: Socket,
 	) {
-		const userDbId: string = client.data.user.sub;
-		this.registerUserSocket(client.id, userDbId);
-		data.userDbId = userDbId;
-		data.socketId = client.id;
+		const userId: number = client.data.user.sub;
+		this.registerUserSocket(client.id, userId);
 		return await this.matchmakingService.processQueue(data);
 	}
 
@@ -146,60 +145,6 @@ export class MatchmakingGateway
 		@ConnectedSocket() client: Socket,
 	) {
 		return await this.matchmakingService.leaveQueue(data);
-	}
-	
-	@SubscribeMessage("create_challenge")
-	async handleCreateChallenge(
-		@MessageBody() payload: { player: JoinQueueDto; opponentId: string },
-		@ConnectedSocket() client: Socket,
-	) {
-		this.registerUserSocket(client.id, payload.player.userDbId);
-		payload.player.socketId = client.id;
-
-		return await this.matchmakingService.createChallenge(
-			payload.player,
-			payload.opponentId,
-		);
-	}
-
-	@SubscribeMessage("reject_challenge")
-	async handleRejectChallenge(
-		@MessageBody()
-		payload: { challengerId: string; opponent: JoinQueueDto },
-		@ConnectedSocket() client: Socket,
-	) {
-		payload.opponent.socketId = client.id;
-
-		return await this.matchmakingService.rejectChallenge(
-			payload.challengerId,
-			payload.opponent,
-		);
-	}
-
-	@SubscribeMessage("cancel_challenge")
-	async handleCancelChallenge(
-		@MessageBody() payload: { player: JoinQueueDto; opponentId: string },
-		@ConnectedSocket() client: Socket,
-	) {
-		payload.player.socketId = client.id;
-
-		return await this.matchmakingService.cancelChallenge(
-			payload.player,
-			payload.opponentId,
-		);
-	}
-
-	@SubscribeMessage("accept_challenge")
-	async handleAcceptChallenge(
-		@MessageBody()
-		payload: { challengerId: string; opponent: JoinQueueDto },
-		@ConnectedSocket() client: Socket,
-	) {
-		payload.opponent.socketId = client.id;
-		return await this.matchmakingService.acceptChallenge(
-			payload.challengerId,
-			payload.opponent,
-		);
 	}
 
 	private registerUserSocket(socketId: string, userId: string) {

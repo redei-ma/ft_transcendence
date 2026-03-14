@@ -9,108 +9,35 @@ import { MessagePattern, Payload } from "@nestjs/microservices";
 import { MatchmakingService } from "./matchmaking.service";
 import { JoinQueueDto } from "./dto/join-queue.dto";
 import { GameEvents } from "@transcendence/types";
+import { UseGuards } from "@nestjs/common";
+import { JwtAuthGuard, CurrentUser } from "@transcendence/auth";
 
 @Controller()
 export class MatchmakingController {
 	constructor(private readonly matchmakingService: MatchmakingService) {}
 
+	@UseGuards(JwtAuthGuard)
 	@Post("join")
-	async joinQueueHttp(@Body() data: JoinQueueDto) {
+	async joinQueueHttp(@Body() data: JoinQueueDto, @CurrentUser("sub") userId: number) {
 		console.log(
 			`[HTTP] Ricevuta richiesta di join utente: ${data.userDbId}`,
 		);
 		return await this.matchmakingService.processQueue(data);
 	}
 
+	@UseGuards(JwtAuthGuard)
 	@Post("create-match") // o il tuo endpoint di riferimento
-	async startLocalMatch(@Body() payload: any) {
+	async startLocalMatch(@Body() payload: JoinQueueDto, @CurrentUser("sub") userId: number) {
 		// Passiamo l'intero oggetto 'payload' invece di dividere in 2 argomenti
 		return await this.matchmakingService.startLocalMatch(payload);
 	}
 
-	@MessagePattern(GameEvents.JOIN_QUEUE)
-	async handleJoinQueue(@Payload() data: JoinQueueDto) {
-		console.log(`[Logic] Utente ${data.userDbId} ( entrato in coda`);
-		return this.matchmakingService.processQueue(data);
-	}
-
+	/*@UseGuards(JwtAuthGuard)
 	@Post("join_unranked")
-    async joinUnrankedQueueHttp(@Body() data: JoinQueueDto) {
+    async joinUnrankedQueueHttp(@Body() data: JoinQueueDto, @CurrentUser("sub") userId: number) {
         console.log(
             `[HTTP] Ricevuta richiesta Unranked per utente: ${data.userDbId}`,
         );
         return await this.matchmakingService.processUnrankedQueue(data);
-    }
-
-	@MessagePattern(GameEvents.JOIN_AI)
-	async handleJoinAi(@Payload() data: any) {
-		console.log(
-			`[Logic] Utente ${data.userDbId} ha richiesto un match contro IA`,
-		);
-
-		// Inoltriamo la richiesta al servizio logico
-		return this.matchmakingService.startAiMatch(data);
-	}
-
-	@MessagePattern(GameEvents.LEAVE_QUEUE)
-	async handleLeaveQueue(@Payload() data: JoinQueueDto) {
-		return await this.matchmakingService.leaveQueue(data);
-	}
-
-	@MessagePattern(GameEvents.GET_QUEUE_COUNT)
-	async getQueueCount() {
-		return await this.matchmakingService.getQueueCount();
-	}
-
-	@MessagePattern(GameEvents.END_GAME)
-	async handleMatchFinished(@Payload() data: any) {
-		const id =
-			typeof data === "string" ? data : data?.matchId || data?.gameId;
-		console.log(`[Controller] Ricevuto segnale end-game per ID: ${id}`);
-		return await this.matchmakingService.finalizeMatch(id);
-	}
-
-	// Riceve il DTO completo del challenger e l'ID dell'avversario
-	@MessagePattern({ cmd: "create_challenge" })
-	async createChallenge(
-		@Payload() data: { challenger: JoinQueueDto; opponentId: string },
-	) {
-		return await this.matchmakingService.createChallenge(
-			data.challenger,
-			data.opponentId,
-		);
-	}
-
-	// Riceve l'ID del challenger e il DTO completo di chi accetta (opponent)
-	@MessagePattern({ cmd: "accept_challenge" })
-	async acceptChallenge(
-		@Payload() data: { challengerId: string; opponent: JoinQueueDto },
-	) {
-		return await this.matchmakingService.acceptChallenge(
-			data.challengerId,
-			data.opponent,
-		);
-	}
-
-	// Riceve l'ID del challenger e il DTO completo di chi rifiuta (opponent)
-	@MessagePattern({ cmd: "reject_challenge" })
-	async rejectChallenge(
-		@Payload() data: { challengerId: string; opponent: JoinQueueDto },
-	) {
-		return await this.matchmakingService.rejectChallenge(
-			data.challengerId,
-			data.opponent,
-		);
-	}
-
-	// Riceve il DTO completo del challenger che annulla e l'ID dell'avversario
-	@MessagePattern({ cmd: "cancel_challenge" })
-	async cancelChallenge(
-		@Payload() data: { player: JoinQueueDto; opponentId: string },
-	) {
-		return await this.matchmakingService.cancelChallenge(
-			data.player,
-			data.opponentId,
-		);
-	}
+    }*/
 }

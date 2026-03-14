@@ -46,7 +46,7 @@ const MATCHMAKING_LUA = `
 // Interfaccia di supporto per uniformare il salvataggio su Redis
 interface RedisUserStatus {
 	state: string;
-	userDbId?: string;
+	userDbId?: number;
 	rank?: number | null;
 	characterName?: any;
 	isAiPlayer?: boolean;
@@ -231,7 +231,7 @@ export class MatchmakingService {
 
 		await this.setUserStatus(player.userDbId, {
 			state: INQUEUE,
-			userDbId: String(player.userDbId),
+			userDbId: Number(player.userDbId),
 			rank: rank,
 			characterName: player.characterName,
 			isAiPlayer: !!player.isAiPlayer,
@@ -338,7 +338,7 @@ export class MatchmakingService {
 
 		const part1 = {
 			characterName: p1Char,
-			userDbId: id1,
+			userDbId: Number(id1),
 			isAiPlayer: !!p1.isAiPlayer,
 			rank: p1.rank,
 			socketId: p1.socketId,
@@ -347,7 +347,7 @@ export class MatchmakingService {
 
 		const part2 = {
 			characterName: p2Char,
-			userDbId: id2,
+			userDbId:  Number(id2),
 			isAiPlayer: !!p2.isAiPlayer,
 			rank: p2.rank,
 			socketId: p2.socketId,
@@ -378,12 +378,12 @@ export class MatchmakingService {
 			playersData: [
 				{
 					characterName: part1.characterName,
-					userDbId: part1.userDbId,
+					userDbId: String(part1.userDbId),
 					isAiPlayer: part1.isAiPlayer,
 				},
 				{
 					characterName: part2.characterName,
-					userDbId: part2.userDbId,
+					userDbId: String(part2.userDbId),
 					isAiPlayer: part2.isAiPlayer,
 				},
 			],
@@ -504,7 +504,7 @@ export class MatchmakingService {
 
 			await this.setUserStatus(player.userDbId, {
 				state: INQUEUE,
-				userDbId: String(player.userDbId),
+				userDbId: Number(player.userDbId),
 				rank: rank,
 				characterName: playerChar,
 				isAiPlayer: player.isAiPlayer,
@@ -538,7 +538,7 @@ export class MatchmakingService {
 
 			const participant1 = {
 				characterName: playerChar,
-				userDbId: String(player.userDbId),
+				userDbId: Number(player.userDbId),
 				isAiPlayer: false,
 				rank: rank,
 				socketId: player.socketId,
@@ -547,7 +547,7 @@ export class MatchmakingService {
 
 			const participant2 = {
 				characterName: opponentChar,
-				userDbId: String(opponentId),
+				userDbId: Number(opponentId),
 				isAiPlayer: !!opponentData.isAiPlayer,
 				rank: opponentData.rank,
 				socketId: opponentData.socketId,
@@ -631,212 +631,6 @@ export class MatchmakingService {
 
 	/* ---------------------------------------------------------------------------------------------------------------- */
 
-	async createChallenge(player: JoinQueueDto, opponentId: string) {
-		const UNIQUE_CHALLENGE_KEY = `challenge:${opponentId}:${player.userDbId}`;
-		const exists = await this.redis.exists(UNIQUE_CHALLENGE_KEY);
-		
-		if (exists) {
-			return {
-				status: "ERROR_CHALLENGE_EXISTS",
-				message: "Una sfida tra questi due utenti è già in corso",
-			};
-		}
-
-		const currentStatusRaw = await this.redis.get(
-			`status:${player.userDbId}`,
-		);
-		const currentStatus = currentStatusRaw
-			? JSON.parse(currentStatusRaw)
-			: null;
-
-		if (currentStatus && currentStatus.state === INGAME) {
-			return { status: "ERROR_ALREADY_IN_GAME" };
-		}
-
-		await this.setUserStatus(player.userDbId, {
-			...player,
-			state: currentStatus?.state || LOBBY, 
-			lastChallengeSent: opponentId,
-		}, 600);
-
-		await this.redis.set(UNIQUE_CHALLENGE_KEY, "pending", "EX", 30);
-
-		return {
-			status: "CHALLENGE_SENT",
-			challengerId: player.userDbId,
-			opponentId,
-		};
-	}
-
-	/* ---------------------------------------------------------------------------------------------------------------- */
-
-	async acceptChallenge(challengerId: string, opponent: JoinQueueDto) {
-		const UNIQUE_CHALLENGE_KEY = `challenge:${opponent.userDbId}:${challengerId}`; 
-		const QUEUE_KEY = "matchmaking_queue"; 
-
-		const challengeExists = await this.redis.exists(UNIQUE_CHALLENGE_KEY);
-		if (!challengeExists) return { status: "ERROR_EXPIRED" };
-
-		const statusA = await this.redis.get(`status:${challengerId}`);
-
-		const isInGame = (raw: string | null) =>
-			raw && JSON.parse(raw).state === INGAME;
-
-		if (isInGame(statusA)) {
-			return { status: "ERROR_CHALLENGER_ALREADY_IN_MATCH" };
-		}
-
-		const challengerData = statusA ? JSON.parse(statusA) : {};
-
-		await this.redis.zrem(QUEUE_KEY, challengerId, opponent.userDbId);
-
-		const matchId = `private_${Math.random().toString(36).substring(7)}`;
-
-		const rank = await this.fetchPlayerElo(challengerId);
-		if (rank === null) {
-			return { status: "ERROR_FETCHING_RANK" };
-		}
-
-		const participant1 = {
-			characterName: challengerData.characterName,
-			userDbId: String(challengerId),
-			isAiPlayer: Boolean(challengerData.isAiPlayer || false),
-			rank: challengerData.rank || 0,
-			socketId: challengerData.socketId || undefined,
-			playerIndex: 0,
-		};
-
-		const participant2 = {
-			characterName: opponent.characterName,
-			userDbId: String(opponent.userDbId),
-			isAiPlayer: Boolean(opponent.isAiPlayer || false),
-			rank: rank || 0,
-			socketId: opponent.socketId || undefined,
-			playerIndex: 1,
-		};
-
-		await this.setUserStatus(challengerId, {
-			state: INGAME,
-			...participant1,
-			opponentId: opponent.userDbId,
-			matchId,
-			matchType: challengerData.matchType,
-			matchMode: challengerData.matchMode,
-		}, 420);
-
-		await this.setUserStatus(opponent.userDbId, {
-			state: INGAME,
-			...participant2,
-			opponentId: challengerId,
-			matchId,
-			matchType: challengerData.matchType,
-			matchMode: challengerData.matchMode,
-		}, 420);
-
-		const payload = {
-			gameId: String(matchId),
-			playersData: [participant1, participant2].map(
-				({ characterName, userDbId, isAiPlayer }) => ({
-					characterName,
-					userDbId,
-					isAiPlayer,
-				}),
-			),
-			matchType: challengerData.matchType,
-			matchMode: challengerData.matchMode,
-		};
-		try {
-			const url = "http://game-service:3000/matchmaking/create-match";
-			await firstValueFrom(this.httpService.post(url, payload));
-			this.logger.log(
-				`[HTTP] Match privato creato con successo sul Game Server: ${matchId}`,
-			);
-		} catch (error) {
-			this.logger.error(
-				"Errore creazione match privato su Game Server:",
-				error.response?.data || error.message,
-			);
-		}
-
-		await this.redis.del(UNIQUE_CHALLENGE_KEY);
-
-		this.logger.log(
-			`[Logic] Sfida accettata: ${challengerId} e ${opponent.userDbId} dirottati dalla coda al match privato ${matchId}`,
-		);
-
-		return {
-			status: "MATCH_FOUND",
-			matchId,
-			players: [participant1, participant2],
-		};
-	}
-
-	/* ---------------------------------------------------------------------------------------------------------------- */
-
-	async rejectChallenge(challengerId: string, opponent: JoinQueueDto) {
-		const UNIQUE_CHALLENGE_KEY = `challenge:${opponent.userDbId}:${challengerId}`;
-
-		const challengeExists = await this.redis.exists(UNIQUE_CHALLENGE_KEY);
-
-		const rank = await this.fetchPlayerElo(opponent.userDbId);
-		if (rank === null) {
-			return { status: "ERROR_FETCHING_RANK" };
-		}
-
-		if (!challengeExists) {
-			return {
-				status: "ERROR_CHALLENGE_NOT_FOUND",
-				message: "La sfida è già scaduta o non esiste più.",
-			};
-		}
-
-		await this.redis.del(UNIQUE_CHALLENGE_KEY);
-
-		this.logger.log(
-			`[Logic] L'utente ${opponent.userDbId} (Rank: ${rank}) ha rifiutato la sfida di ${challengerId}.`,
-		);
-
-		return {
-			status: "CHALLENGE_REJECTED",
-			challengerId,
-			opponentId: opponent.userDbId,
-		};
-	}
-
-	/* ---------------------------------------------------------------------------------------------------------------- */
-
-	async cancelChallenge(player: JoinQueueDto, opponentId: string) {
-		const UNIQUE_CHALLENGE_KEY = `challenge:${opponentId}:${player.userDbId}`;
-
-		const challengeExists = await this.redis.exists(UNIQUE_CHALLENGE_KEY);
-
-		const rank = await this.fetchPlayerElo(player.userDbId);
-		if (rank === null) {
-			return { status: "ERROR_FETCHING_RANK" };
-		}
-
-		if (!challengeExists) {
-			return {
-				status: "ERROR_CHALLENGE_NOT_FOUND",
-				message: "La sfida è già scaduta o non esiste più.",
-			};
-		}
-
-		await this.redis.del(UNIQUE_CHALLENGE_KEY);
-
-		this.logger.log(
-			`[Logic] L'utente ${player.userDbId} (Rank: ${rank}) ha annullato la sfida verso ${opponentId}.`,
-		);
-
-		return {
-			status: "CHALLENGE_CANCELLED",
-			challengerId: player.userDbId,
-			opponentId,
-		};
-	}
-
-	/* ---------------------------------------------------------------------------------------------------------------- */
-
 	async startLocalMatch(data: any) {
 		const USER_STATUS_KEY_1 = `status:${data.userDbId}`;
 
@@ -892,7 +686,7 @@ export class MatchmakingService {
 
 		const participant1 = {
 			characterName: charP1,
-			userDbId: String(data.userDbId),
+			userDbId: Number(data.userDbId),
 			isAiPlayer: false,
 			rank: data.rank,
 			socketId: data.socketId,
@@ -901,7 +695,7 @@ export class MatchmakingService {
 
 		const participant2 = {
 			characterName: charP2,
-			userDbId: String(data.userDbId),
+			userDbId: Number(data.userDbId),
 			isAiPlayer: false,
 			rank: data.rank,
 			socketId: data.socketId,
@@ -922,7 +716,7 @@ export class MatchmakingService {
 			playersData: [participant1, participant2].map(
 				({ characterName, userDbId, isAiPlayer }) => ({
 					characterName,
-					userDbId,
+					userDbId: String(userDbId),
 					isAiPlayer,
 				}),
 			),
@@ -1026,7 +820,7 @@ export class MatchmakingService {
 
 		const participant1 = {
 			characterName: charP1,
-			userDbId: String(data.userDbId),
+			userDbId: Number(data.userDbId),
 			isAiPlayer: false,
 			rank: data.rank,
 			socketId: data.socketId,
@@ -1170,7 +964,7 @@ export class MatchmakingService {
 
 				await this.setUserStatus(String(userId), {
 					state: LOBBY,
-					userDbId: String(userId),
+					userDbId: Number(userId),
 					characterName: userData.characterName,
 					isAiPlayer: false,
 					rank: userData.rank,
