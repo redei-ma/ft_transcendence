@@ -30,10 +30,10 @@ import {
 	UserWithAccountsResponseDto,
 	SetPasswordDto,
 	UpdateEmailDto,
+	UpdateStatusDto,
 } from "@transcendence/dto";
 import { InternalUserService } from "../services/internal-user.service";
 import {
-	UpdateStatusDto,
 	UserEloResponseDto,
 	CreateNotificationDto,
 } from "../dto";

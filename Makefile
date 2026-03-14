@@ -4,6 +4,7 @@
 
 # --- Variables -----------------------------------------------
 
+SHELL        := /bin/bash
 COMPOSE      := docker compose
 
 # docker-compose.override.yml is loaded automatically when present,
@@ -55,6 +56,8 @@ generate: ##@Setup — Build shared packages (@transcendence/types + @transcende
 
 migrate: ##@DB — Create a new Prisma migration (usage: make migrate NAME=my_migration)
 	@test -n "$(NAME)" || (printf "$(RED)>>> ERROR: NAME is required. Usage: make migrate NAME=my_migration$(RESET)\n" && exit 1)
+	@$(COMPOSE) ps postgres | grep -q "running" || \
+		(printf "$(RED)>>> ERROR: postgres is not running. Run 'make up' first.$(RESET)\n" && exit 1)
 	@printf "$(CYAN)>>> Creating migration: $(NAME)...$(RESET)\n"
 	@$(COMPOSE) run --rm --entrypoint "" \
 		db-migration npx prisma migrate dev \
@@ -99,6 +102,7 @@ restart: down up ##@Docker — Full stop + start (dev mode)
 
 rebuild: certs ##@Docker — Force rebuild without cache (DB preserved), then start
 	@printf "$(CYAN)>>> Rebuilding without cache...$(RESET)\n"
+	@$(COMPOSE) down --remove-orphans
 	@$(COMPOSE) build --no-cache
 	@$(COMPOSE) up -d
 	@printf "$(GREEN)>>> Rebuild complete.$(RESET)\n"
@@ -117,9 +121,9 @@ clean: ##@Cleanup — Stop services and remove containers (volumes and images pr
 	@$(COMPOSE) down --remove-orphans
 	@printf "$(GREEN)>>> Containers removed.$(RESET)\n"
 
-fclean: ##@Cleanup — Remove containers, volumes, project images, and dangling layers
+fclean: ##@Cleanup — Remove containers, volumes, locally-built images, and dangling layers
 	@printf "$(RED)>>> Full cleanup: containers, volumes, images...$(RESET)\n"
-	@$(COMPOSE) down -v --rmi all --remove-orphans
+	@$(COMPOSE) down -v --rmi local --remove-orphans
 	@docker image prune -f
 	@printf "$(GREEN)>>> Cleanup complete.$(RESET)\n"
 

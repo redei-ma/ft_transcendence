@@ -88,7 +88,7 @@ export class AuthService {
     return { message: 'If an account with this email exists and is not verified, a verification email was sent.' };
   }
 
-  async login(username: string, passwordHash: string, totp?: string) {
+  async login(username: string, password: string, totp?: string) {
     let user = await this.usersService.findUser({ username });
 
     if (!user) {
@@ -104,7 +104,7 @@ export class AuthService {
       throw new UnauthorizedException('This account uses Google login');
     }
 
-    const isMatch = await bcrypt.compare(passwordHash, localAccount.passwordHash);
+    const isMatch = await bcrypt.compare(password, localAccount.passwordHash);
     if (!isMatch) {
       throw new UnauthorizedException('invalid credentials');
     }

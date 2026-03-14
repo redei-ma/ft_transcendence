@@ -1,5 +1,5 @@
 import { IsString, MinLength } from 'class-validator';
-import { IsEmailField, IsPasswordField } from '@transcendence/types';
+import { IsEmailField, IsPasswordField } from '@transcendence/dto';
 
 /**
  * Input DTO for changing/adding email.

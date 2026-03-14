@@ -16,8 +16,9 @@ import {
 	UserWithAccountsResponseDto,
 	SetPasswordDto,
 	UpdateEmailDto,
+	UpdateStatusDto,
 } from "@transcendence/dto";
-import { UpdateStatusDto, UserEloResponseDto } from "../dto";
+import { UserEloResponseDto } from "../dto";
 import {
 	USER_WITH_ACCOUNTS_SELECT,
 	generateDefaultAvatar,

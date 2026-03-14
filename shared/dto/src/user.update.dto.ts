@@ -1,6 +1,7 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
-import { IsOptional, IsString, MinLength } from "class-validator";
+import { IsEnum, IsOptional, IsString, MinLength } from "class-validator";
 import { IsPasswordHashField, IsOAuthIdField, IsEmailField } from "./field-validators";
+import { UserStatus } from "@transcendence/types";
 
 /**
  * Input DTO for setting a password (creates a new local account entry).
@@ -61,4 +62,20 @@ export class Setup2faDto {
 	@IsString()
 	@MinLength(1, { message: "2FA secret is required" })
 	twoFactorSecret: string;
+}
+
+/**
+ * Input DTO for updating user status.
+ * Used by auth-service to call user-service internal API.
+ */
+export class UpdateStatusDto {
+	@ApiProperty({
+		description: "New user status",
+		enum: UserStatus,
+		example: "ONLINE",
+	})
+	@IsEnum(UserStatus, {
+		message: `Status must be one of: ${Object.values(UserStatus).join(", ")}`,
+	})
+	status: UserStatus;
 }
