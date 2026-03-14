@@ -124,12 +124,20 @@ fclean: ##@Cleanup — Remove containers, volumes, project images, and dangling 
 	@printf "$(GREEN)>>> Cleanup complete.$(RESET)\n"
 
 prune: ##@Cleanup — Wipe project resources and purge entire Docker system (WARNING: affects all projects)
-	@printf "$(RED)>>> WARNING: This will delete ALL Docker images, cache and volumes system-wide.$(RESET)\n"                                                                  
-	@printf "$(YELLOW)>>> Press CTRL+C to abort, ENTER to continue...$(RESET)\n"                                                                                               
-	@read _                                                                                                                                                                    
-	@$(COMPOSE) down -v --rmi all --remove-orphans                                                                                                                             
-	@docker image prune -f                                                                                                                                                     
-	@docker system prune -af --volumes                                                                                                                                         
+	@printf "$(RED)>>> WARNING: This will delete ALL Docker images, cache and volumes system-wide.$(RESET)\n"
+	@printf "$(YELLOW)>>> Press CTRL+C to abort, ENTER to continue...$(RESET)\n"
+	@read _
+	@printf "$(RED)>>> [1/5] Stopping project containers and volumes...$(RESET)\n"
+	@$(COMPOSE) down -v --rmi all --remove-orphans
+	@printf "$(RED)>>> [2/5] Pruning stopped containers...$(RESET)\n"
+	@docker container prune -f
+	@printf "$(RED)>>> [3/5] Pruning all images...$(RESET)\n"
+	@docker image prune -af
+	@printf "$(RED)>>> [4/5] Pruning volumes and networks...$(RESET)\n"
+	@docker volume prune -f
+	@docker network prune -f
+	@printf "$(RED)>>> [5/5] Pruning build cache (this may take a while)...$(RESET)\n"
+	@docker buildx prune -af
 	@printf "$(GREEN)>>> Full Docker system pruned.$(RESET)\n"
 
 # --- Observability -------------------------------------------
