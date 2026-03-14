@@ -26,7 +26,7 @@ BOLD   := \033[1m
 
 # --- Phony targets -------------------------------------------
 
-.PHONY: all generate migrate certs up up-prod down restart clean fclean re rebuild \
+.PHONY: all generate migrate certs up up-prod down restart clean clean-data fclean re rebuild \
         prune logs ps help \
         logs-auth logs-user logs-game logs-matchmaking logs-frontend \
         logs-postgres logs-migration logs-gateway logs-ngrok logs-redis \
@@ -106,6 +106,11 @@ rebuild: certs ##@Docker — Force rebuild without cache (DB preserved), then st
 re: fclean up ##@Docker — Full wipe (DB included) + fresh build
 
 # --- Cleanup -------------------------------------------------
+
+clean-data: ##@Cleanup — Stop services and remove DB + Redis volumes (images preserved)
+	@printf "$(YELLOW)>>> Removing data volumes (postgres + redis)...$(RESET)\n"
+	@$(COMPOSE) down -v
+	@printf "$(GREEN)>>> Data volumes removed. Run 'make up' to restart fresh.$(RESET)\n"
 
 clean: ##@Cleanup — Stop services and remove containers (volumes and images preserved)
 	@printf "$(YELLOW)>>> Stopping services and removing containers...$(RESET)\n"
