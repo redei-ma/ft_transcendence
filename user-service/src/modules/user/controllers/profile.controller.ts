@@ -245,7 +245,10 @@ export class ProfileController {
 		status: HttpStatus.OK,
 		type: EloPreviewResponseDto,
 	})
-	@ApiResponse({ status: HttpStatus.NOT_FOUND, description: "Player not found" })
+	@ApiResponse({
+		status: HttpStatus.NOT_FOUND,
+		description: "Player not found",
+	})
 	@ApiResponse({ status: HttpStatus.UNAUTHORIZED })
 	async getEloPreview(
 		@Query() query: EloPreviewQueryDto,
@@ -285,5 +288,4 @@ export class ProfileController {
 	): Promise<PublicProfileResponseDto> {
 		return this.profileService.getPublicProfile(id);
 	}
-
 }

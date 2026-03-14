@@ -1,14 +1,12 @@
-import { Inject, Injectable, Logger } from "@nestjs/common"; // Importato Logger per il debugging professionale
-import { JoinQueueDto } from "./dto/join-queue.dto"; // struttura del dato che ricevo
-import Redis from "ioredis"; // client Redis per interagire col database
-import { InjectRedis } from "@nestjs-modules/ioredis"; // modulo per iniettare il client Redis
-import { ClientProxy } from "@nestjs/microservices";
+import { Injectable, Logger } from "@nestjs/common";
+import { JoinQueueDto } from "./dto/join-queue.dto";
+import Redis from "ioredis";
+import { InjectRedis } from "@nestjs-modules/ioredis";
 import { HttpService } from "@nestjs/axios";
 import { firstValueFrom } from "rxjs";
 import { EventEmitter2 } from "@nestjs/event-emitter";
 import { Cron } from "@nestjs/schedule";
 import { CharacterName, MatchType, MatchMode } from "@transcendence/types";
-import { UserStatus } from "@transcendence/types";
 import { GameEvents } from "@transcendence/types";
 
 const INGAME = "ingame";
@@ -46,7 +44,7 @@ const MATCHMAKING_LUA = `
 // Interfaccia di supporto per uniformare il salvataggio su Redis
 interface RedisUserStatus {
 	state: string;
-	userDbId?: string;
+	userDbId?: number;
 	rank?: number | null;
 	characterName?: any;
 	isAiPlayer?: boolean;
@@ -54,7 +52,7 @@ interface RedisUserStatus {
 	matchMode?: MatchMode;
 	matchType?: MatchType;
 	matchId?: string;
-	opponentId?: string;
+	opponentId?: number;
 	searchStartedAt?: number;
 	lastChallengeSent?: string;
 	updatedAt?: number;
@@ -65,7 +63,6 @@ interface RedisUserStatus {
 @Injectable()
 export class MatchmakingService {
 	private readonly logger = new Logger(MatchmakingService.name);
-	client: any;
 
 	constructor(
 		@InjectRedis() private readonly redis: Redis,
@@ -142,23 +139,23 @@ export class MatchmakingService {
 
 	/* ---------------------------------------------------------------------------------------------------------------- */
 	
-	async processQueue(player: JoinQueueDto) {
+	async processQueue(userId : number, player: JoinQueueDto) {
 		const QUEUE_KEY = "matchmaking_queue";
-		const USER_STATUS_KEY = `status:${player.userDbId}`;
+		const USER_STATUS_KEY = `status:${userId}`;
 
 		this.logger.log(
-			`[ProcessQueue] Ricevuta richiesta per utente: ${player.userDbId}`,
+			`[ProcessQueue] Ricevuta richiesta per utente: ${userId}`,
 		);
 
 		const currentStatusRaw = await this.redis.get(USER_STATUS_KEY);
 		const statusData = currentStatusRaw
 			? JSON.parse(currentStatusRaw)
 			: null;
-		const rank = await this.fetchPlayerElo(player.userDbId);
+		const rank = await this.fetchPlayerElo(userId);
 
 		if (rank === null) {
 			this.logger.error(
-				`[ProcessQueue] Impossibile recuperare ELO per: ${player.userDbId}`,
+				`[ProcessQueue] Impossibile recuperare ELO per: ${userId}`,
 			);
 			return { status: "ERROR_FETCHING_RANK" };
 		}
@@ -171,7 +168,7 @@ export class MatchmakingService {
 				};
 			}
 			this.logger.log(
-				`[ProcessQueue] Utente ${player.userDbId} già in game. Invio istruzioni di riconnessione...`,
+				`[ProcessQueue] Utente ${userId} già in game. Invio istruzioni di riconnessione...`,
 			);
 
 			const opponentStatusRaw = await this.redis.get(
@@ -182,7 +179,7 @@ export class MatchmakingService {
 				this.logger.warn(
 					`[ProcessQueue] Opponent ${statusData.opponentId} non trovato. Match scaduto.`,
 				);
-				await this.setUserStatus(player.userDbId, {
+				await this.setUserStatus(userId, {
 					state: LOBBY,
 					rank,
 					characterName: player.characterName,
@@ -195,7 +192,7 @@ export class MatchmakingService {
 			const opponentData = JSON.parse(opponentStatusRaw);
 
 			// Aggiornamento stato con riconnessione
-			await this.setUserStatus(player.userDbId, {
+			await this.setUserStatus(userId, {
 				...statusData,
 				socketId: player.socketId,
 			}, 420);
@@ -224,14 +221,14 @@ export class MatchmakingService {
 		}
 
 		this.logger.log(
-			`[ProcessQueue] Aggiunta utente ${player.userDbId} alla coda (Rank: ${rank})`,
+			`[ProcessQueue] Aggiunta utente ${userId} alla coda (Rank: ${rank})`,
 		);
 
-		await this.redis.zadd(QUEUE_KEY, rank, player.userDbId);
+		await this.redis.zadd(QUEUE_KEY, rank, String(userId));
 
-		await this.setUserStatus(player.userDbId, {
+		await this.setUserStatus(userId, {
 			state: INQUEUE,
-			userDbId: String(player.userDbId),
+			userDbId: userId,
 			rank: rank,
 			characterName: player.characterName,
 			isAiPlayer: !!player.isAiPlayer,
@@ -318,8 +315,8 @@ export class MatchmakingService {
 		const matchId = `match_${Math.random().toString(36).substring(7)}`;
 
 		// Recupero ID sicuro (cercando sia userDbId che id nell'oggetto)
-		const id1 = String(p1.userDbId || p1.id);
-		const id2 = String(p2.userDbId || p2.id);
+		const id1 = (p1.userDbId || p1.id);
+		const id2 = (p2.userDbId || p2.id);
 
 		this.logger.log(
 			`[ExecuteMatch] Creazione match ${matchId} tra ${id1} e ${id2}`,
@@ -338,7 +335,7 @@ export class MatchmakingService {
 
 		const part1 = {
 			characterName: p1Char,
-			userDbId: id1,
+			userDbId: Number(id1),
 			isAiPlayer: !!p1.isAiPlayer,
 			rank: p1.rank,
 			socketId: p1.socketId,
@@ -347,7 +344,7 @@ export class MatchmakingService {
 
 		const part2 = {
 			characterName: p2Char,
-			userDbId: id2,
+			userDbId:  Number(id2),
 			isAiPlayer: !!p2.isAiPlayer,
 			rank: p2.rank,
 			socketId: p2.socketId,
@@ -362,8 +359,8 @@ export class MatchmakingService {
 			matchType: p1.matchType,
 		};
 
-		await this.setUserStatus(id1, { ...commonData, ...part1, opponentId: id2 }, 420);
-		await this.setUserStatus(id2, { ...commonData, ...part2, opponentId: id1 }, 420);
+		await this.setUserStatus(id1, { ...commonData, ...part1, opponentId: Number(id2) }, 420);
+		await this.setUserStatus(id2, { ...commonData, ...part2, opponentId: Number(id1) }, 420);
 		
 		await this.redis.set(
 			`match_players:${matchId}`,
@@ -378,12 +375,12 @@ export class MatchmakingService {
 			playersData: [
 				{
 					characterName: part1.characterName,
-					userDbId: part1.userDbId,
+					userDbId: String(part1.userDbId),
 					isAiPlayer: part1.isAiPlayer,
 				},
 				{
 					characterName: part2.characterName,
-					userDbId: part2.userDbId,
+					userDbId: String(part2.userDbId),
 					isAiPlayer: part2.isAiPlayer,
 				},
 			],
@@ -423,23 +420,16 @@ export class MatchmakingService {
 
 	/* ---------------------------------------------------------------------------------------------------------------- */
 
-	async processUnrankedQueue(player: JoinQueueDto) {
+	async processUnrankedQueue(userId: number, player: JoinQueueDto) {
 		const QUEUE_KEY = "matchmaking_queue_unranked";
-		const USER_STATUS_KEY = `status:${player.userDbId}`;
+		const USER_STATUS_KEY = `status:${userId}`;
 
-		const playerChar = Array.isArray(player.characterName)
-			? player.characterName[0]
-			: player.characterName;
+		const playerChar = player.characterName;
 
 		const currentStatusRaw = await this.redis.get(USER_STATUS_KEY);
 		const statusData = currentStatusRaw
 			? JSON.parse(currentStatusRaw)
 			: null;
-
-		const rank = await this.fetchPlayerElo(player.userDbId);
-		if (rank === null) {
-			return { status: "ERROR_FETCHING_RANK" };
-		}
 
 		if (statusData && statusData.state === INGAME) {
 			if (statusData.matchMode !== player.matchMode) {
@@ -449,7 +439,7 @@ export class MatchmakingService {
 				};
 			}
 			this.logger.log(
-				`[Unranked] Utente ${player.userDbId} già in game. Invio istruzioni riconnessione.`,
+				`[Unranked] Utente ${userId} già in game. Invio istruzioni riconnessione.`,
 			);
 
 			const opponentStatusRaw = await this.redis.get(
@@ -457,11 +447,11 @@ export class MatchmakingService {
 			);
 			if (!opponentStatusRaw) {
 				this.logger.warn(
-					`[Unranked] Match scaduto per ${player.userDbId}. Torno in lobby.`,
+					`[Unranked] Match scaduto per ${userId}. Torno in lobby.`,
 				);
-				await this.setUserStatus(player.userDbId, {
+				await this.setUserStatus(userId, {
 					state: LOBBY,
-					rank: rank,
+					rank: null,
 					characterName: playerChar,
 					isAiPlayer: player.isAiPlayer,
 					socketId: player.socketId,
@@ -469,7 +459,7 @@ export class MatchmakingService {
 				return { status: "MATCH_EXPIRED_BACK_TO_LOBBY" };
 			}
 
-			await this.setUserStatus(player.userDbId, {
+			await this.setUserStatus(userId, {
 				...statusData,
 				characterName: playerChar,
 				socketId: player.socketId,
@@ -493,19 +483,19 @@ export class MatchmakingService {
 		}
 
 		if (statusData && statusData.state === INQUEUE) {
-			await this.setUserStatus(player.userDbId, {
+			await this.setUserStatus(userId, {
 				...statusData,
 				characterName: playerChar,
 				socketId: player.socketId,
 			}, 600);
 		} else {
 			const timestamp = Date.now();
-			await this.redis.zadd(QUEUE_KEY, timestamp, player.userDbId);
+			await this.redis.zadd(QUEUE_KEY, timestamp, String(userId));
 
-			await this.setUserStatus(player.userDbId, {
+			await this.setUserStatus(userId, {
 				state: INQUEUE,
-				userDbId: String(player.userDbId),
-				rank: rank,
+				userDbId: userId,
+				rank: null,
 				characterName: playerChar,
 				isAiPlayer: player.isAiPlayer,
 				socketId: player.socketId,
@@ -514,7 +504,7 @@ export class MatchmakingService {
 
 		const potentialOpponents = await this.redis.zrange(QUEUE_KEY, 0, 1);
 		const opponents = potentialOpponents.filter(
-			(id) => id !== String(player.userDbId),
+			(id) => id !== String(userId),
 		);
 
 		if (opponents.length >= 1) {
@@ -533,31 +523,31 @@ export class MatchmakingService {
 				? opponentData.characterName[0]
 				: opponentData.characterName;
 
-			await this.redis.zrem(QUEUE_KEY, player.userDbId, opponentId);
+			await this.redis.zrem(QUEUE_KEY, String(userId), String(opponentId));
 			const matchId = `match_unranked_${Math.random().toString(36).substring(7)}`;
 
 			const participant1 = {
 				characterName: playerChar,
-				userDbId: String(player.userDbId),
+				userDbId: Number(userId),
 				isAiPlayer: false,
-				rank: rank,
+				rank: null,
 				socketId: player.socketId,
 				playerIndex: 0,
 			};
 
 			const participant2 = {
 				characterName: opponentChar,
-				userDbId: String(opponentId),
+				userDbId: Number(opponentId),
 				isAiPlayer: !!opponentData.isAiPlayer,
 				rank: opponentData.rank,
 				socketId: opponentData.socketId,
 				playerIndex: 1,
 			};
 
-			await this.setUserStatus(player.userDbId, {
+			await this.setUserStatus(userId, {
 				state: INGAME,
 				...participant1,
-				opponentId,
+				opponentId: Number(opponentId),
 				matchId,
 				matchMode: player.matchMode,
 				matchType: player.matchType,
@@ -566,7 +556,7 @@ export class MatchmakingService {
 			await this.setUserStatus(opponentId, {
 				state: INGAME,
 				...participant2,
-				opponentId: player.userDbId,
+				opponentId: userId,
 				matchId,
 				matchMode: player.matchMode,
 				matchType: player.matchType,
@@ -574,7 +564,7 @@ export class MatchmakingService {
 
 			await this.redis.set(
 				`match_players:${matchId}`,
-				`${player.userDbId},${opponentId}`,
+				`${userId},${opponentId}`,
 				"EX",
 				3600,
 			);
@@ -631,214 +621,8 @@ export class MatchmakingService {
 
 	/* ---------------------------------------------------------------------------------------------------------------- */
 
-	async createChallenge(player: JoinQueueDto, opponentId: string) {
-		const UNIQUE_CHALLENGE_KEY = `challenge:${opponentId}:${player.userDbId}`;
-		const exists = await this.redis.exists(UNIQUE_CHALLENGE_KEY);
-		
-		if (exists) {
-			return {
-				status: "ERROR_CHALLENGE_EXISTS",
-				message: "Una sfida tra questi due utenti è già in corso",
-			};
-		}
-
-		const currentStatusRaw = await this.redis.get(
-			`status:${player.userDbId}`,
-		);
-		const currentStatus = currentStatusRaw
-			? JSON.parse(currentStatusRaw)
-			: null;
-
-		if (currentStatus && currentStatus.state === INGAME) {
-			return { status: "ERROR_ALREADY_IN_GAME" };
-		}
-
-		await this.setUserStatus(player.userDbId, {
-			...player,
-			state: currentStatus?.state || LOBBY, 
-			lastChallengeSent: opponentId,
-		}, 600);
-
-		await this.redis.set(UNIQUE_CHALLENGE_KEY, "pending", "EX", 30);
-
-		return {
-			status: "CHALLENGE_SENT",
-			challengerId: player.userDbId,
-			opponentId,
-		};
-	}
-
-	/* ---------------------------------------------------------------------------------------------------------------- */
-
-	async acceptChallenge(challengerId: string, opponent: JoinQueueDto) {
-		const UNIQUE_CHALLENGE_KEY = `challenge:${opponent.userDbId}:${challengerId}`; 
-		const QUEUE_KEY = "matchmaking_queue"; 
-
-		const challengeExists = await this.redis.exists(UNIQUE_CHALLENGE_KEY);
-		if (!challengeExists) return { status: "ERROR_EXPIRED" };
-
-		const statusA = await this.redis.get(`status:${challengerId}`);
-
-		const isInGame = (raw: string | null) =>
-			raw && JSON.parse(raw).state === INGAME;
-
-		if (isInGame(statusA)) {
-			return { status: "ERROR_CHALLENGER_ALREADY_IN_MATCH" };
-		}
-
-		const challengerData = statusA ? JSON.parse(statusA) : {};
-
-		await this.redis.zrem(QUEUE_KEY, challengerId, opponent.userDbId);
-
-		const matchId = `private_${Math.random().toString(36).substring(7)}`;
-
-		const rank = await this.fetchPlayerElo(challengerId);
-		if (rank === null) {
-			return { status: "ERROR_FETCHING_RANK" };
-		}
-
-		const participant1 = {
-			characterName: challengerData.characterName,
-			userDbId: String(challengerId),
-			isAiPlayer: Boolean(challengerData.isAiPlayer || false),
-			rank: challengerData.rank || 0,
-			socketId: challengerData.socketId || undefined,
-			playerIndex: 0,
-		};
-
-		const participant2 = {
-			characterName: opponent.characterName,
-			userDbId: String(opponent.userDbId),
-			isAiPlayer: Boolean(opponent.isAiPlayer || false),
-			rank: rank || 0,
-			socketId: opponent.socketId || undefined,
-			playerIndex: 1,
-		};
-
-		await this.setUserStatus(challengerId, {
-			state: INGAME,
-			...participant1,
-			opponentId: opponent.userDbId,
-			matchId,
-			matchType: challengerData.matchType,
-			matchMode: challengerData.matchMode,
-		}, 420);
-
-		await this.setUserStatus(opponent.userDbId, {
-			state: INGAME,
-			...participant2,
-			opponentId: challengerId,
-			matchId,
-			matchType: challengerData.matchType,
-			matchMode: challengerData.matchMode,
-		}, 420);
-
-		const payload = {
-			gameId: String(matchId),
-			playersData: [participant1, participant2].map(
-				({ characterName, userDbId, isAiPlayer }) => ({
-					characterName,
-					userDbId,
-					isAiPlayer,
-				}),
-			),
-			matchType: challengerData.matchType,
-			matchMode: challengerData.matchMode,
-		};
-		try {
-			const url = "http://game-service:3000/matchmaking/create-match";
-			await firstValueFrom(this.httpService.post(url, payload));
-			this.logger.log(
-				`[HTTP] Match privato creato con successo sul Game Server: ${matchId}`,
-			);
-		} catch (error) {
-			this.logger.error(
-				"Errore creazione match privato su Game Server:",
-				error.response?.data || error.message,
-			);
-		}
-
-		await this.redis.del(UNIQUE_CHALLENGE_KEY);
-
-		this.logger.log(
-			`[Logic] Sfida accettata: ${challengerId} e ${opponent.userDbId} dirottati dalla coda al match privato ${matchId}`,
-		);
-
-		return {
-			status: "MATCH_FOUND",
-			matchId,
-			players: [participant1, participant2],
-		};
-	}
-
-	/* ---------------------------------------------------------------------------------------------------------------- */
-
-	async rejectChallenge(challengerId: string, opponent: JoinQueueDto) {
-		const UNIQUE_CHALLENGE_KEY = `challenge:${opponent.userDbId}:${challengerId}`;
-
-		const challengeExists = await this.redis.exists(UNIQUE_CHALLENGE_KEY);
-
-		const rank = await this.fetchPlayerElo(opponent.userDbId);
-		if (rank === null) {
-			return { status: "ERROR_FETCHING_RANK" };
-		}
-
-		if (!challengeExists) {
-			return {
-				status: "ERROR_CHALLENGE_NOT_FOUND",
-				message: "La sfida è già scaduta o non esiste più.",
-			};
-		}
-
-		await this.redis.del(UNIQUE_CHALLENGE_KEY);
-
-		this.logger.log(
-			`[Logic] L'utente ${opponent.userDbId} (Rank: ${rank}) ha rifiutato la sfida di ${challengerId}.`,
-		);
-
-		return {
-			status: "CHALLENGE_REJECTED",
-			challengerId,
-			opponentId: opponent.userDbId,
-		};
-	}
-
-	/* ---------------------------------------------------------------------------------------------------------------- */
-
-	async cancelChallenge(player: JoinQueueDto, opponentId: string) {
-		const UNIQUE_CHALLENGE_KEY = `challenge:${opponentId}:${player.userDbId}`;
-
-		const challengeExists = await this.redis.exists(UNIQUE_CHALLENGE_KEY);
-
-		const rank = await this.fetchPlayerElo(player.userDbId);
-		if (rank === null) {
-			return { status: "ERROR_FETCHING_RANK" };
-		}
-
-		if (!challengeExists) {
-			return {
-				status: "ERROR_CHALLENGE_NOT_FOUND",
-				message: "La sfida è già scaduta o non esiste più.",
-			};
-		}
-
-		await this.redis.del(UNIQUE_CHALLENGE_KEY);
-
-		this.logger.log(
-			`[Logic] L'utente ${player.userDbId} (Rank: ${rank}) ha annullato la sfida verso ${opponentId}.`,
-		);
-
-		return {
-			status: "CHALLENGE_CANCELLED",
-			challengerId: player.userDbId,
-			opponentId,
-		};
-	}
-
-	/* ---------------------------------------------------------------------------------------------------------------- */
-
-	async startLocalMatch(data: any) {
-		const USER_STATUS_KEY_1 = `status:${data.userDbId}`;
+	async startLocalMatch(userId: number, data: JoinQueueDto) {
+		const USER_STATUS_KEY_1 = `status:${userId}`;
 
 		const currentStatusRaw = await this.redis.get(USER_STATUS_KEY_1);
 		const statusData = currentStatusRaw
@@ -850,17 +634,11 @@ export class MatchmakingService {
 			statusData.state === INGAME &&
 			statusData.matchMode === MatchMode.LOCAL
 		) {
-			if (statusData.matchMode !== MatchMode.LOCAL) {
-				return {
-					status: "ERROR_ALREADY_IN_ANOTHER_GAME",
-					message: `Sei già in una partita ${statusData.matchMode}. Finiscila prima di avviarne una Locale.`,
-				};
-			}
 			this.logger.log(
-				`[LocalMatch] Utente ${data.userDbId} già in sessione locale. Riconnessione al match: ${statusData.matchId}`,
+				`[LocalMatch] Utente ${userId} già in sessione locale. Riconnessione al match: ${statusData.matchId}`,
 			);
 
-			await this.setUserStatus(data.userDbId, {
+			await this.setUserStatus(userId, {
 				...statusData,
 				socketId: data.socketId,
 			}, 3600);
@@ -880,40 +658,37 @@ export class MatchmakingService {
 			};
 		}
 
-		await this.redis.zrem("matchmaking_queue", data.userDbId);
+		await this.redis.zrem("matchmaking_queue", String(userId));
 		const matchId = `local_${Math.random().toString(36).substring(7)}`;
 
-		const charP1 = Array.isArray(data.characterName)
-			? data.characterName[0]
-			: data.characterName;
-		const charP2 = Array.isArray(data.characterName)
-			? data.characterName[1]
-			: "default";
+		const names = (data.characterName as unknown as CharacterName | CharacterName[]);
+		const charP1 = Array.isArray(names) ? names[0] : names;
+		const charP2 = Array.isArray(names) && names[1] ? names[1] : CharacterName.ADE;
 
 		const participant1 = {
 			characterName: charP1,
-			userDbId: String(data.userDbId),
+			userDbId: userId,
 			isAiPlayer: false,
-			rank: data.rank,
+			rank: 0,
 			socketId: data.socketId,
 			playerIndex: 0,
 		};
 
 		const participant2 = {
 			characterName: charP2,
-			userDbId: String(data.userDbId),
+			userDbId: userId,
 			isAiPlayer: false,
-			rank: data.rank,
+			rank: 0,
 			socketId: data.socketId,
 			playerIndex: 1,
 		};
 
-		await this.setUserStatus(data.userDbId, {
+		await this.setUserStatus(userId, {
 			state: INGAME,
 			matchMode: MatchMode.LOCAL,
 			matchType: MatchType.FFA,
 			matchId: matchId,
-			opponentId: "LOCAL_GUEST",
+			opponentId: -1,
 			...participant1,
 		}, 3600);
 
@@ -922,7 +697,7 @@ export class MatchmakingService {
 			playersData: [participant1, participant2].map(
 				({ characterName, userDbId, isAiPlayer }) => ({
 					characterName,
-					userDbId,
+					userDbId: String(userDbId),
 					isAiPlayer,
 				}),
 			),
@@ -934,7 +709,7 @@ export class MatchmakingService {
 			const url = "http://game-service:3000/matchmaking/create-match";
 			await firstValueFrom(this.httpService.post(url, payload));
 			this.logger.log(
-				`[LocalMatch] Sessione locale inviata al Game Server per ${data.userDbId}`,
+				`[LocalMatch] Sessione locale inviata al Game Server per ${userId}`,
 			);
 		} catch (error) {
 			this.logger.error(
@@ -945,7 +720,7 @@ export class MatchmakingService {
 
 		await this.redis.set(
 			`match_players:${matchId}`,
-			`${data.userDbId}, guest_${data.userDbId}`,
+			`${userId}, guest_${userId}`,
 			"EX",
 			3600,
 		);
@@ -957,16 +732,16 @@ export class MatchmakingService {
 			});
 		}
 
-		return { status: "LOCAL_MATCH_STARTED", userDbId: data.userDbId };
+		return { status: "LOCAL_MATCH_STARTED", userDbId: userId };
 	}
 
 	/* ---------------------------------------------------------------------------------------------------------------- */
 
-	async startAiMatch(data: any) {
+	async startAiMatch(userId: number, data: JoinQueueDto) {
 		this.logger.log(
-			`[Logic] inizio procedura match vs AI per ${data.userDbId} con rank ${data.rank} e personaggio ${data.characterName}`,
+			`[Logic] inizio procedura match vs AI per ${userId} con personaggio ${data.characterName}`,
 		);
-		const USER_STATUS_KEY = `status:${data.userDbId}`;
+		const USER_STATUS_KEY = `status:${userId}`;
 
 		const currentStatusRaw = await this.redis.get(USER_STATUS_KEY);
 		const statusData = currentStatusRaw
@@ -979,10 +754,10 @@ export class MatchmakingService {
 			statusData.matchMode === MatchMode.AI
 		) {
 			this.logger.log(
-				`[AiMatch] Utente ${data.userDbId} già in sessione AI. Riconnessione al match: ${statusData.matchId}`,
+				`[AiMatch] Utente ${userId} già in sessione AI. Riconnessione al match: ${statusData.matchId}`,
 			);
 
-			await this.setUserStatus(data.userDbId, {
+			await this.setUserStatus(userId, {
 				...statusData,
 				socketId: data.socketId,
 			}, 3600);
@@ -1003,7 +778,7 @@ export class MatchmakingService {
 			};
 		} else if (statusData && statusData.state === INGAME) {
 			this.logger.log(
-				`[AiMatch] Utente ${data.userDbId} già in partita ${statusData.matchMode}. Non posso avviare un match AI.`,
+				`[AiMatch] Utente ${userId} già in partita ${statusData.matchMode}. Non posso avviare un match AI.`,
 			);
 			return {
 				status: "ERROR_ALREADY_IN_ANOTHER_GAME",
@@ -1011,24 +786,22 @@ export class MatchmakingService {
 			};
 		}
 
-		await this.redis.zrem("matchmaking_queue", data.userDbId);
-		await this.redis.zrem("matchmaking_queue_unranked", data.userDbId);
+		await this.redis.zrem("matchmaking_queue", String(userId));
+		await this.redis.zrem("matchmaking_queue_unranked", String(userId));
 
 		const matchId = `ai_${Math.random().toString(36).substring(7)}`;
 
-		const charP1 = Array.isArray(data.characterName)
-			? data.characterName[0]
-			: data.characterName;
-		const charP2 =
-			Array.isArray(data.characterName) && data.characterName[1]
-				? data.characterName[1]
-				: "CPU_Bot";
+		const names = (data.characterName as unknown as CharacterName | CharacterName[]);
+		const charP1 = Array.isArray(names) ? names[0] : names;
+		const charP2 = Array.isArray(names) && names[1]
+			? names[1]
+			: (charP1 === CharacterName.ZEUS ? CharacterName.ADE : CharacterName.ZEUS);
 
 		const participant1 = {
 			characterName: charP1,
-			userDbId: String(data.userDbId),
+			userDbId: userId,
 			isAiPlayer: false,
-			rank: data.rank,
+			rank: 0,
 			socketId: data.socketId,
 			playerIndex: 0,
 		};
@@ -1037,17 +810,17 @@ export class MatchmakingService {
 			characterName: charP2,
 			userDbId: `ai_bot_${matchId}`, 
 			isAiPlayer: true, 
-			rank: data.rank,
+			rank: 0,
 			socketId: null,
 			playerIndex: 1,
 		};
 
-		await this.setUserStatus(data.userDbId, {
+		await this.setUserStatus(userId, {
 			state: INGAME,
 			matchMode: MatchMode.AI,
 			matchType: MatchType.FFA,
 			matchId: matchId,
-			opponentId: "CPU_BOT",
+			opponentId: -1,
 			...participant1,
 		}, 3600);
 
@@ -1068,7 +841,7 @@ export class MatchmakingService {
 			const url = "http://game-service:3000/matchmaking/create-match";
 			await firstValueFrom(this.httpService.post(url, payload));
 			this.logger.log(
-				`[AiMatch] Match vs AI inviato al Game Server per ${data.userDbId}`,
+				`[AiMatch] Match vs AI inviato al Game Server per ${userId}`,
 			);
 		} catch (error) {
 			this.logger.error(
@@ -1079,7 +852,7 @@ export class MatchmakingService {
 
 		await this.redis.set(
 			`match_players:${matchId}`,
-			`${data.userDbId},ai_bot_${matchId}`,
+			`${userId},ai_bot_${matchId}`,
 			"EX",
 			3600,
 		);
@@ -1093,7 +866,7 @@ export class MatchmakingService {
 		}
 
 		this.logger.log(
-			`[AiMatch] Utente ${data.userDbId} vs AI avviato. GameId: ${matchId}`,
+			`[AiMatch] Utente ${userId} vs AI avviato. GameId: ${matchId}`,
 		);
 		return { status: "AI_MATCH_STARTED", matchId };
 	}
@@ -1108,32 +881,26 @@ export class MatchmakingService {
 
 	/* ---------------------------------------------------------------------------------------------------------------- */
 
-	async leaveQueue(player: JoinQueueDto) {
+	async leaveQueue(userId: number, player: JoinQueueDto) {
 
-    const resultRanked = await this.redis.zrem("matchmaking_queue", player.userDbId);
-    const resultUnranked = await this.redis.zrem("matchmaking_queue_unranked", player.userDbId);
-    
+    const resultRanked = await this.redis.zrem("matchmaking_queue", String(userId));
+    const resultUnranked = await this.redis.zrem("matchmaking_queue_unranked", String(userId));
+
     const wasInQueue = resultRanked === 1 || resultUnranked === 1;
 
-    const rank = await this.fetchPlayerElo(player.userDbId);
-    if (rank === null) {
-        return { status: "ERROR_FETCHING_RANK" };
-    }
-
-    await this.setUserStatus(player.userDbId, {
+    await this.setUserStatus(userId, {
         state: LOBBY,
-        rank: rank,
         characterName: player.characterName,
         isAiPlayer: player.isAiPlayer,
         socketId: player.socketId || undefined,
     }, 3600);
 
     if (wasInQueue) {
-        this.logger.log(`[Logic] Utente ${player.userDbId} rimosso dalla coda (Ranked o Unranked) e riportato in lobby.`);
-        return { status: "LEFT_QUEUE_SUCCESS", userDbId: player.userDbId };
+        this.logger.log(`[Logic] Utente ${userId} rimosso dalla coda (Ranked o Unranked) e riportato in lobby.`);
+        return { status: "LEFT_QUEUE_SUCCESS", userId };
     } else {
-        this.logger.log(`[Logic] Tentativo di rimozione: ${player.userDbId} non era in nessuna coda, ma lo stato è stato resettato a lobby.`);
-        return { status: "NOT_IN_QUEUE", userDbId: player.userDbId };
+        this.logger.log(`[Logic] Tentativo di rimozione: ${userId} non era in nessuna coda, ma lo stato è stato resettato a lobby.`);
+        return { status: "NOT_IN_QUEUE", userId };
     }
 	}
 
@@ -1170,7 +937,7 @@ export class MatchmakingService {
 
 				await this.setUserStatus(String(userId), {
 					state: LOBBY,
-					userDbId: String(userId),
+					userDbId: Number(userId),
 					characterName: userData.characterName,
 					isAiPlayer: false,
 					rank: userData.rank,

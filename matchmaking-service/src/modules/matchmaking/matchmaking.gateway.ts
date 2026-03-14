@@ -30,7 +30,7 @@ export class MatchmakingGateway
 	server: Server;
 
 	private readonly logger = new Logger(MatchmakingGateway.name);
-	private socketToUser = new Map<string, string>();
+	private socketToUser = new Map<string, number>();
 
 	constructor(private readonly matchmakingService: MatchmakingService) {}
 
@@ -75,7 +75,7 @@ export class MatchmakingGateway
     }*/
 
 	@OnEvent(GameEvents.INTERNAL_MATCH_FOUND)
-	handleMatchFoundInternal(payload: { socketId: string; data: any }) {
+	handleMatchFoundInternal(payload: { socketId: string; data: { status: string; matchId: string } }) {
 		const clientSocket = this.server.sockets.sockets.get(payload.socketId);
 		if (clientSocket) {
 			clientSocket.emit(GameEvents.MATCH_FOUND, payload.data);
@@ -89,16 +89,16 @@ export class MatchmakingGateway
 		}
 	}
 
+
 	@SubscribeMessage(GameEvents.JOIN_RANKED)
 	async handleJoinRanked(
 		@MessageBody() data: JoinQueueDto,
 		@ConnectedSocket() client: Socket,
 	) {
-		const userDbId: string = client.data.user.sub;
-		this.registerUserSocket(client.id, userDbId);
-		data.userDbId = userDbId;
+		const userId: number = client.data.user.sub;
 		data.socketId = client.id;
-		return await this.matchmakingService.processQueue(data);
+		this.registerUserSocket(client.id, userId);
+		return await this.matchmakingService.processQueue(userId, data);
 	}
 
 	@SubscribeMessage(GameEvents.JOIN_UNRANKED)
@@ -106,38 +106,33 @@ export class MatchmakingGateway
 		@MessageBody() data: JoinQueueDto,
 		@ConnectedSocket() client: Socket,
 	) {
-		const userDbId: string = client.data.user.sub;
-		this.registerUserSocket(client.id, userDbId);
-		data.userDbId = userDbId;
+		const userId: number = client.data.user.sub;
 		data.socketId = client.id;
-		this.logger.log(
-			`User ${userDbId} joining unranked queue (Socket: ${client.id})`,
-		);
-		return await this.matchmakingService.processUnrankedQueue(data);
+		this.registerUserSocket(client.id, userId);
+		this.logger.log(`User ${userId} joining unranked queue (Socket: ${client.id})`);
+		return await this.matchmakingService.processUnrankedQueue(userId, data);
 	}
-	
+
 	@SubscribeMessage(GameEvents.JOIN_AI)
 	async handleJoinAi(
 		@MessageBody() data: JoinQueueDto,
 		@ConnectedSocket() client: Socket,
 	) {
-		const userDbId: string = client.data.user.sub;
-		this.registerUserSocket(client.id, userDbId);
-		data.userDbId = userDbId;
+		const userId: number = client.data.user.sub;
 		data.socketId = client.id;
-		return await this.matchmakingService.startAiMatch(data);
+		this.registerUserSocket(client.id, userId);
+		return await this.matchmakingService.startAiMatch(userId, data);
 	}
-	
+
 	@SubscribeMessage(GameEvents.JOIN_LOCAL)
 	async handleJoinLocal(
 		@MessageBody() data: JoinQueueDto,
 		@ConnectedSocket() client: Socket,
 	) {
-		const userDbId: string = client.data.user.sub;
-		this.registerUserSocket(client.id, userDbId);
-		data.userDbId = userDbId;
+		const userId: number = client.data.user.sub;
 		data.socketId = client.id;
-		return await this.matchmakingService.startLocalMatch(data);
+		this.registerUserSocket(client.id, userId);
+		return await this.matchmakingService.startLocalMatch(userId, data);
 	}
 
 	@SubscribeMessage(GameEvents.LEAVE_QUEUE)
@@ -145,64 +140,12 @@ export class MatchmakingGateway
 		@MessageBody() data: JoinQueueDto,
 		@ConnectedSocket() client: Socket,
 	) {
-		return await this.matchmakingService.leaveQueue(data);
-	}
-	
-	@SubscribeMessage("create_challenge")
-	async handleCreateChallenge(
-		@MessageBody() payload: { player: JoinQueueDto; opponentId: string },
-		@ConnectedSocket() client: Socket,
-	) {
-		this.registerUserSocket(client.id, payload.player.userDbId);
-		payload.player.socketId = client.id;
-
-		return await this.matchmakingService.createChallenge(
-			payload.player,
-			payload.opponentId,
-		);
+		const userId: number = client.data.user.sub;
+		data.socketId = client.id;
+		return await this.matchmakingService.leaveQueue(userId, data);
 	}
 
-	@SubscribeMessage("reject_challenge")
-	async handleRejectChallenge(
-		@MessageBody()
-		payload: { challengerId: string; opponent: JoinQueueDto },
-		@ConnectedSocket() client: Socket,
-	) {
-		payload.opponent.socketId = client.id;
-
-		return await this.matchmakingService.rejectChallenge(
-			payload.challengerId,
-			payload.opponent,
-		);
-	}
-
-	@SubscribeMessage("cancel_challenge")
-	async handleCancelChallenge(
-		@MessageBody() payload: { player: JoinQueueDto; opponentId: string },
-		@ConnectedSocket() client: Socket,
-	) {
-		payload.player.socketId = client.id;
-
-		return await this.matchmakingService.cancelChallenge(
-			payload.player,
-			payload.opponentId,
-		);
-	}
-
-	@SubscribeMessage("accept_challenge")
-	async handleAcceptChallenge(
-		@MessageBody()
-		payload: { challengerId: string; opponent: JoinQueueDto },
-		@ConnectedSocket() client: Socket,
-	) {
-		payload.opponent.socketId = client.id;
-		return await this.matchmakingService.acceptChallenge(
-			payload.challengerId,
-			payload.opponent,
-		);
-	}
-
-	private registerUserSocket(socketId: string, userId: string) {
+	private registerUserSocket(socketId: string, userId: number) {
 		this.socketToUser.set(socketId, userId);
 	}
 }

@@ -11,9 +11,6 @@ import {
 /* Struttura del dato che ricevo quando qualcuno si vuole mettere in coda nel matchmaking */
 
 export class JoinQueueDto {
-	@IsString()
-	userDbId: string;
-
 	@IsEnum(CharacterName)
 	characterName: CharacterName;
 
