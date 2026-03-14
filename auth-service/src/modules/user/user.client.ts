@@ -139,8 +139,8 @@ export class UserClient {
     );
   }
 
-  async unlinkOAuth(userId: number, provider: string) {
-    this.http.axiosRef.delete(
+  async unlinkOAuth(userId: number, provider: string): Promise<void> {
+    await this.http.axiosRef.delete(
       `http://user-service:3001/internal/users/${userId}/oauth/${provider}`,
     );
   }

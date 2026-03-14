@@ -99,7 +99,7 @@ export class AuthService {
       throw new UnauthorizedException('invalid credentials');
     }
 
-    const localAccount = user.accounts.find((a) => a.provider === 'LOCAL');
+    const localAccount = user.accounts.find((a) => a.provider === Provider.LOCAL);
     if (!localAccount?.passwordHash) {
       throw new UnauthorizedException('This account uses Google login');
     }
@@ -361,7 +361,7 @@ export class AuthService {
     const user = await this.usersService.findUser({ id: userId });
     if (!user) throw new NotFoundException('User not found');
 
-    const hasLocalAccount = user.accounts.some(a => a.provider === 'LOCAL');
+    const hasLocalAccount = user.accounts.some(a => a.provider === Provider.LOCAL);
     if (!hasLocalAccount) {
         throw new ForbiddenException(
             'Accounts logged in exclusively with other Identity Providers cannot change their email. Add local password to be able to change your email.'
@@ -398,7 +398,7 @@ export class AuthService {
     if (!user) throw new NotFoundException('User not found');
 
     // Check for LOCAL account and verify password
-    const localAccount = user.accounts.find(a => a.provider === 'LOCAL');
+    const localAccount = user.accounts.find(a => a.provider === Provider.LOCAL);
     if (!localAccount || !localAccount.passwordHash) {
       throw new ForbiddenException('Local account password required to change email.');
     }
@@ -467,24 +467,8 @@ export class AuthService {
     const existingUser = await this.usersService.findUser({ email: payload.newEmail });
     if (existingUser) throw new ConflictException('Email already in use. ');
 
-    // Unlink non-LOCAL providers (Google, etc.)
-    // We do this because OAuth identities are tied to the specific old email
-    for (const account of user.accounts) {
-      if (account.provider !== 'LOCAL') {
-        try {
-          // We use await here to ensure it finishes before moving on
-          await this.usersService.unlinkOAuth(user.id, account.provider as Provider);
-        } catch (error) {
-          // If it's the last login method, we might want to skip unlinking
-          // instead of crashing the whole email change process.
-          console.warn(`Could not unlink ${account.provider}: ${(error as Error).message}`);
-        }
-      }
-    }
-
-    // Update the actual email
+    // Update the actual email (user-service handles OAuth unlinking internally)
     await this.usersService.updateEmail(user.id, { email: payload.newEmail });
-    await this.usersService.markEmailVerified(user.id);
 
     return { message: 'Email updated successfully. OAuth accounts have been unlinked for security. If you renter through Google with the old email a new account will be created. ' };
   }
@@ -494,7 +478,7 @@ export class AuthService {
   /* async changePassword(userId: number, oldPass: string, newPass: string) {
     // 1. Get user including the password hash
     const user = await this.usersService.findUser({ id: userId });
-    const localAccount = user?.accounts.find(a => a.provider === 'LOCAL');
+    const localAccount = user?.accounts.find(a => a.provider === Provider.LOCAL);
 
     //aggiungere caso se uno e entrato con google?
     if (!localAccount?.passwordHash) {
@@ -523,7 +507,7 @@ export class AuthService {
 
   async changePassword(userId: number, body: ChangePasswordDto) {
     const user = await this.usersService.findUser({ id: userId });
-    const localAccount = user?.accounts.find(a => a.provider === 'LOCAL');
+    const localAccount = user?.accounts.find(a => a.provider === Provider.LOCAL);
 
     // If they have a password, they MUST verify the old one
     if (localAccount?.passwordHash) {
