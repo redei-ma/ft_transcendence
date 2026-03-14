@@ -557,7 +557,7 @@ export class MatchmakingService {
 			await this.setUserStatus(userId, {
 				state: INGAME,
 				...participant1,
-				opponentId,
+				opponentId: Number(opponentId),
 				matchId,
 				matchMode: player.matchMode,
 				matchType: player.matchType,
@@ -674,7 +674,7 @@ export class MatchmakingService {
 			};
 		}
 
-		await this.redis.zrem("matchmaking_queue", userId);
+		await this.redis.zrem("matchmaking_queue", String(userId));
 		const matchId = `local_${Math.random().toString(36).substring(7)}`;
 
 		const charP1 = Array.isArray(data.characterName)
@@ -805,8 +805,8 @@ export class MatchmakingService {
 			};
 		}
 
-		await this.redis.zrem("matchmaking_queue", userId);
-		await this.redis.zrem("matchmaking_queue_unranked", userId);
+		await this.redis.zrem("matchmaking_queue", String(userId));
+		await this.redis.zrem("matchmaking_queue_unranked", String(userId));
 
 		const matchId = `ai_${Math.random().toString(36).substring(7)}`;
 
@@ -904,8 +904,8 @@ export class MatchmakingService {
 
 	async leaveQueue(userId: number, player: JoinQueueDto) {
 
-    const resultRanked = await this.redis.zrem("matchmaking_queue", userId);
-    const resultUnranked = await this.redis.zrem("matchmaking_queue_unranked", userId);
+    const resultRanked = await this.redis.zrem("matchmaking_queue", String(userId));
+    const resultUnranked = await this.redis.zrem("matchmaking_queue_unranked", String(userId));
 
     const wasInQueue = resultRanked === 1 || resultUnranked === 1;
 
