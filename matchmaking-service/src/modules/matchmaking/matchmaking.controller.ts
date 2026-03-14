@@ -22,14 +22,14 @@ export class MatchmakingController {
 		console.log(
 			`[HTTP] Ricevuta richiesta di join utente: ${data.userDbId}`,
 		);
-		return await this.matchmakingService.processQueue(data);
+		return await this.matchmakingService.processQueue(userId, data);
 	}
 
 	@UseGuards(JwtAuthGuard)
 	@Post("create-match") // o il tuo endpoint di riferimento
 	async startLocalMatch(@Body() payload: JoinQueueDto, @CurrentUser("sub") userId: number) {
 		// Passiamo l'intero oggetto 'payload' invece di dividere in 2 argomenti
-		return await this.matchmakingService.startLocalMatch(payload);
+		return await this.matchmakingService.startLocalMatch(userId, payload);
 	}
 
 	/*@UseGuards(JwtAuthGuard)

@@ -30,7 +30,7 @@ export class MatchmakingGateway
 	server: Server;
 
 	private readonly logger = new Logger(MatchmakingGateway.name);
-	private socketToUser = new Map<string, string>();
+	private socketToUser = new Map<string, number>();
 
 	constructor(private readonly matchmakingService: MatchmakingService) {}
 
@@ -97,7 +97,7 @@ export class MatchmakingGateway
 	) {
 		const userId: number = client.data.user.sub;
 		this.registerUserSocket(client.id, userId);
-		return await this.matchmakingService.processQueue(data);
+		return await this.matchmakingService.processQueue(userId, data);
 	}
 
 	@SubscribeMessage(GameEvents.JOIN_UNRANKED)
@@ -105,14 +105,12 @@ export class MatchmakingGateway
 		@MessageBody() data: JoinQueueDto,
 		@ConnectedSocket() client: Socket,
 	) {
-		const userDbId: string = client.data.user.sub;
-		this.registerUserSocket(client.id, userDbId);
-		data.userDbId = userDbId;
-		data.socketId = client.id;
+		const userId: number = client.data.user.sub;
+		this.registerUserSocket(client.id, userId);
 		this.logger.log(
-			`User ${userDbId} joining unranked queue (Socket: ${client.id})`,
+			`User ${userId} joining unranked queue (Socket: ${client.id})`,
 		);
-		return await this.matchmakingService.processUnrankedQueue(data);
+		return await this.matchmakingService.processUnrankedQueue(userId, data);
 	}
 	
 	@SubscribeMessage(GameEvents.JOIN_AI)
@@ -120,11 +118,9 @@ export class MatchmakingGateway
 		@MessageBody() data: JoinQueueDto,
 		@ConnectedSocket() client: Socket,
 	) {
-		const userDbId: string = client.data.user.sub;
-		this.registerUserSocket(client.id, userDbId);
-		data.userDbId = userDbId;
-		data.socketId = client.id;
-		return await this.matchmakingService.startAiMatch(data);
+		const userId: number = client.data.user.sub;
+		this.registerUserSocket(client.id, userId);
+		return await this.matchmakingService.startAiMatch(userId, data);
 	}
 	
 	@SubscribeMessage(GameEvents.JOIN_LOCAL)
@@ -132,11 +128,9 @@ export class MatchmakingGateway
 		@MessageBody() data: JoinQueueDto,
 		@ConnectedSocket() client: Socket,
 	) {
-		const userDbId: string = client.data.user.sub;
-		this.registerUserSocket(client.id, userDbId);
-		data.userDbId = userDbId;
-		data.socketId = client.id;
-		return await this.matchmakingService.startLocalMatch(data);
+		const userId: number = client.data.user.sub;
+		this.registerUserSocket(client.id, userId);
+		return await this.matchmakingService.startLocalMatch(userId, data);
 	}
 
 	@SubscribeMessage(GameEvents.LEAVE_QUEUE)
@@ -144,10 +138,11 @@ export class MatchmakingGateway
 		@MessageBody() data: JoinQueueDto,
 		@ConnectedSocket() client: Socket,
 	) {
-		return await this.matchmakingService.leaveQueue(data);
+		const userId: number = client.data.user.sub;
+		return await this.matchmakingService.leaveQueue(userId, data);
 	}
 
-	private registerUserSocket(socketId: string, userId: string) {
+	private registerUserSocket(socketId: string, userId: number) {
 		this.socketToUser.set(socketId, userId);
 	}
 }
