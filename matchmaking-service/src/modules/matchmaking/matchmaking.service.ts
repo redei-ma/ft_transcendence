@@ -1,14 +1,12 @@
-import { Inject, Injectable, Logger } from "@nestjs/common"; // Importato Logger per il debugging professionale
-import { JoinQueueDto } from "./dto/join-queue.dto"; // struttura del dato che ricevo
-import Redis from "ioredis"; // client Redis per interagire col database
-import { InjectRedis } from "@nestjs-modules/ioredis"; // modulo per iniettare il client Redis
-import { ClientProxy } from "@nestjs/microservices";
+import { Injectable, Logger } from "@nestjs/common";
+import { JoinQueueDto } from "./dto/join-queue.dto";
+import Redis from "ioredis";
+import { InjectRedis } from "@nestjs-modules/ioredis";
 import { HttpService } from "@nestjs/axios";
 import { firstValueFrom } from "rxjs";
 import { EventEmitter2 } from "@nestjs/event-emitter";
 import { Cron } from "@nestjs/schedule";
 import { CharacterName, MatchType, MatchMode } from "@transcendence/types";
-import { UserStatus } from "@transcendence/types";
 import { GameEvents } from "@transcendence/types";
 
 const INGAME = "ingame";
@@ -65,7 +63,6 @@ interface RedisUserStatus {
 @Injectable()
 export class MatchmakingService {
 	private readonly logger = new Logger(MatchmakingService.name);
-	client: any;
 
 	constructor(
 		@InjectRedis() private readonly redis: Redis,
@@ -362,8 +359,8 @@ export class MatchmakingService {
 			matchType: p1.matchType,
 		};
 
-		await this.setUserStatus(id1, { ...commonData, ...part1, opponentId: id2 }, 420);
-		await this.setUserStatus(id2, { ...commonData, ...part2, opponentId: id1 }, 420);
+		await this.setUserStatus(id1, { ...commonData, ...part1, opponentId: Number(id2) }, 420);
+		await this.setUserStatus(id2, { ...commonData, ...part2, opponentId: Number(id1) }, 420);
 		
 		await this.redis.set(
 			`match_players:${matchId}`,
@@ -427,19 +424,12 @@ export class MatchmakingService {
 		const QUEUE_KEY = "matchmaking_queue_unranked";
 		const USER_STATUS_KEY = `status:${userId}`;
 
-		const playerChar = Array.isArray(player.characterName)
-			? player.characterName[0]
-			: player.characterName;
+		const playerChar = player.characterName;
 
 		const currentStatusRaw = await this.redis.get(USER_STATUS_KEY);
 		const statusData = currentStatusRaw
 			? JSON.parse(currentStatusRaw)
 			: null;
-
-		const rank = await this.fetchPlayerElo(userId);
-		if (rank === null) {
-			return { status: "ERROR_FETCHING_RANK" };
-		}
 
 		if (statusData && statusData.state === INGAME) {
 			if (statusData.matchMode !== player.matchMode) {
@@ -461,7 +451,7 @@ export class MatchmakingService {
 				);
 				await this.setUserStatus(userId, {
 					state: LOBBY,
-					rank: rank,
+					rank: null,
 					characterName: playerChar,
 					isAiPlayer: player.isAiPlayer,
 					socketId: player.socketId,
@@ -505,7 +495,7 @@ export class MatchmakingService {
 			await this.setUserStatus(userId, {
 				state: INQUEUE,
 				userDbId: userId,
-				rank: rank,
+				rank: null,
 				characterName: playerChar,
 				isAiPlayer: player.isAiPlayer,
 				socketId: player.socketId,
@@ -540,7 +530,7 @@ export class MatchmakingService {
 				characterName: playerChar,
 				userDbId: Number(userId),
 				isAiPlayer: false,
-				rank: rank,
+				rank: null,
 				socketId: player.socketId,
 				playerIndex: 0,
 			};
@@ -631,7 +621,7 @@ export class MatchmakingService {
 
 	/* ---------------------------------------------------------------------------------------------------------------- */
 
-	async startLocalMatch(userId: number, data: any) {
+	async startLocalMatch(userId: number, data: JoinQueueDto) {
 		const USER_STATUS_KEY_1 = `status:${userId}`;
 
 		const currentStatusRaw = await this.redis.get(USER_STATUS_KEY_1);
@@ -644,12 +634,6 @@ export class MatchmakingService {
 			statusData.state === INGAME &&
 			statusData.matchMode === MatchMode.LOCAL
 		) {
-			if (statusData.matchMode !== MatchMode.LOCAL) {
-				return {
-					status: "ERROR_ALREADY_IN_ANOTHER_GAME",
-					message: `Sei già in una partita ${statusData.matchMode}. Finiscila prima di avviarne una Locale.`,
-				};
-			}
 			this.logger.log(
 				`[LocalMatch] Utente ${userId} già in sessione locale. Riconnessione al match: ${statusData.matchId}`,
 			);
@@ -677,18 +661,15 @@ export class MatchmakingService {
 		await this.redis.zrem("matchmaking_queue", String(userId));
 		const matchId = `local_${Math.random().toString(36).substring(7)}`;
 
-		const charP1 = Array.isArray(data.characterName)
-			? data.characterName[0]
-			: data.characterName;
-		const charP2 = Array.isArray(data.characterName)
-			? data.characterName[1]
-			: "default";
+		const names = (data.characterName as unknown as CharacterName | CharacterName[]);
+		const charP1 = Array.isArray(names) ? names[0] : names;
+		const charP2 = Array.isArray(names) && names[1] ? names[1] : CharacterName.ADE;
 
 		const participant1 = {
 			characterName: charP1,
 			userDbId: userId,
 			isAiPlayer: false,
-			rank: data.rank,
+			rank: 0,
 			socketId: data.socketId,
 			playerIndex: 0,
 		};
@@ -697,7 +678,7 @@ export class MatchmakingService {
 			characterName: charP2,
 			userDbId: userId,
 			isAiPlayer: false,
-			rank: data.rank,
+			rank: 0,
 			socketId: data.socketId,
 			playerIndex: 1,
 		};
@@ -756,9 +737,9 @@ export class MatchmakingService {
 
 	/* ---------------------------------------------------------------------------------------------------------------- */
 
-	async startAiMatch(userId: number, data: any) {
+	async startAiMatch(userId: number, data: JoinQueueDto) {
 		this.logger.log(
-			`[Logic] inizio procedura match vs AI per ${userId} con rank ${data.rank} e personaggio ${data.characterName}`,
+			`[Logic] inizio procedura match vs AI per ${userId} con personaggio ${data.characterName}`,
 		);
 		const USER_STATUS_KEY = `status:${userId}`;
 
@@ -810,19 +791,17 @@ export class MatchmakingService {
 
 		const matchId = `ai_${Math.random().toString(36).substring(7)}`;
 
-		const charP1 = Array.isArray(data.characterName)
-			? data.characterName[0]
-			: data.characterName;
-		const charP2 =
-			Array.isArray(data.characterName) && data.characterName[1]
-				? data.characterName[1]
-				: "CPU_Bot";
+		const names = (data.characterName as unknown as CharacterName | CharacterName[]);
+		const charP1 = Array.isArray(names) ? names[0] : names;
+		const charP2 = Array.isArray(names) && names[1]
+			? names[1]
+			: (charP1 === CharacterName.ZEUS ? CharacterName.ADE : CharacterName.ZEUS);
 
 		const participant1 = {
 			characterName: charP1,
 			userDbId: userId,
 			isAiPlayer: false,
-			rank: data.rank,
+			rank: 0,
 			socketId: data.socketId,
 			playerIndex: 0,
 		};
@@ -831,7 +810,7 @@ export class MatchmakingService {
 			characterName: charP2,
 			userDbId: `ai_bot_${matchId}`, 
 			isAiPlayer: true, 
-			rank: data.rank,
+			rank: 0,
 			socketId: null,
 			playerIndex: 1,
 		};
@@ -909,14 +888,8 @@ export class MatchmakingService {
 
     const wasInQueue = resultRanked === 1 || resultUnranked === 1;
 
-    const rank = await this.fetchPlayerElo(userId);
-    if (rank === null) {
-        return { status: "ERROR_FETCHING_RANK" };
-    }
-
     await this.setUserStatus(userId, {
         state: LOBBY,
-        rank: rank,
         characterName: player.characterName,
         isAiPlayer: player.isAiPlayer,
         socketId: player.socketId || undefined,
@@ -924,10 +897,10 @@ export class MatchmakingService {
 
     if (wasInQueue) {
         this.logger.log(`[Logic] Utente ${userId} rimosso dalla coda (Ranked o Unranked) e riportato in lobby.`);
-        return { status: "LEFT_QUEUE_SUCCESS", userDbId: userId };
+        return { status: "LEFT_QUEUE_SUCCESS", userId };
     } else {
         this.logger.log(`[Logic] Tentativo di rimozione: ${userId} non era in nessuna coda, ma lo stato è stato resettato a lobby.`);
-        return { status: "NOT_IN_QUEUE", userDbId: userId };
+        return { status: "NOT_IN_QUEUE", userId };
     }
 	}
 

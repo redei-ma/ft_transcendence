@@ -75,7 +75,7 @@ export class MatchmakingGateway
     }*/
 
 	@OnEvent(GameEvents.INTERNAL_MATCH_FOUND)
-	handleMatchFoundInternal(payload: { socketId: string; data: any }) {
+	handleMatchFoundInternal(payload: { socketId: string; data: { status: string; matchId: string } }) {
 		const clientSocket = this.server.sockets.sockets.get(payload.socketId);
 		if (clientSocket) {
 			clientSocket.emit(GameEvents.MATCH_FOUND, payload.data);

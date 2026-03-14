@@ -1,8 +1,3 @@
-/* Controller che riceve i messaggi dal microservizio gateway riguardanti il matchmaking */
-
-
-// dividere il file in due: uno per i controller HTTP e uno per i controller microservizi (MessagePattern)
-
 
 import { Controller, Post, Body, UseGuards } from "@nestjs/common";
 import { MessagePattern, Payload } from "@nestjs/microservices";
@@ -38,6 +33,7 @@ export class MatchmakingController {
 	@MessagePattern(GameEvents.END_GAME)
 	async handleMatchFinished(@Payload() data: string | { matchId?: string; gameId?: string }) {
 		const matchId = typeof data === "string" ? data : (data?.matchId ?? data?.gameId);
+		if (!matchId) return;
 		this.matchmakingService.finalizeMatch(matchId);
 	}
 }

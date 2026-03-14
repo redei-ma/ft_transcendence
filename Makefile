@@ -26,7 +26,7 @@ BOLD   := \033[1m
 
 # --- Phony targets -------------------------------------------
 
-.PHONY: all generate certs up up-prod down restart clean fclean re rebuild \
+.PHONY: all generate certs up up-prod down restart clean clean-data fclean re rebuild \
         prune logs ps help \
         logs-auth logs-user logs-game logs-matchmaking logs-frontend \
         logs-postgres logs-migration logs-gateway logs-ngrok logs-redis \
