@@ -11,6 +11,7 @@ import {
 	Player,
 	AttackType,
 	ErrorCode,
+	SuccessCode,
 	MatchMode,
 	MatchType,
 	GameConfig,
@@ -32,6 +33,8 @@ export class GameSession {
 
 	/* 1 socket can move more players(local game) */
 	public readonly socketToEntities: Map<string, string[]> = new Map();
+
+	public readonly addedPlayersIds: number[] = new Array();
 
 	public readonly engine: Engine;
 	private currentState: IGameState;
@@ -69,21 +72,25 @@ export class GameSession {
 		player: MatchMakingData,
 		socketId: string | undefined,
 	): ExitStatus {
-		if (this.currentState instanceof LobbyState) {
-			this.logger.debug("trying to add player in lobbyState");
-			return this.currentState.addPlayer(player, socketId);
-		} else if (
-			this.currentState instanceof PlayState &&
-			player.userDbId &&
-			socketId
-		) {
-			this.logger.debug("trying to reconnect player in playState");
-			return this.currentState.reconnectPlayer(player.userDbId, socketId);
+
+		if (socketId && player.userDbId){
+			const expectedUserCount = this.expectedUserDbIds.filter(id => id === player.userDbId).length;
+			const addedCount = this.addedPlayersIds.filter(id => id === player.userDbId).length;
+
+			if (addedCount >= expectedUserCount){
+				this.logger.debug("trying to reconnect player");
+				return this.currentState.reconnectPlayer(player.userDbId, socketId);
+			}
 		}
-		return {
-			status: ErrorCode.INTERNAL_ERROR,
-			message: "Internal server error, sorry for the issue",
-		};
+
+		let exitStatus: ExitStatus;
+		exitStatus = this.currentState.addPlayer(player, socketId);
+		if (exitStatus.status === SuccessCode.OK){
+			if (player.userDbId)
+				this.addedPlayersIds.push(player.userDbId)
+		}
+
+		return (exitStatus);
 	}
 
 	addBot(player: MatchMakingData): ExitStatus {
@@ -127,11 +134,8 @@ export class GameSession {
 		if (this.sessionTime >= GameConfig.SERVER.HARD_LIMIT) {
 			if (!(this.currentState instanceof EndState)) {
 				this.engine.handleGameOver(true);
-				this.currentState = new EndState(this);
-				this.logger.warn(
-					"This session is active for too mutch time, transitioning to endState",
-				);
-				this.currentState.onEnter();
+				this.transitionTo(new EndState(this));
+				this.logger.warn("This session is active for too mutch time, transitioning to endState");
 			}
 		}
 	}
@@ -140,6 +144,7 @@ export class GameSession {
 	cleanUp(): void {
 		this.players.clear();
 		this.socketToEntities.clear();
+		this.addedPlayersIds.length = 0;
 	}
 
 	isGameOver(): boolean {

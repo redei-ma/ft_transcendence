@@ -1,8 +1,9 @@
 import { Logger } from "@nestjs/common";
-import { Vector, GameConfig, AttackType } from "@transcendence/types";
+import { Vector, GameConfig, AttackType, ExitStatus, ErrorCode } from "@transcendence/types";
 import { GameSession } from "../core";
 import { IGameState } from "./game.state.interface";
 import { MatchResult } from "src/types/match-result.interface";
+import { MatchMakingData } from "../game-interfaces";
 
 export class EndState implements IGameState{
 	logger: Logger = new Logger(EndState.name);
@@ -42,5 +43,13 @@ export class EndState implements IGameState{
 	}
 
 	onExit(): void {
+	}
+
+	addPlayer(player: MatchMakingData, socketId: string | undefined): ExitStatus {
+		return ({status: ErrorCode.UNAUTHORIZED, message: 'unable to add player, the game is in ending mode'});
+	}
+
+	reconnectPlayer(userDbId: number, socketId: string): ExitStatus{
+		return ({status: ErrorCode.UNAUTHORIZED, message: 'unable to reconnect player, the game is in ending mode'});
 	}
 }

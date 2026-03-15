@@ -73,8 +73,6 @@ export class LobbyState implements IGameState {
 
 		/* creating the room thanks to socket.io */
 		if (socketId) {
-			this.session.server.in(socketId).socketsJoin(this.session.gameId);
-
 			if (!this.session.socketToEntities.has(socketId)) {
 				this.session.socketToEntities.set(socketId, []);
 			}
@@ -120,6 +118,61 @@ export class LobbyState implements IGameState {
 		this.session.players.set(entityId, newPlayer);
 		this.startGameIfTheLobbyIsFull();
 		return { status: SuccessCode.OK };
+	}
+
+	reconnectPlayer(userDbId: number, socketId: string): ExitStatus{
+
+		let players: Player[] = [];
+		for (const player of this.session.players.values()){
+			if (player.userDbId == userDbId){
+				players.push(player);
+			}
+		}
+
+		if (!players || players.length <= 0){
+			this.logger.error('unable to reconnect player in lobby, no player found', userDbId);
+			return ({
+				status: ErrorCode.PLAYER_NOT_FOUND,
+				message: 'unable to reconnect player in lobby, sorry for the issue'
+			});
+		}
+
+		let entitysId: string[] = [];
+		let oldSocket: string | undefined = undefined;
+		for (const player of players){
+			if (player.socketId){
+				oldSocket = player.socketId;
+				player.socketId = socketId;
+			}
+
+			player.isDisconnected = false;
+			player.disconnectionTimer = 0.0;
+			entitysId.push(player.entityId);
+		}
+
+		if (oldSocket){
+			this.session.socketToEntities.delete(oldSocket);
+			this.session.gameService.removeOldSocket(oldSocket);
+		}
+
+		if (!entitysId || entitysId.length <= 0){
+			this.logger.error('unable to reconnect player in lobby, no player found', userDbId);
+			return ({
+				status: ErrorCode.PLAYER_NOT_FOUND,
+				message: 'unable to reconnect player in lobby, sorry for the issue'
+			});
+		}
+
+		for (const entityID of entitysId){
+			if (!this.session.socketToEntities.has(socketId)){
+				this.session.socketToEntities.set(socketId, []);
+			}
+			else{
+				this.session.socketToEntities.get(socketId)?.push(entityID);
+			}
+		}
+		this.session.gameService.setSocketToGame(socketId, this.session.gameId);
+		return ({status: SuccessCode.OK});
 	}
 
 	startGameIfTheLobbyIsFull() {

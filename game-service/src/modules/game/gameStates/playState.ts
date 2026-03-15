@@ -11,7 +11,7 @@ import {
 } from "@transcendence/types";
 import { EndState, IGameState } from "../gameStates";
 import { Logger } from "@nestjs/common";
-import { GameEndEvents, GameStateEvents } from "../game-interfaces";
+import { GameEndEvents, GameStateEvents, MatchMakingData } from "../game-interfaces";
 
 export class PlayState implements IGameState {
 	logger: Logger = new Logger(PlayState.name);
@@ -20,6 +20,11 @@ export class PlayState implements IGameState {
 
 	private fullEvents: (GameStateEvents | GameEndEvents)[];
 	constructor(private readonly session: GameSession) {}
+	
+	addPlayer(player: MatchMakingData, socketId: string | undefined): ExitStatus {
+		return ({status: ErrorCode.UNAUTHORIZED, message: 'unable to add player, the game is already started'})
+	}
+
 	onEnter(): void {
 		this.logger.log("Game is starting");
 	}

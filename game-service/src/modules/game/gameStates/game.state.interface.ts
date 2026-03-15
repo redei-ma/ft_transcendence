@@ -1,5 +1,6 @@
 import { Logger } from "@nestjs/common";
-import { Vector, AttackType } from "@transcendence/types";
+import { Vector, AttackType, ExitStatus } from "@transcendence/types";
+import { MatchMakingData } from "../game-interfaces";
 
 export interface IGameState{
 
@@ -12,6 +13,10 @@ export interface IGameState{
 	update(dt: number): void;
 
 	onInput(entityId: string, input: Vector, attackType: AttackType): void;
+
+	addPlayer(player: MatchMakingData, socketId: string | undefined): ExitStatus;
+
+	reconnectPlayer(userdbId: number, socketId: string): ExitStatus;
 
 	onExit(): void;
 }
