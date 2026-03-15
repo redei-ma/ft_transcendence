@@ -16,11 +16,9 @@ import {
 	UserWithAccountsResponseDto,
 	SetPasswordDto,
 	UpdateEmailDto,
-} from "@transcendence/dto";
-import {
 	UpdateStatusDto,
-	UserEloResponseDto,
-} from "../dto";
+} from "@transcendence/dto";
+import { UserEloResponseDto } from "../dto";
 import {
 	USER_WITH_ACCOUNTS_SELECT,
 	generateDefaultAvatar,
@@ -321,11 +319,11 @@ export class InternalUserService {
 	 * Updates the email address of a user.
 	 *
 	 * Side effects:
-	 * - `isEmailVerified` is set to false (requires re-verification).
-	 * - All linked OAuth accounts are removed, as the email no longer
-	 *   matches the provider — the user will need to re-link them.
+	 * - `isEmailVerified` is set to `true`.
+	 * - All linked OAuth accounts are removed in the same transaction, as the
+	 *   email no longer matches the provider — the user will need to re-link them.
 	 *
-	 * Prerequisite: the user must have a LOCAL account, otherwise unlinking
+	 * Prerequisite: the user must have a LOCAL account, otherwise removing
 	 * OAuth providers would leave them with no login method.
 	 *
 	 * @param userId - ID of the user.
@@ -381,7 +379,7 @@ export class InternalUserService {
 				where: { id: userId },
 				data: {
 					email: dto.email,
-					isEmailVerified: false,
+					isEmailVerified: true,
 				},
 			}),
 		]);

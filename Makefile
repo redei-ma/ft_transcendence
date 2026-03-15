@@ -4,6 +4,7 @@
 
 # --- Variables -----------------------------------------------
 
+SHELL        := /bin/bash
 COMPOSE      := docker compose
 
 # docker-compose.override.yml is loaded automatically when present,
@@ -26,7 +27,7 @@ BOLD   := \033[1m
 
 # --- Phony targets -------------------------------------------
 
-.PHONY: all generate certs up up-prod down restart clean fclean re rebuild \
+.PHONY: all generate migrate certs up up-prod down restart clean clean-data fclean re rebuild \
         prune logs ps help \
         logs-auth logs-user logs-game logs-matchmaking logs-frontend \
         logs-postgres logs-migration logs-gateway logs-ngrok logs-redis \
@@ -50,6 +51,19 @@ generate: ##@Setup — Build shared packages (@transcendence/types + @transcende
 	@cd $(AUTH_DIR) && npm install --silent && npm run build || \
 		(printf "$(RED)>>> FAILED: @transcendence/auth build$(RESET)\n" && exit 1)
 	@printf "$(GREEN)>>> Shared packages built successfully.$(RESET)\n"
+
+# --- Database migrations -------------------------------------
+
+migrate: ##@DB — Create a new Prisma migration (usage: make migrate NAME=my_migration)
+	@test -n "$(NAME)" || (printf "$(RED)>>> ERROR: NAME is required. Usage: make migrate NAME=my_migration$(RESET)\n" && exit 1)
+	@$(COMPOSE) ps postgres | grep -q "running" || \
+		(printf "$(RED)>>> ERROR: postgres is not running. Run 'make up' first.$(RESET)\n" && exit 1)
+	@printf "$(CYAN)>>> Creating migration: $(NAME)...$(RESET)\n"
+	@$(COMPOSE) run --rm --entrypoint "" \
+		db-migration npx prisma migrate dev \
+		--schema=/app/prisma/schema.prisma \
+		--name=$(NAME)
+	@printf "$(GREEN)>>> Migration created. Run 'make generate' to rebuild shared types.$(RESET)\n"
 
 # --- Certificates generation ---------------------------------
 
@@ -88,6 +102,7 @@ restart: down up ##@Docker — Full stop + start (dev mode)
 
 rebuild: certs ##@Docker — Force rebuild without cache (DB preserved), then start
 	@printf "$(CYAN)>>> Rebuilding without cache...$(RESET)\n"
+	@$(COMPOSE) down --remove-orphans
 	@$(COMPOSE) build --no-cache
 	@$(COMPOSE) up -d
 	@printf "$(GREEN)>>> Rebuild complete.$(RESET)\n"
@@ -96,16 +111,38 @@ re: fclean up ##@Docker — Full wipe (DB included) + fresh build
 
 # --- Cleanup -------------------------------------------------
 
-clean: down ##@Cleanup — Stop services and remove stopped containers
-	@$(COMPOSE) rm -f
+clean-data: ##@Cleanup — Stop services and remove DB + Redis volumes (images preserved)
+	@printf "$(YELLOW)>>> Removing data volumes (postgres + redis)...$(RESET)\n"
+	@$(COMPOSE) down -v
+	@printf "$(GREEN)>>> Data volumes removed. Run 'make up' to restart fresh.$(RESET)\n"
 
-fclean: ##@Cleanup — Remove containers, volumes, and locally built images
+clean: ##@Cleanup — Stop services and remove containers (volumes and images preserved)
+	@printf "$(YELLOW)>>> Stopping services and removing containers...$(RESET)\n"
+	@$(COMPOSE) down --remove-orphans
+	@printf "$(GREEN)>>> Containers removed.$(RESET)\n"
+
+fclean: ##@Cleanup — Remove containers, volumes, locally-built images, and dangling layers
 	@printf "$(RED)>>> Full cleanup: containers, volumes, images...$(RESET)\n"
-	@$(COMPOSE) down -v --rmi local
+	@$(COMPOSE) down -v --rmi local --remove-orphans
+	@docker image prune -f
 	@printf "$(GREEN)>>> Cleanup complete.$(RESET)\n"
 
-prune: ##@Cleanup — Remove ALL project resources (containers, volumes, networks, images)
-	@$(COMPOSE) down -v --rmi all
+prune: ##@Cleanup — Wipe project resources and purge entire Docker system (WARNING: affects all projects)
+	@printf "$(RED)>>> WARNING: This will delete ALL Docker images, cache and volumes system-wide.$(RESET)\n"
+	@printf "$(YELLOW)>>> Press CTRL+C to abort, ENTER to continue...$(RESET)\n"
+	@read _
+	@printf "$(RED)>>> [1/5] Stopping project containers and volumes...$(RESET)\n"
+	@$(COMPOSE) down -v --rmi all --remove-orphans
+	@printf "$(RED)>>> [2/5] Pruning stopped containers...$(RESET)\n"
+	@docker container prune -f
+	@printf "$(RED)>>> [3/5] Pruning all images...$(RESET)\n"
+	@docker image prune -af
+	@printf "$(RED)>>> [4/5] Pruning volumes and networks...$(RESET)\n"
+	@docker volume prune -f
+	@docker network prune -f
+	@printf "$(RED)>>> [5/5] Pruning build cache (this may take a while)...$(RESET)\n"
+	@docker buildx prune -af
+	@printf "$(GREEN)>>> Full Docker system pruned.$(RESET)\n"
 
 # --- Observability -------------------------------------------
 

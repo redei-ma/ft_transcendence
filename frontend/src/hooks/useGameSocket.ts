@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { socketService } from '../services/socketServices';
-import { GameEvents } from '../game/game.events';
+import { GameEvents } from '@transcendence/types';
 import { PlayerSnapshot, BulletSnapshot } from '@transcendence/types';
 import { GameStatePayload, GameOverPayload, MapEmitPayload } from '../types/game.types';
 import { log } from '../configs/logger';

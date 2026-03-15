@@ -11,7 +11,7 @@ import {
 import { Server, Socket } from "socket.io";
 import { OnEvent } from "@nestjs/event-emitter"; // <--- IMPORTANTE: serve per ascoltare il Service
 import { MatchmakingService } from "./matchmaking.service";
-import { JoinQueueDto } from "./DTO/join-queue.dto"; // struttura del dato che ricevo
+import { JoinQueueDto } from "./dto/join-queue.dto"; // struttura del dato che ricevo
 import {
 	parseCookieHeader,
 	verifyJwtToken,
@@ -19,6 +19,7 @@ import {
 } from "@transcendence/auth";
 // CurrentUser decorator removed: not usable in WebSocket context without guard setup
 import { Logger } from "@nestjs/common";
+import { GameEvents } from "@transcendence/types";	
 // join_ranked, join_unranked, join_ai, join_local
 // matchmaking.gateway.ts
 @WebSocketGateway({ cors: true })
@@ -29,7 +30,7 @@ export class MatchmakingGateway
 	server: Server;
 
 	private readonly logger = new Logger(MatchmakingGateway.name);
-	private socketToUser = new Map<string, string>();
+	private socketToUser = new Map<string, number>();
 
 	constructor(private readonly matchmakingService: MatchmakingService) {}
 
@@ -73,11 +74,11 @@ export class MatchmakingGateway
         }
     }*/
 
-	@OnEvent("match.found.internal")
-	handleMatchFoundInternal(payload: { socketId: string; data: any }) {
+	@OnEvent(GameEvents.INTERNAL_MATCH_FOUND)
+	handleMatchFoundInternal(payload: { socketId: string; data: { status: string; matchId: string } }) {
 		const clientSocket = this.server.sockets.sockets.get(payload.socketId);
 		if (clientSocket) {
-			clientSocket.emit("match_found", payload.data);
+			clientSocket.emit(GameEvents.MATCH_FOUND, payload.data);
 			console.log(
 				`[Socket] Notifica inviata al socket: ${payload.socketId}`,
 			);
@@ -88,126 +89,63 @@ export class MatchmakingGateway
 		}
 	}
 
-	@SubscribeMessage("join_ranked")
+
+	@SubscribeMessage(GameEvents.JOIN_RANKED)
 	async handleJoinRanked(
 		@MessageBody() data: JoinQueueDto,
 		@ConnectedSocket() client: Socket,
 	) {
-		const userDbId: string = client.data.user.sub;
-		this.registerUserSocket(client.id, userDbId);
-		data.userDbId = userDbId;
+		const userId: number = client.data.user.sub;
 		data.socketId = client.id;
-		return await this.matchmakingService.processQueue(data);
+		this.registerUserSocket(client.id, userId);
+		return await this.matchmakingService.processQueue(userId, data);
 	}
 
-	@SubscribeMessage("join_unranked")
+	@SubscribeMessage(GameEvents.JOIN_UNRANKED)
 	async handleJoinUnranked(
 		@MessageBody() data: JoinQueueDto,
 		@ConnectedSocket() client: Socket,
 	) {
-		const userDbId: string = client.data.user.sub;
-		this.registerUserSocket(client.id, userDbId);
-		data.userDbId = userDbId;
+		const userId: number = client.data.user.sub;
 		data.socketId = client.id;
-		this.logger.log(
-			`User ${userDbId} joining unranked queue (Socket: ${client.id})`,
-		);
-		return await this.matchmakingService.processUnrankedQueue(data);
+		this.registerUserSocket(client.id, userId);
+		this.logger.log(`User ${userId} joining unranked queue (Socket: ${client.id})`);
+		return await this.matchmakingService.processUnrankedQueue(userId, data);
 	}
 
-	@SubscribeMessage("leave_queue")
-	async handleLeaveQueue(
-		@MessageBody() data: JoinQueueDto,
-		@ConnectedSocket() client: Socket,
-	) {
-		// Non è necessario registrare il socket qui, ma assicuriamoci che l'ID utente sia presente
-		return await this.matchmakingService.leaveQueue(data);
-	}
-
-	@SubscribeMessage("join_ai")
+	@SubscribeMessage(GameEvents.JOIN_AI)
 	async handleJoinAi(
 		@MessageBody() data: JoinQueueDto,
 		@ConnectedSocket() client: Socket,
 	) {
-		const userDbId: string = client.data.user.sub;
-		this.registerUserSocket(client.id, userDbId);
-		data.userDbId = userDbId;
+		const userId: number = client.data.user.sub;
 		data.socketId = client.id;
-		return await this.matchmakingService.startAiMatch(data);
+		this.registerUserSocket(client.id, userId);
+		return await this.matchmakingService.startAiMatch(userId, data);
 	}
 
-	// 3. JOIN LOCAL (Partita 1vs1 locale)
-	@SubscribeMessage("join_local")
+	@SubscribeMessage(GameEvents.JOIN_LOCAL)
 	async handleJoinLocal(
 		@MessageBody() data: JoinQueueDto,
 		@ConnectedSocket() client: Socket,
 	) {
-		const userDbId: string = client.data.user.sub;
-		this.registerUserSocket(client.id, userDbId);
-		data.userDbId = userDbId;
+		const userId: number = client.data.user.sub;
 		data.socketId = client.id;
-		return await this.matchmakingService.startLocalMatch(data);
+		this.registerUserSocket(client.id, userId);
+		return await this.matchmakingService.startLocalMatch(userId, data);
 	}
 
-	@SubscribeMessage("create_challenge")
-	async handleCreateChallenge(
-		@MessageBody() payload: { player: JoinQueueDto; opponentId: string },
+	@SubscribeMessage(GameEvents.LEAVE_QUEUE)
+	async handleLeaveQueue(
+		@MessageBody() data: JoinQueueDto,
 		@ConnectedSocket() client: Socket,
 	) {
-		// Registriamo il socket del challenger e aggiorniamo il suo socketId nel DTO
-		this.registerUserSocket(client.id, payload.player.userDbId);
-		payload.player.socketId = client.id;
-
-		return await this.matchmakingService.createChallenge(
-			payload.player,
-			payload.opponentId,
-		);
+		const userId: number = client.data.user.sub;
+		data.socketId = client.id;
+		return await this.matchmakingService.leaveQueue(userId, data);
 	}
 
-	@SubscribeMessage("reject_challenge")
-	async handleRejectChallenge(
-		@MessageBody()
-		payload: { challengerId: string; opponent: JoinQueueDto },
-		@ConnectedSocket() client: Socket,
-	) {
-		// L'opponent (chi rifiuta) aggiorna il suo socketId
-		payload.opponent.socketId = client.id;
-
-		return await this.matchmakingService.rejectChallenge(
-			payload.challengerId,
-			payload.opponent,
-		);
-	}
-
-	@SubscribeMessage("cancel_challenge")
-	async handleCancelChallenge(
-		@MessageBody() payload: { player: JoinQueueDto; opponentId: string },
-		@ConnectedSocket() client: Socket,
-	) {
-		// Il challenger aggiorna il suo socketId
-		payload.player.socketId = client.id;
-
-		return await this.matchmakingService.cancelChallenge(
-			payload.player,
-			payload.opponentId,
-		);
-	}
-
-	// Aggiungiamo anche Accept Challenge se mancava nel gateway
-	@SubscribeMessage("accept_challenge")
-	async handleAcceptChallenge(
-		@MessageBody()
-		payload: { challengerId: string; opponent: JoinQueueDto },
-		@ConnectedSocket() client: Socket,
-	) {
-		payload.opponent.socketId = client.id;
-		return await this.matchmakingService.acceptChallenge(
-			payload.challengerId,
-			payload.opponent,
-		);
-	}
-
-	private registerUserSocket(socketId: string, userId: string) {
+	private registerUserSocket(socketId: string, userId: number) {
 		this.socketToUser.set(socketId, userId);
 	}
 }

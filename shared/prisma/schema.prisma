@@ -13,6 +13,7 @@ enum UserStatus {
   ONLINE
   OFFLINE
   IN_GAME
+  IN_QUEUE
 }
 
 enum MatchMode {
@@ -169,6 +170,7 @@ model Match {
 
   participants    MatchParticipant[]
 
+  @@index([playedAt(sort: Desc)])
   @@map("matches")
 }
 
@@ -205,8 +207,8 @@ model Friendship {
   updatedAt  DateTime         @updatedAt @map("updated_at")
 
   @@unique([senderId, receiverId])
-  @@index([senderId])
-  @@index([receiverId])
+  @@index([senderId, status])
+  @@index([receiverId, status])
   @@map("friendships")
 }
 
@@ -221,6 +223,7 @@ model GameInvite {
   createdAt  DateTime     @default(now()) @map("created_at")
   expiresAt  DateTime     @map("expires_at")
 
+  @@index([senderId])
   @@index([receiverId])
   @@map("game_invites")
 }

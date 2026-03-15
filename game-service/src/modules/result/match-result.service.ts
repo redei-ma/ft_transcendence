@@ -34,7 +34,7 @@ export class MatchResultService {
 	async processMatchEnd(
 		matchResult: MatchResult,
 	): Promise<{ userId: number; achievementName: string }[]> {
-		const isLocal = matchResult.mode === MatchMode.LOCAL;
+		const skipStats = matchResult.mode === MatchMode.LOCAL || matchResult.mode === MatchMode.AI;
 
 		// Step 1: transaction — save match + update stats
 		const playersStats = await this.prisma.$transaction(async (tx) => {
@@ -61,8 +61,8 @@ export class MatchResultService {
 				})),
 			});
 
-			// LOCAL mode: save match only, no stats
-			if (isLocal) return [];
+			// LOCAL / AI mode: save match only, no stats
+			if (skipStats) return [];
 
 			// Pre-fetch current ELO for all real players (needed for ELO calculation)
 			const eloMap = new Map<number, number>();
@@ -95,8 +95,8 @@ export class MatchResultService {
 			return updatedStats;
 		});
 
-		// Step 2: check achievements (skip for LOCAL)
-		if (isLocal || playersStats.length === 0) return [];
+		// Step 2: check achievements (skip for LOCAL / AI)
+		if (skipStats || playersStats.length === 0) return [];
 
 		const unlocked = await this.achievementService.checkAchievements(
 			matchResult,
@@ -142,18 +142,18 @@ export class MatchResultService {
 		let eloChange = 0;
 		if (matchResult.mode === MatchMode.RANKED) {
 			const playerElo = eloMap.get(player.userId!) ?? ELO_DEFAULT;
-			let opponents: { elo: number; result: "win" | "loss" | "draw" }[];
+			let matchups: { opponentElo: number; result: "win" | "loss" | "draw" }[];
 
 			if (matchResult.type === MatchType.FFA) {
 				if (isDraw) {
 					// FFA draw: small adjustment against all other real players
-					opponents = matchResult.players
+					matchups = matchResult.players
 						.filter(
 							(p) =>
 								p.userId !== null && p.userId !== player.userId,
 						)
 						.map((p) => ({
-							elo: eloMap.get(p.userId!) ?? ELO_DEFAULT,
+							opponentElo: eloMap.get(p.userId!) ?? ELO_DEFAULT,
 							result: "draw" as const,
 						}));
 				} else if (isWinner) {
@@ -164,11 +164,11 @@ export class MatchResultService {
 								p.userId !== null && p.userId !== player.userId,
 						)
 						.map((p) => eloMap.get(p.userId!) ?? ELO_DEFAULT);
-					opponents =
+					matchups =
 						realOpponentElos.length > 0
 							? [
 									{
-										elo: Math.max(...realOpponentElos),
+										opponentElo: Math.max(...realOpponentElos),
 										result: "win" as const,
 									},
 								]
@@ -182,11 +182,11 @@ export class MatchResultService {
 						winnerPlayer?.userId != null
 							? (eloMap.get(winnerPlayer.userId) ?? ELO_DEFAULT)
 							: 500;
-					opponents = [{ elo: winnerElo, result: "loss" as const }];
+					matchups = [{ opponentElo: winnerElo, result: "loss" as const }];
 				}
 			} else {
 				// TEAM mode: each player vs every opponent on the other team
-				opponents = matchResult.players
+				matchups = matchResult.players
 					.filter(
 						(p) =>
 							p.userId !== null &&
@@ -204,11 +204,11 @@ export class MatchResultService {
 								: opponentIsWinner
 									? "loss"
 									: "draw";
-						return { elo: eloMap.get(p.userId!) ?? ELO_DEFAULT, result };
+						return { opponentElo: eloMap.get(p.userId!) ?? ELO_DEFAULT, result };
 					});
 			}
 
-			eloChange = calculateEloMulti(playerElo, opponents);
+			eloChange = calculateEloMulti(playerElo, matchups);
 		}
 
 		// Streak calculation

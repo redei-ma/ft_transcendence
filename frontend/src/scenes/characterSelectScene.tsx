@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { matchmakingSocket } from '../services/matchmakingSocket';
-import { GameEvents } from '../game/game.events';
+import { GameEvents } from '@transcendence/types';
 import { CharacterName, MatchMode, MatchType } from '@transcendence/types';
 import { theme } from '../configs/theme';
 import zeusImg from '../assets/ZeusSelection.png';

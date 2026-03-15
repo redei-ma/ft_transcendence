@@ -46,21 +46,21 @@ export function calculateEloDelta(
  * Each opponent contributes equally — the total delta is averaged.
  *
  * @param playerElo - Current ELO of the player.
- * @param opponents - List of opponents with their ELO and the player's result against them.
+ * @param matchups - List of matchups: each contains the opponent's ELO and the player's result against them.
  * @param k - K-factor (default: ELO_K = 32).
  * @returns Rounded integer ELO delta.
  */
 export function calculateEloMulti(
 	playerElo: number,
-	opponents: { elo: number; result: "win" | "draw" | "loss" }[],
+	matchups: { opponentElo: number; result: "win" | "draw" | "loss" }[],
 	k: number = ELO_K,
 ): number {
-	if (opponents.length === 0) return 0;
+	if (matchups.length === 0) return 0;
 
-	const totalDelta = opponents.reduce((sum, { elo: oppElo, result }) => {
-		const expected = expectedScore(playerElo, oppElo);
+	const totalDelta = matchups.reduce((sum, { opponentElo, result }) => {
+		const expected = expectedScore(playerElo, opponentElo);
 		return sum + k * (SCORE[result] - expected);
 	}, 0);
 
-	return Math.round(totalDelta / opponents.length);
+	return Math.round(totalDelta / matchups.length);
 }

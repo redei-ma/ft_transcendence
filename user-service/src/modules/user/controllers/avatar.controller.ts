@@ -41,7 +41,7 @@ export class AvatarController {
 	@ApiBearerAuth()
 	@Throttle({ global: { limit: 5, ttl: 60_000 } })
 	@ApiOperation({
-		summary: "Upload a custom avatar image (max 5MB, jpeg/png/gif/webp)",
+		summary: "Upload a custom avatar image (max 5MB, jpeg/png/webp)",
 	})
 	@ApiConsumes("multipart/form-data")
 	@ApiBody({
@@ -70,7 +70,6 @@ export class AvatarController {
 				const allowed = [
 					"image/jpeg",
 					"image/png",
-					"image/gif",
 					"image/webp",
 				];
 				if (allowed.includes(file.mimetype)) {
@@ -78,7 +77,7 @@ export class AvatarController {
 				} else {
 					callback(
 						new BadRequestException(
-							"Only image files are allowed (jpeg, png, gif, webp)",
+							"Only image files are allowed (jpeg, png, webp)",
 						),
 						false,
 					);

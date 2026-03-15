@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { matchmakingSocket } from '../services/matchmakingSocket';
-import { GameEvents } from '../game/game.events';
+import { GameEvents } from '@transcendence/types';
 import { theme } from '../configs/theme';
 
 interface QueueSceneProps {

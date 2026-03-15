@@ -6,12 +6,16 @@ export default defineConfig({
 	server: {
 		port: 5173,
 		host: true,
+		hmr: {
+			clientPort: 2443,
+		},
 		watch: {
 			usePolling: process.env.CHOKIDAR_USEPOLLING === "true",
 		},
-		allowedHosts: process.env.NGROK_DOMAIN
-			? [process.env.NGROK_DOMAIN]
-			: [],
+		allowedHosts: [
+			"frontend",
+			...(process.env.NGROK_DOMAIN ? [process.env.NGROK_DOMAIN] : []),
+		],
 		proxy: {
 			"/api": {
 				target: "http://localhost:3001",
