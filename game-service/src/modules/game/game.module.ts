@@ -12,6 +12,7 @@ import { NetworkConfig } from '@transcendence/types';
 import { MatchMakingController } from './controllers/game.Matchmaking.controller';
 import { JwtAuthGuard } from '@transcendence/auth';
 import { MatchResultModule } from '../result/match-result.module';
+import { AiService } from './core/game.aiService';
 
 @Module({
 	imports: [
@@ -29,6 +30,7 @@ import { MatchResultModule } from '../result/match-result.module';
 	],
 	controllers: [MatchMakingController],
 	providers: [
+		AiService,
 		GameService, 
 		GameGateway, 
 		PhysicsSystem, 

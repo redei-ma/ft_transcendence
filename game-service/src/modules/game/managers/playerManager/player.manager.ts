@@ -4,11 +4,12 @@ import { CombatSystem, PhysicsSystem } from "../../systems";
 import { World } from "../../core";
 import { SpellAttackState, MeleeAttackState, DefenceAttack } from "..";
 import { Vector, GameConfig, Player, InputQueue, AttackType } from "@transcendence/types";
+import { AiService } from "../../core/game.aiService";
 
 @Injectable()
 export class PlayerManager{
 
-	constructor(private readonly physicsSystem: PhysicsSystem, private readonly combatSystem: CombatSystem) {}
+	constructor(private readonly physicsSystem: PhysicsSystem, private readonly combatSystem: CombatSystem, private readonly aiService: AiService) {}
 
 	updateAllPlayers(players: Map<string, Player>, gameWorld: World, dt: number){
 		players.forEach(player => {
@@ -36,11 +37,11 @@ export class PlayerManager{
 	}
 
 	updateSinglePlayer(player: Player, gameWorld: World, players: Map<string, Player>, dt: number){
-		//if (player.isBot){
-			//this.AiService.updateInput(player, gameWorld, players, dt);
+		if (player.isBot){
+			this.aiService.updateInput(player, gameWorld, players ,dt);
 			//metodo che manda al collega lo stato attuale del mondo e aggiorna la queue di input del bot
-		//}
-		
+		}
+
 		if (player.isDead) return;
 
 		if (player.currentState){
