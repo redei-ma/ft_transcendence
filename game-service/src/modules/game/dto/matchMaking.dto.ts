@@ -1,4 +1,4 @@
-import { IsEnum, IsNotEmpty, IsBoolean, IsArray, IsString, ValidateNested, ValidateIf } from "class-validator";
+import { IsEnum, IsNotEmpty, IsBoolean, IsArray, IsString, ValidateNested, ValidateIf, IsNumber } from "class-validator";
 import { MatchMode, MatchType, CharacterName } from "@transcendence/types";
 import { Type } from "class-transformer";
 
@@ -8,8 +8,8 @@ export class MatchMakingDto{
 
 	@ValidateIf(object => object.userDbId !== null)
     @IsNotEmpty()
-    @IsString()
-    userDbId: string | null;
+    @IsNumber()
+    userDbId: number | null;
 
 	@IsBoolean()
 	isAiPlayer: boolean;

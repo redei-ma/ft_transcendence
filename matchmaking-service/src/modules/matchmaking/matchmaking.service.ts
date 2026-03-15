@@ -375,12 +375,12 @@ export class MatchmakingService {
 			playersData: [
 				{
 					characterName: part1.characterName,
-					userDbId: String(part1.userDbId),
+					userDbId: part1.userDbId,
 					isAiPlayer: part1.isAiPlayer,
 				},
 				{
 					characterName: part2.characterName,
-					userDbId: String(part2.userDbId),
+					userDbId: part2.userDbId,
 					isAiPlayer: part2.isAiPlayer,
 				},
 			],
@@ -574,7 +574,7 @@ export class MatchmakingService {
 				playersData: [participant1, participant2].map(
 					({ characterName, userDbId, isAiPlayer }) => ({
 						characterName: String(characterName),
-						userDbId: String(userDbId),
+						userDbId: userDbId,
 						isAiPlayer: !!isAiPlayer,
 					}),
 				),
@@ -697,7 +697,7 @@ export class MatchmakingService {
 			playersData: [participant1, participant2].map(
 				({ characterName, userDbId, isAiPlayer }) => ({
 					characterName,
-					userDbId: String(userDbId),
+					userDbId: userDbId,
 					isAiPlayer,
 				}),
 			),
@@ -808,7 +808,7 @@ export class MatchmakingService {
 
 		const participant2 = {
 			characterName: charP2,
-			userDbId: `ai_bot_${matchId}`, 
+			userDbId: null, 
 			isAiPlayer: true, 
 			rank: 0,
 			socketId: null,
@@ -829,7 +829,7 @@ export class MatchmakingService {
 			playersData: [participant1, participant2].map(
 				({ characterName, userDbId, isAiPlayer }) => ({
 					characterName: String(characterName),
-					userDbId: String(userDbId),
+					userDbId: userDbId,
 					isAiPlayer: !!isAiPlayer,
 				}),
 			),

@@ -2,7 +2,7 @@ import { CharacterName } from "@transcendence/types";
 
 export interface MatchMakingData{
 	characterName: CharacterName;
-	userDbId: string | null;
+	userDbId: number | null;
 	isAiPlayer: boolean;
 };
 

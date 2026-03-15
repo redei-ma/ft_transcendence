@@ -76,7 +76,11 @@ export class GameGateway
 		const isVerified: boolean = this.securityVerify(client);
 		if (!isVerified) return ;
 
-		const userDbId: string = String(client.data.user.sub);
+		const userDbId: number = client.data.user.sub;
+		if(isNaN(userDbId)){
+			this.sendErrorAndDisconnectClient(client, {status: ErrorCode.UNAUTHORIZED, message: 'invalid userId'});
+			return ;
+		}
 		this.logger.log(`New client arrived ${userDbId}`);
 
 		const gameData: GameData | undefined =

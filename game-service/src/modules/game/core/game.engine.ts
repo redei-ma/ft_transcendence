@@ -125,8 +125,8 @@ export class Engine{
 			for (const player of this.players.values()){
 				if (player.userDbId){
 
-					let userIdNumber: number | null = parseInt(player.userDbId);
-					if(isNaN(userIdNumber)){
+					let userIdNumber: number | null = player.userDbId;
+					if(userIdNumber && isNaN(userIdNumber)){
 						userIdNumber = null ;
 					}
 

@@ -70,7 +70,7 @@ export class PlayState implements IGameState {
 		this.logger.log("PlayState finished. Transitioning to EndState.");
 	}
 
-	reconnectPlayer(userDbId: string, socketId: string): ExitStatus {
+	reconnectPlayer(userDbId: number, socketId: string): ExitStatus {
 		let players: Player[] = [];
 		for (let currentPlayer of this.session.players.values()) {
 			if (currentPlayer.userDbId == userDbId)

@@ -22,7 +22,7 @@ export class GameService implements OnModuleInit, OnModuleDestroy{
 	private socketToGame: Map<string, string> = new Map();
 
 	/* In-memory Map to store users, linking userDbId to gameSessionID */
-	private userToGameData = new Map<string, GameData>();
+	private userToGameData = new Map<number, GameData>();
 
 	private server: Server;
 	private lastTime: number = performance.now();
@@ -322,7 +322,7 @@ export class GameService implements OnModuleInit, OnModuleDestroy{
 	}
 
 	//utlis
-	public	hasPendingMatch(userDbId: string): GameData | undefined{
+	public	hasPendingMatch(userDbId: number): GameData | undefined{
 		return (this.userToGameData.get(userDbId));
 	}
 
