@@ -46,15 +46,15 @@ export class GameGateway
 				AUTH_COOKIE_NAME,
 			);
 			if (!token) {
-				this.sendErrorAndDisconnectClient(client, {status: ErrorCode.UNAUTHORIZED, message: 'Invalid token'});
+				this.sendErrorAndDisconnectClient(client, {status: ErrorCode.UNAUTHORIZED_TOKEN, message: 'Invalid token'});
 				this.logger.warn("invalid token JWT reached");
 				return false;
 			}
-	
+
 			client.data.user = verifyJwtToken(token);
 		}
 		catch(error){
-			this.sendErrorAndDisconnectClient(client, {status: ErrorCode.UNAUTHORIZED, message: 'Invalid token'});
+			this.sendErrorAndDisconnectClient(client, {status: ErrorCode.UNAUTHORIZED_TOKEN, message: 'Invalid token'});
 			this.logger.warn("invalid jwt token reached");
 			return false;
 		}
