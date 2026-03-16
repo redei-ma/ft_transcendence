@@ -1,6 +1,6 @@
 ORDINE PRIORITARIO
 
-- Navbar non responsive
+- Guarda immagini chat di gio
 - Validazione dati in entrata frontend
 - Lagcompensations
 - Checka ghost number in 2FA

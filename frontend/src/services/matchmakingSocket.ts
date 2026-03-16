@@ -5,6 +5,11 @@ import { refreshToken } from "../site/services/authService";
 class MatchmakingSocket {
 	private socket: Socket | null = null;
 	private listenerMap = new Map<(data: any) => void, (data: any) => void>();
+	private onMatchError: ((code: string, message: string) => void) | null = null;
+
+	setOnMatchError(handler: ((code: string, message: string) => void) | null) {
+		this.onMatchError = handler;
+	}
 
 	connect(): Socket {
 		if (this.socket) {
@@ -53,6 +58,13 @@ class MatchmakingSocket {
 			if (refreshed) {
 				console.log("🔄 [Matchmaking] Reconnecting after auth fix...");
 				this.socket?.connect();
+			}
+		});
+
+		this.socket.on("exception", (data: { status: string; errorCode: string; message: string }) => {
+			console.error(`🚨 [Matchmaking] Exception from server: [${data.errorCode}] ${data.message}`);
+			if (this.onMatchError) {
+				this.onMatchError(data.errorCode, data.message);
 			}
 		});
 

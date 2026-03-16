@@ -158,7 +158,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
 
         <div style={{ width: "100%", display: "flex", flexDirection: "column", gap: "12px" }}>
           {(mode === "login" || mode === "register") && (
-            <input className="input-glow" type="text" placeholder="Username" value={formData.username}
+            <input className="input-glow" type="text" placeholder="Email / Username" value={formData.username}
               onChange={(e) => setFormData({ ...formData, username: e.target.value })} style={inputStyle} />
           )}
           {(mode === "register" || mode === "forgot") && (

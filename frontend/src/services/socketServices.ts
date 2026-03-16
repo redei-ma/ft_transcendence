@@ -7,6 +7,12 @@ export class SocketService {
 	private socket: Socket | null = null;
 	private listenerMap = new Map<(data: any) => void, (data: any) => void>();
 
+	private onGameError: ((code: string, message: string) => void) | null = null;
+
+	setOnGameError(handler: ((code: string, message: string) => void) | null) {
+		this.onGameError = handler;
+	}
+
 	public getSocket(): Socket | null {
 		return this.socket;
 	}
@@ -80,6 +86,13 @@ export class SocketService {
 			}
 		});
 
+		this.socket.on("exception", (data: { status: string; errorCode: string; message: string }) => {
+			console.error(`🚨 [GameSocket] Exception from server: [${data.errorCode}] ${data.message}`);
+			if (this.onGameError) {
+				this.onGameError(data.errorCode, data.message);
+			}
+		});
+
 		return this.socket;
 	}
 
@@ -129,6 +142,7 @@ export class SocketService {
 		}
 		console.log(`🔇 [GameSocket] Removing listener for [${event}]`);
 	}
+	
 }
 
 export const socketService = new SocketService();
