@@ -4,7 +4,7 @@ import * as Icons from '../components/Icons';
 import * as api from '../services/apiService';
 import { theme } from '../../configs/theme';
 import { NAVBAR_HEIGHT } from '../components/Navbar';
-import { LeaderboardEntry } from '../services/apiService'; // Importiamo il tipo esatto!
+import { LeaderboardEntry } from '../services/apiService';
 
 const rankColor = (r: number) => 
   r === 1 ? '#FFD700' : 
@@ -12,19 +12,41 @@ const rankColor = (r: number) =>
   r === 3 ? '#CD7F32' : 
   theme.colors.textSecondary;
 
+
 export default function LeaderboardPage() {
   const [search, setSearch] = useState('');
   const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
   const [loading, setLoading] = useState(true);
+  
+  // STATO PER LA RESPONSIVITÀ
+  const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
     api.getLeaderboard(1, 50).then((data) => {
       if (data?.entries) setEntries(data.entries);
       setLoading(false);
     });
+
+    // CONTROLLO LARGHEZZA (Gestisce in automatico la rotazione del telefono!)
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 650); // Sotto i 650px nascondiamo vittorie e sconfitte
+    };
+    
+    handleResize(); // Controllo iniziale
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
   }, []);
 
   const filtered = entries.filter((p) => p.username.toLowerCase().includes(search.toLowerCase()));
+
+  // Layout flessibile in base al dispositivo
+  const gridColumns = isMobile 
+    ? '50px 1fr 60px' // Mobile: solo Rank, Nome, ELO
+    : '60px 1fr 100px 80px 80px'; // Desktop/Landscape: tutto
+
+  const headers = isMobile 
+    ? ['RANK', 'PLAYER', 'ELO'] 
+    : ['RANK', 'PLAYER', 'ELO', 'WINS', 'LOSSES'];
 
   return (
     <div className="animate-fadeIn" style={{ 
@@ -36,9 +58,12 @@ export default function LeaderboardPage() {
       paddingRight: '24px'
     }}>
       <h1 style={{ 
-        fontFamily: theme.fonts.heading, fontSize: '32px', fontWeight: 700, 
-        color: theme.colors.gold, letterSpacing: '4px', textTransform: 'uppercase', marginBottom: '32px' 
-      }}>Leaderboard</h1>
+        fontFamily: theme.fonts.heading, fontSize: 'clamp(24px, 5vw, 32px)', fontWeight: 700, 
+        color: theme.colors.gold, letterSpacing: '4px', textTransform: 'uppercase', marginBottom: '32px',
+        textAlign: isMobile ? 'center' : 'left'
+      }}>
+        Leaderboard
+      </h1>
 
       <div style={{ position: 'relative', marginBottom: '24px' }}>
         <input className="input-glow" type="text" placeholder="Search players..." value={search}
@@ -53,15 +78,24 @@ export default function LeaderboardPage() {
         <p style={{ fontFamily: theme.fonts.heading, color: theme.colors.textMuted, textAlign: 'center', letterSpacing: '2px' }}>Loading...</p>
       ) : (
         <div style={{ border: `1px solid ${theme.colors.border}`, borderRadius: '4px', overflow: 'hidden' }}>
+          
+          {/* HEADER DELLA TABELLA */}
           <div style={{ 
-            display: 'grid', gridTemplateColumns: '60px 1fr 100px 80px 80px', padding: '12px 20px', 
+            display: 'grid', gridTemplateColumns: gridColumns, padding: '12px 16px', 
             background: theme.colors.bgPanel, borderBottom: `1px solid ${theme.colors.border}` 
           }}>
-            {['RANK', 'PLAYER', 'ELO', 'WINS', 'LOSSES'].map((h) => (
-              <span key={h} style={{ fontFamily: theme.fonts.heading, fontSize: '10px', fontWeight: 700, color: theme.colors.textMuted, letterSpacing: '1.5px' }}>{h}</span>
+            {headers.map((h) => (
+              <span key={h} style={{ 
+                fontFamily: theme.fonts.heading, fontSize: '10px', fontWeight: 700, 
+                color: theme.colors.textMuted, letterSpacing: '1.5px',
+                textAlign: h === 'PLAYER' ? 'left' : 'center' // Centra tutte le scritte tranne il Player
+              }}>
+                {h}
+              </span>
             ))}
           </div>
           
+          {/* RIGHE DELLA TABELLA */}
           {filtered.length === 0 ? (
             <div style={{ padding: '20px', textAlign: 'center', fontFamily: theme.fonts.mono, color: theme.colors.textMuted, fontSize: '13px' }}>
               No players found
@@ -69,20 +103,40 @@ export default function LeaderboardPage() {
           ) : (
             filtered.map((p) => (
               <div key={p.id} style={{
-                display: 'grid', gridTemplateColumns: '60px 1fr 100px 80px 80px',
-                padding: '14px 20px', alignItems: 'center',
+                display: 'grid', gridTemplateColumns: gridColumns,
+                padding: '14px 16px', alignItems: 'center',
                 borderBottom: `1px solid ${theme.colors.border}`, cursor: 'pointer', transition: 'background 0.15s',
               }}
                 onMouseEnter={(e) => e.currentTarget.style.background = theme.colors.bgPanel}
                 onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}>
-                <span style={{ fontFamily: theme.fonts.heading, fontWeight: 800, fontSize: '16px', color: rankColor(p.rank) }}>{p.rank}</span>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <img src={p.avatarUrl} alt="" style={{ width: 32, height: 32, borderRadius: '50%', border: `2px solid ${rankColor(p.rank)}` }} />
-                  <span style={{ fontFamily: theme.fonts.heading, fontWeight: 600, fontSize: '14px', color: theme.colors.textPrimary }}>{p.username}</span>
+                
+                {/* RANK */}
+                <span style={{ fontFamily: theme.fonts.heading, fontWeight: 800, fontSize: '16px', color: rankColor(p.rank), textAlign: 'center' }}>
+                  {p.rank}
+                </span>
+                
+                {/* AVATAR + PLAYER */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0 }}>
+                  <img src={p.avatarUrl} alt="" style={{ width: 32, height: 32, borderRadius: '50%', border: `2px solid ${rankColor(p.rank)}`, flexShrink: 0 }} />
+                  {/* Il textOverflow ellipsis taglia i nomi troppo lunghi su mobile mettendo i puntini */}
+                  <span style={{ fontFamily: theme.fonts.heading, fontWeight: 600, fontSize: '14px', color: theme.colors.textPrimary, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {p.username}
+                  </span>
                 </div>
-                <span style={{ fontFamily: theme.fonts.heading, fontWeight: 700, fontSize: '15px', color: theme.colors.gold }}>{p.eloCurrent}</span>
-                <span style={{ fontFamily: theme.fonts.mono, color: theme.colors.hpHigh, fontSize: '14px' }}>{p.totalWins}</span>
-                <span style={{ fontFamily: theme.fonts.mono, color: theme.colors.hpLow, fontSize: '14px' }}>{p.totalLosses}</span>
+                
+                {/* ELO */}
+                <span style={{ fontFamily: theme.fonts.heading, fontWeight: 700, fontSize: '15px', color: theme.colors.gold, textAlign: 'center' }}>
+                  {p.eloCurrent}
+                </span>
+                
+                {/* WINS E LOSSES (Mostrati solo se non è mobile) */}
+                {!isMobile && (
+                  <>
+                    <span style={{ fontFamily: theme.fonts.mono, color: theme.colors.hpHigh, fontSize: '14px', textAlign: 'center' }}>{p.totalWins}</span>
+                    <span style={{ fontFamily: theme.fonts.mono, color: theme.colors.hpLow, fontSize: '14px', textAlign: 'center' }}>{p.totalLosses}</span>
+                  </>
+                )}
+
               </div>
             ))
           )}

@@ -1,9 +1,7 @@
 ORDINE PRIORITARIO
 
-- Revisione React State
 - Navbar non responsive
 - Validazione dati in entrata frontend
 - Lagcompensations
-- Dopo registrazione puoi fare resend verification
 - Checka ghost number in 2FA
-- Trovsre modo di refreshare subito email
+- Trovare modo di refreshare subito email dopo modifica, o comunque gestirlo.
