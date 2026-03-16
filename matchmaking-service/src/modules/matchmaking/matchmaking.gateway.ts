@@ -45,6 +45,7 @@ export class MatchmakingGateway
 				AUTH_COOKIE_NAME,
 			);
 			if (!token) {
+				this.logger.warn(`[DEBUG] No JWT cookie for client ${client.id}. Cookie header: "${client.handshake.headers.cookie}"`);
 				client.disconnect();
 				return;
 			}
