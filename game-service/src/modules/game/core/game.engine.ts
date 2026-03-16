@@ -125,8 +125,6 @@ export class Engine{
 			this.endGameData.durationSeconds = this.gameTimer;
 			this.endGameData.endReason = reason;
 			for (const player of this.allPlayersHistory.values()){
-				if (player.userDbId){
-
 					let userIdNumber: number | null = player.userDbId;
 					if(userIdNumber && isNaN(userIdNumber)){
 						userIdNumber = null ;
@@ -140,7 +138,6 @@ export class Engine{
 						deaths: player.deads,
 						clutchMasterUnlook: player.clutchMasterUnlook,
 					});
-				}
 			}
 			if (winnerTeamId === -1)
 				winnerTeamId = null;
