@@ -93,9 +93,7 @@ export class GameGateway
 
 				this.gameService.setSocketToGame(socketId, gameData.gameId);
 
-				this.logger.log(
-					`New client arrived ${userDbId} in game ${gameData.gameId}`,
-				);
+				this.logger.log(`New client arrived ${userDbId} in game ${gameData.gameId}`);
 
 				client.join(gameData.gameId);
 
