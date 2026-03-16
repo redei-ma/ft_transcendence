@@ -56,7 +56,6 @@ enum InviteStatus {
 enum NotificationType {
   FRIEND_REQ
   FRIEND_ACCEPTED
-  GAME_INVITE
   ACHV_UNLOCKED
 }
 

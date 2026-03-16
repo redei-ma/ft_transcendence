@@ -4,7 +4,6 @@
 export const NotificationType = {
 	FRIEND_REQ: 'FRIEND_REQ',
 	FRIEND_ACCEPTED: 'FRIEND_ACCEPTED',
-	GAME_INVITE: 'GAME_INVITE',
 	ACHV_UNLOCKED: 'ACHV_UNLOCKED',
 } as const;
 

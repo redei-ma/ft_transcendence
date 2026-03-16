@@ -6,13 +6,16 @@ import {
 	ForbiddenException,
 } from "@nestjs/common";
 import { PrismaService } from "../../prisma/prisma.service";
-import { FriendshipStatus } from "@transcendence/types";
+import { FriendshipStatus, NotificationType } from "@transcendence/types";
 import {
 	FriendResponseDto,
 	FriendListResponseDto,
 	FriendRequestsResponseDto,
+	FriendshipStatusResponseDto,
 	RespondFriendRequestDto,
 } from "../dto";
+import { NotificationService } from "./notification.service";
+import { NotificationTemplates } from "../../notification/notification.templates";
 
 const FRIEND_USER_SELECT = {
 	id: true,
@@ -34,7 +37,10 @@ const FRIENDSHIP_SELECT = {
 
 @Injectable()
 export class FriendshipService {
-	constructor(private readonly prisma: PrismaService) {}
+	constructor(
+		private readonly prisma: PrismaService,
+		private readonly notificationService: NotificationService,
+	) {}
 
 	// ─── Read ──────────────────────────────────────────────────────────────────
 
@@ -109,6 +115,52 @@ export class FriendshipService {
 		};
 	}
 
+	/**
+	 * Returns the friendship status between userId and targetId.
+	 * All fields are null when no relationship exists.
+	 *
+	 * @param userId - ID of the requesting user (from JWT).
+	 * @param targetId - ID of the other user to check against.
+	 * @returns FriendshipStatusResponseDto — status, direction, and record ID (or nulls).
+	 * @throws BadRequestException (400) — if userId and targetId are the same.
+	 */
+	async getFriendshipStatus(
+		userId: number,
+		targetId: number,
+	): Promise<FriendshipStatusResponseDto> {
+		if (userId === targetId) {
+			throw new BadRequestException(
+				"Cannot check friendship status with yourself",
+			);
+		}
+
+		const target = await this.prisma.user.findUnique({
+			where: { id: targetId },
+			select: { id: true },
+		});
+		if (!target) throw new NotFoundException("User not found");
+
+		const friendship = await this.prisma.friendship.findFirst({
+			where: {
+				OR: [
+					{ senderId: userId, receiverId: targetId },
+					{ senderId: targetId, receiverId: userId },
+				],
+			},
+			select: { id: true, status: true, senderId: true },
+		});
+
+		if (!friendship) {
+			return { friendshipId: null, status: null, direction: null };
+		}
+
+		return {
+			friendshipId: friendship.id,
+			status: friendship.status,
+			direction: friendship.senderId === userId ? "SENT" : "RECEIVED",
+		};
+	}
+
 	// ─── Mutate ────────────────────────────────────────────────────────────────
 
 	/**
@@ -133,11 +185,17 @@ export class FriendshipService {
 			);
 		}
 
-		const target = await this.prisma.user.findUnique({
-			where: { id: targetId },
-			select: FRIEND_USER_SELECT,
-		});
-		if (!target) throw new NotFoundException("User not found");
+		const [sender, target] = await Promise.all([
+			this.prisma.user.findUnique({
+				where: { id: userId },
+				select: { username: true },
+			}),
+			this.prisma.user.findUnique({
+				where: { id: targetId },
+				select: FRIEND_USER_SELECT,
+			}),
+		]);
+		if (!sender || !target) throw new NotFoundException("User not found");
 
 		const existing = await this.prisma.friendship.findFirst({
 			where: {
@@ -153,7 +211,14 @@ export class FriendshipService {
 				throw new ConflictException("Already friends");
 			}
 			if (existing.status === FriendshipStatus.PENDING) {
-				throw new ConflictException("Friend request already pending");
+				if (existing.senderId === userId) {
+					throw new ConflictException(
+						"Friend request already pending",
+					);
+				}
+				throw new ConflictException(
+					"You already have a pending request from this user",
+				);
 			}
 			// REJECTED — reuse the row, resetting direction to current sender
 			const updated = await this.prisma.friendship.update({
@@ -164,6 +229,13 @@ export class FriendshipService {
 					status: FriendshipStatus.PENDING,
 				},
 				select: FRIENDSHIP_SELECT,
+			});
+			const { message } = NotificationTemplates.FRIEND_REQ(
+				sender.username,
+			);
+			await this.notificationService.createNotification(targetId, {
+				type: NotificationType.FRIEND_REQ,
+				message,
 			});
 			return {
 				id: updated.id,
@@ -184,6 +256,14 @@ export class FriendshipService {
 			select: FRIENDSHIP_SELECT,
 		});
 
+		const { message } = NotificationTemplates.FRIEND_REQ(
+			sender.username,
+		);
+		await this.notificationService.createNotification(targetId, {
+			type: NotificationType.FRIEND_REQ,
+			message,
+		});
+
 		return {
 			id: created.id,
 			friend: created.receiver,
@@ -196,23 +276,26 @@ export class FriendshipService {
 
 	/**
 	 * Accepts or rejects a PENDING request that targetId sent to userId.
+	 * On ACCEPTED, notifies the original sender.
 	 *
 	 * @param userId - ID of the receiver responding to the request (from JWT).
 	 * @param targetId - ID of the user who sent the request.
 	 * @param dto - Action to take: ACCEPTED or REJECTED.
+	 * @returns FriendResponseDto — the updated friendship record.
 	 * @throws NotFoundException (404) — if no pending request from targetId to userId exists.
 	 */
 	async respondFriendRequest(
 		userId: number,
 		targetId: number,
 		dto: RespondFriendRequestDto,
-	): Promise<void> {
+	): Promise<FriendResponseDto> {
 		const friendship = await this.prisma.friendship.findFirst({
 			where: {
 				senderId: targetId,
 				receiverId: userId,
 				status: FriendshipStatus.PENDING,
 			},
+			select: { id: true },
 		});
 
 		if (!friendship) {
@@ -221,7 +304,7 @@ export class FriendshipService {
 			);
 		}
 
-		await this.prisma.friendship.update({
+		const updated = await this.prisma.friendship.update({
 			where: { id: friendship.id },
 			data: {
 				status:
@@ -229,7 +312,27 @@ export class FriendshipService {
 						? FriendshipStatus.ACCEPTED
 						: FriendshipStatus.REJECTED,
 			},
+			select: FRIENDSHIP_SELECT,
 		});
+
+		if (dto.action === "ACCEPTED") {
+			const { message } = NotificationTemplates.FRIEND_ACCEPTED(
+				updated.receiver.username,
+			);
+			await this.notificationService.createNotification(targetId, {
+				type: NotificationType.FRIEND_ACCEPTED,
+				message,
+			});
+		}
+
+		return {
+			id: updated.id,
+			friend: updated.sender,
+			status: updated.status,
+			direction: "RECEIVED",
+			createdAt: updated.createdAt,
+			updatedAt: updated.updatedAt,
+		};
 	}
 
 	/**

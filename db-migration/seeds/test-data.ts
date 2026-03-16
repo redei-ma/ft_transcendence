@@ -554,24 +554,12 @@ export async function seedTestData(prisma: PrismaClient): Promise<void> {
 					'Congratulations! You\'ve earned the "Kill Machine" achievement.',
 				isRead: false,
 			},
-			{
-				userId: alice.id,
-				type: NotificationType.GAME_INVITE,
-				message: "diana invited you to play a match.",
-				isRead: true,
-			},
 			// Bob: unread notifications
 			{
 				userId: bob.id,
 				type: NotificationType.FRIEND_ACCEPTED,
 				message: "alice accepted your friend request.",
 				isRead: true,
-			},
-			{
-				userId: bob.id,
-				type: NotificationType.GAME_INVITE,
-				message: "alice invited you to play a match.",
-				isRead: false,
 			},
 			// Diana: all read
 			{

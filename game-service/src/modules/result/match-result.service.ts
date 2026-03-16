@@ -13,6 +13,7 @@ import {
 	AchievementService,
 	UpdatedPlayerStats,
 } from "../achievement/achievement.service";
+import { UserNotificationClient } from "../user/user-notification.client";
 
 @Injectable()
 export class MatchResultService {
@@ -21,6 +22,7 @@ export class MatchResultService {
 	constructor(
 		private readonly prisma: PrismaService,
 		private readonly achievementService: AchievementService,
+		private readonly userNotificationClient: UserNotificationClient,
 	) {}
 
 	/**
@@ -104,12 +106,18 @@ export class MatchResultService {
 		);
 
 		// Step 3: send notifications for unlocked achievements
-		// TODO: call user-service POST /internal/users/:id/notifications
-		// And send notificatio via websocket
 		for (const { userId, achievementName } of unlocked) {
-			this.logger.log(
-				`TODO: notify user ${userId} about "${achievementName}"`,
-			);
+			await this.userNotificationClient
+				.createNotification(
+					userId,
+					NotificationType.ACHV_UNLOCKED,
+					`Congratulations! You've earned the "${achievementName}" achievement.`,
+				)
+				.catch((err: unknown) => {
+					this.logger.error(
+						`Failed to notify user ${userId} for achievement "${achievementName}": ${err}`,
+					);
+				});
 		}
 
 		return unlocked;
