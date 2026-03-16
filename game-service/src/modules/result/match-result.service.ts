@@ -105,20 +105,20 @@ export class MatchResultService {
 			playersStats,
 		);
 
-		// Step 3: send notifications for unlocked achievements
-		for (const { userId, achievementName } of unlocked) {
-			await this.userNotificationClient
-				.createNotification(
-					userId,
-					NotificationType.ACHV_UNLOCKED,
-					`Congratulations! You've earned the "${achievementName}" achievement.`,
-				)
-				.catch((err: unknown) => {
-					this.logger.error(
-						`Failed to notify user ${userId} for achievement "${achievementName}": ${err}`,
-					);
-				});
-		}
+		// // Step 3: send notifications for unlocked achievements
+		// for (const { userId, achievementName } of unlocked) {
+		// 	await this.userNotificationClient
+		// 		.createNotification(
+		// 			userId,
+		// 			NotificationType.ACHV_UNLOCKED,
+		// 			`Congratulations! You've earned the "${achievementName}" achievement.`,
+		// 		)
+		// 		.catch((err: unknown) => {
+		// 			this.logger.error(
+		// 				`Failed to notify user ${userId} for achievement "${achievementName}": ${err}`,
+		// 			);
+		// 		});
+		// }
 
 		return unlocked;
 	}
