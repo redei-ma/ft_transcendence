@@ -66,7 +66,6 @@ src/
         GameOverOverlay.tsx
         HPBar.tsx
       gameUI.tsx
-    game.events.ts
     Game.tsx
   hooks/
     useGameSocket.ts
@@ -94,17 +93,9 @@ src/
       authService.ts
     styles/
       shared.ts
+  storage/
+    gameStore.ts
   types/
-    interfaces-enums/
-      db-data.interfaces.ts
-      dynamic-entitys.interfaces.ts
-      game-states.interfaces.ts
-      game.enums.ts
-      game.state.interface.ts
-      index.ts
-      map.interfaces.ts
-      matchmaking.interfaces.ts
-      player.states.interfaces.ts
     game.types.ts
     socket.types.ts
   App.tsx
@@ -339,7 +330,7 @@ export const theme = {
 
 <file path="src/game/core/gameCamera.ts">
 import * as THREE from 'three';
-import { GameConfig } from '../../configs/config';
+import { GameConfig } from '@transcendence/types';
 
 export class GameCamera {
   public camera: THREE.OrthographicCamera;
@@ -391,7 +382,7 @@ export class GameCamera {
  */
 
 import * as THREE from 'three';
-import { GameConfig } from '../../configs/config';
+import { GameConfig } from '@transcendence/types';
 
 export class GameScene {
   public scene: THREE.Scene;
@@ -489,13 +480,11 @@ export class GameScene {
 import { useRef, useMemo, useEffect } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
-import { AttackType } from '../../types/game.types';
+import { AttackType } from '@transcendence/types';
+import { useGameStore } from '../../storage/gameStore';
 
 interface AdeAuraProps {
-  isAttacking: boolean;
-  attackType: AttackType | undefined;
-  isDefending: boolean;
-  isDead: boolean;
+  playerId: string;
 }
 
 const SPHERE_RADIUS = 3.3;
@@ -507,98 +496,67 @@ const fireVertexShader = `
   uniform float uTime;
   uniform float uDeform;
   uniform float uRotation;
-
   varying vec3 vPosition;
   varying float vNoise;
-
   vec4 permute(vec4 x){ return mod(((x*34.0)+1.0)*x, 289.0); }
   vec4 taylorInvSqrt(vec4 r){ return 1.79284291400159 - 0.85373472095314 * r; }
-
   float snoise(vec3 v){
     const vec2 C = vec2(1.0/6.0, 1.0/3.0);
     const vec4 D = vec4(0.0, 0.5, 1.0, 2.0);
-
     vec3 i  = floor(v + dot(v, C.yyy));
     vec3 x0 = v - i + dot(i, C.xxx);
-
     vec3 g = step(x0.yzx, x0.xyz);
     vec3 l = 1.0 - g;
     vec3 i1 = min(g.xyz, l.zxy);
     vec3 i2 = max(g.xyz, l.zxy);
-
     vec3 x1 = x0 - i1 + C.xxx;
     vec3 x2 = x0 - i2 + C.yyy;
     vec3 x3 = x0 - D.yyy;
-
     i = mod(i, 289.0);
     vec4 p = permute(permute(permute(
               i.z + vec4(0.0, i1.z, i2.z, 1.0))
             + i.y + vec4(0.0, i1.y, i2.y, 1.0))
             + i.x + vec4(0.0, i1.x, i2.x, 1.0));
-
     float n_ = 1.0/7.0;
     vec3 ns = n_ * D.wyz - D.xzx;
-
     vec4 j = p - 49.0 * floor(p * ns.z * ns.z);
-
     vec4 x_ = floor(j * ns.z);
     vec4 y_ = floor(j - 7.0 * x_);
-
     vec4 x = x_ * ns.x + ns.yyyy;
     vec4 y = y_ * ns.x + ns.yyyy;
     vec4 h = 1.0 - abs(x) - abs(y);
-
     vec4 b0 = vec4(x.xy, y.xy);
     vec4 b1 = vec4(x.zw, y.zw);
-
     vec4 s0 = floor(b0)*2.0 + 1.0;
     vec4 s1 = floor(b1)*2.0 + 1.0;
     vec4 sh = -step(h, vec4(0.0));
-
     vec4 a0 = b0.xzyw + s0.xzyw*sh.xxyy;
     vec4 a1 = b1.xzyw + s1.xzyw*sh.zzww;
-
     vec3 p0 = vec3(a0.xy, h.x);
     vec3 p1 = vec3(a0.zw, h.y);
     vec3 p2 = vec3(a1.xy, h.z);
     vec3 p3 = vec3(a1.zw, h.w);
-
     vec4 norm = taylorInvSqrt(vec4(dot(p0,p0), dot(p1,p1), dot(p2,p2), dot(p3,p3)));
-    p0 *= norm.x;
-    p1 *= norm.y;
-    p2 *= norm.z;
-    p3 *= norm.w;
-
+    p0 *= norm.x; p1 *= norm.y; p2 *= norm.z; p3 *= norm.w;
     vec4 m = max(0.6 - vec4(dot(x0,x0), dot(x1,x1), dot(x2,x2), dot(x3,x3)), 0.0);
     m = m * m;
     return 42.0 * dot(m*m, vec4(dot(p0,x0), dot(p1,x1), dot(p2,x2), dot(p3,x3)));
   }
-
   void main() {
     vPosition = position;
-
     float lagAngle = -uRotation * 0.6;
     float cosA = cos(lagAngle);
     float sinA = sin(lagAngle);
-    vec3 rotatedPos = vec3(
-      position.x * cosA - position.z * sinA,
-      position.y,
-      position.x * sinA + position.z * cosA
-    );
-
+    vec3 rotatedPos = vec3(position.x * cosA - position.z * sinA, position.y, position.x * sinA + position.z * cosA);
     vec3 noiseBase = rotatedPos * 1.2 + vec3(0.0, -uTime * 1.2, 0.0);
     float n1 = snoise(noiseBase);
     float n2 = snoise(noiseBase * 2.3 + vec3(37.0, 0.0, 91.0)) * 0.5;
     float n3 = snoise(noiseBase * 4.7 + vec3(123.0, 0.0, 67.0)) * 0.25;
     float totalNoise = n1 + n2 + n3;
-
     vNoise = totalNoise;
-
     float upBias = 1.0 + max(0.0, normalize(position).y) * 0.5;
     float displacement = totalNoise * uDeform * upBias;
-
     vec3 newPosition = position + normalize(position) * displacement;
-
     gl_Position = projectionMatrix * modelViewMatrix * vec4(newPosition, 1.0);
   }
 `;
@@ -608,40 +566,27 @@ const fireFragmentShader = `
   uniform float uIntensity;
   uniform float uOpacity;
   uniform float uHeatBias;
-
   varying vec3 vPosition;
   varying float vNoise;
-
   void main() {
     float rawHeat = vNoise * 0.5 + normalize(vPosition).y * 0.15;
     float heat = clamp((rawHeat + 1.2) * (0.3 + uHeatBias), 0.0, 1.0);
-
     vec3 color;
-    if (heat < 0.25) {
-      color = mix(vec3(0.15, 0.0, 0.0), vec3(0.4, 0.02, 0.0), heat / 0.25);
-    } else if (heat < 0.45) {
-      color = mix(vec3(0.4, 0.02, 0.0), vec3(0.75, 0.08, 0.0), (heat - 0.25) / 0.2);
-    } else if (heat < 0.65) {
-      color = mix(vec3(0.75, 0.08, 0.0), vec3(1.0, 0.35, 0.0), (heat - 0.45) / 0.2);
-    } else if (heat < 0.82) {
-      color = mix(vec3(1.0, 0.35, 0.0), vec3(1.0, 0.7, 0.1), (heat - 0.65) / 0.17);
-    } else {
-      color = mix(vec3(1.0, 0.7, 0.1), vec3(1.0, 0.9, 0.6), (heat - 0.82) / 0.18);
-    }
-
+    if (heat < 0.25) color = mix(vec3(0.15, 0.0, 0.0), vec3(0.4, 0.02, 0.0), heat / 0.25);
+    else if (heat < 0.45) color = mix(vec3(0.4, 0.02, 0.0), vec3(0.75, 0.08, 0.0), (heat - 0.25) / 0.2);
+    else if (heat < 0.65) color = mix(vec3(0.75, 0.08, 0.0), vec3(1.0, 0.35, 0.0), (heat - 0.45) / 0.2);
+    else if (heat < 0.82) color = mix(vec3(1.0, 0.35, 0.0), vec3(1.0, 0.7, 0.1), (heat - 0.65) / 0.17);
+    else color = mix(vec3(1.0, 0.7, 0.1), vec3(1.0, 0.9, 0.6), (heat - 0.82) / 0.18);
     color *= uIntensity;
-
     float flicker = 0.93 + sin(uTime * 10.0 + vPosition.x * 7.0 + vPosition.z * 5.0 + vPosition.y * 3.0) * 0.07;
     color *= flicker;
-
     float noiseOpacity = smoothstep(-0.3, 0.5, vNoise);
     float finalOpacity = uOpacity * (0.5 + noiseOpacity * 0.5);
-
     gl_FragColor = vec4(color, finalOpacity);
   }
 `;
 
-export function AdeAura({ isAttacking, attackType, isDefending, isDead }: AdeAuraProps) {
+export function AdeAura({ playerId }: AdeAuraProps) {
   const groupRef = useRef<THREE.Group>(null);
   const innerFireRef = useRef<THREE.ShaderMaterial>(null);
   const outerFireRef = useRef<THREE.ShaderMaterial>(null);
@@ -650,39 +595,26 @@ export function AdeAura({ isAttacking, attackType, isDefending, isDead }: AdeAur
   const time = useRef(0);
   const activeEmbers = useRef(EMBER_COUNT_IDLE);
 
-  // Sistema braci completamente imperativo
   const embersSystem = useMemo(() => {
     const positions = new Float32Array(EMBER_COUNT_MAX * 3);
     const velocities = new Float32Array(EMBER_COUNT_MAX * 3);
     const lifetimes = new Float32Array(EMBER_COUNT_MAX);
     const maxLifetimes = new Float32Array(EMBER_COUNT_MAX);
-
     for (let i = 0; i < EMBER_COUNT_MAX; i++) {
-      positions[i * 3]     = 0;
-      positions[i * 3 + 1] = -1000;
-      positions[i * 3 + 2] = 0;
-      lifetimes[i] = 0;
-      maxLifetimes[i] = 0;
+      positions[i*3] = 0; positions[i*3+1] = -1000; positions[i*3+2] = 0;
+      lifetimes[i] = 0; maxLifetimes[i] = 0;
     }
-
     const geometry = new THREE.BufferGeometry();
     const posAttr = new THREE.BufferAttribute(positions, 3);
     posAttr.setUsage(THREE.DynamicDrawUsage);
     geometry.setAttribute('position', posAttr);
-
     const material = new THREE.PointsMaterial({
-      size: 0.08,
-      color: new THREE.Color(6, 1.5, 0),
-      transparent: true,
-      opacity: 0.7,
-      toneMapped: false,
-      blending: THREE.AdditiveBlending,
-      depthWrite: false,
+      size: 0.08, color: new THREE.Color(6, 1.5, 0),
+      transparent: true, opacity: 0.7, toneMapped: false,
+      blending: THREE.AdditiveBlending, depthWrite: false,
     });
-
     const points = new THREE.Points(geometry, material);
     points.frustumCulled = false;
-
     return { points, positions, velocities, lifetimes, maxLifetimes, geometry };
   }, []);
 
@@ -694,39 +626,34 @@ export function AdeAura({ isAttacking, attackType, isDefending, isDead }: AdeAur
   }, [embersSystem]);
 
   const innerUniforms = useMemo(() => ({
-    uTime: { value: 0 },
-    uIntensity: { value: 2.0 },
-    uDeform: { value: 0.3 },
-    uOpacity: { value: 0.9 },
-    uRotation: { value: 0 },
-    uHeatBias: { value: 0.05 },
+    uTime: { value: 0 }, uIntensity: { value: 2.0 }, uDeform: { value: 0.3 },
+    uOpacity: { value: 0.9 }, uRotation: { value: 0 }, uHeatBias: { value: 0.05 },
   }), []);
 
   const outerUniforms = useMemo(() => ({
-    uTime: { value: 0 },
-    uIntensity: { value: 1.2 },
-    uDeform: { value: 0.4 },
-    uOpacity: { value: 0.3 },
-    uRotation: { value: 0 },
-    uHeatBias: { value: 0.05 },
+    uTime: { value: 0 }, uIntensity: { value: 1.2 }, uDeform: { value: 0.4 },
+    uOpacity: { value: 0.3 }, uRotation: { value: 0 }, uHeatBias: { value: 0.05 },
   }), []);
 
   useFrame((_, delta) => {
     if (!groupRef.current) return;
 
+    const player = useGameStore.getState().gameState?.players.find(p => p.id === playerId);
+    if (!player || player.isDead) {
+      groupRef.current.visible = false;
+      return;
+    }
+    groupRef.current.visible = true;
+
     const dt = Math.min(delta, 0.05);
     time.current += dt;
-    const isMelee = isAttacking && attackType === AttackType.MELEE_ATTACK;
+    const isMelee = player.isAttacking && player.attackType === AttackType.MELEE_ATTACK;
+    const isDefending = player.isDefending;
 
     let targetScale = 1.0;
-    if (isDefending) {
-      targetScale = 0.85;
-    } else if (isMelee) {
-      targetScale = 1.15;
-    }
-    currentScale.current = THREE.MathUtils.lerp(
-      currentScale.current, targetScale, 1 - Math.pow(0.001, dt)
-    );
+    if (isDefending) targetScale = 0.85;
+    else if (isMelee) targetScale = 1.15;
+    currentScale.current = THREE.MathUtils.lerp(currentScale.current, targetScale, 1 - Math.pow(0.001, dt));
     groupRef.current.scale.setScalar(currentScale.current);
 
     const rotSpeed = isDefending ? 0.4 : isMelee ? 3.5 : 1.0;
@@ -734,9 +661,7 @@ export function AdeAura({ isAttacking, attackType, isDefending, isDead }: AdeAur
     groupRef.current.rotation.y = rotation.current;
 
     const targetEmbers = isDefending ? 30 : isMelee ? EMBER_COUNT_ATTACK : EMBER_COUNT_IDLE;
-    activeEmbers.current = Math.round(THREE.MathUtils.lerp(
-      activeEmbers.current, targetEmbers, 1 - Math.pow(0.01, dt)
-    ));
+    activeEmbers.current = Math.round(THREE.MathUtils.lerp(activeEmbers.current, targetEmbers, 1 - Math.pow(0.01, dt)));
 
     const timeSpeed = isDefending ? 0.4 : isMelee ? 1.3 : 0.9;
     const innerDeform = isDefending ? 0.12 : isMelee ? 0.4 : 0.3;
@@ -752,7 +677,6 @@ export function AdeAura({ isAttacking, attackType, isDefending, isDead }: AdeAur
       innerFireRef.current.uniforms.uRotation.value = rotation.current;
       innerFireRef.current.uniforms.uHeatBias.value = heatBias;
     }
-
     if (outerFireRef.current) {
       outerFireRef.current.uniforms.uTime.value = time.current * timeSpeed * 0.7;
       outerFireRef.current.uniforms.uDeform.value = outerDeform;
@@ -761,7 +685,6 @@ export function AdeAura({ isAttacking, attackType, isDefending, isDead }: AdeAur
       outerFireRef.current.uniforms.uHeatBias.value = heatBias;
     }
 
-    // Braci
     const { positions, velocities, lifetimes, maxLifetimes, geometry } = embersSystem;
     const posAttr = geometry.getAttribute('position') as THREE.BufferAttribute;
     const emberRate = isDefending ? 0.3 : isMelee ? 1.8 : 1.0;
@@ -769,119 +692,60 @@ export function AdeAura({ isAttacking, attackType, isDefending, isDead }: AdeAur
 
     for (let i = 0; i < EMBER_COUNT_MAX; i++) {
       if (i >= count) {
-        positions[i * 3]     = 0;
-        positions[i * 3 + 1] = -1000;
-        positions[i * 3 + 2] = 0;
-        posAttr.array[i * 3]     = 0;
-        posAttr.array[i * 3 + 1] = -1000;
-        posAttr.array[i * 3 + 2] = 0;
+        positions[i*3] = 0; positions[i*3+1] = -1000; positions[i*3+2] = 0;
+        posAttr.array[i*3] = 0; posAttr.array[i*3+1] = -1000; posAttr.array[i*3+2] = 0;
         continue;
       }
-
       lifetimes[i] -= dt * emberRate;
-
-      if (lifetimes[i] <= 0) {
-        respawnEmber(positions, velocities, lifetimes, maxLifetimes, i);
-      }
-
-      positions[i * 3]     += velocities[i * 3] * dt;
-      positions[i * 3 + 1] += velocities[i * 3 + 1] * dt;
-      positions[i * 3 + 2] += velocities[i * 3 + 2] * dt;
-
-      const x = positions[i * 3];
-      const z = positions[i * 3 + 2];
-      positions[i * 3]     += (-z * 0.5) * dt;
-      positions[i * 3 + 2] += (x * 0.5) * dt;
-
-      posAttr.array[i * 3]     = positions[i * 3];
-      posAttr.array[i * 3 + 1] = positions[i * 3 + 1];
-      posAttr.array[i * 3 + 2] = positions[i * 3 + 2];
+      if (lifetimes[i] <= 0) respawnEmber(positions, velocities, lifetimes, maxLifetimes, i);
+      positions[i*3]   += velocities[i*3] * dt;
+      positions[i*3+1] += velocities[i*3+1] * dt;
+      positions[i*3+2] += velocities[i*3+2] * dt;
+      const x = positions[i*3], z = positions[i*3+2];
+      positions[i*3]   += (-z * 0.5) * dt;
+      positions[i*3+2] += (x * 0.5) * dt;
+      posAttr.array[i*3]   = positions[i*3];
+      posAttr.array[i*3+1] = positions[i*3+1];
+      posAttr.array[i*3+2] = positions[i*3+2];
     }
-
     posAttr.needsUpdate = true;
   });
 
-  if (isDead) return null;
-
   return (
     <group ref={groupRef} position={[0, 2.4, 0]}>
-      {/* Core */}
       <mesh>
         <sphereGeometry args={[0.75, 16, 16]} />
-        <meshBasicMaterial
-          color={new THREE.Color(8, 2, 0)}
-          transparent
-          opacity={isDefending ? 0.5 : 0.3}
-          toneMapped={false}
-        />
+        <meshBasicMaterial color={new THREE.Color(8, 2, 0)} transparent opacity={0.3} toneMapped={false} />
       </mesh>
-
-      {/* Alone intermedio */}
       <mesh>
         <sphereGeometry args={[1.5, 16, 16]} />
-        <meshBasicMaterial
-          color={new THREE.Color(3, 0.3, 0)}
-          transparent
-          opacity={0.1}
-          toneMapped={false}
-        />
+        <meshBasicMaterial color={new THREE.Color(3, 0.3, 0)} transparent opacity={0.1} toneMapped={false} />
       </mesh>
-
-      {/* Sfera fuoco interna */}
       <mesh>
         <sphereGeometry args={[SPHERE_RADIUS * 0.75, 64, 64]} />
-        <shaderMaterial
-          ref={innerFireRef}
-          vertexShader={fireVertexShader}
-          fragmentShader={fireFragmentShader}
-          uniforms={innerUniforms}
-          transparent
-          side={THREE.FrontSide}
-          depthWrite={false}
-          blending={THREE.AdditiveBlending}
-        />
+        <shaderMaterial ref={innerFireRef} vertexShader={fireVertexShader} fragmentShader={fireFragmentShader} uniforms={innerUniforms} transparent side={THREE.FrontSide} depthWrite={false} blending={THREE.AdditiveBlending} />
       </mesh>
-
-      {/* Sfera fuoco esterna */}
       <mesh>
         <sphereGeometry args={[SPHERE_RADIUS, 48, 48]} />
-        <shaderMaterial
-          ref={outerFireRef}
-          vertexShader={fireVertexShader}
-          fragmentShader={fireFragmentShader}
-          uniforms={outerUniforms}
-          transparent
-          side={THREE.FrontSide}
-          depthWrite={false}
-          blending={THREE.AdditiveBlending}
-        />
+        <shaderMaterial ref={outerFireRef} vertexShader={fireVertexShader} fragmentShader={fireFragmentShader} uniforms={outerUniforms} transparent side={THREE.FrontSide} depthWrite={false} blending={THREE.AdditiveBlending} />
       </mesh>
-
-      {/* Braci — imperativo puro */}
       <primitive object={embersSystem.points} />
     </group>
   );
 }
 
-function respawnEmber(
-  pos: Float32Array, vel: Float32Array,
-  life: Float32Array, maxLife: Float32Array, i: number,
-) {
+function respawnEmber(pos: Float32Array, vel: Float32Array, life: Float32Array, maxLife: Float32Array, i: number) {
   const theta = Math.random() * Math.PI * 2;
   const phi = Math.random() * Math.PI;
   const r = SPHERE_RADIUS * (0.8 + Math.random() * 0.4);
-
-  pos[i * 3]     = r * Math.sin(phi) * Math.cos(theta);
-  pos[i * 3 + 1] = r * Math.cos(phi);
-  pos[i * 3 + 2] = r * Math.sin(phi) * Math.sin(theta);
-
-  vel[i * 3]     = (Math.random() - 0.5) * 2.0;
-  vel[i * 3 + 1] = 1.5 + Math.random() * 2.5;
-  vel[i * 3 + 2] = (Math.random() - 0.5) * 2.0;
-
-  const l = 0.3 + Math.random() * 0.6;
-  life[i] = l;
-  maxLife[i] = l;
+  pos[i*3] = r*Math.sin(phi)*Math.cos(theta);
+  pos[i*3+1] = r*Math.cos(phi);
+  pos[i*3+2] = r*Math.sin(phi)*Math.sin(theta);
+  vel[i*3] = (Math.random()-0.5)*2.0;
+  vel[i*3+1] = 1.5+Math.random()*2.5;
+  vel[i*3+2] = (Math.random()-0.5)*2.0;
+  const l = 0.3+Math.random()*0.6;
+  life[i] = l; maxLife[i] = l;
 }
 </file>
 
@@ -889,11 +753,12 @@ function respawnEmber(
 import { useRef, useMemo, useEffect } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
-import { BulletSnapshot, BulletHit } from '../../types/game.types';
+import { BulletSnapshot, BulletHit, CharacterName } from '@transcendence/types';
 import { ImpactEffect } from './ImpactEffect';
+import { useGameStore } from '../../storage/gameStore';
 
 interface BulletEntityProps {
-  snapshot: BulletSnapshot;
+  bulletId: string;
 }
 
 // Scaled 2x (was 0.5)
@@ -1009,26 +874,30 @@ function createLinePrimitive(geo: THREE.BufferGeometry, color: THREE.Color, opac
 
 // --- Entry ---
 
-export function BulletEntity({ snapshot }: BulletEntityProps) {
+export function BulletEntity({ bulletId }: BulletEntityProps) {
+  const snapshot = useGameStore((state) => state.gameState?.bullets.find(b => b.id === bulletId));
+
+  if (!snapshot) return null;
+
   const hasHit = snapshot.hit !== undefined && snapshot.hit !== BulletHit.NONE;
 
   if (hasHit) {
     return <ImpactEffect snapshot={snapshot} />;
   }
 
-  return snapshot.characterName === 'ZEUS'
-    ? <ZeusBullet snapshot={snapshot} />
-    : <AdeBullet snapshot={snapshot} />;
+  return snapshot.characterName === CharacterName.ZEUS
+    ? <ZeusBullet bulletId={bulletId} initialSnapshot={snapshot} />
+    : <AdeBullet bulletId={bulletId} initialSnapshot={snapshot} />;
 }
 
 // ============================================
 // ZEUS BULLET
 // ============================================
 
-function ZeusBullet({ snapshot }: { snapshot: BulletSnapshot }) {
+function ZeusBullet({ bulletId, initialSnapshot }: { bulletId: string, initialSnapshot: BulletSnapshot }) {
   const groupRef = useRef<THREE.Group>(null);
   const timeAccum = useRef(0);
-  const prevPos = useRef(new THREE.Vector3(snapshot.position.x, 1, snapshot.position.z));
+  const prevPos = useRef(new THREE.Vector3(initialSnapshot.position.x, 1, initialSnapshot.position.z));
 
   const boltCount = 6;
   const boltSegments = 6;
@@ -1061,9 +930,14 @@ function ZeusBullet({ snapshot }: { snapshot: BulletSnapshot }) {
 
   useFrame((_, delta) => {
     if (!groupRef.current) return;
+    
+    const currentGameState = useGameStore.getState().gameState;
+    const currentBullet = currentGameState?.bullets.find(b => b.id === bulletId);
+    if (!currentBullet) return;
+
     const dt = Math.min(delta, 0.05);
 
-    const target = new THREE.Vector3(snapshot.position.x, 1, snapshot.position.z);
+    const target = new THREE.Vector3(currentBullet.position.x, 1, currentBullet.position.z);
     groupRef.current.position.lerp(target, 1 - Math.pow(0.001, dt));
 
     const currentPos = groupRef.current.position;
@@ -1113,7 +987,7 @@ function ZeusBullet({ snapshot }: { snapshot: BulletSnapshot }) {
   });
 
   return (
-    <group ref={groupRef} position={[snapshot.position.x, 1, snapshot.position.z]}>
+    <group ref={groupRef} position={[initialSnapshot.position.x, 1, initialSnapshot.position.z]}>
       {/* Core */}
       <mesh>
         <sphereGeometry args={[BULLET_RADIUS * 0.35, 16, 16]} />
@@ -1153,7 +1027,7 @@ function ZeusBullet({ snapshot }: { snapshot: BulletSnapshot }) {
 
 const TRAIL_COUNT = 50;
 
-function AdeBullet({ snapshot }: { snapshot: BulletSnapshot }) {
+function AdeBullet({ bulletId, initialSnapshot }: { bulletId: string, initialSnapshot: BulletSnapshot }) {
   const groupRef = useRef<THREE.Group>(null);
   const fireMatRef = useRef<THREE.ShaderMaterial>(null);
   const time = useRef(0);
@@ -1212,10 +1086,15 @@ function AdeBullet({ snapshot }: { snapshot: BulletSnapshot }) {
 
   useFrame((_, delta) => {
     if (!groupRef.current) return;
+
+    const currentGameState = useGameStore.getState().gameState;
+    const currentBullet = currentGameState?.bullets.find(b => b.id === bulletId);
+    if (!currentBullet) return;
+
     const dt = Math.min(delta, 0.05);
     time.current += dt;
 
-    const target = new THREE.Vector3(snapshot.position.x, 1, snapshot.position.z);
+    const target = new THREE.Vector3(currentBullet.position.x, 1, currentBullet.position.z);
     groupRef.current.position.lerp(target, 1 - Math.pow(0.001, dt));
 
     if (fireMatRef.current) {
@@ -1286,7 +1165,7 @@ function AdeBullet({ snapshot }: { snapshot: BulletSnapshot }) {
   });
 
   return (
-    <group ref={groupRef} position={[snapshot.position.x, 1, snapshot.position.z]}>
+    <group ref={groupRef} position={[initialSnapshot.position.x, 1, initialSnapshot.position.z]}>
       {/* Core */}
       <mesh>
         <sphereGeometry args={[BULLET_RADIUS * 0.25, 10, 10]} />
@@ -1379,7 +1258,8 @@ export function GameArena({ mapData }: GameArenaProps) {
 import { useRef, useMemo, useState } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
-import { BulletSnapshot } from '../../types/game.types';
+import {BulletSnapshot} from '@transcendence/types';
+import {CharacterName} from '@transcendence/types';
 
 interface ImpactEffectProps {
   snapshot: BulletSnapshot;
@@ -1412,7 +1292,7 @@ export function ImpactEffect({ snapshot }: ImpactEffectProps) {
   const [expired, setExpired] = useState(false);
   const age = useRef(0);
 
-  const isZeus = snapshot.characterName === 'ZEUS';
+  const isZeus = snapshot.characterName === CharacterName.ZEUS;
 
   const particleColor = isZeus
     ? new THREE.Color(0, 4, 10)
@@ -1563,55 +1443,50 @@ export function ImpactEffect({ snapshot }: ImpactEffectProps) {
 import { useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
-import { PlayerSnapshot } from '../../types/game.types';
+import { CharacterName } from '@transcendence/types';
 import { ZeusAura } from './ZeusAura';
 import { AdeAura } from './AdeAura';
+import { useGameStore } from '../../storage/gameStore';
 
 interface PlayerEntityProps {
-  snapshot: PlayerSnapshot;
+  playerId: string;
 }
 
-export function PlayerEntity({ snapshot }: PlayerEntityProps) {
+export function PlayerEntity({ playerId }: PlayerEntityProps) {
   const groupRef = useRef<THREE.Group>(null);
-
-  const bodyColor = snapshot.characterName === 'ZEUS' ? 0x00008b : 0x8b0000;
+  const initialPlayer = useGameStore((state) => state.gameState?.players.find(p => p.id === playerId));
+  const bodyColor = initialPlayer?.characterName === CharacterName.ZEUS ? 0x00008b : 0x8b0000;
 
   useFrame((_, delta) => {
     if (!groupRef.current) return;
 
-    const target = new THREE.Vector3(snapshot.position.x, 0, snapshot.position.z);
+    const currentPlayer = useGameStore.getState().gameState?.players.find(p => p.id === playerId);
+    if (!currentPlayer) return;
+
+    const target = new THREE.Vector3(currentPlayer.position.x, 0, currentPlayer.position.z);
     groupRef.current.position.lerp(target, 1 - Math.pow(0.001, delta));
+    groupRef.current.rotation.y = currentPlayer.rotation;
   });
 
-  const opacity = snapshot.isDead ? 0.2 : 1.0;
+  if (!initialPlayer) return null;
+
+  const opacity = initialPlayer.isDead ? 0.2 : 1.0;
 
   return (
     <group ref={groupRef}>
-      {/* Body — raggio 2.4 (backend radius 1.6 × 1.5 visual) */}
-      <mesh position={[0, 2.4, 0]} rotation={[0, snapshot.rotation, 0]}>
+      <mesh position={[0, 2.4, 0]}>
         <sphereGeometry args={[2.4, 32, 32]} />
         <meshStandardMaterial
           color={bodyColor}
-          transparent={snapshot.isDead}
+          transparent={initialPlayer.isDead}
           opacity={opacity}
         />
       </mesh>
 
-      {/* Aura specifica per personaggio */}
-      {snapshot.characterName === 'ZEUS' ? (
-        <ZeusAura
-          isAttacking={snapshot.isAttacking}
-          attackType={snapshot.attackType}
-          isDefending={snapshot.isDefending}
-          isDead={snapshot.isDead}
-        />
+      {initialPlayer.characterName === CharacterName.ZEUS ? (
+        <ZeusAura playerId={playerId} />
       ) : (
-        <AdeAura
-          isAttacking={snapshot.isAttacking}
-          attackType={snapshot.attackType}
-          isDefending={snapshot.isDefending}
-          isDead={snapshot.isDead}
-        />
+        <AdeAura playerId={playerId} />
       )}
     </group>
   );
@@ -1622,18 +1497,14 @@ export function PlayerEntity({ snapshot }: PlayerEntityProps) {
 import { useRef, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
-import { AURA_CONFIG } from '../../configs/auraConfig';
-import { AttackType } from '../../types/game.types';
+import { AttackType } from '@transcendence/types';
+import { useGameStore } from '../../storage/gameStore';
 
 interface ZeusAuraProps {
-  isAttacking: boolean;
-  attackType: AttackType | undefined;
-  isDefending: boolean;
-  isDead: boolean;
+  playerId: string;
 }
 
-export function ZeusAura({ isAttacking, attackType, isDefending, isDead }: ZeusAuraProps) {
-  const config = AURA_CONFIG.zeus;
+export function ZeusAura({ playerId }: ZeusAuraProps) {
   const groupRef = useRef<THREE.Group>(null);
   const boltsRef = useRef<THREE.Group>(null);
   const sparksRef = useRef<THREE.Points>(null);
@@ -1648,8 +1519,7 @@ export function ZeusAura({ isAttacking, attackType, isDefending, isDead }: ZeusA
     const lines: THREE.BufferGeometry[] = [];
     for (let i = 0; i < boltCount; i++) {
       const geo = new THREE.BufferGeometry();
-      const positions = new Float32Array(segmentsPerBolt * 3);
-      geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+      geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(segmentsPerBolt * 3), 3));
       lines.push(geo);
     }
     return lines;
@@ -1660,52 +1530,48 @@ export function ZeusAura({ isAttacking, attackType, isDefending, isDead }: ZeusA
     const dir = new Float32Array(sparkCount * 3);
     const life = new Float32Array(sparkCount);
     const speed = new Float32Array(sparkCount);
-
-    for (let i = 0; i < sparkCount; i++) {
-      respawnSpark(pos, dir, life, speed, i);
-    }
-
+    for (let i = 0; i < sparkCount; i++) respawnSpark(pos, dir, life, speed, i);
     return { positions: pos, directions: dir, lifetimes: life, speeds: speed };
   }, []);
 
   useFrame((_, delta) => {
     if (!groupRef.current) return;
 
-    const isMelee = isAttacking && attackType === AttackType.MELEE_ATTACK;
+    // Lettura live dallo store — nessun re-render React
+    const player = useGameStore.getState().gameState?.players.find(p => p.id === playerId);
+    if (!player || player.isDead) {
+      groupRef.current.visible = false;
+      return;
+    }
+    groupRef.current.visible = true;
+
+    const isMelee = player.isAttacking && player.attackType === AttackType.MELEE_ATTACK;
+    const isDefending = player.isDefending;
 
     let targetScale = 1.0;
-    if (isDefending) {
-      targetScale = 0.85;
-    } else if (isMelee) {
-      targetScale = 1.6;
-    }
-    currentScale.current = THREE.MathUtils.lerp(
-      currentScale.current, targetScale, 1 - Math.pow(0.001, delta)
-    );
+    if (isDefending) targetScale = 0.85;
+    else if (isMelee) targetScale = 1.6;
+
+    currentScale.current = THREE.MathUtils.lerp(currentScale.current, targetScale, 1 - Math.pow(0.001, delta));
     groupRef.current.scale.setScalar(currentScale.current);
 
     const speedMult = isDefending ? 0.4 : isMelee ? 3.0 : 1.0;
     const jitterMult = isDefending ? 0.3 : isMelee ? 1.5 : 1.0;
     const refreshRate = isDefending ? 0.12 : isMelee ? 0.03 : 0.05;
 
-    // --- Fulmini ---
     timeAccum.current += delta;
     if (boltsRef.current && timeAccum.current > refreshRate) {
       timeAccum.current = 0;
       regenerateBolts(boltLines, segmentsPerBolt, jitterMult);
     }
 
-    // --- Scintille ---
     if (sparksRef.current) {
       const posAttr = sparksRef.current.geometry.getAttribute('position') as THREE.BufferAttribute;
       const { positions, directions, lifetimes, speeds } = sparkData;
 
       for (let i = 0; i < sparkCount; i++) {
         lifetimes[i] -= delta * 1.2 * speedMult;
-
-        if (lifetimes[i] <= 0) {
-          respawnSpark(positions, directions, lifetimes, speeds, i);
-        }
+        if (lifetimes[i] <= 0) respawnSpark(positions, directions, lifetimes, speeds, i);
 
         positions[i * 3]     += directions[i * 3]     * speeds[i] * delta * speedMult;
         positions[i * 3 + 1] += directions[i * 3 + 1] * speeds[i] * delta * speedMult;
@@ -1719,134 +1585,73 @@ export function ZeusAura({ isAttacking, attackType, isDefending, isDead }: ZeusA
         posAttr.array[i * 3 + 1] = positions[i * 3 + 1];
         posAttr.array[i * 3 + 2] = positions[i * 3 + 2];
       }
-
       posAttr.needsUpdate = true;
     }
   });
 
-  if (isDead) return null;
-
-  const coreOpacity = isDefending ? 0.5 : 0.35;
-  const innerOpacity = isDefending ? 0.12 : 0.06;
+  const coreOpacity = 0.35;
+  const innerOpacity = 0.06;
 
   return (
     <group ref={groupRef} position={[0, 2.4, 0]}>
-      {/* Core glow — 0.9 (was 0.6) */}
       <mesh>
         <sphereGeometry args={[0.9, 16, 16]} />
-        <meshBasicMaterial
-          color={new THREE.Color(0, 4, 10)}
-          transparent
-          opacity={coreOpacity}
-          toneMapped={false}
-        />
+        <meshBasicMaterial color={new THREE.Color(0, 4, 10)} transparent opacity={coreOpacity} toneMapped={false} />
       </mesh>
 
-      {/* Inner sphere — 3.0 (was 2.0) */}
       <mesh>
         <sphereGeometry args={[3.0, 24, 24]} />
-        <meshBasicMaterial
-          color={new THREE.Color(0, 0.5, 1)}
-          transparent
-          opacity={innerOpacity}
-          toneMapped={false}
-          side={THREE.DoubleSide}
-        />
+        <meshBasicMaterial color={new THREE.Color(0, 0.5, 1)} transparent opacity={innerOpacity} toneMapped={false} side={THREE.DoubleSide} />
       </mesh>
 
-      {/* Lightning bolts */}
       <group ref={boltsRef}>
         {boltLines.map((geo, i) => {
-          const line = new THREE.Line(
-            geo,
-            new THREE.LineBasicMaterial({
-              color: new THREE.Color(0, 2, 5),
-              transparent: true,
-              opacity: 0.9,
-              toneMapped: false,
-              blending: THREE.AdditiveBlending,
-            })
-          );
+          const line = new THREE.Line(geo, new THREE.LineBasicMaterial({
+            color: new THREE.Color(0, 2, 5), transparent: true, opacity: 0.9, toneMapped: false, blending: THREE.AdditiveBlending,
+          }));
           return <primitive key={i} object={line} />;
         })}
       </group>
 
-      {/* Sparks */}
       <points ref={sparksRef}>
         <bufferGeometry>
-          <bufferAttribute
-            attach="attributes-position"
-            args={[sparkData.positions, 3]}
-          />
+          <bufferAttribute attach="attributes-position" args={[sparkData.positions, 3]} />
         </bufferGeometry>
-        <pointsMaterial
-          size={0.08}
-          color={new THREE.Color(0, 4, 10)}
-          transparent
-          opacity={0.9}
-          toneMapped={false}
-          blending={THREE.AdditiveBlending}
-          depthWrite={false}
-        />
+        <pointsMaterial size={0.08} color={new THREE.Color(0, 4, 10)} transparent opacity={0.9} toneMapped={false} blending={THREE.AdditiveBlending} depthWrite={false} />
       </points>
     </group>
   );
 }
 
-function respawnSpark(
-  pos: Float32Array, dir: Float32Array,
-  life: Float32Array, speed: Float32Array, i: number,
-) {
+function respawnSpark(pos: Float32Array, dir: Float32Array, life: Float32Array, speed: Float32Array, i: number) {
   const theta = Math.random() * Math.PI * 2;
   const phi = Math.acos(2 * Math.random() - 1);
-  // Spawn radius — 1.8 + random 1.2 (was 1.2 + 0.8)
   const r = 1.8 + Math.random() * 1.2;
-
   const x = Math.sin(phi) * Math.cos(theta);
   const y = Math.sin(phi) * Math.sin(theta);
   const z = Math.cos(phi);
-
-  pos[i * 3]     = x * r;
-  pos[i * 3 + 1] = y * r;
-  pos[i * 3 + 2] = z * r;
-
-  dir[i * 3]     = x;
-  dir[i * 3 + 1] = y;
-  dir[i * 3 + 2] = z;
-
+  pos[i*3] = x*r; pos[i*3+1] = y*r; pos[i*3+2] = z*r;
+  dir[i*3] = x; dir[i*3+1] = y; dir[i*3+2] = z;
   speed[i] = 1.5 + Math.random() * 2.5;
   life[i] = 0.3 + Math.random() * 0.5;
 }
 
-function regenerateBolts(
-  geometries: THREE.BufferGeometry[],
-  segments: number,
-  jitterMult: number,
-) {
-  // Bolt radius — 4.5 (was 3.0)
+function regenerateBolts(geometries: THREE.BufferGeometry[], segments: number, jitterMult: number) {
   const radius = 4.5;
   const jitter = 0.5 * jitterMult;
-
   for (const geo of geometries) {
     const posAttr = geo.getAttribute('position') as THREE.BufferAttribute;
-
-    const startTheta = Math.random() * Math.PI * 2;
-    const startPhi = Math.acos(2 * Math.random() - 1);
-    const endTheta = startTheta + (Math.random() - 0.5) * Math.PI;
-    const endPhi = startPhi + (Math.random() - 0.5) * Math.PI * 0.5;
-
+    const sT = Math.random()*Math.PI*2, sP = Math.acos(2*Math.random()-1);
+    const eT = sT+(Math.random()-0.5)*Math.PI, eP = sP+(Math.random()-0.5)*Math.PI*0.5;
     for (let j = 0; j < segments; j++) {
-      const t = j / (segments - 1);
-      const theta = startTheta + (endTheta - startTheta) * t;
-      const phi = startPhi + (endPhi - startPhi) * t;
-      const r = radius * (0.6 + Math.random() * 0.4);
-      const jitterStrength = Math.sin(t * Math.PI) * jitter;
-
-      posAttr.array[j * 3]     = r * Math.sin(phi) * Math.cos(theta) + (Math.random() - 0.5) * jitterStrength;
-      posAttr.array[j * 3 + 1] = r * Math.sin(phi) * Math.sin(theta) + (Math.random() - 0.5) * jitterStrength;
-      posAttr.array[j * 3 + 2] = r * Math.cos(phi) + (Math.random() - 0.5) * jitterStrength;
+      const t = j/(segments-1);
+      const theta = sT+(eT-sT)*t, phi = sP+(eP-sP)*t;
+      const r = radius*(0.6+Math.random()*0.4);
+      const js = Math.sin(t*Math.PI)*jitter;
+      posAttr.array[j*3]   = r*Math.sin(phi)*Math.cos(theta)+(Math.random()-0.5)*js;
+      posAttr.array[j*3+1] = r*Math.sin(phi)*Math.sin(theta)+(Math.random()-0.5)*js;
+      posAttr.array[j*3+2] = r*Math.cos(phi)+(Math.random()-0.5)*js;
     }
-
     posAttr.needsUpdate = true;
   }
 }
@@ -1854,8 +1659,8 @@ function regenerateBolts(
 
 <file path="src/game/input/inputManager.ts">
 import { socketService } from '../../services/socketServices';
-import { GameEvents } from '../game.events';
-import { AttackType } from '../../types/game.types';
+import { GameEvents } from '@transcendence/types';
+import { AttackType } from '@transcendence/types';
 import { log } from '../../configs/logger';
 
 interface GameInputPayload {
@@ -2007,7 +1812,7 @@ export class InputManager {
 <file path="src/game/UI/components/GameChat.tsx">
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { socketService } from '../../../services/socketServices';
-import { GameEvents } from '../../game.events';
+import { GameEvents } from '@transcendence/types';
 import { theme } from '../../../configs/theme';
 
 interface GameChatProps {
@@ -2260,8 +2065,10 @@ export default function GameChat({ myUserId, isVisible }: GameChatProps) {
 </file>
 
 <file path="src/game/UI/components/GameOverOverlay.tsx">
-import { GameOverPayload, PlayerSnapshot } from '../../../types/game.types';
+import { GameOverPayload } from '../../../types/game.types';
+import {PlayerSnapshot} from '@transcendence/types';
 import { theme } from '../../../configs/theme';
+import {CharacterName} from '@transcendence/types';
 
 interface GameOverOverlayProps {
   gameOver: GameOverPayload;
@@ -2280,8 +2087,8 @@ export function GameOverOverlay({ gameOver, players, onPlayAgain, onQuit }: Game
   const displayName = winnerName.charAt(0).toUpperCase() + winnerName.slice(1);
   const isDraw = winners.length === 0;
 
-  const color = winnerName === 'zeus' ? theme.colors.zeus : theme.colors.ade;
-  const glow = winnerName === 'zeus' ? theme.colors.zeusGlow : theme.colors.adeGlow;
+  const color = winnerName === CharacterName.ZEUS ? theme.colors.zeus : theme.colors.ade;
+  const glow = winnerName === CharacterName.ZEUS ? theme.colors.zeusGlow : theme.colors.adeGlow;
 
   return (
     <div style={{
@@ -2444,7 +2251,7 @@ function HeaderCell({ children, center }: { children: string; center?: boolean }
 }
 
 function PlayerRow({ player, isWinner }: { player: PlayerSnapshot; isWinner: boolean }) {
-  const playerColor = player.characterName === 'ZEUS' ? theme.colors.zeus : theme.colors.ade;
+  const playerColor = player.characterName === CharacterName.ZEUS ? theme.colors.zeus : theme.colors.ade;
   const displayName = player.characterName.charAt(0).toUpperCase() + player.characterName.slice(1);
 
   return (
@@ -2497,6 +2304,7 @@ function StatCell({ children }: { children: string }) {
 <file path="src/game/UI/components/HPBar.tsx">
 import { Vector } from '../../../types/game.types';
 import { theme } from '../../../configs/theme';
+import {CharacterName} from '@transcendence/types';
 
 interface HPBarProps {
   characterName: string;
@@ -2526,8 +2334,8 @@ export default function HPBar({
   return (
     <div style={{
       position: 'absolute',
-      top: characterName === 'ZEUS' ? '20px' : 'auto',
-      bottom: characterName === 'ADE' ? '20px' : 'auto',
+      top: characterName === CharacterName.ZEUS ? '20px' : 'auto',
+      bottom: characterName === CharacterName.ADE ? '20px' : 'auto',
       left: '20px',
       width: '120px',
       fontFamily: theme.fonts.mono,
@@ -2600,32 +2408,46 @@ export default function HPBar({
 </file>
 
 <file path="src/game/UI/gameUI.tsx">
-import { GameStatePayload, MapEmitPayload } from '../../types/game.types';
+import { MapEmitPayload } from '../../types/game.types';
 import { theme } from '../../configs/theme';
 import HPBar from './components/HPBar';
+import { CharacterName } from '@transcendence/types';
+import { useGameStore } from '../../storage/gameStore';
 
 interface GameUIProps {
   character: string;
   isConnected: boolean;
   mapData: MapEmitPayload | null;
-  playersCount: number;
   maxPlayers: number;
   gameOver: any;
-  gameState: GameStatePayload | null;
 }
 
 export default function GameUI({
   character,
   isConnected,
   mapData,
-  playersCount,
   maxPlayers,
   gameOver,
-  gameState,
 }: GameUIProps) {
+  // Abbonamento chirurgico: ri-renderizza solo quando HP o stato death/disconnect cambia
+  const playerHpData = useGameStore((state) =>
+    state.gameState?.players.map(p => ({
+      id: p.id,
+      characterName: p.characterName,
+      hp: p.hp,
+      isDead: p.isDead,
+      isDisconnected: p.isDisconnected,
+      disconnectionTimer: p.disconnectionTimer,
+      respawnTimer: p.respawnTimer,
+      position: p.position,
+    })) || []
+  );
+
+  const playersCount = playerHpData.length;
+
   return (
     <>
-      {gameState?.players.map((player) => (
+      {playerHpData.map((player) => (
         <HPBar
           key={player.id}
           characterName={player.characterName}
@@ -2637,16 +2459,15 @@ export default function GameUI({
         />
       ))}
 
-      {gameState?.players.map((player) => {
+      {playerHpData.map((player) => {
         if (!player.isDead) return null;
-
         return (
           <div
             key={`death-${player.id}`}
             style={{
               position: 'absolute',
-              top: player.characterName === 'ZEUS' ? '60px' : 'auto',
-              bottom: player.characterName === 'ADE' ? '60px' : 'auto',
+              top: player.characterName === CharacterName.ZEUS ? '60px' : 'auto',
+              bottom: player.characterName === CharacterName.ADE ? '60px' : 'auto',
               left: '20px',
               pointerEvents: 'none',
               zIndex: 1001,
@@ -2654,22 +2475,15 @@ export default function GameUI({
             }}
           >
             <div style={{
-              color: theme.colors.dead,
-              fontSize: '20px',
-              fontWeight: 'bold',
+              color: theme.colors.dead, fontSize: '20px', fontWeight: 'bold',
               textShadow: '2px 2px 6px rgba(0,0,0,1)',
-              animation: 'pulse 1s infinite',
-              marginBottom: '4px',
+              animation: 'pulse 1s infinite', marginBottom: '4px',
             }}>
               {player.characterName} DEAD
             </div>
-
             <div style={{
-              color: theme.colors.afk,
-              fontSize: '14px',
-              fontWeight: 'bold',
-              textShadow: '2px 2px 4px rgba(0,0,0,1)',
-              textAlign: 'center',
+              color: theme.colors.afk, fontSize: '14px', fontWeight: 'bold',
+              textShadow: '2px 2px 4px rgba(0,0,0,1)', textAlign: 'center',
             }}>
               Respawn in: {Math.ceil(5 - player.respawnTimer)}s
             </div>
@@ -2678,41 +2492,27 @@ export default function GameUI({
       })}
 
       <div style={{
-        position: 'absolute',
-        top: 20,
-        left: 20,
-        color: theme.colors.textPrimary,
-        fontFamily: theme.fonts.mono,
-        fontSize: '13px',
-        backgroundColor: theme.colors.bgPanel,
-        padding: '14px',
-        borderRadius: '8px',
+        position: 'absolute', top: 20, left: 20,
+        color: theme.colors.textPrimary, fontFamily: theme.fonts.mono,
+        fontSize: '13px', backgroundColor: theme.colors.bgPanel,
+        padding: '14px', borderRadius: '8px',
         border: `1px solid ${theme.colors.border}`,
-        minWidth: '220px',
-        zIndex: 100,
+        minWidth: '220px', zIndex: 100,
       }}>
         <div style={{
-          fontSize: '16px',
-          fontWeight: 'bold',
-          fontFamily: theme.fonts.heading,
-          marginBottom: '10px',
+          fontSize: '16px', fontWeight: 'bold',
+          fontFamily: theme.fonts.heading, marginBottom: '10px',
           color: theme.colors.textPrimary,
-        }}>
-          CLASH OF OLYMPUS
-        </div>
+        }}>CLASH OF OLYMPUS</div>
         <div style={{ color: isConnected ? theme.colors.hpHigh : theme.colors.afk, marginBottom: '4px' }}>
           Connection: {isConnected ? 'Connected' : 'Connecting...'}
         </div>
         <div style={{ color: mapData ? theme.colors.hpHigh : theme.colors.afk, marginBottom: '4px' }}>
           Map: {mapData ? 'Loaded' : 'Waiting...'}
         </div>
-        <div style={{ marginBottom: '4px' }}>
-          Players: {playersCount}/{maxPlayers}
-        </div>
+        <div style={{ marginBottom: '4px' }}>Players: {playersCount}/{maxPlayers}</div>
         {gameOver && (
-          <div style={{ marginTop: '8px', color: theme.colors.dead, fontWeight: 'bold' }}>
-            GAME OVER
-          </div>
+          <div style={{ marginTop: '8px', color: theme.colors.dead, fontWeight: 'bold' }}>GAME OVER</div>
         )}
       </div>
 
@@ -2727,40 +2527,20 @@ export default function GameUI({
 }
 </file>
 
-<file path="src/game/game.events.ts">
-export enum GameEvents {
-  // Matchmaking — verso Leonardo (socket logic-service)
-  JOIN_LOCAL = 'join_local',
-  JOIN_AI = 'join_ai',
-  JOIN_UNRANKED = 'join_unranked',
-  JOIN_RANKED = 'join_ranked',
-  MATCH_FOUND = 'match_found',
-
-  // Game — verso Giovanni (socket game-service)
-  MAP_EMIT = 'map-emit',
-  GAME_STATE = 'game-state',
-  GAME_OVER = 'game-over',
-  INPUT = 'game-input',
-  GAME_MESSAGE = 'game-message',
-}
-</file>
-
 <file path="src/game/Game.tsx">
 import { Canvas } from '@react-three/fiber';
-import { useLoader } from '@react-three/fiber';
 import { useGameSocket } from '../hooks/useGameSocket';
 import { InputManager } from './input/inputManager';
 import { useEffect, useRef } from 'react';
-import { GameConfig } from '../configs/config';
-import { CharacterName, MatchMode } from '@transcendence/types';
+import { CharacterName, MatchMode, GameConfig } from '@transcendence/types';
 import GameUI from './UI/gameUI';
 import { PlayerEntity } from './entities/PlayerEntity';
 import { BulletEntity } from './entities/BulletEntity';
 import { GameOverOverlay } from './UI/components/GameOverOverlay';
-import GameChat  from './UI/components/GameChat';
+import GameChat from './UI/components/GameChat';
 import { EffectComposer, Bloom } from '@react-three/postprocessing';
-import * as THREE from 'three';
 import mapTexture from '../assets/mapTexture.png';
+import { useGameStore } from '../storage/gameStore';
 
 interface GameProps {
   selectedCharacter: CharacterName;
@@ -2769,18 +2549,20 @@ interface GameProps {
   p2Character: CharacterName;
   onPlayAgain: () => void;
   onQuit: () => void;
-  myUserId: string,
+  myUserId: string;
 }
 
 export default function Game({ selectedCharacter, selectedMode, onPlayAgain, onQuit, myUserId }: GameProps) {
   const inputManagerRef = useRef<InputManager | null>(null);
-  const { isConnected, world, gameState, gameOver } = useGameSocket();
+  const { isConnected, world, gameOver } = useGameSocket();
+
+  const playerIds = useGameStore((state) => state.gameState?.players.map(p => p.id) || []);
+  const bulletIds = useGameStore((state) => state.gameState?.bullets.map(b => b.id) || []);
 
   useEffect(() => {
     const isLocal = selectedMode === MatchMode.LOCAL;
     const inputManager = new InputManager(isLocal);
     inputManagerRef.current = inputManager;
-
     return () => {
       inputManager.dispose();
       inputManagerRef.current = null;
@@ -2794,25 +2576,18 @@ export default function Game({ selectedCharacter, selectedMode, onPlayAgain, onQ
 
   return (
     <div style={{
-      position: 'fixed',
-      inset: 0,
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      justifyContent: 'center',
+      position: 'fixed', inset: 0,
+      display: 'flex', flexDirection: 'column',
+      alignItems: 'center', justifyContent: 'center',
       backgroundImage: `url(${mapTexture})`,
-      backgroundSize: 'cover',
-      backgroundPosition: 'center',
-      backgroundRepeat: 'no-repeat',
-      overflow: 'hidden',
+      backgroundSize: 'cover', backgroundPosition: 'center',
+      backgroundRepeat: 'no-repeat', overflow: 'hidden',
     }}>
       <Canvas
         orthographic
         camera={{
           position: [centerX + 80, 100, centerZ + 80],
-          zoom: 5,
-          near: 0.1,
-          far: 1000,
+          zoom: 5, near: 0.1, far: 1000,
         }}
         onCreated={({ camera }) => {
           camera.lookAt(centerX, 0, centerZ);
@@ -2823,31 +2598,18 @@ export default function Game({ selectedCharacter, selectedMode, onPlayAgain, onQ
         <ambientLight intensity={0.6} />
         <directionalLight position={[50, 100, 50]} intensity={0.8} />
 
-        <gridHelper
-            args={[mapWidth, 20, 0xffffff, 0x444444]}
-            position={[centerX, 0, centerZ]}
-        />
+        <gridHelper args={[mapWidth, 20, 0xffffff, 0x444444]} position={[centerX, 0, centerZ]} />
 
-        <gridHelper
-          args={[mapWidth, 20, 0xffffff, 0x444444]}
-          position={[centerX, 0, centerZ]}
-        />
-
-        {gameState?.players.map((player) => (
-          <PlayerEntity key={player.id} snapshot={player} />
+        {playerIds.map((id) => (
+          <PlayerEntity key={id} playerId={id} />
         ))}
 
-        {gameState?.bullets.map((bullet) => (
-          <BulletEntity key={bullet.id} snapshot={bullet} />
+        {bulletIds.map((id) => (
+          <BulletEntity key={id} bulletId={id} />
         ))}
 
         <EffectComposer>
-          <Bloom
-            luminanceThreshold={1}
-            luminanceSmoothing={0.9}
-            mipmapBlur
-            intensity={1.5}
-          />
+          <Bloom luminanceThreshold={1} luminanceSmoothing={0.9} mipmapBlur intensity={1.5} />
         </EffectComposer>
       </Canvas>
 
@@ -2856,51 +2618,48 @@ export default function Game({ selectedCharacter, selectedMode, onPlayAgain, onQ
           character={selectedCharacter}
           isConnected={isConnected}
           mapData={world}
-          playersCount={gameState?.players.length || 0}
           maxPlayers={world?.map?.maxPlayers || 2}
           gameOver={gameOver}
-          gameState={gameState}
         />
       )}
 
       {!gameOver && (selectedMode === MatchMode.RANKED || selectedMode === MatchMode.UNRANKED) && (
-        <GameChat
-          myUserId={myUserId}
-          isVisible={true}
-        />
+        <GameChat myUserId={myUserId} isVisible={true} />
       )}
 
-      {gameOver && gameState && (
-        <GameOverOverlay
-          gameOver={gameOver}
-          players={gameState.players}
-          onPlayAgain={onPlayAgain}
-          onQuit={onQuit}
-        />
+      {gameOver && (
+        <GameOverOverlayWrapper gameOver={gameOver} onPlayAgain={onPlayAgain} onQuit={onQuit} />
       )}
     </div>
   );
+}
+
+// Wrapper che legge i players dallo store solo quando serve (game over)
+function GameOverOverlayWrapper({ gameOver, onPlayAgain, onQuit }: {
+  gameOver: any; onPlayAgain: () => void; onQuit: () => void;
+}) {
+  const players = useGameStore((state) => state.gameState?.players || []);
+  return <GameOverOverlay gameOver={gameOver} players={players} onPlayAgain={onPlayAgain} onQuit={onQuit} />;
 }
 </file>
 
 <file path="src/hooks/useGameSocket.ts">
 import { useEffect, useState } from 'react';
 import { socketService } from '../services/socketServices';
-import { GameEvents } from '../game/game.events';
-import { PlayerSnapshot, BulletSnapshot, GameStatePayload, GameOverPayload, MapEmitPayload } from '../types/game.types';
+import { GameStatePayload, GameOverPayload, MapEmitPayload } from '../types/game.types';
+import { PlayerSnapshot, BulletSnapshot, GameEvents } from '@transcendence/types';
 import { log } from '../configs/logger';
+import { useGameStore } from '../storage/gameStore';
 
 interface UseGameSocketReturn {
   isConnected: boolean;
   world: MapEmitPayload | null;
-  gameState: GameStatePayload | null;
   gameOver: GameOverPayload | null;
 }
 
 export function useGameSocket(): UseGameSocketReturn {
   const [isConnected, setIsConnected] = useState(false);
   const [world, setWorld] = useState<MapEmitPayload | null>(null);
-  const [gameState, setGameState] = useState<GameStatePayload | null>(null);
   const [gameOver, setGameOver] = useState<GameOverPayload | null>(null);
 
   useEffect(() => {
@@ -2956,7 +2715,7 @@ export function useGameSocket(): UseGameSocketReturn {
         characterName: Array.isArray(b.characterName) ? b.characterName[0] : b.characterName,
       }));
     
-      setGameState({ players, bullets, time: payload.time || 0 });
+      useGameStore.getState().setGameState({ players, bullets, time: payload.time || 0 });
     };
 
     const handleGameOver = (payload: any) => {
@@ -2993,15 +2752,14 @@ export function useGameSocket(): UseGameSocketReturn {
     };
   }, []);
 
-  return { isConnected, world, gameState, gameOver };
+  return { isConnected, world, gameOver };
 }
 </file>
 
 <file path="src/scenes/characterSelectScene.tsx">
 import { useState, useEffect, useRef } from 'react';
 import { matchmakingSocket } from '../services/matchmakingSocket';
-import { GameEvents } from '../game/game.events';
-import { CharacterName, MatchMode, MatchType } from '@transcendence/types';
+import { CharacterName, MatchMode, MatchType, GameEvents } from '@transcendence/types';
 import { theme } from '../configs/theme';
 import zeusImg from '../assets/ZeusSelection.png';
 import adeImg from '../assets/AdeSelection.png'; // Cambia in .png se necessario
@@ -3875,7 +3633,7 @@ export default function ModeSelectScene({ onModeSelect, onBack }: ModeSelectScen
 <file path="src/scenes/queueScene.tsx">
 import { useEffect, useState } from 'react';
 import { matchmakingSocket } from '../services/matchmakingSocket';
-import { GameEvents } from '../game/game.events';
+import { GameEvents } from '@transcendence/types';
 import { theme } from '../configs/theme';
 
 interface QueueSceneProps {
@@ -4202,7 +3960,7 @@ export default function WelcomeScene({ onStart }: WelcomeSceneProps) {
 
 <file path="src/services/matchmakingSocket.ts">
 import { io, Socket } from "socket.io-client";
-import { GameEvents } from "../game/game.events";
+import { GameEvents } from '@transcendence/types';
 import { refreshToken } from "../site/services/authService";
 
 class MatchmakingSocket {
@@ -4310,8 +4068,8 @@ export const matchmakingSocket = new MatchmakingSocket();
 
 <file path="src/services/socketServices.ts">
 import { io, Socket } from "socket.io-client";
-// import * as msgpackParser from "socket.io-msgpack-parser";
-import { GameEvents } from "../game/game.events";
+import * as msgpackParser from "socket.io-msgpack-parser";
+import { GameEvents } from '@transcendence/types';
 import { refreshToken } from "../site/services/authService";
 
 export class SocketService {
@@ -4333,7 +4091,7 @@ export class SocketService {
 		this.socket = io(url, {
 			path: "/ws/game/socket.io",
 			transports: ["websocket", "polling"],
-			// parser: msgpackParser,
+			parser: msgpackParser,
 			withCredentials: true,
 			reconnection: true,
 			reconnectionAttempts: 5,
@@ -5153,7 +4911,231 @@ export default function LeaderboardPage() {
 </file>
 
 <file path="src/site/pages/LoginPage.tsx">
-import { useState, useCallback } from 'react';
+// import { useState, useCallback } from 'react';
+// import { inputStyle } from '../styles/shared';
+// import * as Icons from '../components/Icons';
+// import * as authService from '../services/authService';
+// import welcomeScene from '../../assets/welcomeScene.png';
+// import { theme } from '../../configs/theme';
+
+// interface LoginPageProps {
+//   onLogin: () => void;
+// }
+
+// export default function LoginPage({ onLogin }: LoginPageProps) {
+//   const [mode, setMode] = useState<"login" | "register" | "forgot">("login");
+//   const [showPassword, setShowPassword] = useState(false);
+//   const [show2fa, setShow2fa] = useState(false);
+//   const [loading, setLoading] = useState(false);
+//   const [error, setError] = useState("");
+//   const [formData, setFormData] = useState({ username: "", email: "", password: "", totp: "" });
+
+//   const handleSubmit = useCallback(async () => {
+//     setLoading(true);
+//     setError("");
+
+//     try {
+//       if (mode === "login") {
+        
+//         // ⚡ SE LA 2FA È GIÀ VISIBILE, VERIFICHIAMO SOLO IL CODICE
+//         if (show2fa) {
+//           const { ok, data } = await authService.verify2fa(formData.totp);
+//           if (ok) {
+//             onLogin(); // Codice corretto, entra!
+//           } else {
+//             setError(data.message || data.error || "Invalid 2FA code");
+//           }
+//           setLoading(false);
+//           return;
+//         }
+
+//         // ⚡ ALTRIMENTI, FACCIAMO IL LOGIN NORMALE
+//         const { ok, data } = await authService.login(formData.username, formData.password);
+        
+//         // Se il backend ci dice che serve la 2FA (tramite un flag o uno status code)
+//         if (data.requires2fa || data.message === '2FA required') { 
+//           setShow2fa(true); 
+//           setLoading(false); 
+//           return; 
+//         }
+        
+//         if (ok) { 
+//           onLogin(); 
+//         } else { 
+//           setError(data.message || data.error || "Login failed"); 
+//         }
+
+//       } else if (mode === "register") {
+//         const { ok, data } = await authService.register(formData.username, formData.email, formData.password);
+//         if (ok) { setMode("login"); setFormData({ username: "", email: "", password: "", totp: "" }); }
+//         else { setError(data.error || data.message || "Registration failed"); }
+
+//       } else if (mode === "forgot") {
+//         const ok = await authService.forgotPassword(formData.email);
+//         if (ok) setMode("login");
+//         else setError("Something went wrong. Try again.");
+//       }
+//     } catch {
+//       setError("Network error. Please try again.");
+//     }
+
+//     setLoading(false);
+//   }, [mode, formData, show2fa, onLogin]);
+
+//   const switchMode = (m: typeof mode) => { setMode(m); setError(""); setShow2fa(false); };
+
+//   return (
+//     <div className="animate-fadeIn" style={{
+//       minHeight: "100vh", 
+//       display: "flex", 
+//       alignItems: "center", 
+//       justifyContent: "center",
+//       backgroundColor: theme.colors.bgDark,
+//       backgroundImage: `radial-gradient(circle at center, rgba(200,170,110,0.4) 0%, transparent 60%), radial-gradient(circle at 20% 80%, rgba(10,200,185,0.04) 0%, transparent 90%), url(${welcomeScene})`,
+//       backgroundSize: 'cover',
+//       backgroundPosition: 'center',
+//       backgroundRepeat: 'no-repeat',
+//       position: "relative", 
+//       overflow: "hidden",
+//     }}>
+//       {/* Star particles */}
+//       <div style={{
+//         position: "absolute", 
+//         inset: 0, 
+//         pointerEvents: "none",
+//         background: `radial-gradient(1px 1px at 20% 30%, ${theme.colors.goldGlow}, transparent),
+//           radial-gradient(1px 1px at 80% 70%, ${theme.colors.goldSubtle}, transparent),
+//           radial-gradient(1px 1px at 50% 50%, rgba(200,170,110,0.15), transparent)`,
+//         backgroundSize: "200px 200px, 300px 300px, 250px 250px",
+//       }} />
+
+//       {/* Orb container */}
+//       <div style={{
+//         width: "440px", 
+//         height: "440px", 
+//         borderRadius: "50%",
+//         background: `radial-gradient(circle at center, ${theme.colors.bgPanel}00 20%, ${theme.colors.bgDark}00 70%)`,
+//         transform: 'translateY(70px)',
+//         border: `1px solid ${theme.colors.border}`, 
+//         animation: "orbPulse 4s ease-in-out infinite",
+//         display: "flex", 
+//         flexDirection: "column", 
+//         alignItems: "center", 
+//         justifyContent: "center",
+//         padding: "60px 50px", 
+//         position: "relative",
+//       }}>
+//         <h1 style={{
+//           fontSize: mode === "login" ? "22px" : "20px", 
+//           fontWeight: 700,
+//           fontFamily: theme.fonts.heading,
+//           background: `linear-gradient(180deg, ${theme.colors.goldBright}, ${theme.colors.goldDark}, ${theme.colors.goldDark})`,
+//           WebkitBackgroundClip: "text", 
+//           WebkitTextFillColor: "transparent",
+//           marginBottom: "4px", 
+//           letterSpacing: "3px", 
+//           textAlign: "center", 
+//           textTransform: "uppercase",
+//         }}>
+//           {mode === "login" && "Clash of Olympus"}
+//           {mode === "register" && "Join the Arena"}
+//           {mode === "forgot" && "Reset Password"}
+//         </h1>
+//         <p style={{ fontFamily: theme.fonts.heading, color: theme.colors.bgDark, fontSize: "13px", letterSpacing: "2px", marginBottom: "28px", textTransform: "uppercase" }}>
+//           {mode === "login" && "Ade against Zeus"}
+//           {mode === "register" && "Forge Your Legend"}
+//           {mode === "forgot" && "Recover Access"}
+//         </p>
+
+//         {error && (
+//           <div style={{
+//             width: "100%", 
+//             padding: "8px 12px", 
+//             marginBottom: "12px",
+//             background: "rgba(232,64,87,0.15)", 
+//             border: `1px solid ${theme.colors.dead}`,
+//             borderRadius: "2px", 
+//             color: theme.colors.dead, 
+//             fontFamily: theme.fonts.mono,
+//             fontSize: "13px", 
+//             textAlign: "center",
+//           }}>{error}</div>
+//         )}
+
+//         <div style={{ width: "100%", display: "flex", flexDirection: "column", gap: "12px" }}>
+//           {(mode === "login" || mode === "register") && (
+//             <input className="input-glow" type="text" placeholder="Username" value={formData.username}
+//               onChange={(e) => setFormData({ ...formData, username: e.target.value })} style={inputStyle} />
+//           )}
+//           {(mode === "register" || mode === "forgot") && (
+//             <input className="input-glow" type="email" placeholder="Email" value={formData.email}
+//               onChange={(e) => setFormData({ ...formData, email: e.target.value })} style={inputStyle} />
+//           )}
+//           {mode !== "forgot" && (
+//             <div style={{ position: "relative" }}>
+//               <input className="input-glow" type={showPassword ? "text" : "password"} placeholder="Password" value={formData.password}
+//                 onChange={(e) => setFormData({ ...formData, password: e.target.value })} style={{ ...inputStyle, paddingRight: "44px" }} />
+//               <button type="button" onClick={() => setShowPassword(!showPassword)}
+//                 style={{ position: "absolute", right: "12px", top: "50%", transform: "translateY(-50%)", background: "none", border: "none", color: theme.colors.textMuted, cursor: "pointer", padding: "4px", display: "flex" }}>
+//                 {showPassword ? <Icons.EyeOff size={18} /> : <Icons.Eye size={18} />}
+//               </button>
+//             </div>
+//           )}
+//           {show2fa && mode === "login" && (
+//             <div className="animate-slideUp">
+//               <input className="input-glow" type="text" placeholder="2FA Code" value={formData.totp}
+//                 onChange={(e) => setFormData({ ...formData, totp: e.target.value })}
+//                 style={{ ...inputStyle, textAlign: "center", letterSpacing: "8px", fontSize: "20px" }} maxLength={6} />
+//             </div>
+//           )}
+
+//           {/* Submit */}
+//           <button className="btn-press" type="button" onClick={handleSubmit} disabled={loading} style={{
+//             width: "100%", padding: "12px",
+//             background: loading ? theme.colors.textMuted : `linear-gradient(180deg, ${theme.colors.gold}, ${theme.colors.goldDark})`,
+//             border: "none", borderRadius: "2px", color: theme.colors.goldDark,
+//             fontFamily: theme.fonts.heading, fontSize: "13px", fontWeight: 700,
+//             letterSpacing: "2px", textTransform: "uppercase",
+//             cursor: loading ? "wait" : "pointer", transition: "all 0.2s", marginTop: "4px",
+//           }}>
+//             {loading ? "..." : mode === "login" ? "Enter" : mode === "register" ? "Register" : "Send Reset Link"}
+//           </button>
+
+//           {/* Google OAuth */}
+//           {mode !== "forgot" && (
+//             <button type="button" className="btn-press" onClick={authService.redirectToGoogle} style={{
+//               width: "100%", padding: "10px", background: "rgba(255,255,255,0.05)",
+//               border: `1px solid ${theme.colors.border}`, borderRadius: "2px",
+//               color: theme.colors.goldDark, fontFamily: theme.fonts.heading, fontSize: "11px",
+//               fontWeight: 600, letterSpacing: "1px", cursor: "pointer",
+//               display: "flex", alignItems: "center", justifyContent: "center", gap: "10px", transition: "all 0.2s",
+//             }}>
+//               <Icons.Google size={16} /> Continue with Google
+//             </button>
+//           )}
+//         </div>
+
+//         {/* Mode switch links */}
+//         <div style={{ marginTop: "16px", textAlign: "center" }}>
+//           {mode === "login" && (
+//             <>
+//               <button onClick={() => switchMode("register")} style={{ background: "none", border: "none", color: theme.colors.bgDark, cursor: "pointer", fontFamily: theme.fonts.mono, fontSize: "13px" }}>Create an account</button>
+//               <span style={{ color: theme.colors.textMuted, margin: "0 8px" }}>·</span>
+//               <button onClick={() => switchMode("forgot")} style={{ background: "none", border: "none", color: theme.colors.bgDark, cursor: "pointer", fontFamily: theme.fonts.mono, fontSize: "13px" }}>Forgot password?</button>
+//             </>
+//           )}
+//           {mode === "register" && (
+//             <button onClick={() => switchMode("login")} style={{ background: "none", border: "none", color: theme.colors.zeus, cursor: "pointer", fontFamily: theme.fonts.mono, fontSize: "13px" }}>Already have an account? Sign in</button>
+//           )}
+//           {mode === "forgot" && (
+//             <button onClick={() => switchMode("login")} style={{ background: "none", border: "none", color: theme.colors.zeus, cursor: "pointer", fontFamily: theme.fonts.mono, fontSize: "13px" }}>Back to login</button>
+//           )}
+//         </div>
+//       </div>
+//     </div>
+//   );
+// }
+import { useState, useCallback, useEffect } from 'react';
 import { inputStyle } from '../styles/shared';
 import * as Icons from '../components/Icons';
 import * as authService from '../services/authService';
@@ -5165,143 +5147,150 @@ interface LoginPageProps {
 }
 
 export default function LoginPage({ onLogin }: LoginPageProps) {
-  const [mode, setMode] = useState<"login" | "register" | "forgot">("login");
+  const [mode, setMode] = useState<"login" | "register" | "forgot" | "reset">("login");
   const [showPassword, setShowPassword] = useState(false);
   const [show2fa, setShow2fa] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [formData, setFormData] = useState({ username: "", email: "", password: "", totp: "" });
+  const [successMsg, setSuccessMsg] = useState("");
+  
+  const [formData, setFormData] = useState({ 
+    username: "", email: "", password: "", confirmPassword: "", totp: "", resetToken: "" 
+  });
+
+  // ⚡ SE L'UTENTE APRE IL LINK "reset-password.html?token=..."
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const token = params.get('token');
+    if (token) {
+      setMode("reset");
+      setFormData(prev => ({ ...prev, resetToken: token }));
+      // Pulisce l'URL visivamente (opzionale)
+      window.history.replaceState({}, document.title, "/"); 
+    }
+  }, []);
 
   const handleSubmit = useCallback(async () => {
     setLoading(true);
     setError("");
+    setSuccessMsg("");
 
     try {
       if (mode === "login") {
-        
-        // ⚡ SE LA 2FA È GIÀ VISIBILE, VERIFICHIAMO SOLO IL CODICE
         if (show2fa) {
           const { ok, data } = await authService.verify2fa(formData.totp);
-          if (ok) {
-            onLogin(); // Codice corretto, entra!
-          } else {
-            setError(data.message || data.error || "Invalid 2FA code");
+          if (ok) return onLogin();
+          setError(data.message || data.error || "Invalid 2FA code");
+        } else {
+          const { ok, data } = await authService.login(formData.username, formData.password);
+          
+          if (data.requires2fa || data.message === '2FA required') { 
+            setShow2fa(true); 
+            setLoading(false); 
+            return; 
           }
-          setLoading(false);
-          return;
-        }
-
-        // ⚡ ALTRIMENTI, FACCIAMO IL LOGIN NORMALE
-        const { ok, data } = await authService.login(formData.username, formData.password);
-        
-        // Se il backend ci dice che serve la 2FA (tramite un flag o uno status code)
-        if (data.requires2fa || data.message === '2FA required') { 
-          setShow2fa(true); 
-          setLoading(false); 
-          return; 
-        }
-        
-        if (ok) { 
-          onLogin(); 
-        } else { 
-          setError(data.message || data.error || "Login failed"); 
+          if (ok) return onLogin();
+          
+          setError(data.message || data.error || "Login failed");
         }
 
       } else if (mode === "register") {
         const { ok, data } = await authService.register(formData.username, formData.email, formData.password);
-        if (ok) { setMode("login"); setFormData({ username: "", email: "", password: "", totp: "" }); }
-        else { setError(data.error || data.message || "Registration failed"); }
+        if (ok) { 
+          setSuccessMsg("Registrazione completata! Controlla l'email per verificare l'account.");
+          setMode("login"); 
+          setFormData(prev => ({...prev, password: ""}));
+        }
+        else setError(data.error || data.message || "Registration failed");
 
       } else if (mode === "forgot") {
         const ok = await authService.forgotPassword(formData.email);
-        if (ok) setMode("login");
-        else setError("Something went wrong. Try again.");
+        if (ok) setSuccessMsg("Se l'email esiste, ti abbiamo inviato un link per resettare la password.");
+        else setError("Errore nell'invio dell'email.");
+
+      } else if (mode === "reset") {
+        const pwdRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+        if (formData.password !== formData.confirmPassword) {
+          setError("Le password non combaciano.");
+          setLoading(false); return;
+        }
+        if (!pwdRegex.test(formData.password)) {
+          setError("La password deve contenere min 8 car., maiuscola, minuscola, numero e simbolo speciale.");
+          setLoading(false); return;
+        }
+
+        const result = await authService.resetPassword(formData.resetToken, formData.password);
+        if (result.ok) {
+          setSuccessMsg("Password resettata con successo! Ora puoi accedere.");
+          setMode("login");
+        } else {
+          setError(result.message || "Errore nel reset della password. Token scaduto?");
+        }
       }
     } catch {
       setError("Network error. Please try again.");
     }
-
     setLoading(false);
   }, [mode, formData, show2fa, onLogin]);
 
-  const switchMode = (m: typeof mode) => { setMode(m); setError(""); setShow2fa(false); };
+  // RESEND VERIFICATION
+  const handleResend = async () => {
+    if (!formData.email) return setError("Inserisci la tua email per ricevere il link.");
+    setLoading(true);
+    const result = await authService.resendVerification(formData.email);
+    if (result.ok) setSuccessMsg("Se l'account esiste, l'email di verifica è stata inviata nuovamente!");
+    else setError(result.message || "Errore nell'invio dell'email.");
+    setLoading(false);
+  };
+
+  const switchMode = (m: typeof mode) => { setMode(m); setError(""); setSuccessMsg(""); setShow2fa(false); };
 
   return (
     <div className="animate-fadeIn" style={{
-      minHeight: "100vh", 
-      display: "flex", 
-      alignItems: "center", 
-      justifyContent: "center",
+      minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center",
       backgroundColor: theme.colors.bgDark,
       backgroundImage: `radial-gradient(circle at center, rgba(200,170,110,0.4) 0%, transparent 60%), radial-gradient(circle at 20% 80%, rgba(10,200,185,0.04) 0%, transparent 90%), url(${welcomeScene})`,
-      backgroundSize: 'cover',
-      backgroundPosition: 'center',
-      backgroundRepeat: 'no-repeat',
-      position: "relative", 
-      overflow: "hidden",
+      backgroundSize: 'cover', backgroundPosition: 'center', backgroundRepeat: 'no-repeat',
+      position: "relative", overflow: "hidden",
     }}>
-      {/* Star particles */}
       <div style={{
-        position: "absolute", 
-        inset: 0, 
-        pointerEvents: "none",
-        background: `radial-gradient(1px 1px at 20% 30%, ${theme.colors.goldGlow}, transparent),
-          radial-gradient(1px 1px at 80% 70%, ${theme.colors.goldSubtle}, transparent),
-          radial-gradient(1px 1px at 50% 50%, rgba(200,170,110,0.15), transparent)`,
-        backgroundSize: "200px 200px, 300px 300px, 250px 250px",
+        position: "absolute", inset: 0, pointerEvents: "none",
+        background: `radial-gradient(1px 1px at 20% 30%, ${theme.colors.goldGlow}, transparent), radial-gradient(1px 1px at 80% 70%, ${theme.colors.goldSubtle}, transparent)`,
+        backgroundSize: "200px 200px, 300px 300px",
       }} />
 
-      {/* Orb container */}
       <div style={{
-        width: "440px", 
-        height: "440px", 
-        borderRadius: "50%",
+        width: "440px", borderRadius: "50%",
         background: `radial-gradient(circle at center, ${theme.colors.bgPanel}00 20%, ${theme.colors.bgDark}00 70%)`,
-        transform: 'translateY(70px)',
-        border: `1px solid ${theme.colors.border}`, 
-        animation: "orbPulse 4s ease-in-out infinite",
-        display: "flex", 
-        flexDirection: "column", 
-        alignItems: "center", 
-        justifyContent: "center",
-        padding: "60px 50px", 
-        position: "relative",
+        transform: 'translateY(70px)', border: `1px solid ${theme.colors.border}`, 
+        animation: "orbPulse 4s ease-in-out infinite", display: "flex", flexDirection: "column", 
+        alignItems: "center", justifyContent: "center", padding: "60px 50px", position: "relative",
       }}>
         <h1 style={{
-          fontSize: mode === "login" ? "22px" : "20px", 
-          fontWeight: 700,
-          fontFamily: theme.fonts.heading,
-          background: `linear-gradient(180deg, ${theme.colors.goldBright}, ${theme.colors.goldDark}, ${theme.colors.goldDark})`,
-          WebkitBackgroundClip: "text", 
-          WebkitTextFillColor: "transparent",
-          marginBottom: "4px", 
-          letterSpacing: "3px", 
-          textAlign: "center", 
-          textTransform: "uppercase",
+          fontSize: "20px", fontWeight: 700, fontFamily: theme.fonts.heading,
+          background: `linear-gradient(180deg, ${theme.colors.goldBright}, ${theme.colors.goldDark})`,
+          WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent",
+          marginBottom: "4px", letterSpacing: "3px", textAlign: "center", textTransform: "uppercase",
         }}>
           {mode === "login" && "Clash of Olympus"}
           {mode === "register" && "Join the Arena"}
           {mode === "forgot" && "Reset Password"}
+          {mode === "reset" && "Nuova Password"}
         </h1>
-        <p style={{ fontFamily: theme.fonts.heading, color: theme.colors.bgDark, fontSize: "13px", letterSpacing: "2px", marginBottom: "28px", textTransform: "uppercase" }}>
-          {mode === "login" && "Ade against Zeus"}
-          {mode === "register" && "Forge Your Legend"}
-          {mode === "forgot" && "Recover Access"}
-        </p>
+
+        {successMsg && (
+          <div style={{ width: "100%", padding: "8px 12px", marginBottom: "12px", background: "rgba(168,198,108,0.15)", border: `1px solid ${theme.colors.hpHigh}`, borderRadius: "2px", color: theme.colors.hpHigh, fontFamily: theme.fonts.mono, fontSize: "12px", textAlign: "center" }}>
+            {successMsg}
+          </div>
+        )}
 
         {error && (
-          <div style={{
-            width: "100%", 
-            padding: "8px 12px", 
-            marginBottom: "12px",
-            background: "rgba(232,64,87,0.15)", 
-            border: `1px solid ${theme.colors.dead}`,
-            borderRadius: "2px", 
-            color: theme.colors.dead, 
-            fontFamily: theme.fonts.mono,
-            fontSize: "13px", 
-            textAlign: "center",
-          }}>{error}</div>
+          <div style={{ width: "100%", padding: "8px 12px", marginBottom: "12px", background: "rgba(232,64,87,0.15)", border: `1px solid ${theme.colors.dead}`, borderRadius: "2px", color: theme.colors.dead, fontFamily: theme.fonts.mono, fontSize: "12px", textAlign: "center" }}>
+            {error}
+            {error.toLowerCase().includes("verify your email") && (
+              <button onClick={handleResend} style={{ display: 'block', margin: '8px auto 0', padding: '4px 8px', background: 'none', border: `1px solid ${theme.colors.dead}`, color: theme.colors.textPrimary, cursor: 'pointer', fontSize: '11px' }}>Re-invia email</button>
+            )}
+          </div>
         )}
 
         <div style={{ width: "100%", display: "flex", flexDirection: "column", gap: "12px" }}>
@@ -5313,7 +5302,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
             <input className="input-glow" type="email" placeholder="Email" value={formData.email}
               onChange={(e) => setFormData({ ...formData, email: e.target.value })} style={inputStyle} />
           )}
-          {mode !== "forgot" && (
+          {(mode === "login" || mode === "register" || mode === "reset") && (
             <div style={{ position: "relative" }}>
               <input className="input-glow" type={showPassword ? "text" : "password"} placeholder="Password" value={formData.password}
                 onChange={(e) => setFormData({ ...formData, password: e.target.value })} style={{ ...inputStyle, paddingRight: "44px" }} />
@@ -5323,6 +5312,10 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
               </button>
             </div>
           )}
+          {mode === "reset" && (
+            <input className="input-glow" type="password" placeholder="Conferma Password" value={formData.confirmPassword}
+              onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })} style={inputStyle} />
+          )}
           {show2fa && mode === "login" && (
             <div className="animate-slideUp">
               <input className="input-glow" type="text" placeholder="2FA Code" value={formData.totp}
@@ -5331,33 +5324,23 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
             </div>
           )}
 
-          {/* Submit */}
           <button className="btn-press" type="button" onClick={handleSubmit} disabled={loading} style={{
             width: "100%", padding: "12px",
             background: loading ? theme.colors.textMuted : `linear-gradient(180deg, ${theme.colors.gold}, ${theme.colors.goldDark})`,
-            border: "none", borderRadius: "2px", color: theme.colors.goldDark,
-            fontFamily: theme.fonts.heading, fontSize: "13px", fontWeight: 700,
-            letterSpacing: "2px", textTransform: "uppercase",
-            cursor: loading ? "wait" : "pointer", transition: "all 0.2s", marginTop: "4px",
+            border: "none", borderRadius: "2px", color: theme.colors.goldDark, fontFamily: theme.fonts.heading, fontSize: "13px", fontWeight: 700, letterSpacing: "2px", textTransform: "uppercase", cursor: loading ? "wait" : "pointer", transition: "all 0.2s", marginTop: "4px",
           }}>
-            {loading ? "..." : mode === "login" ? "Enter" : mode === "register" ? "Register" : "Send Reset Link"}
+            {loading ? "..." : mode === "login" ? "Enter" : mode === "register" ? "Register" : mode === "forgot" ? "Send Link" : "Reset Pwd"}
           </button>
 
-          {/* Google OAuth */}
-          {mode !== "forgot" && (
+          {mode !== "forgot" && mode !== "reset" && (
             <button type="button" className="btn-press" onClick={authService.redirectToGoogle} style={{
-              width: "100%", padding: "10px", background: "rgba(255,255,255,0.05)",
-              border: `1px solid ${theme.colors.border}`, borderRadius: "2px",
-              color: theme.colors.goldDark, fontFamily: theme.fonts.heading, fontSize: "11px",
-              fontWeight: 600, letterSpacing: "1px", cursor: "pointer",
-              display: "flex", alignItems: "center", justifyContent: "center", gap: "10px", transition: "all 0.2s",
+              width: "100%", padding: "10px", background: "rgba(255,255,255,0.05)", border: `1px solid ${theme.colors.border}`, borderRadius: "2px", color: theme.colors.goldDark, fontFamily: theme.fonts.heading, fontSize: "11px", fontWeight: 600, letterSpacing: "1px", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "10px", transition: "all 0.2s",
             }}>
               <Icons.Google size={16} /> Continue with Google
             </button>
           )}
         </div>
 
-        {/* Mode switch links */}
         <div style={{ marginTop: "16px", textAlign: "center" }}>
           {mode === "login" && (
             <>
@@ -5366,10 +5349,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
               <button onClick={() => switchMode("forgot")} style={{ background: "none", border: "none", color: theme.colors.bgDark, cursor: "pointer", fontFamily: theme.fonts.mono, fontSize: "13px" }}>Forgot password?</button>
             </>
           )}
-          {mode === "register" && (
-            <button onClick={() => switchMode("login")} style={{ background: "none", border: "none", color: theme.colors.zeus, cursor: "pointer", fontFamily: theme.fonts.mono, fontSize: "13px" }}>Already have an account? Sign in</button>
-          )}
-          {mode === "forgot" && (
+          {(mode === "register" || mode === "forgot" || mode === "reset") && (
             <button onClick={() => switchMode("login")} style={{ background: "none", border: "none", color: theme.colors.zeus, cursor: "pointer", fontFamily: theme.fonts.mono, fontSize: "13px" }}>Back to login</button>
           )}
         </div>
@@ -5380,13 +5360,379 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
 </file>
 
 <file path="src/site/pages/ProfilePage.tsx">
+// import { useState, useEffect } from 'react';
+// import { inputStyle, sectionTitleStyle } from '../styles/shared';
+// import * as Icons from '../components/Icons';
+// import * as api from '../services/apiService';
+// import { UserProfile, UserStats, UserSettings, generate2fa, turnOn2fa, turnOff2fa } from '../services/apiService';
+// import { theme } from '../../configs/theme';
+// import { NAVBAR_HEIGHT } from '../components/Navbar';
+// import { CharacterName } from '@transcendence/types';
+
+// const statusColor = (s: string) => 
+//   s === 'ONLINE' ? theme.colors.hpHigh : 
+//   s === 'IN_GAME' ? theme.colors.zeus : 
+//   theme.colors.textMuted;
+
+// function StatBox({ label, value, color = theme.colors.gold }: { label: string; value: string | number; color?: string }) {
+//   return (
+//     <div style={{ padding: '20px', background: theme.colors.bgPanel, border: `1px solid ${theme.colors.border}`, borderRadius: '4px', textAlign: 'center' }}>
+//       <div style={{ fontFamily: theme.fonts.heading, fontSize: '24px', fontWeight: 800, color, marginBottom: '4px' }}>
+//         {value}
+//       </div>
+//       <div style={{ fontFamily: theme.fonts.heading, fontSize: '10px', color: theme.colors.textMuted, letterSpacing: '1.5px' }}>
+//         {label}
+//       </div>
+//     </div>
+//   );
+// }
+
+// function EditableField({ label, value, isEditing, onEdit, onSave, onCancel, tempVal, setTempVal }: {
+//   label: string; value: string; isEditing: boolean;
+//   onEdit: () => void; onSave: () => void; onCancel: () => void;
+//   tempVal: string; setTempVal: (v: string) => void;
+// }) {
+//   return (
+//     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', background: theme.colors.bgPanel, border: `1px solid ${theme.colors.border}`, borderRadius: '4px', marginBottom: '8px' }}>
+//       <div style={{ flex: 1 }}>
+//         <div style={{ fontFamily: theme.fonts.heading, fontSize: '10px', color: theme.colors.textMuted, letterSpacing: '1.5px', marginBottom: '4px' }}>
+//           {label}
+//         </div>
+//         {isEditing ? (
+//           <input 
+//             className="input-glow" 
+//             value={tempVal} 
+//             onChange={(e) => setTempVal(e.target.value)} 
+//             style={{ ...inputStyle, padding: '6px 10px', fontSize: '14px', width: '100%' }} 
+//             autoFocus 
+//           />
+//         ) : (
+//           <div style={{ color: theme.colors.textPrimary, fontFamily: theme.fonts.mono, fontSize: '15px' }}>
+//             {value}
+//           </div>
+//         )}
+//       </div>
+//       <div style={{ display: 'flex', gap: '6px', marginLeft: '12px' }}>
+//         {isEditing ? (
+//           <>
+//             <button onClick={onSave} style={{ background: 'none', border: 'none', color: theme.colors.zeus, cursor: 'pointer', padding: '4px', display: 'flex' }}><Icons.Check size={18} /></button>
+//             <button onClick={onCancel} style={{ background: 'none', border: 'none', color: theme.colors.dead, cursor: 'pointer', padding: '4px', display: 'flex' }}><Icons.X size={18} /></button>
+//           </>
+//         ) : (
+//           <button onClick={() => { setTempVal(value); onEdit(); }} style={{ background: 'none', border: 'none', color: theme.colors.textMuted, cursor: 'pointer', padding: '4px', display: 'flex' }}><Icons.Edit size={16} /></button>
+//         )}
+//       </div>
+//     </div>
+//   );
+// }
+
+// export default function ProfilePage() {
+//   const [profile, setProfile] = useState<UserProfile | null>(null);
+//   const [stats, setStats] = useState<UserStats | null>(null);
+//   const [settings, setSettings] = useState<UserSettings | null>(null);
+//   const [loading, setLoading] = useState(true);
+//   const [isSettingUp2fa, setIsSettingUp2fa] = useState(false);
+//   const [qrCodeUrl, setQrCodeUrl] = useState<string | null>(null);
+//   const [setupCode, setSetupCode] = useState('');
+//   const [error2fa, setError2fa] = useState('');
+
+//   const [editingUsername, setEditingUsername] = useState(false);
+//   const [editingEmail, setEditingEmail] = useState(false);
+//   const [tempVal, setTempVal] = useState('');
+
+//   const [msg, setMsg] = useState(''); // Per i messaggi verdi di successo
+//   const [isChangingPwd, setIsChangingPwd] = useState(false);
+//   const [pwdData, setPwdData] = useState({ old: '', new: '', confirm: '' });
+//   const [pwdError, setPwdError] = useState('');
+//   useEffect(() => {
+//     Promise.all([api.getMyProfile(), api.getMyStats(), api.getMySettings()])
+//       .then(([p, s, set]) => { 
+//         if (p) setProfile(p); 
+//         if (s) setStats(s); 
+//         if (set) setSettings(set); 
+//       })
+//       .finally(() => setLoading(false));
+//   }, []);
+
+//   const handleSaveUsername = async () => { 
+//     if (await api.updateUsername(tempVal)) {
+//       setProfile((p) => p ? { ...p, username: tempVal } : null); 
+//     }
+//     setEditingUsername(false); 
+//   };
+  
+//   const handleSaveEmail = async () => { 
+//     const result = await api.requestEmailChange(tempVal);
+//     if (result.ok) {
+//       setMsg("Link di conferma inviato alla nuova email!");
+//       setEditingEmail(false); 
+//     } else {
+//       alert("Errore: " + result.message);
+//     }
+//   };
+
+//   const handleSavePassword = async () => {
+//     setPwdError('');
+//     const pwdRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+    
+//     if (pwdData.new !== pwdData.confirm) return setPwdError("Le nuove password non combaciano!");
+//     if (!pwdRegex.test(pwdData.new)) return setPwdError("Minimo 8 caratteri, una maiuscola, una minuscola, un numero e un carattere speciale.");
+
+//     const result = await api.changePassword(pwdData.old, pwdData.new);
+//     if (result.ok) {
+//       setMsg("Password aggiornata con successo! Verrai disconnesso a breve.");
+//       setIsChangingPwd(false);
+//       setPwdData({ old: '', new: '', confirm: '' });
+//     } else {
+//       setPwdError(result.message || "Errore durante il cambio password");
+//     }
+//   };
+
+//   const handleEnable2faClick = async () => {
+//     setError2fa('');
+    
+//     const data = await generate2fa();
+    
+//     if (data && data.qrCode) { 
+//       setQrCodeUrl(data.qrCode);
+//       setIsSettingUp2fa(true);
+//     } else {
+//       alert("Il backend non ha risposto correttamente. Guarda la console (F12)!");
+//     }
+//   };
+
+//   const handleConfirm2fa = async () => {
+//     setError2fa('');
+//     const success = await turnOn2fa(setupCode);
+//     if (success) {
+//       setIsSettingUp2fa(false);
+//       setQrCodeUrl(null);
+//       setSetupCode('');
+//       setSettings(prev => prev ? { ...prev, is2faEnabled: true } : null);
+//     } else {
+//       setError2fa("Codice errato. Riprova.");
+//     }
+//   };
+
+//   const handleDisable2faClick = async () => {
+//     const success = await turnOff2fa();
+//     if (success) {
+//       setSettings(prev => prev ? { ...prev, is2faEnabled: false } : null);
+//     }
+//   };
+
+//   if (loading) return (
+//     <div style={{ paddingTop: `calc(${NAVBAR_HEIGHT}px + 80px)`, textAlign: 'center' }}>
+//       <p style={{ fontFamily: theme.fonts.heading, color: theme.colors.textMuted, letterSpacing: '2px' }}>Loading...</p>
+//     </div>
+//   );
+
+//   const username = profile?.username || 'Unknown';
+//   const email = profile?.email || '';
+//   const avatarUrl = profile?.avatarUrl || `https://api.dicebear.com/9.x/pixel-art/svg?seed=${username}`;
+//   const userStatus = profile?.status || 'OFFLINE';
+//   const createdAt = profile?.createdAt || new Date().toISOString();
+  
+//   const s: UserStats = stats || { eloCurrent: 0, eloPeak: 0, totalWins: 0, totalLosses: 0, totalDraws: 0, bestWinStreak: 0, totalKills: 0, totalDeaths: 1, characterStats: [] };
+//   const total = s.totalWins + s.totalLosses + s.totalDraws;
+//   const winRate = total > 0 ? Math.round((s.totalWins / total) * 100) : 0;
+  
+//   const sec: UserSettings = settings || { is2faEnabled: false, isEmailVerified: false, linkedProviders: [] };
+
+//   return (
+//     <div className="animate-fadeIn" style={{ paddingTop: `${NAVBAR_HEIGHT}px`, maxWidth: '800px', margin: '0 auto', paddingBottom: '60px', paddingLeft: '24px', paddingRight: '24px' }}>
+      
+//       {/* Settings & Personalization */}
+//       <div id="profile-settings" style={{ paddingTop: '40px', scrollMarginTop: `${NAVBAR_HEIGHT}px` }}>
+//         <div style={{ textAlign: 'center', marginBottom: '40px' }}>
+//           <div style={{ position: 'relative', display: 'inline-block', marginBottom: '16px' }}>
+//             <img src={avatarUrl} alt="avatar" style={{ width: '120px', height: '120px', borderRadius: '50%', border: `3px solid ${theme.colors.gold}`, boxShadow: `0 0 30px ${theme.colors.goldGlow}` }} />
+//             <div style={{ position: 'absolute', bottom: '4px', right: '4px', width: '20px', height: '20px', borderRadius: '50%', background: statusColor(userStatus), border: `3px solid ${theme.colors.bgDark}` }} />
+//           </div>
+//           <h1 style={{ fontFamily: theme.fonts.heading, fontSize: '28px', fontWeight: 700, color: theme.colors.goldBright, letterSpacing: '2px' }}>{username}</h1>
+//           <p style={{ fontFamily: theme.fonts.heading, color: theme.colors.textMuted, fontSize: '12px', letterSpacing: '1px', marginTop: '4px' }}>
+//             Member since {new Date(createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long' })}
+//           </p>
+//         </div>
+        
+//         <h2 style={{ ...sectionTitleStyle, fontSize: '22px', marginBottom: '24px' }}>Settings & Personalization</h2>
+//       </div>
+// {/* Messaggi di successo */}
+//         {msg && <div style={{ color: theme.colors.hpHigh, marginBottom: '16px', textAlign: 'center', fontFamily: theme.fonts.mono }}>{msg}</div>}
+
+//         <EditableField label="USERNAME" value={username} isEditing={editingUsername} tempVal={tempVal} setTempVal={setTempVal} onEdit={() => setEditingUsername(true)} onSave={handleSaveUsername} onCancel={() => setEditingUsername(false)} />
+//         <EditableField label="EMAIL" value={email} isEditing={editingEmail} tempVal={tempVal} setTempVal={setTempVal} onEdit={() => setEditingEmail(true)} onSave={handleSaveEmail} onCancel={() => setEditingEmail(false)} />
+
+//         {/* BLOCCO CAMBIO PASSWORD */}
+//         <div style={{ padding: '16px 20px', background: theme.colors.bgPanel, border: `1px solid ${theme.colors.border}`, borderRadius: '4px', marginTop: '16px' }}>
+//           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+//             <div style={{ fontFamily: theme.fonts.heading, fontSize: '10px', color: theme.colors.textMuted, letterSpacing: '1.5px' }}>PASSWORD</div>
+//             {!isChangingPwd && <button onClick={() => setIsChangingPwd(true)} style={{ background: 'none', border: 'none', color: theme.colors.textMuted, cursor: 'pointer' }}><Icons.Edit size={16} /></button>}
+//           </div>
+
+//           {isChangingPwd && (
+//             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '12px' }}>
+//               <input type="password" placeholder="Vecchia Password" value={pwdData.old} onChange={e => setPwdData({...pwdData, old: e.target.value})} style={inputStyle} />
+//               <input type="password" placeholder="Nuova Password" value={pwdData.new} onChange={e => setPwdData({...pwdData, new: e.target.value})} style={inputStyle} />
+//               <input type="password" placeholder="Conferma Nuova Password" value={pwdData.confirm} onChange={e => setPwdData({...pwdData, confirm: e.target.value})} style={inputStyle} />
+              
+//               {pwdError && <span style={{ color: theme.colors.dead, fontSize: '12px', fontFamily: theme.fonts.mono }}>{pwdError}</span>}
+              
+//               <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', marginTop: '8px' }}>
+//                 <button onClick={() => {setIsChangingPwd(false); setPwdError('');}} style={{ padding: '6px 12px', background: 'none', border: `1px solid ${theme.colors.border}`, color: theme.colors.textMuted, cursor: 'pointer' }}>Annulla</button>
+//                 <button onClick={handleSavePassword} style={{ padding: '6px 12px', background: theme.colors.zeus, border: 'none', color: 'white', fontWeight: 'bold', cursor: 'pointer', borderRadius: '2px' }}>Salva</button>
+//               </div>
+//             </div>
+//           )}
+//         </div>
+
+//       {/* Statistics */}
+//       <div id="profile-stats" style={{ paddingTop: '80px', scrollMarginTop: `${NAVBAR_HEIGHT}px` }}>
+//         <h2 style={{ ...sectionTitleStyle, fontSize: '22px', marginBottom: '24px' }}>Statistics</h2>
+//         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px', marginBottom: '24px' }}>
+//           <StatBox label="ELO" value={s.eloCurrent} />
+//           <StatBox label="PEAK ELO" value={s.eloPeak} color={theme.colors.goldBright} />
+//           <StatBox label="WIN RATE" value={`${winRate}%`} color={theme.colors.zeus} />
+//           <StatBox label="BEST STREAK" value={s.bestWinStreak} color={theme.colors.zeus} />
+//         </div>
+//         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', marginBottom: '32px' }}>
+//           <StatBox label="WINS" value={s.totalWins} color={theme.colors.hpHigh} />
+//           <StatBox label="LOSSES" value={s.totalLosses} color={theme.colors.dead} />
+//           <StatBox label="K/D RATIO" value={s.totalDeaths > 0 ? (s.totalKills / s.totalDeaths).toFixed(2) : '0'} />
+//         </div>
+
+//         {s.characterStats && s.characterStats.length > 0 && (
+//           <>
+//             <h3 style={{ fontFamily: theme.fonts.heading, fontSize: '14px', color: theme.colors.textSecondary, letterSpacing: '2px', marginBottom: '16px', textTransform: 'uppercase' }}>By Champion</h3>
+//             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+//               {s.characterStats.map((cs) => (
+//                 <div key={cs.characterName} style={{ padding: '20px', background: theme.colors.bgPanel, border: `1px solid ${theme.colors.border}`, borderRadius: '4px' }}>
+//                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+//                     <span style={{ fontSize: '20px' }}>{cs.characterName === CharacterName.ZEUS ? '⚡' : '🔥'}</span>
+//                     <span style={{ fontFamily: theme.fonts.heading, fontWeight: 700, color: theme.colors.goldBright, letterSpacing: '1px', textTransform: 'uppercase' }}>{cs.characterName}</span>
+//                   </div>
+//                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px' }}>
+//                     <div>
+//                       <div style={{ fontFamily: theme.fonts.mono, fontSize: '18px', fontWeight: 700, color: theme.colors.hpHigh }}>{cs.wins}</div>
+//                       <div style={{ fontFamily: theme.fonts.heading, fontSize: '9px', color: theme.colors.textMuted }}>WINS</div>
+//                     </div>
+//                     <div>
+//                       <div style={{ fontFamily: theme.fonts.mono, fontSize: '18px', fontWeight: 700, color: theme.colors.dead }}>{cs.losses}</div>
+//                       <div style={{ fontFamily: theme.fonts.heading, fontSize: '9px', color: theme.colors.textMuted }}>LOSSES</div>
+//                     </div>
+//                     <div>
+//                       <div style={{ fontFamily: theme.fonts.mono, fontSize: '18px', fontWeight: 700, color: theme.colors.textPrimary }}>
+//                         {cs.deaths > 0 ? (cs.kills / cs.deaths).toFixed(1) : '0'}
+//                       </div>
+//                       <div style={{ fontFamily: theme.fonts.heading, fontSize: '9px', color: theme.colors.textMuted }}>K/D</div>
+//                     </div>
+//                   </div>
+//                 </div>
+//               ))}
+//             </div>
+//           </>
+//         )}
+//       </div>
+
+//       {/* Friends */}
+//       <div id="profile-friends" style={{ paddingTop: '80px', scrollMarginTop: `${NAVBAR_HEIGHT}px` }}>
+//         <h2 style={{ ...sectionTitleStyle, fontSize: '22px', marginBottom: '24px' }}>Friends</h2>
+//         <p style={{ fontFamily: theme.fonts.heading, color: theme.colors.textMuted, textAlign: 'center', letterSpacing: '2px', fontSize: '13px' }}>Coming soon</p>
+//       </div>
+
+//       {/* Security */}
+//       <div id="profile-security" style={{ paddingTop: '80px', paddingBottom: '40px', scrollMarginTop: `${NAVBAR_HEIGHT}px` }}>
+//         <h2 style={{ ...sectionTitleStyle, fontSize: '22px', marginBottom: '24px' }}>Security & 2FA</h2>
+        
+//         {/* ⚡ Blocco 2FA ripristinato con i bottoni corretti */}
+//         <div style={{ padding: '24px', background: theme.colors.bgPanel, border: `1px solid ${theme.colors.border}`, borderRadius: '4px', marginBottom: '12px' }}>
+//           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+//             <div>
+//               <div style={{ fontFamily: theme.fonts.heading, fontSize: '14px', fontWeight: 600, color: theme.colors.textPrimary, marginBottom: '4px' }}>Two-Factor Authentication</div>
+//               <div style={{ fontFamily: theme.fonts.mono, fontSize: '13px', color: sec.is2faEnabled ? theme.colors.hpHigh : theme.colors.textSecondary }}>{sec.is2faEnabled ? '✓ Enabled' : 'Not enabled'}</div>
+//             </div>
+            
+//             {!sec.is2faEnabled && !isSettingUp2fa && (
+//               <button className="btn-press" onClick={handleEnable2faClick} style={{ padding: '8px 20px', background: `linear-gradient(180deg, ${theme.colors.gold}, ${theme.colors.goldDark})`, border: 'none', borderRadius: '2px', color: theme.colors.bgDark, fontFamily: theme.fonts.heading, fontSize: '11px', fontWeight: 700, letterSpacing: '1px', cursor: 'pointer' }}>
+//                 ENABLE
+//               </button>
+//             )}
+            
+//             {sec.is2faEnabled && (
+//               <button className="btn-press" onClick={handleDisable2faClick} style={{ padding: '8px 20px', background: 'none', border: `1px solid ${theme.colors.dead}`, borderRadius: '2px', color: theme.colors.dead, fontFamily: theme.fonts.heading, fontSize: '11px', fontWeight: 700, letterSpacing: '1px', cursor: 'pointer' }}>
+//                 DISABLE
+//               </button>
+//             )}
+//           </div>
+
+//           {/* Box con il QR Code */}
+//           {isSettingUp2fa && (
+//             <div style={{ marginTop: '24px', padding: '20px', border: `1px dashed ${theme.colors.goldDim}`, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px' }}>
+//               <p style={{ fontFamily: theme.fonts.mono, fontSize: '12px', color: theme.colors.textPrimary, textAlign: 'center' }}>
+//                 1. Inquadra questo QR con un'app come Google Authenticator o Authy.
+//               </p>
+              
+//               {qrCodeUrl && (
+//                 <div style={{ background: 'white', padding: '12px', borderRadius: '8px' }}>
+//                   <img src={qrCodeUrl} alt="2FA QR Code" style={{ width: '160px', height: '160px' }} />
+//                 </div>
+//               )}
+
+//               <p style={{ fontFamily: theme.fonts.mono, fontSize: '12px', color: theme.colors.textPrimary, textAlign: 'center' }}>
+//                 2. Inserisci il codice a 6 cifre generato dall'app per confermare.
+//               </p>
+              
+//               <input 
+//                 className="input-glow" 
+//                 type="text" 
+//                 maxLength={6} 
+//                 value={setupCode}
+//                 onChange={(e) => setSetupCode(e.target.value)}
+//                 placeholder="123456"
+//                 style={{ ...inputStyle, width: '140px', textAlign: 'center', letterSpacing: '8px', fontSize: '18px', fontWeight: 'bold' }} 
+//               />
+              
+//               {error2fa && <div style={{ color: theme.colors.dead, fontFamily: theme.fonts.mono, fontSize: '12px' }}>{error2fa}</div>}
+
+//               <div style={{ display: 'flex', gap: '12px', marginTop: '8px' }}>
+//                 <button onClick={() => setIsSettingUp2fa(false)} style={{ padding: '8px 20px', background: 'none', border: `1px solid ${theme.colors.border}`, color: theme.colors.textMuted, cursor: 'pointer' }}>Annulla</button>
+//                 <button onClick={handleConfirm2fa} style={{ padding: '8px 20px', background: theme.colors.hpHigh, border: 'none', color: theme.colors.bgDark, fontWeight: 'bold', cursor: 'pointer' }}>Conferma</button>
+//               </div>
+//             </div>
+//           )}
+//         </div>
+
+//         <div style={{ padding: '24px', background: theme.colors.bgPanel, border: `1px solid ${theme.colors.border}`, borderRadius: '4px', marginBottom: '12px' }}>
+//           <div style={{ fontFamily: theme.fonts.heading, fontSize: '14px', fontWeight: 600, color: theme.colors.textPrimary, marginBottom: '4px' }}>Email Verification</div>
+//           <div style={{ fontFamily: theme.fonts.mono, fontSize: '13px', color: sec.isEmailVerified ? theme.colors.hpHigh : theme.colors.dead }}>{sec.isEmailVerified ? '✓ Verified' : '✗ Not verified'}</div>
+//         </div>
+//         <div style={{ padding: '24px', background: theme.colors.bgPanel, border: `1px solid ${theme.colors.border}`, borderRadius: '4px' }}>
+//           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+//             <div>
+//               <div style={{ fontFamily: theme.fonts.heading, fontSize: '14px', fontWeight: 600, color: theme.colors.textPrimary, marginBottom: '4px' }}>Linked Accounts</div>
+//               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
+//                 {sec.linkedProviders && sec.linkedProviders.includes('GOOGLE') ? (
+//                   <><Icons.Google size={16} /><span style={{ fontFamily: theme.fonts.mono, fontSize: '13px', color: theme.colors.textSecondary }}>Google — Connected</span></>
+//                 ) : (
+//                   <span style={{ fontFamily: theme.fonts.mono, fontSize: '13px', color: theme.colors.textMuted }}>No providers linked</span>
+//                 )}
+//               </div>
+//             </div>
+//           </div>
+//         </div>
+//       </div>
+      
+//     </div>
+//   );
+// }
 import { useState, useEffect } from 'react';
 import { inputStyle, sectionTitleStyle } from '../styles/shared';
 import * as Icons from '../components/Icons';
 import * as api from '../services/apiService';
-import { UserProfile, UserStats, UserSettings } from '../services/apiService';
+import { UserProfile, UserStats, UserSettings, generate2fa, turnOn2fa, turnOff2fa } from '../services/apiService';
 import { theme } from '../../configs/theme';
 import { NAVBAR_HEIGHT } from '../components/Navbar';
+import { CharacterName } from '@transcendence/types';
 
 const statusColor = (s: string) => 
   s === 'ONLINE' ? theme.colors.hpHigh : 
@@ -5451,9 +5797,25 @@ export default function ProfilePage() {
   const [settings, setSettings] = useState<UserSettings | null>(null);
   const [loading, setLoading] = useState(true);
   
+  // Stati 2FA
+  const [isSettingUp2fa, setIsSettingUp2fa] = useState(false);
+  const [qrCodeUrl, setQrCodeUrl] = useState<string | null>(null);
+  const [setupCode, setSetupCode] = useState('');
+  const [error2fa, setError2fa] = useState('');
+
+  // Stati Edit Profilo
   const [editingUsername, setEditingUsername] = useState(false);
   const [editingEmail, setEditingEmail] = useState(false);
   const [tempVal, setTempVal] = useState('');
+  
+  // Stati Password e Notifiche
+  const [isChangingPwd, setIsChangingPwd] = useState(false);
+  const [pwdData, setPwdData] = useState({ old: '', new: '', confirm: '' });
+  const [pwdError, setPwdError] = useState('');
+  const [msg, setMsg] = useState(''); 
+
+  // ⚡ STATO DEL MODAL DI WARNING
+  const [dialog, setDialog] = useState<{ isOpen: boolean, title: string, msg: string, action: () => void } | null>(null);
 
   useEffect(() => {
     Promise.all([api.getMyProfile(), api.getMyStats(), api.getMySettings()])
@@ -5465,18 +5827,97 @@ export default function ProfilePage() {
       .finally(() => setLoading(false));
   }, []);
 
-  const handleSaveUsername = async () => { 
-    if (await api.updateUsername(tempVal)) {
-      setProfile((p) => p ? { ...p, username: tempVal } : null); 
-    }
-    setEditingUsername(false); 
+  // --- FUNZIONI DI SALVATAGGIO CON WARNING ---
+
+  const handleSaveUsername = () => { 
+    setDialog({
+      isOpen: true,
+      title: "Conferma Cambio Username",
+      msg: `Vuoi davvero cambiare il tuo username in "${tempVal}"?`,
+      action: async () => {
+        setDialog(null);
+        if (await api.updateUsername(tempVal)) {
+          setProfile((p) => p ? { ...p, username: tempVal } : null); 
+        }
+        setEditingUsername(false); 
+      }
+    });
   };
   
-  const handleSaveEmail = async () => { 
-    if (await api.updateEmail(tempVal)) {
-      setProfile((p) => p ? { ...p, email: tempVal } : null); 
+  const handleSaveEmail = () => { 
+    setDialog({
+      isOpen: true,
+      title: "Attenzione: Cambio Email",
+      msg: `Cambiando la tua email in "${tempVal}", tutti gli account collegati (es. Google) dovranno essere risincronizzati. Vuoi procedere?`,
+      action: async () => {
+        setDialog(null);
+        const result = await api.requestEmailChange(tempVal);
+        if (result.ok) {
+          setMsg("Link di conferma inviato alla nuova email!");
+          setEditingEmail(false); 
+        } else {
+          alert("Errore: " + result.message);
+        }
+      }
+    });
+  };
+
+  const handleSavePassword = () => {
+    setPwdError('');
+    const pwdRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+    
+    if (pwdData.new !== pwdData.confirm) return setPwdError("Le nuove password non combaciano!");
+    if (!pwdRegex.test(pwdData.new)) return setPwdError("Minimo 8 caratteri, una maiuscola, una minuscola, un numero e un simbolo speciale.");
+
+    setDialog({
+      isOpen: true,
+      title: "Conferma Cambio Password",
+      msg: "Sei sicuro di voler cambiare la tua password? Verrai disconnesso a breve.",
+      action: async () => {
+        setDialog(null);
+        const result = await api.changePassword(pwdData.old, pwdData.new);
+        if (result.ok) {
+          setMsg("Password aggiornata con successo! Verrai disconnesso a breve.");
+          setIsChangingPwd(false);
+          setPwdData({ old: '', new: '', confirm: '' });
+        } else {
+          setPwdError(result.message || "Errore durante il cambio password");
+        }
+      }
+    });
+  };
+
+  // --- FUNZIONI 2FA ---
+
+  const handleEnable2faClick = async () => {
+    setError2fa('');
+    const data = await generate2fa();
+    if (data && data.qrCode) { 
+      setQrCodeUrl(data.qrCode);
+      setIsSettingUp2fa(true);
+    } else {
+      setError2fa("Errore nella generazione del QR Code.");
     }
-    setEditingEmail(false); 
+  };
+
+  const handleConfirm2fa = async () => {
+    setError2fa('');
+    const success = await turnOn2fa(setupCode);
+    if (success) {
+      setIsSettingUp2fa(false);
+      setQrCodeUrl(null);
+      setSetupCode('');
+      setSettings(prev => prev ? { ...prev, is2faEnabled: true } : null);
+    } else {
+      setError2fa("Codice errato. Riprova.");
+    }
+  };
+
+  const handleDisable2faClick = async () => {
+    const success = await turnOff2fa();
+    if (success) {
+      setSettings(prev => prev ? { ...prev, is2faEnabled: false } : null);
+    }
   };
 
   if (loading) return (
@@ -5514,8 +5955,36 @@ export default function ProfilePage() {
         </div>
         
         <h2 style={{ ...sectionTitleStyle, fontSize: '22px', marginBottom: '24px' }}>Settings & Personalization</h2>
+        
+        {/* Messaggi di successo */}
+        {msg && <div style={{ color: theme.colors.hpHigh, marginBottom: '16px', textAlign: 'center', fontFamily: theme.fonts.mono }}>{msg}</div>}
+
         <EditableField label="USERNAME" value={username} isEditing={editingUsername} tempVal={tempVal} setTempVal={setTempVal} onEdit={() => setEditingUsername(true)} onSave={handleSaveUsername} onCancel={() => setEditingUsername(false)} />
         <EditableField label="EMAIL" value={email} isEditing={editingEmail} tempVal={tempVal} setTempVal={setTempVal} onEdit={() => setEditingEmail(true)} onSave={handleSaveEmail} onCancel={() => setEditingEmail(false)} />
+
+        {/* Blocco Cambio Password */}
+        <div style={{ padding: '16px 20px', background: theme.colors.bgPanel, border: `1px solid ${theme.colors.border}`, borderRadius: '4px', marginTop: '16px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ fontFamily: theme.fonts.heading, fontSize: '10px', color: theme.colors.textMuted, letterSpacing: '1.5px' }}>PASSWORD</div>
+            {!isChangingPwd && <button onClick={() => setIsChangingPwd(true)} style={{ background: 'none', border: 'none', color: theme.colors.textMuted, cursor: 'pointer' }}><Icons.Edit size={16} /></button>}
+          </div>
+
+          {isChangingPwd && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '12px' }} className="animate-slideUp">
+              <input type="password" placeholder="Vecchia Password" value={pwdData.old} onChange={e => setPwdData({...pwdData, old: e.target.value})} style={inputStyle} />
+              <input type="password" placeholder="Nuova Password" value={pwdData.new} onChange={e => setPwdData({...pwdData, new: e.target.value})} style={inputStyle} />
+              <input type="password" placeholder="Conferma Nuova Password" value={pwdData.confirm} onChange={e => setPwdData({...pwdData, confirm: e.target.value})} style={inputStyle} />
+              
+              {pwdError && <span style={{ color: theme.colors.dead, fontSize: '12px', fontFamily: theme.fonts.mono }}>{pwdError}</span>}
+              
+              <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', marginTop: '8px' }}>
+                <button onClick={() => {setIsChangingPwd(false); setPwdError('');}} style={{ padding: '6px 12px', background: 'none', border: `1px solid ${theme.colors.border}`, color: theme.colors.textMuted, cursor: 'pointer' }}>Annulla</button>
+                <button onClick={handleSavePassword} style={{ padding: '6px 12px', background: theme.colors.zeus, border: 'none', color: 'white', fontWeight: 'bold', cursor: 'pointer', borderRadius: '2px' }}>Salva</button>
+              </div>
+            </div>
+          )}
+        </div>
+
       </div>
 
       {/* Statistics */}
@@ -5540,7 +6009,7 @@ export default function ProfilePage() {
               {s.characterStats.map((cs) => (
                 <div key={cs.characterName} style={{ padding: '20px', background: theme.colors.bgPanel, border: `1px solid ${theme.colors.border}`, borderRadius: '4px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
-                    <span style={{ fontSize: '20px' }}>{cs.characterName.toLowerCase() === 'zeus' ? '⚡' : '🔥'}</span>
+                    <span style={{ fontSize: '20px' }}>{cs.characterName === CharacterName.ZEUS ? '⚡' : '🔥'}</span>
                     <span style={{ fontFamily: theme.fonts.heading, fontWeight: 700, color: theme.colors.goldBright, letterSpacing: '1px', textTransform: 'uppercase' }}>{cs.characterName}</span>
                   </div>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px' }}>
@@ -5575,26 +6044,64 @@ export default function ProfilePage() {
       {/* Security */}
       <div id="profile-security" style={{ paddingTop: '80px', paddingBottom: '40px', scrollMarginTop: `${NAVBAR_HEIGHT}px` }}>
         <h2 style={{ ...sectionTitleStyle, fontSize: '22px', marginBottom: '24px' }}>Security & 2FA</h2>
+        
+        {/* Blocco 2FA */}
         <div style={{ padding: '24px', background: theme.colors.bgPanel, border: `1px solid ${theme.colors.border}`, borderRadius: '4px', marginBottom: '12px' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div>
               <div style={{ fontFamily: theme.fonts.heading, fontSize: '14px', fontWeight: 600, color: theme.colors.textPrimary, marginBottom: '4px' }}>Two-Factor Authentication</div>
               <div style={{ fontFamily: theme.fonts.mono, fontSize: '13px', color: sec.is2faEnabled ? theme.colors.hpHigh : theme.colors.textSecondary }}>{sec.is2faEnabled ? '✓ Enabled' : 'Not enabled'}</div>
             </div>
-            <button className="btn-press" style={{ 
-              padding: '8px 20px', 
-              background: sec.is2faEnabled ? 'none' : `linear-gradient(180deg, ${theme.colors.gold}, ${theme.colors.goldDark})`, 
-              border: sec.is2faEnabled ? `1px solid ${theme.colors.dead}` : 'none', 
-              borderRadius: '2px', 
-              color: sec.is2faEnabled ? theme.colors.dead : theme.colors.bgDark, 
-              fontFamily: theme.fonts.heading, 
-              fontSize: '11px', 
-              fontWeight: 700, 
-              letterSpacing: '1px', 
-              cursor: 'pointer' 
-            }}>{sec.is2faEnabled ? 'DISABLE' : 'ENABLE'}</button>
+            
+            {!sec.is2faEnabled && !isSettingUp2fa && (
+              <button className="btn-press" onClick={handleEnable2faClick} style={{ padding: '8px 20px', background: `linear-gradient(180deg, ${theme.colors.gold}, ${theme.colors.goldDark})`, border: 'none', borderRadius: '2px', color: theme.colors.bgDark, fontFamily: theme.fonts.heading, fontSize: '11px', fontWeight: 700, letterSpacing: '1px', cursor: 'pointer' }}>
+                ENABLE
+              </button>
+            )}
+            
+            {sec.is2faEnabled && (
+              <button className="btn-press" onClick={handleDisable2faClick} style={{ padding: '8px 20px', background: 'none', border: `1px solid ${theme.colors.dead}`, borderRadius: '2px', color: theme.colors.dead, fontFamily: theme.fonts.heading, fontSize: '11px', fontWeight: 700, letterSpacing: '1px', cursor: 'pointer' }}>
+                DISABLE
+              </button>
+            )}
           </div>
+
+          {isSettingUp2fa && (
+            <div style={{ marginTop: '24px', padding: '20px', border: `1px dashed ${theme.colors.goldDim}`, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px' }}>
+              <p style={{ fontFamily: theme.fonts.mono, fontSize: '12px', color: theme.colors.textPrimary, textAlign: 'center' }}>
+                1. Inquadra questo QR con un'app come Google Authenticator o Authy.
+              </p>
+              
+              {qrCodeUrl && (
+                <div style={{ background: 'white', padding: '12px', borderRadius: '8px' }}>
+                  <img src={qrCodeUrl} alt="2FA QR Code" style={{ width: '160px', height: '160px' }} />
+                </div>
+              )}
+
+              <p style={{ fontFamily: theme.fonts.mono, fontSize: '12px', color: theme.colors.textPrimary, textAlign: 'center' }}>
+                2. Inserisci il codice a 6 cifre generato dall'app per confermare.
+              </p>
+              
+              <input 
+                className="input-glow" 
+                type="text" 
+                maxLength={6} 
+                value={setupCode}
+                onChange={(e) => setSetupCode(e.target.value.replace(/\D/g, ''))} // ⚡ FIX GHOST NUMBER
+                placeholder="123456"
+                style={{ ...inputStyle, width: '140px', textAlign: 'center', letterSpacing: '8px', fontSize: '18px', fontWeight: 'bold' }} 
+              />
+              
+              {error2fa && <div style={{ color: theme.colors.dead, fontFamily: theme.fonts.mono, fontSize: '12px' }}>{error2fa}</div>}
+
+              <div style={{ display: 'flex', gap: '12px', marginTop: '8px' }}>
+                <button onClick={() => setIsSettingUp2fa(false)} style={{ padding: '8px 20px', background: 'none', border: `1px solid ${theme.colors.border}`, color: theme.colors.textMuted, cursor: 'pointer' }}>Annulla</button>
+                <button onClick={handleConfirm2fa} style={{ padding: '8px 20px', background: theme.colors.hpHigh, border: 'none', color: theme.colors.bgDark, fontWeight: 'bold', cursor: 'pointer' }}>Conferma</button>
+              </div>
+            </div>
+          )}
         </div>
+
         <div style={{ padding: '24px', background: theme.colors.bgPanel, border: `1px solid ${theme.colors.border}`, borderRadius: '4px', marginBottom: '12px' }}>
           <div style={{ fontFamily: theme.fonts.heading, fontSize: '14px', fontWeight: 600, color: theme.colors.textPrimary, marginBottom: '4px' }}>Email Verification</div>
           <div style={{ fontFamily: theme.fonts.mono, fontSize: '13px', color: sec.isEmailVerified ? theme.colors.hpHigh : theme.colors.dead }}>{sec.isEmailVerified ? '✓ Verified' : '✗ Not verified'}</div>
@@ -5614,6 +6121,22 @@ export default function ProfilePage() {
           </div>
         </div>
       </div>
+
+      {/* ⚡ POPUP MODAL PER I WARNING */}
+      {dialog && dialog.isOpen && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }}>
+          <div className="animate-scaleIn" style={{ background: theme.colors.bgPanel, border: `1px solid ${theme.colors.gold}`, borderRadius: '4px', padding: '32px', maxWidth: '420px', textAlign: 'center', boxShadow: `0 0 40px ${theme.colors.goldGlow}` }}>
+            <h3 style={{ fontFamily: theme.fonts.heading, color: theme.colors.goldBright, fontSize: '18px', marginBottom: '16px', letterSpacing: '1px' }}>{dialog.title}</h3>
+            <p style={{ fontFamily: theme.fonts.mono, fontSize: '13px', color: theme.colors.textPrimary, marginBottom: '32px', lineHeight: 1.6 }}>
+              {dialog.msg}
+            </p>
+            <div style={{ display: 'flex', gap: '16px', justifyContent: 'center' }}>
+              <button onClick={() => setDialog(null)} style={{ padding: '10px 24px', background: 'none', border: `1px solid ${theme.colors.border}`, color: theme.colors.textMuted, cursor: 'pointer', fontFamily: theme.fonts.heading, letterSpacing: '1px' }}>ANNULLA</button>
+              <button onClick={dialog.action} style={{ padding: '10px 24px', background: theme.colors.dead, border: 'none', color: 'white', fontWeight: 'bold', cursor: 'pointer', borderRadius: '2px', fontFamily: theme.fonts.heading, letterSpacing: '1px' }}>PROCEDI</button>
+            </div>
+          </div>
+        </div>
+      )}
       
     </div>
   );
@@ -5810,6 +6333,80 @@ export async function checkEmailAvailable(email: string): Promise<boolean> {
 		return false;
 	}
 }
+
+// --- 2FA SETUP ---
+
+export async function generate2fa() {
+  try {
+    // Aggiornato con la rotta esatta di Giovanni
+    const res = await fetchWithAuthRetry("/api/auth/2fa/setup", { method: "POST" });
+    if (!res || !res.ok) return null;
+    return await res.json(); 
+  } catch (error) {
+    console.error("[API] Error generating 2FA:", error);
+    return null;
+  }
+}
+
+export async function turnOn2fa(code: string): Promise<boolean> {
+  try {
+    // Aggiornato con la rotta esatta di Giovanni
+    const res = await fetchWithAuthRetry("/api/auth/2fa/enable", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ code }),
+    });
+    return !!res && res.ok;
+  } catch (error) {
+    console.error("[API] Error turning on 2FA:", error);
+    return false;
+  }
+}
+
+export async function turnOff2fa(): Promise<boolean> {
+  try {
+    // Aggiornato con la rotta esatta di Giovanni
+    const res = await fetchWithAuthRetry("/api/auth/2fa/disable", { method: "POST" });
+    return !!res && res.ok;
+  } catch (error) {
+    console.error("[API] Error turning off 2FA:", error);
+    return false;
+  }
+}
+
+export async function requestEmailChange(newEmail: string): Promise<{ok: boolean, message?: string}> {
+  try {
+    const res = await fetchWithAuthRetry("/api/auth/change-email-request", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ newEmail }), 
+    });
+
+    if (!res) return { ok: false, message: "Connessione al server fallita" };
+
+    const data = await res.json().catch(() => ({}));
+    return { ok: res.ok, message: data.message || data.error };
+  } catch (error) {
+    return { ok: false, message: "Network error" };
+  }
+}
+
+export async function changePassword(oldPass: string, newPass: string): Promise<{ok: boolean, message?: string}> {
+  try {
+    const res = await fetchWithAuthRetry("/api/auth/change-password", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ oldPass, newPass }),
+    });
+	
+    if (!res) return { ok: false, message: "Connessione al server fallita" };
+
+    const data = await res.json().catch(() => ({}));
+    return { ok: res.ok, message: data.message || data.error };
+  } catch (error) {
+    return { ok: false, message: "Network error" };
+  }
+}
 </file>
 
 <file path="src/site/services/authService.ts">
@@ -5960,6 +6557,34 @@ export async function verify2fa(code: string): Promise<AuthResult> {
     return { ok: false, data: { error: "Network error" } };
   }
 }
+
+export async function resendVerification(email: string): Promise<{ok: boolean, message?: string}> {
+  try {
+    const res = await fetch("/api/auth/resend-verification", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email }),
+    });
+    const data = await res.json().catch(() => ({}));
+    return { ok: res.ok, message: data.message || data.error };
+  } catch (error) {
+    return { ok: false, message: "Network error" };
+  }
+}
+
+export async function resetPassword(token: string, newPassword: string): Promise<{ok: boolean, message?: string}> {
+  try {
+    const res = await fetch("/api/auth/reset-password", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token, newPassword }),
+    });
+    const data = await res.json().catch(() => ({}));
+    return { ok: res.ok, message: data.message || data.error };
+  } catch (error) {
+    return { ok: false, message: "Network error" };
+  }
+}
 </file>
 
 <file path="src/site/styles/shared.ts">
@@ -6025,364 +6650,28 @@ export const sectionTitleStyle: React.CSSProperties = {
 };
 </file>
 
-<file path="src/types/interfaces-enums/db-data.interfaces.ts">
-import { EndReason, MatchType, MatchMode, CharacterName } from "@transcendence/types";
+<file path="src/storage/gameStore.ts">
+import {create} from 'zustand';
+import {GameStatePayload} from '../types/game.types';
 
-export interface MatchResult {
-	mode: MatchMode; // RANKED, LOCAL, AI
-	type: MatchType; // TEAM, FFA
-	endReason: EndReason; // TIMEOUT, RESIGNATION, KILLOUT
-
-	durationSeconds: number;
-
-	winningTeamId: number | null; // null in caso di pareggio
-
-	players: PlayerResult[];
+interface GameStore {
+    gameState: GameStatePayload | null;
+    setGameState: (newState: GameStatePayload) => void;
 }
 
-export interface PlayerResult {
-	userId: number | null; // null per i bot
-	teamId: number; // For INDIVIDUAL and FFA modes, each player has a unique teamId
-	characterName: CharacterName; // ADE, ZEUS
-	kills: number;
-	deaths: number;
-
-	//finalHpPercent: number;
-}
-</file>
-
-<file path="src/types/interfaces-enums/dynamic-entitys.interfaces.ts">
-import { IPlayerState } from "./player.states.interfaces";
-import { Vector } from "../game.types";
-import { BulletHit, AttackType } from "./game.enums";
-import { CharacterName } from '@transcendence/types';
-
-export interface	DynamicEntity{
-	entityId: string; // Unique identifier (Socket ID for players, UUID for projectiles)
-	speed: number;
-	position: Vector;
-	displacement: Vector; // Displacement vector
-	radius: number; //hitbox
-}
-
-export interface	Bullet extends DynamicEntity{
-	ownerId: string;
-	characterName: CharacterName;
-	teamId: number;
-	lifeTime: number;
-	hit: BulletHit;
-	entityHit: Player | undefined;
-	isActive: boolean;
-}
-
-export interface InputQueue{
-	input: Vector;
-	attackType: AttackType | undefined;
-}
-
-export interface	Player extends DynamicEntity{
-	type: 'player';
-	socketId: string | undefined;
-	userDbId:  number | null;
-	
-	rotation: number; // Orientation angle (in radians)
-
-	characterName: CharacterName;
-	teamId: number,
-	spawnIndex: number;
-	playerIndex: number;
-
-	hp: number;
-	kill: number;
-	damage: number;
-	deads: number;
-
-	meleeAttackHitboxRadius: number;
-	spellAttackHitboxRadius: number;
-
-	meleeAttackDamage: number;
-	spellAttackDamage: number;
-	
-	spellAttackspeed: number;
-	
-	meleeAttackCooldown: number;
-	spellAttackCooldown: number;
-	defenceAttackCooldown: number;
-
-	isAttacking: boolean;
-	attackType: AttackType | undefined,
-
-	isDead: boolean;
-	isWinner: boolean;
-	isGhost: boolean;
-	isDefending: boolean;
-	isDisconnected: boolean;
-	isBot: boolean;
-	
-	disconnectionTimer: number;
-	respawnTimer: number;
-	
-	inputQueue: InputQueue[];
-
-	currentState: IPlayerState | undefined;
-}
-
-export interface CharacherStats{
-	MELEE_DAMAGE: number,
-	SPELL_DAMAGE:number,
-	SPELL_SPEED: number,
-	COOLDOWN_MELEE_ATTACK: number,
-	COOLDOWN_SPELL_ATTACK: number,
-	COOLDOWN_DEFENCE_ATTACK: number
-}
-</file>
-
-<file path="src/types/interfaces-enums/game-states.interfaces.ts">
-import { Vector } from "../game.types";
-import { AttackType, BulletHit } from "./game.enums";
-import { Player } from "./dynamic-entitys.interfaces";
-
-export interface PlayerSnapshot {
-	id: string;
-	type: string;
-	characterName: string;
-	teamId: number;
-	position: Vector;
-	rotation: number;
-	hp: number;
-	attackType: AttackType | undefined;
-	respawnTimer: number;
-	disconnectionTimer: number;
-
-	isDead: boolean;
-	isAttacking: boolean;
-	isDisconnected: boolean;
-	isDefending: boolean;
-}
-
-export interface BulletSnapshot{
-	type: string;
-	id: string;
-	characterName: string;
-	position: Vector;
-	entityHit: Player | undefined;
-	hit: BulletHit;
-}
-
-export interface WinnerData{
-	winnerTeam: number | null;
-	winnerPlayersIds: string[];
-}
-
-export interface GameStateEvents{
-	eventName: 'game-state';
-	data:{
-		players: PlayerSnapshot[] | undefined,
-		bullets: BulletSnapshot[] | undefined,
-	};
-	time: number;
-}
-
-export interface GameEndEvents{
-	eventName: 'game-over';
-	winnerData: WinnerData | undefined;
-	time: number;
-}
-</file>
-
-<file path="src/types/interfaces-enums/game.enums.ts">
-export enum AttackType{
-	MELEE_ATTACK = 'melee-attack',
-	SPELL_ATTACK = 'spell-attack',
-	DEFENCE_ATTACK = 'defence-attack'
-}
-
-export enum BulletHit{
-	PLAYER_HIT = 'player-hit',
-	WALL_HIT = 'wall-hit',
-	NONE = 'none',
-}
-
-export enum CharacterName{
-	ADE = 'ade',
-	ZEUS = 'zeus',
-	DEFAULT = 'default'
-}
-
-export enum EndReason{
-	TIMEOUT = 'timeout',
-	RESIGNATION = 'resignation',
-	KILLOUT = 'killout',
-}
-
-export enum MatchMode{
-	RANKED = 'ranked',
-	UNRANKED = 'unranked',
-	LOCAL = 'local',
-	AI = 'ai',
-}
-
-export enum MatchType{
-	TEAM = 'team',
-	FFA = 'ffa'
-}
-</file>
-
-<file path="src/types/interfaces-enums/game.state.interface.ts">
-import { Vector } from "../game.types";
-import { AttackType } from ".";
-
-export interface IGameState{
-
-	name: string;
-
-	onEnter(): void;
-
-	update(dt: number): void;
-
-	onInput(entityId: string, input: Vector, attackType: AttackType): void;
-
-	onExit(): void;
-}
-</file>
-
-<file path="src/types/interfaces-enums/index.ts">
-export * from './game.enums';
-export * from './dynamic-entitys.interfaces';
-export * from './map.interfaces';
-export * from './game-states.interfaces';
-export * from './db-data.interfaces';
-export * from './matchmaking.interfaces';
-</file>
-
-<file path="src/types/interfaces-enums/map.interfaces.ts">
-import { Vector } from "../game.types";
-
-export interface	StaticEntity{
-	id: string;
-	position: Vector;
-	width: number;// Width
-	depth: number;// Depth
-}
-
-export interface	Pillar{
-	id: string;
-	position: Vector;
-	radius: number;
-}
-
-export interface	GameWorld extends StaticEntity{
-	walls: StaticEntity[];
-	pillars: Pillar[];
-}
-
-export interface MapWallData{
-	id: string;
-	x: number;
-	z: number;
-	width: number;
-	depth: number;
-}
-
-export interface MapPillarsData{
-	id: string,
-	x: number,
-	z: number,
-	radius: number,
-}
-
-export interface MapData{
-	meta:{
-		name: string;
-		version: string;
-		author: string;
-	}
-	settings:{
-		width: number;
-		depth: number;
-		maxPlayers: number;
-	}
-	walls: MapWallData[];
-	pillars: MapPillarsData[];
-	spawn_points: {x: number, z: number}[];
-}
-</file>
-
-<file path="src/types/interfaces-enums/matchmaking.interfaces.ts">
-import { CharacterName, MatchMode, MatchType } from "@transcendence/types";
-
-export interface MatchMakingData{
-	socketId: string | undefined;
-	characterName: CharacterName;
-	userDbId: number | null;
-	isAiPlayer: boolean;
-	playerIndex: number | undefined;
-};
-</file>
-
-<file path="src/types/interfaces-enums/player.states.interfaces.ts">
-import { Player } from ".";
-
-export interface IPlayerState{
-
-	onEnter(player: Player): void;
-
-	update(player: Player, dt: number): void;
-}
+export const useGameStore = create<GameStore>((set) => ({
+  gameState: null,
+  setGameState: (newState) => set({ gameState: newState }), 
+}));
 </file>
 
 <file path="src/types/game.types.ts">
-// types/game.types.ts
-// Mirrors backend interfaces — keep in sync manually.
-
-import { CharacterName, EndReason, MatchMode, MatchType } from '@transcendence/types';
+import { CharacterName, EndReason, MatchMode, MatchType, Pillar, PlayerSnapshot, BulletSnapshot, WinnerData } from '@transcendence/types';
 export { CharacterName, EndReason, MatchMode, MatchType };
 
 export interface Vector {
   x: number;
   z: number;
-}
-
-// --- Enums ---
-
-export enum AttackType {
-  MELEE_ATTACK   = 'melee-attack',
-  SPELL_ATTACK   = 'spell-attack',
-  DEFENCE_ATTACK = 'defence-attack',
-}
-
-export enum BulletHit {
-  PLAYER_HIT = 'player-hit',
-  WALL_HIT   = 'wall-hit',
-  NONE       = 'none',
-}
-
-// --- Snapshot: what the server sends every tick ---
-
-export interface PlayerSnapshot {
-  id: string;
-  type: string;
-  characterName: string;
-  teamId: number;
-  position: Vector;
-  rotation: number;
-  hp: number;
-  attackType: AttackType | undefined;
-  respawnTimer: number;
-  disconnectionTimer: number;
-
-  isDead: boolean;
-  isAttacking: boolean;
-  isDisconnected: boolean;
-  isDefending: boolean;
-}
-
-export interface BulletSnapshot {
-  type: string;
-  id: string;
-  characterName: string;
-  position: Vector;
-  hit: BulletHit;
 }
 
 // --- Game state payloads ---
@@ -6393,41 +6682,9 @@ export interface GameStatePayload {
   time: number;
 }
 
-export interface WinnerData {
-  winnerTeam: number | null;
-  winnerPlayersIds: string[];
-}
-
 export interface GameOverPayload {
   winnerData: WinnerData | undefined;
   time: number;
-}
-
-// --- Match results (for stats/history) ---
-
-export interface PlayerResult {
-  userId: number | null;
-  teamId: number;
-  characterName: CharacterName;
-  kills: number;
-  deaths: number;
-}
-
-export interface MatchResult {
-  mode: MatchMode;
-  type: MatchType;
-  endReason: EndReason;
-  durationSeconds: number;
-  winningTeamId: number | null;
-  players: PlayerResult[];
-}
-
-// --- Map payload ---
-
-export interface Pillar {
-  id: string;
-  position: Vector;
-  radius: number;
 }
 
 export interface MapEmitPayload {
@@ -6450,23 +6707,13 @@ export interface MapEmitPayload {
     playerSpeed: number;
   };
 }
-
-// --- Matchmaking ---
-
-export interface MatchMakingData {
-  socketId: string | undefined;
-  characterName: CharacterName;
-  userDbId: number | null;
-  isAiPlayer: boolean;
-  playerIndex: number | undefined;
-}
 </file>
 
 <file path="src/types/socket.types.ts">
-import { PlayerSnapshot, BulletSnapshot, WinnerData } from './game.types';
+import { PlayerSnapshot, BulletSnapshot, WinnerData, CharacterName } from '@transcendence/types';
 
 export interface JoinLobbyPayload {
-  characterName: 'Zeus' | 'Ade';
+  characterName: CharacterName;
 }
 
 export interface GameInputPayload {
@@ -6504,7 +6751,7 @@ import { theme } from "./configs/theme";
 
 export default function App() {
 
-	const [isLoggedIn, setIsLoggedIn] = useState(false);
+	const [isLoggedIn, setIsLoggedIn] = useState(true);
 	const [user, setUser] = useState<UserProfile | null>(null);
 	const [currentPage, setCurrentPage] = useState("dashboard");
 

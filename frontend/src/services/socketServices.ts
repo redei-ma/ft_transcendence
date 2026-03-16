@@ -1,6 +1,6 @@
 import { io, Socket } from "socket.io-client";
 import * as msgpackParser from "socket.io-msgpack-parser";
-import { GameEvents } from "@transcendence/types";
+import { GameEvents } from '@transcendence/types';
 import { refreshToken } from "../site/services/authService";
 
 export class SocketService {

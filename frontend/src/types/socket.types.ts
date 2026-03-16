@@ -1,4 +1,4 @@
-import { CharacterName, PlayerSnapshot, BulletSnapshot, WinnerData } from '@transcendence/types';
+import { PlayerSnapshot, BulletSnapshot, WinnerData, CharacterName } from '@transcendence/types';
 
 export interface JoinLobbyPayload {
   characterName: CharacterName;

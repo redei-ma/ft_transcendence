@@ -1,5 +1,5 @@
 import { io, Socket } from "socket.io-client";
-import { GameEvents } from "@transcendence/types";
+import { GameEvents } from '@transcendence/types';
 import { refreshToken } from "../site/services/authService";
 
 class MatchmakingSocket {

@@ -1,6 +1,8 @@
 ORDINE PRIORITARIO
 
-- 2FA
 - Revisione React State
 - Navbar non responsive
+- Validazione dati in entrata frontend
 - Lagcompensations
+- Dopo registrazione puoi fare resend verification
+- Checka ghost number in 2FA

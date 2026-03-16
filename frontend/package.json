@@ -13,20 +13,20 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@transcendence/types": "file:../shared/types",
     "@react-three/drei": "^10.7.7",
     "@react-three/fiber": "^9.5.0",
     "@react-three/postprocessing": "^3.0.4",
+    "@transcendence/types": "file:../shared/types",
     "autoprefixer": "^10.4.23",
     "axios": "^1.13.2",
     "postcss": "^8.5.6",
     "react": "^19.2.3",
     "react-dom": "^19.2.3",
     "socket.io-client": "^4.8.3",
+    "socket.io-msgpack-parser": "^3.0.0",
     "tailwindcss": "^3.4.19",
     "three": "^0.182.0",
-    "zustand": "^5.0.10",
-    "socket.io-msgpack-parser": "^3.0.0"
+    "zustand": "^5.0.11"
   },
   "devDependencies": {
     "@types/node": "^25.0.8",
