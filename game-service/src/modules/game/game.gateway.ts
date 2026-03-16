@@ -9,6 +9,7 @@ import { GameExceptionFilter } from "./errorHandling/game.WsGameExceptionFilter"
 import { Vector,ErrorCode,SuccessCode,ExitStatus,GameEvents } from "@transcendence/types";
 import { parseCookieHeader,verifyJwtToken,AUTH_COOKIE_NAME } from "@transcendence/auth";
 import { GameData } from "./game-interfaces";
+import { Throttle } from "@nestjs/throttler";
 
 /* @WebSocketGateway()
 Decorator that marks this class as a Gateway. It enables real-time, bidirectional
@@ -176,6 +177,7 @@ export class GameGateway
 		);
 	}
 
+	@Throttle({ default: { limit: 20, ttl: 10000 } })
 	@SubscribeMessage(GameEvents.GAME_MESSAGE)
 	handleGameMessage(
 		@ConnectedSocket() client: Socket,

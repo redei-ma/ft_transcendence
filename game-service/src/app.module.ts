@@ -8,7 +8,6 @@ import { AchievementModule } from "./modules/achievement/achievement.module";
 import { HealthModule } from "./modules/health/health.module";
 import { GameModule } from "./modules/game/game.module";
 import { envValidationSchema } from "./env.validation";
-import { GameEvents } from "@transcendence/types";
 
 @Module({
 	imports: [
@@ -22,11 +21,6 @@ import { GameEvents } from "@transcendence/types";
 				name: "default",
 				ttl: 60000,
 				limit: 10,
-			},
-			{
-				name: GameEvents.GAME_MESSAGE,
-				ttl: 60000,
-				limit: 5,
 			},
 		]),
 		PrismaModule,
