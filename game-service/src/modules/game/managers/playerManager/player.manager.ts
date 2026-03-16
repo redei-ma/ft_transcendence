@@ -4,7 +4,7 @@ import { CombatSystem, PhysicsSystem } from "../../systems";
 import { World } from "../../core";
 import { SpellAttackState, MeleeAttackState, DefenceAttack } from "..";
 import { Vector, GameConfig, Player, InputQueue, AttackType } from "@transcendence/types";
-import { AiService } from "../../core/game.aiService";
+import { AiService } from "../../core";
 
 @Injectable()
 export class PlayerManager{

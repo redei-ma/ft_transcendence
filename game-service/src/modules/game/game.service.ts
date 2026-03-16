@@ -330,8 +330,8 @@ export class GameService implements OnModuleInit, OnModuleDestroy{
 		this.socketToGame.delete(socketId);
 	}
 
-	public	notifyMatchmakingEndGame(gameId: string){
-		this.redis.emit(NetworkConfig.MATCHMAKING.MATCH_EVENTS.END_GAME, gameId).subscribe({
+	async	notifyMatchmakingEndGame(gameId: string){
+		await this.redis.emit(NetworkConfig.MATCHMAKING.MATCH_EVENTS.END_GAME, gameId).subscribe({
 			next: () => this.logger.log(`event END_GAME inviated for game with id ${gameId}`),
 			error: (err) => this.logger.error(`error in sending the event END_GAME with Redis: ${err.message}`)
         });
