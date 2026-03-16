@@ -174,15 +174,14 @@ export class GameGateway
 			socketId,
 			normalizedInput,
 			input.attackType,
-			input.playerIndex,
+			input.playerIndex
 		);
 	}
 
 	@SubscribeMessage(GameEvents.GAME_MESSAGE)
 	handleGameMessage(
 		@ConnectedSocket() client: Socket,
-		@MessageBody() input: GameMessageDto,
-	): void {
+		@MessageBody() input: GameMessageDto): void {
 		const socketId = client.id;
 		if (!socketId) {
 			this.logger.error("invalid socket reached, ignoring");
