@@ -13,6 +13,7 @@ export class Engine{
 	private bulletEvents: BulletSnapshot[] = [];
 	private endEvents: GameEndEvents[] = [];
 	private stateEvents: GameStateEvents[] = [];
+	private allPlayersHistory: Map<string, Player> = new Map();
 
 	public endGameData: MatchResult = {
 		mode: MatchMode.RANKED,
@@ -61,6 +62,7 @@ export class Engine{
 
 			/* creating snapshot for the players */
 			this.players.forEach((player => {
+					this.allPlayersHistory.set(player.entityId, player);
 					this.playerEvents.push(Snapshot.toPlayerSnapshot(player));
 			}));
 
@@ -122,7 +124,7 @@ export class Engine{
 		private fillEndGameData(winnerTeamId: number | null, reason: EndReason){
 			this.endGameData.durationSeconds = this.gameTimer;
 			this.endGameData.endReason = reason;
-			for (const player of this.players.values()){
+			for (const player of this.allPlayersHistory.values()){
 				if (player.userDbId){
 
 					let userIdNumber: number | null = player.userDbId;
@@ -143,6 +145,8 @@ export class Engine{
 			if (winnerTeamId === -1)
 				winnerTeamId = null;
 			this.endGameData.winningTeamId = winnerTeamId;
+
+			this.allPlayersHistory.clear();
 		}
 
 		/* Getters */
