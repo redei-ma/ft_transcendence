@@ -1,7 +1,6 @@
 ORDINE PRIORITARIO
 
 - Revisione React State
-- Modifica email c'e' bisogna chiamare backend vedi branch Ale (Account legto a mail, se cambi mail, occhio: Elimini tutti gli account linkati!)
 - Navbar non responsive
 - Validazione dati in entrata frontend
 - Lagcompensations

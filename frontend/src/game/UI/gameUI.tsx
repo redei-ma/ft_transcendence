@@ -19,25 +19,15 @@ export default function GameUI({
   maxPlayers,
   gameOver,
 }: GameUIProps) {
-  // Abbonamento chirurgico: ri-renderizza solo quando HP o stato death/disconnect cambia
-  const playerHpData = useGameStore((state) =>
-    state.gameState?.players.map(p => ({
-      id: p.id,
-      characterName: p.characterName,
-      hp: p.hp,
-      isDead: p.isDead,
-      isDisconnected: p.isDisconnected,
-      disconnectionTimer: p.disconnectionTimer,
-      respawnTimer: p.respawnTimer,
-      position: p.position,
-    })) || []
-  );
-
-  const playersCount = playerHpData.length;
+  
+  // ⚡ FIX: La parentesi chiude il selettore PRIMA del || []. 
+  // Così Zustand restituisce undefined, e l'array vuoto lo creiamo in sicurezza fuori.
+  const players = useGameStore((state) => state.gameState?.players) || [];
+  const playersCount = players.length;
 
   return (
     <>
-      {playerHpData.map((player) => (
+      {players.map((player) => (
         <HPBar
           key={player.id}
           characterName={player.characterName}
@@ -49,7 +39,7 @@ export default function GameUI({
         />
       ))}
 
-      {playerHpData.map((player) => {
+      {players.map((player) => {
         if (!player.isDead) return null;
         return (
           <div

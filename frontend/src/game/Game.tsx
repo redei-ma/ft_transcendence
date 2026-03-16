@@ -1,7 +1,7 @@
 import { Canvas } from '@react-three/fiber';
 import { useGameSocket } from '../hooks/useGameSocket';
 import { InputManager } from './input/inputManager';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useMemo } from 'react';
 import { CharacterName, MatchMode, GameConfig } from '@transcendence/types';
 import GameUI from './UI/gameUI';
 import { PlayerEntity } from './entities/PlayerEntity';
@@ -24,10 +24,23 @@ interface GameProps {
 
 export default function Game({ selectedCharacter, selectedMode, onPlayAgain, onQuit, myUserId }: GameProps) {
   const inputManagerRef = useRef<InputManager | null>(null);
-  const { isConnected, world, gameOver } = useGameSocket();
+  
+  // ⚡ Il Socket Hook ora non restituisce nulla, aggiorna solo lo store
+  useGameSocket();
 
-  const playerIds = useGameStore((state) => state.gameState?.players.map(p => p.id) || []);
-  const bulletIds = useGameStore((state) => state.gameState?.bullets.map(b => b.id) || []);
+  // ⚡ Estraiamo i dati "lenti" dallo store per l'interfaccia 2D
+  const isConnected = useGameStore((state) => state.isConnected);
+  const world = useGameStore((state) => state.world);
+  const gameOver = useGameStore((state) => state.gameOver);
+  const resetGame = useGameStore((state) => state.resetGame);
+
+  // ⚡ FIX ZUSTAND v5: Estraiamo gli ID come stringa (es. "id1,id2") così non serve la funzione di comparazione!
+  const playerIdsStr = useGameStore((state) => state.gameState?.players.map(p => p.id).join(',') || '');
+  const bulletIdsStr = useGameStore((state) => state.gameState?.bullets.map(b => b.id).join(',') || '');
+
+  // ⚡ Ritrasformiamo la stringa in array solo se cambia
+  const playerIds = useMemo(() => playerIdsStr ? playerIdsStr.split(',') : [], [playerIdsStr]);
+  const bulletIds = useMemo(() => bulletIdsStr ? bulletIdsStr.split(',') : [], [bulletIdsStr]);
 
   useEffect(() => {
     const isLocal = selectedMode === MatchMode.LOCAL;
@@ -43,6 +56,16 @@ export default function Game({ selectedCharacter, selectedMode, onPlayAgain, onQ
   const mapDepth = world?.map?.depth || GameConfig.MAP.DEPTH;
   const centerX = mapWidth / 2;
   const centerZ = mapDepth / 2;
+
+  const handlePlayAgainInternal = () => {
+    resetGame();
+    onPlayAgain();
+  };
+
+  const handleQuitInternal = () => {
+    resetGame();
+    onQuit();
+  };
 
   return (
     <div style={{
@@ -70,6 +93,7 @@ export default function Game({ selectedCharacter, selectedMode, onPlayAgain, onQ
 
         <gridHelper args={[mapWidth, 20, 0xffffff, 0x444444]} position={[centerX, 0, centerZ]} />
 
+        {/* I componenti 3D estraggono i loro dati live da Zustand usando questi ID */}
         {playerIds.map((id) => (
           <PlayerEntity key={id} playerId={id} />
         ))}
@@ -98,16 +122,15 @@ export default function Game({ selectedCharacter, selectedMode, onPlayAgain, onQ
       )}
 
       {gameOver && (
-        <GameOverOverlayWrapper gameOver={gameOver} onPlayAgain={onPlayAgain} onQuit={onQuit} />
+        <GameOverOverlayWrapper gameOver={gameOver} onPlayAgain={handlePlayAgainInternal} onQuit={handleQuitInternal} />
       )}
     </div>
   );
 }
 
-// Wrapper che legge i players dallo store solo quando serve (game over)
 function GameOverOverlayWrapper({ gameOver, onPlayAgain, onQuit }: {
   gameOver: any; onPlayAgain: () => void; onQuit: () => void;
 }) {
-  const players = useGameStore((state) => state.gameState?.players || []);
+  const players = useGameStore((state) => state.gameState?.players) || [];
   return <GameOverOverlay gameOver={gameOver} players={players} onPlayAgain={onPlayAgain} onQuit={onQuit} />;
 }
