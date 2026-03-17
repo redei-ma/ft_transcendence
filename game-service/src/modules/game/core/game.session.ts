@@ -20,6 +20,7 @@ import {
 import { Logger } from "@nestjs/common";
 import { GameService } from "../game.service";
 import { MatchMakingData } from "../game-interfaces";
+import { AiService } from "./aiService/game.aiService";
 
 /* the session dosn't know what state the game have, this class is only a game manager */
 export class GameSession {
@@ -49,6 +50,7 @@ export class GameSession {
 		public readonly gameRules: GameRules,
 		private readonly playerManager: PlayerManager,
 		private readonly bulletManager: BulletManager,
+		private readonly aiService: AiService,
 		matchType: MatchType,
 		matchMode: MatchMode,
 		public readonly gameService: GameService,
@@ -142,6 +144,11 @@ export class GameSession {
 
 	/* method to clean up the players map */
 	cleanUp(): void {
+		for (const player of this.players.values()){
+			if (player.isBot){
+				this.aiService.removeBot(player.entityId);
+			}
+		}
 		this.players.clear();
 		this.socketToEntities.clear();
 		this.addedPlayersIds.length = 0;

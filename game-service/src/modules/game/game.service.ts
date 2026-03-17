@@ -1,6 +1,6 @@
 import { Inject, Injectable, Logger, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
 import { Server } from 'socket.io';
-import { GameSession, GameRules, World } from './core';
+import { GameSession, GameRules, World, AiService } from './core';
 import { PlayerManager, MapManager, BulletManager } from './managers';
 import { ClientProxy } from '@nestjs/microservices';
 import { NetworkConfig, Vector, MatchMode, MatchType, GameConfig, ExitStatus,
@@ -40,6 +40,7 @@ export class GameService implements OnModuleInit, OnModuleDestroy{
 		private readonly playerManager: PlayerManager,
 		private readonly bulletManager: BulletManager,
 		private readonly matchResultService: MatchResultService,
+		private readonly aiService: AiService,
 		@Inject(NetworkConfig.MATCHMAKING.SERVICE.REDIS) private readonly redis: ClientProxy) {}
 
 	onModuleInit(){
@@ -252,9 +253,10 @@ export class GameService implements OnModuleInit, OnModuleDestroy{
 			this.gameRules,
 			this.playerManager,
 			this.bulletManager,
+			this.aiService,
 			matchType,
 			matchMode,
-			this,
+			this
 		);
 		
 		this.games.set(gameId, newGameSession);

@@ -23,4 +23,8 @@ export class Vector{
 		this.x = newX;
 		this.z = newZ;
 	}
+
+	lengthSq(): number{
+		return ((this.x * this.x) + (this.z * this.z));
+	}
 }
