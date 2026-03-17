@@ -51,7 +51,7 @@ export class PlayerManager{
 			}
 		}
 
-		player.displacement.set(0,0);
+		//player.displacement.set(0,0);
 		let lastInput: InputQueue | undefined = undefined;
 
 		/* I count the inputs that are processed, if they are >= MAX_INPUT_FOR_TICK, i break the loop for avoid cheater and more security */

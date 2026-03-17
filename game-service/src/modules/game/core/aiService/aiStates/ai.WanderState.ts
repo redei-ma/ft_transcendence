@@ -2,6 +2,7 @@ import { IAiStates } from "../aiInterfaces/IAiStates";
 import { Logger } from "@nestjs/common";
 import { GameWorld } from '../../../game-interfaces';
 import { Player, Vector } from '@transcendence/types'
+import { ChaseState } from "./ai.ChaseState";
 
 export class WanderState implements IAiStates{
     logger: Logger = new Logger(WanderState.name);
@@ -12,12 +13,43 @@ export class WanderState implements IAiStates{
 
     private stuckTimer: number = 0.0;
     private hasTarget: boolean = false;
+    private VISUAL_RADIUS_SQ: number = 400.0;
+
     onEnter(bot: Player): void {
         this.logger.debug('ai in wander mode');
         this.hasTarget = false;
     }
 
+    private checkVisualForKill(bot: Player, allPlayers: Readonly<Map<string, Player>>): Player | undefined{
+        let distanceSqRecord: number = Infinity;
+        let victim: Player | undefined = undefined;
+        for (const targetPlayer of allPlayers.values()){
+            if (targetPlayer.entityId !== bot.entityId && targetPlayer.teamId !== bot.teamId){
+
+                if (!targetPlayer.isDead && !targetPlayer.isGhost){
+                    const dx: number = targetPlayer.position.x - bot.position.x;
+                    const dz: number = targetPlayer.position.z - bot.position.z;
+
+                    const distanceSq: number = (dx * dx) + (dz * dz);
+                    if (distanceSq < this.VISUAL_RADIUS_SQ){
+                        if (distanceSq < distanceSqRecord){
+                            distanceSqRecord = distanceSq;
+                            victim = targetPlayer;
+                        }
+                    }
+                }
+            }
+        }
+        return (victim);
+    }
+
     update(bot: Player, gameWorld: GameWorld, allPlayers: Readonly<Map<string, Player>>, dt: number): IAiStates | undefined {
+
+        let victim: Player | undefined = this.checkVisualForKill(bot, allPlayers);
+
+        if (victim){
+            return (new ChaseState(victim));
+        }
 
         this.stuckTimer += dt;
 
@@ -40,6 +72,7 @@ export class WanderState implements IAiStates{
         }
 
         this.moveInput.normalize();
+        bot.inputQueue.length = 0;
         bot.inputQueue.push({
             attackType: undefined,
             input: this.moveInput,

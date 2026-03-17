@@ -17,7 +17,8 @@ export const GameConfig = {
 	},
 	PLAYER: {
 		DEFAULT_HP: 100,
-		SPEED: 40.0,
+		//Modificata da 40.0 a 10.0 perche' erano troppo veloci
+		SPEED: 10.0,
 		RADIUS: 1.6,
 		RESPAWN_TIMER: 5.0,
 	},
