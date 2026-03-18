@@ -1,9 +1,10 @@
 import { Injectable } from '@nestjs/common';
-import { GameWorld } from '../../game-interfaces';
-import { Player } from '@transcendence/types'
+import { Player, Bullet } from '@transcendence/types'
 import { Logger } from "@nestjs/common";
 import { IAiStates } from './aiInterfaces/IAiStates';
-import { WanderState } from './aiStates';
+import { DefendState, WanderState } from './aiStates';
+import { threatDetector } from './ai.tactics.helper';
+import { World } from '../game.world';
 
 @Injectable()
 export class AiService{
@@ -11,7 +12,7 @@ export class AiService{
     private botToState: Map<string, IAiStates> = new Map();
     constructor(){}
 
-    public updateInput(bot: Player, gameWorld: GameWorld, allPlayers: Readonly<Map<string, Player>>, dt: number){
+    public updateInput(bot: Player, gameWorld: World, allPlayers: Readonly<Map<string, Player>>, dt: number){
 
         if (!this.botToState.has(bot.entityId)){
             const initialState: IAiStates = new WanderState();
@@ -19,7 +20,13 @@ export class AiService{
             this.botToState.set(bot.entityId, initialState);
         }
 
-        const currentState: IAiStates | undefined = this.botToState.get(bot.entityId)
+        const currentState: IAiStates | undefined = this.botToState.get(bot.entityId);
+        const threat: Player | Bullet | undefined = threatDetector(bot, allPlayers, gameWorld);
+        if (threat && currentState?.name !== 'DefendState'){
+            this.transitionTo(bot, currentState, new DefendState(threat));
+            return ;
+        }
+
         if (currentState){
             const newState = currentState.update(bot, gameWorld, allPlayers, dt);
             if (newState){
@@ -28,8 +35,9 @@ export class AiService{
         }
     }
 
-    private transitionTo(bot: Player, currentState: IAiStates, newState: IAiStates){
-        currentState.onExit(bot);
+    private transitionTo(bot: Player, currentState: IAiStates | undefined, newState: IAiStates){
+        if (currentState)
+            currentState.onExit(bot);
         newState.onEnter(bot);
         this.botToState.set(bot.entityId, newState);
     }

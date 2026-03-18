@@ -2,11 +2,10 @@ import { IAiStates } from "../aiInterfaces/IAiStates";
 import { Logger } from "@nestjs/common";
 import { GameWorld } from '../../../game-interfaces';
 import { Player, GameConfig,Vector } from '@transcendence/types'
-import { WanderState } from "./ai.WanderState";
 import { MeleeAttackState } from "./ai.MeleeAttackState";
 import { SpellAttackState } from "./ai.SpellAttackState";
-import { KiteState } from "./ai.KiteState";
 import { CHARACTER_DATA } from "src/modules/game/factories";
+import { tacticsHelper } from "../ai.tactics.helper";
 
 export class ChaseState implements IAiStates{
     logger: Logger = new Logger(ChaseState.name);
@@ -23,12 +22,10 @@ export class ChaseState implements IAiStates{
     }
 
     update(bot: Player, gameWorld: GameWorld, allPlayers: Readonly<Map<string, Player>>, dt: number): IAiStates | undefined {
-        if (this.victim.isDead || this.victim.isGhost){
-            return (new WanderState());
-        }
 
-        if (bot.hp <= GameConfig.PLAYER.DEFAULT_HP / 3){
-            return (new KiteState())
+        const recommendedState: IAiStates = tacticsHelper(bot, this.victim);
+        if (recommendedState.name !== this.name){
+            return recommendedState;
         }
 
         const stats = CHARACTER_DATA[bot.characterName];
@@ -42,8 +39,9 @@ export class ChaseState implements IAiStates{
             return new MeleeAttackState(this.victim);
         }
 
-        const spellDistance = GameConfig.COMBAT.BULLET_LIFE * bot.spellAttackspeed;
-        if (distanceSq < (spellDistance * spellDistance) && bot.spellAttackCooldown >= stats.COOLDOWN_SPELL_ATTACK){
+        const spellDistanceSq = (GameConfig.COMBAT.BULLET_LIFE * bot.spellAttackspeed) * (GameConfig.COMBAT.BULLET_LIFE * bot.spellAttackspeed);
+
+        if (distanceSq < spellDistanceSq && bot.spellAttackCooldown >= stats.COOLDOWN_SPELL_ATTACK){
             return new SpellAttackState(this.victim);
         }
 

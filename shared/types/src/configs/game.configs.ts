@@ -34,6 +34,11 @@ export const GameConfig = {
 		DEFENCE_DURATION: 1.5,
 		BULLET_LIFE: 5.0,
 	},
+	BOT: {
+		MELEE_DANGER_ZONE: 25,
+		BULLET_DANGER_ZONE: 400,
+    	VISUAL_RADIUS_SQ: 2500.0,
+	},
 	ACHIEVEMENT: {
 		CLUTCHMASTER: 0.05,
 	},

@@ -5,7 +5,7 @@ import { CharacherStats } from "../game-interfaces";
 export const CHARACTER_DATA: Record<CharacterName, CharacherStats> = {
 	[CharacterName.ZEUS]: {
 		MELEE_DAMAGE: 15.0,
-		SPELL_DAMAGE: 100.0,
+		SPELL_DAMAGE: 8.0,
 		SPELL_SPEED: 40.0,
 		COOLDOWN_MELEE_ATTACK: 0.8,
 		COOLDOWN_SPELL_ATTACK: 1.5,
@@ -13,7 +13,7 @@ export const CHARACTER_DATA: Record<CharacterName, CharacherStats> = {
 	},
 	[CharacterName.ADE]: {
 		MELEE_DAMAGE: 15.0,
-		SPELL_DAMAGE: 100.0,
+		SPELL_DAMAGE: 7.5,
 		SPELL_SPEED: 40.0,
 		COOLDOWN_MELEE_ATTACK: 1.2,
 		COOLDOWN_SPELL_ATTACK: 1.0,

@@ -11,7 +11,7 @@ export class World implements GameWorld{
 	position: Vector;
 	width: number;
 	depth: number;
-	bullets: Bullet[];
+	public bullets: Bullet[];
 	spawnPoints: Vector[];
 	private bulletIndex: number = 0;
 	public readonly maxPlayers: number;

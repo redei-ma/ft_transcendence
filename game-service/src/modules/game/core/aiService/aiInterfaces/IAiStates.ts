@@ -1,6 +1,6 @@
 import { Logger } from '@nestjs/common'
-import { GameWorld } from '../../../game-interfaces';
 import { Player } from '@transcendence/types'
+import { World } from '../../game.world';
 
 export interface IAiStates{
     logger: Logger;
@@ -9,7 +9,7 @@ export interface IAiStates{
 
     onEnter(bot: Player): void;
 
-    update(bot: Player, gameWorld: GameWorld, allPlayers: Readonly<Map<string, Player>>, dt: number): IAiStates | undefined;
+    update(bot: Player, gameWorld: World, allPlayers: Readonly<Map<string, Player>>, dt: number): IAiStates | undefined;
 
     onExit(bot: Player): void;
 }

@@ -1,8 +1,9 @@
 import { IAiStates } from "../aiInterfaces/IAiStates";
 import { Logger } from "@nestjs/common";
 import { GameWorld } from '../../../game-interfaces';
-import { Player, Vector, AttackType } from '@transcendence/types'
+import { Player, Vector, AttackType, GameConfig } from '@transcendence/types'
 import { ChaseState } from "./ai.ChaseState";
+import { tacticsHelper } from "../ai.tactics.helper";
 
 export class SpellAttackState implements IAiStates{
 
@@ -44,11 +45,10 @@ export class SpellAttackState implements IAiStates{
             }
         }
 
-        if (this.hasStartedToAttack && !bot.isAttacking)
-            return (new ChaseState(this.victim));
-
-        if (this.stuckTimer >= 2.5)
-            return (new ChaseState(this.victim));
+        if ((this.hasStartedToAttack && !bot.isAttacking) ||
+            this.stuckTimer >= GameConfig.COMBAT.ATTACK_VISUALIZATION * 2){
+                return tacticsHelper(bot, this.victim);
+        }
 
         return undefined;
     }

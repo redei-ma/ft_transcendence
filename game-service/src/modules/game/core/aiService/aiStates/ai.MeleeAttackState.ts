@@ -1,8 +1,8 @@
 import { IAiStates } from "../aiInterfaces/IAiStates";
 import { Logger } from "@nestjs/common";
 import { GameWorld } from '../../../game-interfaces';
-import { Player, Vector, AttackType } from '@transcendence/types'
-import { ChaseState } from "./ai.ChaseState";
+import { Player, Vector, AttackType, GameConfig } from '@transcendence/types'
+import { tacticsHelper } from "../ai.tactics.helper";
 
 export class MeleeAttackState implements IAiStates{
     logger: Logger = new Logger(MeleeAttackState.name);
@@ -43,11 +43,10 @@ export class MeleeAttackState implements IAiStates{
             }
         }
 
-        if (this.hasStartedToAttack && !bot.isAttacking)
-            return (new ChaseState(this.victim));
-
-        if (this.stuckTimer >= 2.5)
-            return (new ChaseState(this.victim));
+        if ((this.hasStartedToAttack && !bot.isAttacking) ||
+            this.stuckTimer >= GameConfig.COMBAT.ATTACK_VISUALIZATION * 2){
+                return tacticsHelper(bot, this.victim);
+        }
 
         return undefined;
     }

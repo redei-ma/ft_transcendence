@@ -1,7 +1,7 @@
 import { IAiStates } from "../aiInterfaces/IAiStates";
 import { Logger } from "@nestjs/common";
 import { GameWorld } from '../../../game-interfaces';
-import { Player, Vector } from '@transcendence/types'
+import { Player, Vector,GameConfig } from '@transcendence/types'
 import { ChaseState } from "./ai.ChaseState";
 
 export class WanderState implements IAiStates{
@@ -13,14 +13,13 @@ export class WanderState implements IAiStates{
 
     private stuckTimer: number = 0.0;
     private hasTarget: boolean = false;
-    private VISUAL_RADIUS_SQ: number = 400.0;
 
     onEnter(bot: Player): void {
         this.logger.debug('ai in wander mode');
         this.hasTarget = false;
     }
 
-    private checkVisualForKill(bot: Player, allPlayers: Readonly<Map<string, Player>>): Player | undefined{
+    private checkVisualForAttack(bot: Player, allPlayers: Readonly<Map<string, Player>>): Player | undefined{
         let distanceSqRecord: number = Infinity;
         let victim: Player | undefined = undefined;
         for (const targetPlayer of allPlayers.values()){
@@ -31,7 +30,7 @@ export class WanderState implements IAiStates{
                     const dz: number = targetPlayer.position.z - bot.position.z;
 
                     const distanceSq: number = (dx * dx) + (dz * dz);
-                    if (distanceSq < this.VISUAL_RADIUS_SQ){
+                    if (distanceSq < GameConfig.BOT.VISUAL_RADIUS_SQ){
                         if (distanceSq < distanceSqRecord){
                             distanceSqRecord = distanceSq;
                             victim = targetPlayer;
@@ -45,7 +44,7 @@ export class WanderState implements IAiStates{
 
     update(bot: Player, gameWorld: GameWorld, allPlayers: Readonly<Map<string, Player>>, dt: number): IAiStates | undefined {
 
-        let victim: Player | undefined = this.checkVisualForKill(bot, allPlayers);
+        let victim: Player | undefined = this.checkVisualForAttack(bot, allPlayers);
 
         if (victim){
             return (new ChaseState(victim));
