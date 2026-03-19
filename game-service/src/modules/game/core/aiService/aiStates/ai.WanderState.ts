@@ -64,7 +64,7 @@ export class WanderState implements IAiStates{
 
         this.moveInput.set(dirX, dirZ);
 
-        if (this.moveInput.lengthSq() < 9.0 || this.stuckTimer >= 4.0){
+        if (this.moveInput.lengthSq() < GameConfig.BOT.WAYPOINT_TOLERANCE_SQ || this.stuckTimer >= GameConfig.BOT.WANDER_STUCK_TIMER){
             this.hasTarget = false;
             this.stuckTimer = 0.0;
             return undefined;
