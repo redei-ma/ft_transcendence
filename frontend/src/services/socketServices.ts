@@ -62,34 +62,42 @@ export class SocketService {
 		this.socket.on("reconnect_failed", () =>
 			console.error(`💀 [GameSocket] Reconnection totally failed.`),
 		);
-
-		this.socket.on("connect_error", async (err) => {
-			console.error(`❌ [GameSocket] Connect Error:`, err.message);
-			if (err.message === "unauthorized" || err.message === "Authentication error") {
-				console.log("🔄 [GameSocket] Attempting token refresh...");
-				const refreshed = await refreshToken();
-				if (refreshed) {
-					console.log("✅ [GameSocket] Token refreshed, reconnecting...");
-					this.socket?.connect();
-				} else {
-					console.error("🚫 [GameSocket] Token refresh failed.");
-				}
-			}
+		this.socket.on("connect_error", (err) => {
+  			console.error(`❌ [GameSocket] Connect Error:`, err.message);
 		});
 
-		this.socket.on("unauthorized", async () => {
-			console.warn("🔐 [GameSocket] Unauthorized event received.");
-			const refreshed = await refreshToken();
-			if (refreshed) {
-				console.log("🔄 [GameSocket] Reconnecting after auth fix...");
-				this.socket?.connect();
-			}
-		});
-
-		this.socket.on("exception", (data: { status: string; errorCode: string; message: string }) => {
+		this.socket.on("exception", async (data: { status: string; errorCode: string; message: string }) => {
 			console.error(`🚨 [GameSocket] Exception from server: [${data.errorCode}] ${data.message}`);
-			if (this.onGameError) {
-				this.onGameError(data.errorCode, data.message);
+			switch (data.errorCode) {
+				case "UNAUTHORIZED_TOKEN":
+			      	console.log("🔄 [GameSocket] Token expired, attempting refresh...");
+      				const refreshed = await refreshToken();
+      				if (refreshed) {
+        				console.log("✅ [GameSocket] Token refreshed, reconnecting...");
+        				this.socket?.disconnect();
+        				this.socket?.connect();
+      				} else {
+        				console.error("🚫 [GameSocket] Refresh failed, bubbling to handler.");
+        				this.onGameError?.(data.errorCode, data.message);
+      				}
+					break;
+				case "UNAUTHORIZED":
+					
+					break;
+				case "PLAYER_NOT_FOUND":
+					break;
+				case "SESSION_NOT_FOUND":
+					break;
+				case "MATCH_ALREADY_STARTED":
+					break;
+				case "SERVER_SHUTDOWN":
+					break;
+				case "INVALID_INPUT":
+					break;
+				default:
+				    console.warn(`[GameSocket] Unhandled error code: ${data.errorCode}`);
+				    this.onGameError?.(data.errorCode, data.message);
+				    break;
 			}
 		});
 
@@ -97,7 +105,7 @@ export class SocketService {
 	}
 
 	disconnect() {
-		if (this.socket) {
+			if (this.socket) {
 			console.log("🟠 [GameSocket] Manual disconnect triggered.");
 			this.socket.removeAllListeners();
 			this.socket.disconnect();

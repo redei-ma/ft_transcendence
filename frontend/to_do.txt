@@ -1,7 +1,14 @@
 ORDINE PRIORITARIO
 
+- sistema socket exception. via unauthorized e dentro ad exception
 - Guarda immagini chat di gio
 - Validazione dati in entrata frontend
 - Lagcompensations
 - Checka ghost number in 2FA
-- Trovare modo di refreshare subito email dopo modifica, o comunque gestirlo.
+- Trovare modo di refreshare subito email dopo modifica, o comunque gestirlo
+
+DA COMMITTARE
+
+- Aggiunto blob in security policy nginx
+- Fixati modelli 3D
+- Chiedi a giovanni di riguardare config per aure ecc ecc
