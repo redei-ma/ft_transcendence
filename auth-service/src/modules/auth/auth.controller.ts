@@ -7,7 +7,6 @@ import {
   UseGuards,
   Get,
   Query,
-  BadRequestException,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import type { Request, Response } from 'express';
@@ -17,7 +16,7 @@ import { JwtRefreshGuard } from './jwt/jwt-refresh.guard';
 import { ConfigService } from '@nestjs/config';
 import { GoogleAuthGuard } from './jwt/google.guard';
 import { CreateLocalUserNoHashDto, CreateOAuthUserDto } from '@transcendence/dto';
-import { ResetPasswordDto, ChangePasswordDto, EmailDto, NewEmailDto } from '../../dto/input.dto';
+import { ResetPasswordDto, ChangePasswordDto, EmailDto, NewEmailDto, LoginDto, Enable2FADto, TokenQueryDto } from '../../dto/input.dto';
 
 @Controller('api/auth')
 export class AuthController {
@@ -40,17 +39,13 @@ export class AuthController {
 
   @Post('login')
   async login(
-    @Body() body: { username: string; password: string; totp?: string },
+    @Body() body: LoginDto,
     @Res({ passthrough: true }) res: Response,
   ) {
-    const result = await this.authService.login(
-      body.username,
-      body.password,
-      body.totp,
-    );
+    const result = await this.authService.login(body);
 
     if ('requires2fa' in result) {
-      return result; // Returns { requires2fa: true } and stops here
+      return result;
     }
 
     const { accessToken, refreshToken, user } = result;
@@ -145,14 +140,9 @@ export class AuthController {
   }
 
   @Get('verify-email')
-  async verifyEmail(@Query('token') token: string) {
-    //console.log('RAW TOKEN:', token);
-    if (!token) {
-      throw new BadRequestException('Missing token');
-    }
+  async verifyEmail(@Query() query: TokenQueryDto) {
 
-    const decodedToken = decodeURIComponent(token);
-    //console.log('DECODED TOKEN:', decodedToken);
+    const decodedToken = decodeURIComponent(query.token);
 
     await this.authService.verifyEmailToken(decodedToken);
 
@@ -183,9 +173,9 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   async enable2fa(
     @Req() req: AuthenticatedRequest,
-    @Body() body: { code: string },
+    @Body() body: Enable2FADto,
   ) {
-    await this.authService.enable2fa(req.user.sub, body.code);
+    await this.authService.enable2fa(req.user.sub, body);
     return { ok: true };
   }
 
@@ -206,9 +196,8 @@ export class AuthController {
   }
 
   @Get('confirm-email-change')
-  async confirmEmailChange(@Query('token') token: string) {
-    if (!token) throw new BadRequestException('Token missing');
-    return this.authService.confirmEmailChange(decodeURIComponent(token));
+  async confirmEmailChange(@Query() query: TokenQueryDto) {
+    return this.authService.confirmEmailChange(decodeURIComponent(query.token));
   }
 
   @UseGuards(JwtAuthGuard)

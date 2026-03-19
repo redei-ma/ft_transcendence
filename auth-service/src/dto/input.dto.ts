@@ -1,5 +1,21 @@
-import { IsString, MinLength } from 'class-validator';
-import { IsEmailField, IsPasswordField } from '@transcendence/dto';
+import { IsString, MinLength, IsNotEmpty } from 'class-validator';
+import { IsEmailField, IsPasswordField, IsEmailOrUsernameField, IsTotpField } from '@transcendence/dto';
+
+
+/**
+ * Input DTO for login.
+ */
+export class LoginDto {
+  @IsEmailOrUsernameField()
+  identifier: string;
+
+  @IsString()
+  @MinLength(1)
+  password: string;
+
+  @IsTotpField()
+  totp?: string;
+}
 
 /**
  * Input DTO for changing/adding email.
@@ -45,4 +61,19 @@ export class ResetPasswordDto {
 
   @IsPasswordField()
   password: string;
+}
+
+/**
+ * Input DTO for enabling 2FA.
+ */
+export class Enable2FADto {
+
+  @IsTotpField()
+  totp: string;
+}
+
+export class TokenQueryDto {
+  @IsString()
+  @IsNotEmpty()
+  token: string;
 }
