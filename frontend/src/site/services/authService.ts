@@ -46,7 +46,7 @@ export async function fetchWithAuthRetry(
 		password: string,
 		totp?: string,
 	): Promise<AuthResult> {
-		const payload: Record<string, string> = { identifier: username, password };
+		const payload: Record<string, string> = { username, password };
 		if (totp) payload.totp = totp;
 
 		try {
