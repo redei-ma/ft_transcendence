@@ -23,8 +23,6 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
     refreshToken: string,
     profile: Profile,
   ) {
-    //console.log('GOOGLE PROFILE:', JSON.stringify(profile, null, 2));
-
     const email = profile.emails?.[0]?.value;
 
     if (!email) {

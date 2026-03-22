@@ -1,13 +1,6 @@
 import { applyDecorators } from "@nestjs/common";
 import { ApiProperty } from "@nestjs/swagger";
-import {
-	IsEmail,
-	IsEnum,
-	IsString,
-	MinLength,
-	MaxLength,
-	Matches,
-} from "class-validator";
+import { IsEmail, IsEnum, IsString, MinLength, MaxLength, Matches, IsOptional } from "class-validator";
 import { Provider } from "@transcendence/types";
 
 export function IsPasswordField() {
@@ -72,4 +65,28 @@ export function IsOAuthProviderField() {
 			message: `Provider must be one of: ${OAuthProviders.join(", ")}. `,
 		}),
 	);
+}
+
+export function IsTotpField() {
+  return applyDecorators(
+    ApiProperty({ example: '123456', description: '6-digit 2FA code', required: false }),
+    IsOptional(),
+    IsString(),
+    // Ensures exactly 6 digits
+    Matches(/^\d{6}$/, { message: 'TOTP must be a 6-digit number. ' }),
+  );
+}
+
+export function IsEmailOrUsernameField() {
+  return applyDecorators(
+    ApiProperty({
+      example: 'john_doe OR john@example.com',
+      description: 'Accepts a valid username or email address'
+    }),
+    IsString(),
+    // This regex allows either a basic email pattern OR your username pattern
+	Matches(/^([a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}|[a-z0-9_]{3,20})$/, {
+      message: 'Identifier must be a valid email or username (3-20 chars, lowercase, numbers, underscores). ',
+    }),
+  );
 }

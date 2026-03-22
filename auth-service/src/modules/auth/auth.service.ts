@@ -16,7 +16,8 @@ import * as speakeasy from 'speakeasy';
 import * as QRCode from 'qrcode';
 import { CreateOAuthUserDto, CreateLocalUserNoHashDto } from '@transcendence/dto';
 import { UserStatus, Provider } from '@transcendence/types';
-import { ResetPasswordDto, ChangePasswordDto, EmailDto, NewEmailDto } from '../../dto/input.dto';
+import { ResetPasswordDto, ChangePasswordDto, EmailDto, NewEmailDto, LoginDto, Enable2FADto } from '../../dto/input.dto';
+import { isEmail}  from 'class-validator';
 
 @Injectable()
 export class AuthService {
@@ -62,8 +63,6 @@ export class AuthService {
         user: { username: user.username, email: user.email },
       };
     } catch (error) {
-      // Log the actual error for debugging, then throw a readable message
-      console.error('Registration error:', error);
       throw new BadRequestException('Registration failed. Please try again later.');
     }
   }
@@ -88,11 +87,11 @@ export class AuthService {
     return { message: 'If an account with this email exists and is not verified, a verification email was sent.' };
   }
 
-  async login(username: string, password: string, totp?: string) {
-    let user = await this.usersService.findUser({ username });
+  async login(dto: LoginDto) {
+    let user = await this.usersService.findUser({ username: dto.identifier });
 
-    if (!user) {
-      user = await this.usersService.findUser({ email: username });
+    if (!user && isEmail(dto.identifier)) {
+      user = await this.usersService.findUser({ email: dto.identifier });
     }
 
     if (!user) {
@@ -104,7 +103,7 @@ export class AuthService {
       throw new UnauthorizedException('This account uses Google login');
     }
 
-    const isMatch = await bcrypt.compare(password, localAccount.passwordHash);
+    const isMatch = await bcrypt.compare(dto.password, localAccount.passwordHash);
     if (!isMatch) {
       throw new UnauthorizedException('invalid credentials');
     }
@@ -114,14 +113,14 @@ export class AuthService {
     }
 
     if (user.is2faEnabled) {
-      if (!totp) {
+      if (!dto.totp) {
         return { requires2fa: true };
       }
 
       const valid = speakeasy.totp.verify({
         secret: user.twoFactorSecret,
         encoding: 'base32',
-        token: totp,
+        token: dto.totp,
         window: 1,
       });
 
@@ -237,7 +236,7 @@ export class AuthService {
     let payload: { sub: number; type: string };
 
     try {
-      payload = this.jwtService.verify(dto.token, {
+      payload = this.jwtService.verify(decodeURIComponent(dto.token), {
         secret: this.config.getOrThrow<string>('JWT_PASSWORD_RESET_SECRET'),
       });
     } catch (e) {
@@ -247,8 +246,6 @@ export class AuthService {
     if (payload.type !== 'password-reset') {
       throw new ForbiddenException('Invalid token type');
     }
-
-    //to-do mettere controlli su psw
 
     const hashed = await bcrypt.hash(dto.password, 10);
 
@@ -329,17 +326,16 @@ export class AuthService {
 
     return {
       qrCode,
-      //twoFactorSecret: secret.base32, // optional (for backup)
     };
   }
 
-  async enable2fa(userId: number, code: string) {
+  async enable2fa(userId: number, dto: Enable2FADto) {
     const user = await this.usersService.findUser({ id: userId });
 
     const verified = speakeasy.totp.verify({
       secret: user?.twoFactorSecret,
       encoding: 'base32',
-      token: code,
+      token: dto.code,
       window: 1,
     });
 
@@ -353,45 +349,6 @@ export class AuthService {
   async disable2fa(userId: number) {
     await this.usersService.disable2fa(userId);
   }
-
-// --- EMAIL CHANGE LOGIC ---
-
-  /* async requestEmailChange(userId: number, dto: NewEmailDto) {
-
-    const user = await this.usersService.findUser({ id: userId });
-    if (!user) throw new NotFoundException('User not found');
-
-    const hasLocalAccount = user.accounts.some(a => a.provider === Provider.LOCAL);
-    if (!hasLocalAccount) {
-        throw new ForbiddenException(
-            'Accounts logged in exclusively with other Identity Providers cannot change their email. Add local password to be able to change your email.'
-        );
-    }
-
-    //aggiungere che si richiede e controlla la password
-    if (user.email === dto.newEmail) {
-        throw new BadRequestException('The new email must be different from the current one.');
-    }
-
-    const existingUser = await this.usersService.findUser({ email: dto.newEmail });
-    if (existingUser) {
-        throw new ConflictException('This email is already associated with another account.');
-    }
-
-
-    const token = this.jwtService.sign(
-      { sub: userId, newEmail: dto.newEmail, type: 'email-change' },
-      {
-        secret: this.config.getOrThrow('JWT_EMAIL_SECRET'),
-        expiresIn: '15m',
-      },
-    );
-
-    const verifyUrl = `${this.config.getOrThrow('PUBLIC_URL')}/api/auth/confirm-email-change?token=${encodeURIComponent(token)}`;
-
-    await this.mailService.sendVerifyEmail(dto.newEmail, verifyUrl);
-    return { message: 'Confirmation email sent to your new address. You have 15 minutes to confirm the new email, only then it will be modified' };
-  } */
 
   async requestEmailChange(userId: number, dto: NewEmailDto) {
     const user = await this.usersService.findUser({ id: userId });
@@ -409,7 +366,6 @@ export class AuthService {
     }
   */
 
-    // Standard checks
     if (user.email === dto.newEmail) {
       throw new BadRequestException('The new email must be different from the current one.');
     }
@@ -419,7 +375,6 @@ export class AuthService {
       throw new ConflictException('This email is already associated with another account.');
     }
 
-    // Sign token
     const token = this.jwtService.sign(
       { sub: userId, newEmail: dto.newEmail, type: 'email-change' },
       {
@@ -433,27 +388,6 @@ export class AuthService {
 
     return { message: 'Confirmation email sent to your new address. By changing email all other Id Provider (es. Google) will be disconnected. ' };
   }
-
-  /* async confirmEmailChange(token: string) {
-    const payload = this.jwtService.verify(token, {
-      secret: this.config.getOrThrow('JWT_EMAIL_SECRET'),
-    });
-
-    if (payload.type !== 'email-change') {
-      throw new ForbiddenException('Invalid token type');
-    }
-
-    const existingUser = await this.usersService.findUser({ email: payload.newEmail });
-    if (existingUser) {
-        throw new ConflictException('Email update failed. This email is already associated with another account.');
-    }
-
-    await this.usersService.updateEmail(payload.sub, { email: payload.newEmail });
-
-    await this.usersService.markEmailVerified(payload.sub);
-
-    return { message: 'Email updated successfully.' };//mettere pagina anche qui?
-  } */
 
   async confirmEmailChange(token: string) {
     const payload = this.jwtService.verify(token, {
@@ -470,40 +404,8 @@ export class AuthService {
     // Update the actual email (user-service handles OAuth unlinking internally)
     await this.usersService.updateEmail(user.id, { email: payload.newEmail });
 
-    return { message: 'Email updated successfully. OAuth accounts have been unlinked for security. If you renter through Google with the old email a new account will be created. ' };
+    return { message: 'Email updated successfully. OAuth accounts have been unlinked for security. If you re-enter through Google with the old email a new account will be created. ' };
   }
-
-  // --- PASSWORD CHANGE LOGIC ---
-
-  /* async changePassword(userId: number, oldPass: string, newPass: string) {
-    // 1. Get user including the password hash
-    const user = await this.usersService.findUser({ id: userId });
-    const localAccount = user?.accounts.find(a => a.provider === Provider.LOCAL);
-
-    //aggiungere caso se uno e entrato con google?
-    if (!localAccount?.passwordHash) {
-      throw new BadRequestException('No local password set for this account.');
-    }
-
-    // 2. Verify old password
-    const isMatch = await bcrypt.compare(oldPass, localAccount.passwordHash);
-    if (!isMatch) {
-      throw new UnauthorizedException('Current password incorrect');
-    }
-
-    // 3. Validate new password (use your existing regex)
-    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
-    if (newPass.length < 10 || !passwordRegex.test(newPass)) {
-      throw new BadRequestException('New password does not meet security requirements.');
-    }
-    //controllare che nuova pass sia diversa da vecchia?
-    // 4. Hash and Update
-    const hashed = await bcrypt.hash(newPass, 10);
-    await this.usersService.updatePassword(userId, { passwordHash: hashed });
-
-    // 5. Security: Invalidate existing sessions
-    await this.usersService.invalidateRefreshTokens(userId);
-  } */
 
   async changePassword(userId: number, body: ChangePasswordDto) {
     const user = await this.usersService.findUser({ id: userId });
