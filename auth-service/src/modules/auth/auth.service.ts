@@ -335,7 +335,7 @@ export class AuthService {
     const verified = speakeasy.totp.verify({
       secret: user?.twoFactorSecret,
       encoding: 'base32',
-      token: dto.totp,
+      token: dto.code,
       window: 1,
     });
 

@@ -69,7 +69,7 @@ export class ResetPasswordDto {
 export class Enable2FADto {
 
   @IsTotpField()
-  totp: string;
+  code: string;
 }
 
 export class TokenQueryDto {
