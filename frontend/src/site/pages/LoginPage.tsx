@@ -23,7 +23,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
 
     try {
       if (mode === "login") {
-
+        
         // ⚡ SE LA 2FA È GIÀ VISIBILE, VERIFICHIAMO SOLO IL CODICE
         if (show2fa) {
           const { ok, data } = await authService.verify2fa(formData.totp);
@@ -38,18 +38,18 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
 
         // ⚡ ALTRIMENTI, FACCIAMO IL LOGIN NORMALE
         const { ok, data } = await authService.login(formData.username, formData.password);
-
+        
         // Se il backend ci dice che serve la 2FA (tramite un flag o uno status code)
-        if (data.requires2fa || data.message === '2FA required') {
-          setShow2fa(true);
-          setLoading(false);
-          return;
+        if (data.requires2fa || data.message === '2FA required') { 
+          setShow2fa(true); 
+          setLoading(false); 
+          return; 
         }
-
-        if (ok) {
-          onLogin();
-        } else {
-          setError(data.message || data.error || "Login failed");
+        
+        if (ok) { 
+          onLogin(); 
+        } else { 
+          setError(data.message || data.error || "Login failed"); 
         }
 
       } else if (mode === "register") {
@@ -73,22 +73,22 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
 
   return (
     <div className="animate-fadeIn" style={{
-      minHeight: "100vh",
-      display: "flex",
-      alignItems: "center",
+      minHeight: "100vh", 
+      display: "flex", 
+      alignItems: "center", 
       justifyContent: "center",
       backgroundColor: theme.colors.bgDark,
       backgroundImage: `radial-gradient(circle at center, rgba(200,170,110,0.4) 0%, transparent 60%), radial-gradient(circle at 20% 80%, rgba(10,200,185,0.04) 0%, transparent 90%), url(${welcomeScene})`,
       backgroundSize: 'cover',
       backgroundPosition: 'center',
       backgroundRepeat: 'no-repeat',
-      position: "relative",
+      position: "relative", 
       overflow: "hidden",
     }}>
       {/* Star particles */}
       <div style={{
-        position: "absolute",
-        inset: 0,
+        position: "absolute", 
+        inset: 0, 
         pointerEvents: "none",
         background: `radial-gradient(1px 1px at 20% 30%, ${theme.colors.goldGlow}, transparent),
           radial-gradient(1px 1px at 80% 70%, ${theme.colors.goldSubtle}, transparent),
@@ -98,30 +98,30 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
 
       {/* Orb container */}
       <div style={{
-        width: "440px",
-        height: "440px",
+        width: "440px", 
+        height: "440px", 
         borderRadius: "50%",
         background: `radial-gradient(circle at center, ${theme.colors.bgPanel}00 20%, ${theme.colors.bgDark}00 70%)`,
         transform: 'translateY(70px)',
-        border: `1px solid ${theme.colors.border}`,
+        border: `1px solid ${theme.colors.border}`, 
         animation: "orbPulse 4s ease-in-out infinite",
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
+        display: "flex", 
+        flexDirection: "column", 
+        alignItems: "center", 
         justifyContent: "center",
-        padding: "60px 50px",
+        padding: "60px 50px", 
         position: "relative",
       }}>
         <h1 style={{
-          fontSize: mode === "login" ? "22px" : "20px",
+          fontSize: mode === "login" ? "22px" : "20px", 
           fontWeight: 700,
           fontFamily: theme.fonts.heading,
           background: `linear-gradient(180deg, ${theme.colors.goldBright}, ${theme.colors.goldDark}, ${theme.colors.goldDark})`,
-          WebkitBackgroundClip: "text",
+          WebkitBackgroundClip: "text", 
           WebkitTextFillColor: "transparent",
-          marginBottom: "4px",
-          letterSpacing: "3px",
-          textAlign: "center",
+          marginBottom: "4px", 
+          letterSpacing: "3px", 
+          textAlign: "center", 
           textTransform: "uppercase",
         }}>
           {mode === "login" && "Clash of Olympus"}
@@ -136,15 +136,15 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
 
         {error && (
           <div style={{
-            width: "100%",
-            padding: "8px 12px",
+            width: "100%", 
+            padding: "8px 12px", 
             marginBottom: "12px",
-            background: "rgba(232,64,87,0.15)",
+            background: "rgba(232,64,87,0.15)", 
             border: `1px solid ${theme.colors.dead}`,
-            borderRadius: "2px",
-            color: theme.colors.dead,
+            borderRadius: "2px", 
+            color: theme.colors.dead, 
             fontFamily: theme.fonts.mono,
-            fontSize: "13px",
+            fontSize: "13px", 
             textAlign: "center",
           }}>{error}</div>
         )}

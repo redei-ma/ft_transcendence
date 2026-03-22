@@ -40,7 +40,7 @@ export async function fetchWithAuthRetry(
 		return null;
 	}
 	}
-
+	
 	export async function login(
 		username: string,
 		password: string,
@@ -48,7 +48,7 @@ export async function fetchWithAuthRetry(
 	): Promise<AuthResult> {
 		const payload: Record<string, string> = { username, password };
 		if (totp) payload.totp = totp;
-
+	
 		try {
 			const res = await fetch("/api/auth/login", {
 				method: "POST",
@@ -56,7 +56,7 @@ export async function fetchWithAuthRetry(
 				credentials: "include",
 				body: JSON.stringify(payload),
 			});
-
+		
 			return { ok: res.ok, data: await res.json() };
 		} catch (error) {
 			console.error("[Auth] Login error:", error);
