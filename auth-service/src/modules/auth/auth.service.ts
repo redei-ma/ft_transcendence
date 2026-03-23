@@ -317,7 +317,7 @@ export class AuthService {
   async setup2fa(userId: number) {
     const secret = speakeasy.generateSecret({
       length: 20,
-      name: `MyGame (${userId})`,
+      name: `Clash of Olympus (${userId})`,
     });
 
     const qrCode = await QRCode.toDataURL(secret.otpauth_url);
