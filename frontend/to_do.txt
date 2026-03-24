@@ -2,27 +2,34 @@
 TO DO:
 
   Ale
-    - Campo username/e-mail in loginpage invece di solo username( mandarlo a backend come identifier e non come username)
-    - Crea pagine forgot password e resend email verification (  )
+    - Dopo cambio password cookies vengono eliminati, slogga l'utente
+    - Crea pagine forgot password( da mandare via mail dopo il reset )
+    - Register new User ( inserisci password due volte )
+    - Resend email verification ( Schermo diventa nero quando clicchi )
     - Richiedi password per conferma identita' al cambio email dal profilo
 
   Gio:
     - Gestione errori
 
+  Renato:
+    - Mostra ELO vicino alla chat o comunque ad un certo punto ( magari vicino chat Win = ELO Lose = ELO Drau = ELO )
+    - Possibilita' eliminare account ( con warning di conferma )
+    - History and Notifications ( live notify tramite "evoluzione" HTTP, guarda SSE )
+    - Mostra current streak in statistics
+
+
   - Sistema socket exception. togli unauthorized e usa exception
   - Guarda immagini chat di gio
   - Validazione dati in entrata frontend ( tutti i dati )
-  - Checka ghost number in 2FA( Quando inserisci il codice la sequenza numerica di esempio e' troppo nitida, sembrano i numeri gia inseriti dall utente)
   - Trovare modo di refreshare subito email dopo modifica, o comunque gestirlo
 
-
-
-==============================================================================================================================================================================================================================================
+=====================================================================================================================================================================================================================================================================
 
 
 
 DA COMMITTARE
-  - 
+  - Modificato login ( user/email )
+  - Resend e-mail verification code fixato
 
 
 
