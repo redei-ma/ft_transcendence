@@ -18,7 +18,7 @@ export const GameConfig = {
 	PLAYER: {
 		DEFAULT_HP: 100,
 		SPEED: 40.0,
-		RADIUS: 1.6,
+		RADIUS: 4.7,
 		RESPAWN_TIMER: 5.0,
 	},
 	MATCH: {

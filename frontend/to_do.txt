@@ -1,14 +1,67 @@
-ORDINE PRIORITARIO
 
-- sistema socket exception. via unauthorized e dentro ad exception
-- Guarda immagini chat di gio
-- Validazione dati in entrata frontend
-- Lagcompensations
-- Checka ghost number in 2FA
-- Trovare modo di refreshare subito email dopo modifica, o comunque gestirlo
+TO DO:
+
+  Ale
+    - Campo username/e-mail in loginpage invece di solo username( mandarlo a backend come identifier e non come username)
+    - Crea pagine forgot password e resend email verification (  )
+    - Richiedi password per conferma identita' al cambio email dal profilo
+
+  Gio:
+    #- Gestione errori
+
+  - Sistema socket exception. togli unauthorized e usa exception
+  #- Guarda immagini chat di gio
+  - Validazione dati in entrata frontend ( tutti i dati )
+  - Checka ghost number in 2FA( Quando inserisci il codice la sequenza numerica di esempio e' troppo nitida, sembrano i numeri gia inseriti dall utente)
+  - Trovare modo di refreshare subito email dopo modifica, o comunque gestirlo
+
+
+
+==============================================================================================================================================================================================================================================
+
+
 
 DA COMMITTARE
+  - Modelli 3D calibrati
+  - Dimensioni aure e modelli seguono PLAYER_RADIUS
 
-- Aggiunto blob in security policy nginx
-- Fixati modelli 3D
-- Chiedi a giovanni di riguardare config per aure ecc ecc
+
+
+DUMP:
+
+
+  Frontend:
+  
+    find . -type f \( -name "*.html" -o -name "*.js" -o -name "*.ts" -o -name "*.tsx" -o -name "*.css" -o -name "*.conf" -o -name "*.yml" -o -name "*.yaml" -o -name "*.json" -o -name "Dockerfile" -o -name "Makefile" -o -name ".env*" -o -name "*.prisma" \) \
+      ! -path "*/node_modules/*" \
+      ! -path "*/.git/*" \
+      ! -path "*/dist/*" \
+      ! -path "*/.next/*" \
+      | sort | while read f; do echo "========== $f =========="; cat "$f"; echo ""; done > repo_dump.txt
+  
+  Full Repo:
+
+    find . -type f \( \
+      -name "*.ts" -o -name "*.tsx" -o -name "*.js" -o -name "*.jsx" -o \
+      -name "*.html" -o -name "*.css" -o -name "*.scss" -o \
+      -name "*.json" -o -name "*.yaml" -o -name "*.yml" -o \
+      -name "*.conf" -o -name "*.nginx" -o \
+      -name "*.prisma" -o -name "*.sql" -o \
+      -name "*.env" -o -name "*.env.*" -o -name ".env*" -o \
+      -name "Dockerfile" -o -name "Makefile" -o -name "docker-compose*" -o \
+      -name "*.toml" -o -name "*.cfg" -o -name "*.ini" -o \
+      -name "*.sh" -o -name "*.md" \
+    \) \
+      ! -path "*/node_modules/*" \
+      ! -path "*/.git/*" \
+      ! -path "*/dist/*" \
+      ! -path "*/build/*" \
+      ! -path "*/.next/*" \
+      ! -path "*/public/models/*" \
+      ! -path "*/package-lock.json" \
+      ! -path "*/.env" \
+      | sort | while read f; do echo "========== $f =========="; cat "$f"; echo ""; done > repo_dump.txt
+
+
+wc -l repo_dump.txt
+du -sh repo_dump.txt
