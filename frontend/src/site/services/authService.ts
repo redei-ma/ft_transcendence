@@ -42,11 +42,11 @@ export async function fetchWithAuthRetry(
 	}
 	
 	export async function login(
-		username: string,
+		identifier: string,
 		password: string,
 		totp?: string,
 	): Promise<AuthResult> {
-		const payload: Record<string, string> = { username, password };
+		const payload: Record<string, string> = { identifier, password };
 		if (totp) payload.totp = totp;
 	
 		try {

@@ -7,10 +7,10 @@ TO DO:
     - Richiedi password per conferma identita' al cambio email dal profilo
 
   Gio:
-    #- Gestione errori
+    - Gestione errori
 
   - Sistema socket exception. togli unauthorized e usa exception
-  #- Guarda immagini chat di gio
+  - Guarda immagini chat di gio
   - Validazione dati in entrata frontend ( tutti i dati )
   - Checka ghost number in 2FA( Quando inserisci il codice la sequenza numerica di esempio e' troppo nitida, sembrano i numeri gia inseriti dall utente)
   - Trovare modo di refreshare subito email dopo modifica, o comunque gestirlo
@@ -22,8 +22,7 @@ TO DO:
 
 
 DA COMMITTARE
-  - Modelli 3D calibrati
-  - Dimensioni aure e modelli seguono PLAYER_RADIUS
+  - 
 
 
 
@@ -39,6 +38,10 @@ DUMP:
       ! -path "*/.next/*" \
       | sort | while read f; do echo "========== $f =========="; cat "$f"; echo ""; done > repo_dump.txt
   
+
+=====================================================================================================================================================================================================================================================================
+
+
   Full Repo:
 
     find . -type f \( \
