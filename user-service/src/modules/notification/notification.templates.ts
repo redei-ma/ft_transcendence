@@ -1,20 +1,7 @@
-import { NotificationType } from "@transcendence/types";
-
 /**
- * Persistent notification types — saved to DB.
- * Must match the NotificationType enum in Prisma schema.
+ * Ephemeral notification types — delivered via SSE only, never saved to DB.
  */
-export type PersistentNotificationType = NotificationType;
-
-/**
- * Ephemeral notification types — WebSocket only, not saved to DB.
- */
-export type EphemeralNotificationType = "NEW_MESSAGE";
-
-/** All supported notification types. */
-export type NotificationTemplateType =
-	| PersistentNotificationType
-	| EphemeralNotificationType;
+export type EphemeralNotificationType = "GAME_INVITE" | "GAME_INVITE_ACCEPTED" | "NEW_MESSAGE";
 
 /** Notification content returned by every template function. */
 export interface NotificationContent {
@@ -23,60 +10,32 @@ export interface NotificationContent {
 }
 
 /**
- * Map of template function signatures per notification type.
- * Each function takes the necessary arguments to generate the notification content.
- * This ensures type safety when calling the templates and centralizes the formatting logic.
+ * Centralised notification message templates.
+ * Persistent types (FRIEND_REQ, FRIEND_ACCEPTED, ACHV_UNLOCKED) are saved to DB.
+ * Ephemeral types (GAME_INVITE, GAME_INVITE_ACCEPTED, NEW_MESSAGE) are delivered via SSE only.
  */
-
-interface NotificationTemplateMap {
-	FRIEND_REQ: (username: string) => NotificationContent;
-	FRIEND_ACCEPTED: (username: string) => NotificationContent;
-	GAME_INVITE: (username: string) => NotificationContent;
-	ACHV_UNLOCKED: (achievementName: string) => NotificationContent;
-	NEW_MESSAGE: (username: string) => NotificationContent;
-}
-
-/**
- * Dictionary of notification templates.
- *
- * @example
- * // Persistent
- * const { title, message } = NotificationTemplates.FRIEND_REQ("john_doe");
- *
- * // Ephemeral
- * const chat = NotificationTemplates.NEW_MESSAGE("jane_doe");
- * ```
- */
-export const NotificationTemplates: NotificationTemplateMap = {
-	// ─── Friendship (persistent) ──────────────────────────────────
-
-	FRIEND_REQ: (username) => ({
+export const NotificationTemplates = {
+	FRIEND_REQ: (username: string): NotificationContent => ({
 		title: "Friend Request",
 		message: `${username} sent you a friend request.`,
 	}),
 
-	FRIEND_ACCEPTED: (username) => ({
+	FRIEND_ACCEPTED: (username: string): NotificationContent => ({
 		title: "Friendship Accepted",
 		message: `${username} accepted your friend request.`,
 	}),
 
-	// ─── Game Invites (persistent) ────────────────────────────────
-
-	GAME_INVITE: (username) => ({
+	GAME_INVITE: (username: string): NotificationContent => ({
 		title: "Game Challenge",
 		message: `${username} invited you to play a match.`,
 	}),
 
-	// ─── Achievements (persistent) ────────────────────────────────
-
-	ACHV_UNLOCKED: (achievementName) => ({
-		title: "Achievement Unlocked!",
-		message: `Congratulations! You've earned the "${achievementName}" achievement.`,
+	GAME_INVITE_ACCEPTED: (username: string): NotificationContent => ({
+		title: "Challenge Accepted!",
+		message: `${username} accepted your challenge! Get ready to play.`,
 	}),
 
-	// ─── Chat (ephemeral — WebSocket only, NOT saved to DB) ──────
-
-	NEW_MESSAGE: (username) => ({
+	NEW_MESSAGE: (username: string): NotificationContent => ({
 		title: "New Message",
 		message: `You received a new message from ${username}.`,
 	}),

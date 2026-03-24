@@ -6,6 +6,7 @@ import {
 	CharacterName,
 	calculateEloMulti,
 	ELO_DEFAULT,
+	NotificationType,
 } from "@transcendence/types";
 import { Prisma } from "@prisma/client";
 import { MatchResult, PlayerResult } from "../../types/match-result.interface";
@@ -13,6 +14,7 @@ import {
 	AchievementService,
 	UpdatedPlayerStats,
 } from "../achievement/achievement.service";
+import { UserNotificationClient } from "../user/user-notification.client";
 
 @Injectable()
 export class MatchResultService {
@@ -21,6 +23,7 @@ export class MatchResultService {
 	constructor(
 		private readonly prisma: PrismaService,
 		private readonly achievementService: AchievementService,
+		private readonly userNotificationClient: UserNotificationClient,
 	) {}
 
 	/**
@@ -34,7 +37,9 @@ export class MatchResultService {
 	async processMatchEnd(
 		matchResult: MatchResult,
 	): Promise<{ userId: number; achievementName: string }[]> {
-		const skipStats = matchResult.mode === MatchMode.LOCAL || matchResult.mode === MatchMode.AI;
+		const skipStats =
+			matchResult.mode === MatchMode.LOCAL ||
+			matchResult.mode === MatchMode.AI;
 
 		// Step 1: transaction — save match + update stats
 		const playersStats = await this.prisma.$transaction(async (tx) => {
@@ -103,14 +108,20 @@ export class MatchResultService {
 			playersStats,
 		);
 
-		// Step 3: send notifications for unlocked achievements
-		// TODO: call user-service POST /internal/users/:id/notifications
-		// And send notificatio via websocket
-		for (const { userId, achievementName } of unlocked) {
-			this.logger.log(
-				`TODO: notify user ${userId} about "${achievementName}"`,
-			);
-		}
+		// // Step 3: send notifications for unlocked achievements
+		// for (const { userId, achievementName } of unlocked) {
+		// 	await this.userNotificationClient
+		// 		.createNotification(
+		// 			userId,
+		// 			NotificationType.ACHV_UNLOCKED,
+		// 			`Congratulations! You've earned the "${achievementName}" achievement.`,
+		// 		)
+		// 		.catch((err: unknown) => {
+		// 			this.logger.error(
+		// 				`Failed to notify user ${userId} for achievement "${achievementName}": ${err}`,
+		// 			);
+		// 		});
+		// }
 
 		return unlocked;
 	}
@@ -142,7 +153,10 @@ export class MatchResultService {
 		let eloChange = 0;
 		if (matchResult.mode === MatchMode.RANKED) {
 			const playerElo = eloMap.get(player.userId!) ?? ELO_DEFAULT;
-			let matchups: { opponentElo: number; result: "win" | "loss" | "draw" }[];
+			let matchups: {
+				opponentElo: number;
+				result: "win" | "loss" | "draw";
+			}[];
 
 			if (matchResult.type === MatchType.FFA) {
 				if (isDraw) {
@@ -168,7 +182,9 @@ export class MatchResultService {
 						realOpponentElos.length > 0
 							? [
 									{
-										opponentElo: Math.max(...realOpponentElos),
+										opponentElo: Math.max(
+											...realOpponentElos,
+										),
 										result: "win" as const,
 									},
 								]
@@ -182,7 +198,9 @@ export class MatchResultService {
 						winnerPlayer?.userId != null
 							? (eloMap.get(winnerPlayer.userId) ?? ELO_DEFAULT)
 							: 500;
-					matchups = [{ opponentElo: winnerElo, result: "loss" as const }];
+					matchups = [
+						{ opponentElo: winnerElo, result: "loss" as const },
+					];
 				}
 			} else {
 				// TEAM mode: each player vs every opponent on the other team
@@ -204,7 +222,10 @@ export class MatchResultService {
 								: opponentIsWinner
 									? "loss"
 									: "draw";
-						return { opponentElo: eloMap.get(p.userId!) ?? ELO_DEFAULT, result };
+						return {
+							opponentElo: eloMap.get(p.userId!) ?? ELO_DEFAULT,
+							result,
+						};
 					});
 			}
 
@@ -228,7 +249,10 @@ export class MatchResultService {
 		}
 
 		const newElo = (currentStats?.eloCurrent ?? ELO_DEFAULT) + eloChange;
-		const newEloPeak = Math.max(currentStats?.eloPeak ?? ELO_DEFAULT, newElo);
+		const newEloPeak = Math.max(
+			currentStats?.eloPeak ?? ELO_DEFAULT,
+			newElo,
+		);
 		const newBestWinStreak = Math.max(
 			currentStats?.bestWinStreak ?? 0,
 			newWinStreak,
@@ -299,5 +323,4 @@ export class MatchResultService {
 			characterWins,
 		};
 	}
-
 }

@@ -69,14 +69,26 @@ export default function ProfilePage() {
   const [stats, setStats] = useState<UserStats | null>(null);
   const [settings, setSettings] = useState<UserSettings | null>(null);
   const [loading, setLoading] = useState(true);
+  
+  // Stati 2FA
   const [isSettingUp2fa, setIsSettingUp2fa] = useState(false);
   const [qrCodeUrl, setQrCodeUrl] = useState<string | null>(null);
   const [setupCode, setSetupCode] = useState('');
   const [error2fa, setError2fa] = useState('');
 
+  // Stati Edit Profilo
   const [editingUsername, setEditingUsername] = useState(false);
   const [editingEmail, setEditingEmail] = useState(false);
   const [tempVal, setTempVal] = useState('');
+  
+  // Stati Password e Notifiche
+  const [isChangingPwd, setIsChangingPwd] = useState(false);
+  const [pwdData, setPwdData] = useState({ old: '', new: '', confirm: '' });
+  const [pwdError, setPwdError] = useState('');
+  const [msg, setMsg] = useState(''); 
+
+  // ⚡ STATO DEL MODAL DI WARNING
+  const [dialog, setDialog] = useState<{ isOpen: boolean, title: string, msg: string, action: () => void } | null>(null);
 
   useEffect(() => {
     Promise.all([api.getMyProfile(), api.getMyStats(), api.getMySettings()])
@@ -88,31 +100,76 @@ export default function ProfilePage() {
       .finally(() => setLoading(false));
   }, []);
 
-  const handleSaveUsername = async () => { 
-    if (await api.updateUsername(tempVal)) {
-      setProfile((p) => p ? { ...p, username: tempVal } : null); 
-    }
-    setEditingUsername(false); 
+  // --- FUNZIONI DI SALVATAGGIO CON WARNING ---
+
+  const handleSaveUsername = () => { 
+    setDialog({
+      isOpen: true,
+      title: "Conferma Cambio Username",
+      msg: `Vuoi davvero cambiare il tuo username in "${tempVal}"?`,
+      action: async () => {
+        setDialog(null);
+        if (await api.updateUsername(tempVal)) {
+          setProfile((p) => p ? { ...p, username: tempVal } : null); 
+        }
+        setEditingUsername(false); 
+      }
+    });
   };
   
-  const handleSaveEmail = async () => { 
-    if (await api.updateEmail(tempVal)) {
-      setProfile((p) => p ? { ...p, email: tempVal } : null); 
-    }
-    setEditingEmail(false); 
+  const handleSaveEmail = () => { 
+    setDialog({
+      isOpen: true,
+      title: "Attenzione: Cambio Email",
+      msg: `Cambiando la tua email in "${tempVal}", tutti gli account collegati (es. Google) dovranno essere risincronizzati. Vuoi procedere?`,
+      action: async () => {
+        setDialog(null);
+        const result = await api.requestEmailChange(tempVal);
+        if (result.ok) {
+          setMsg("Link di conferma inviato alla nuova email!");
+          setEditingEmail(false); 
+        } else {
+          alert("Errore: " + result.message);
+        }
+      }
+    });
   };
 
-  // ⚡ LE FUNZIONI ORA SONO DENTRO IL COMPONENTE, DOVE DEVONO STARE
+  const handleSavePassword = () => {
+    setPwdError('');
+    const pwdRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+    
+    if (pwdData.new !== pwdData.confirm) return setPwdError("Le nuove password non combaciano!");
+    if (!pwdRegex.test(pwdData.new)) return setPwdError("Minimo 8 caratteri, una maiuscola, una minuscola, un numero e un simbolo speciale.");
+
+    setDialog({
+      isOpen: true,
+      title: "Conferma Cambio Password",
+      msg: "Sei sicuro di voler cambiare la tua password? Verrai disconnesso a breve.",
+      action: async () => {
+        setDialog(null);
+        const result = await api.changePassword(pwdData.old, pwdData.new);
+        if (result.ok) {
+          setMsg("Password aggiornata con successo! Verrai disconnesso a breve.");
+          setIsChangingPwd(false);
+          setPwdData({ old: '', new: '', confirm: '' });
+        } else {
+          setPwdError(result.message || "Errore durante il cambio password");
+        }
+      }
+    });
+  };
+
+  // --- FUNZIONI 2FA ---
+
   const handleEnable2faClick = async () => {
     setError2fa('');
-    
     const data = await generate2fa();
-    
     if (data && data.qrCode) { 
       setQrCodeUrl(data.qrCode);
       setIsSettingUp2fa(true);
     } else {
-      alert("Il backend non ha risposto correttamente. Guarda la console (F12)!");
+      setError2fa("Errore nella generazione del QR Code.");
     }
   };
 
@@ -171,8 +228,36 @@ export default function ProfilePage() {
         </div>
         
         <h2 style={{ ...sectionTitleStyle, fontSize: '22px', marginBottom: '24px' }}>Settings & Personalization</h2>
+        
+        {/* Messaggi di successo */}
+        {msg && <div style={{ color: theme.colors.hpHigh, marginBottom: '16px', textAlign: 'center', fontFamily: theme.fonts.mono }}>{msg}</div>}
+
         <EditableField label="USERNAME" value={username} isEditing={editingUsername} tempVal={tempVal} setTempVal={setTempVal} onEdit={() => setEditingUsername(true)} onSave={handleSaveUsername} onCancel={() => setEditingUsername(false)} />
         <EditableField label="EMAIL" value={email} isEditing={editingEmail} tempVal={tempVal} setTempVal={setTempVal} onEdit={() => setEditingEmail(true)} onSave={handleSaveEmail} onCancel={() => setEditingEmail(false)} />
+
+        {/* Blocco Cambio Password */}
+        <div style={{ padding: '16px 20px', background: theme.colors.bgPanel, border: `1px solid ${theme.colors.border}`, borderRadius: '4px', marginTop: '16px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ fontFamily: theme.fonts.heading, fontSize: '10px', color: theme.colors.textMuted, letterSpacing: '1.5px' }}>PASSWORD</div>
+            {!isChangingPwd && <button onClick={() => setIsChangingPwd(true)} style={{ background: 'none', border: 'none', color: theme.colors.textMuted, cursor: 'pointer' }}><Icons.Edit size={16} /></button>}
+          </div>
+
+          {isChangingPwd && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '12px' }} className="animate-slideUp">
+              <input type="password" placeholder="Vecchia Password" value={pwdData.old} onChange={e => setPwdData({...pwdData, old: e.target.value})} style={inputStyle} />
+              <input type="password" placeholder="Nuova Password" value={pwdData.new} onChange={e => setPwdData({...pwdData, new: e.target.value})} style={inputStyle} />
+              <input type="password" placeholder="Conferma Nuova Password" value={pwdData.confirm} onChange={e => setPwdData({...pwdData, confirm: e.target.value})} style={inputStyle} />
+              
+              {pwdError && <span style={{ color: theme.colors.dead, fontSize: '12px', fontFamily: theme.fonts.mono }}>{pwdError}</span>}
+              
+              <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', marginTop: '8px' }}>
+                <button onClick={() => {setIsChangingPwd(false); setPwdError('');}} style={{ padding: '6px 12px', background: 'none', border: `1px solid ${theme.colors.border}`, color: theme.colors.textMuted, cursor: 'pointer' }}>Annulla</button>
+                <button onClick={handleSavePassword} style={{ padding: '6px 12px', background: theme.colors.zeus, border: 'none', color: 'white', fontWeight: 'bold', cursor: 'pointer', borderRadius: '2px' }}>Salva</button>
+              </div>
+            </div>
+          )}
+        </div>
+
       </div>
 
       {/* Statistics */}
@@ -233,7 +318,7 @@ export default function ProfilePage() {
       <div id="profile-security" style={{ paddingTop: '80px', paddingBottom: '40px', scrollMarginTop: `${NAVBAR_HEIGHT}px` }}>
         <h2 style={{ ...sectionTitleStyle, fontSize: '22px', marginBottom: '24px' }}>Security & 2FA</h2>
         
-        {/* ⚡ Blocco 2FA ripristinato con i bottoni corretti */}
+        {/* Blocco 2FA */}
         <div style={{ padding: '24px', background: theme.colors.bgPanel, border: `1px solid ${theme.colors.border}`, borderRadius: '4px', marginBottom: '12px' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div>
@@ -254,7 +339,6 @@ export default function ProfilePage() {
             )}
           </div>
 
-          {/* Box con il QR Code */}
           {isSettingUp2fa && (
             <div style={{ marginTop: '24px', padding: '20px', border: `1px dashed ${theme.colors.goldDim}`, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px' }}>
               <p style={{ fontFamily: theme.fonts.mono, fontSize: '12px', color: theme.colors.textPrimary, textAlign: 'center' }}>
@@ -276,7 +360,7 @@ export default function ProfilePage() {
                 type="text" 
                 maxLength={6} 
                 value={setupCode}
-                onChange={(e) => setSetupCode(e.target.value)}
+                onChange={(e) => setSetupCode(e.target.value.replace(/\D/g, ''))} // ⚡ FIX GHOST NUMBER
                 placeholder="123456"
                 style={{ ...inputStyle, width: '140px', textAlign: 'center', letterSpacing: '8px', fontSize: '18px', fontWeight: 'bold' }} 
               />
@@ -310,6 +394,22 @@ export default function ProfilePage() {
           </div>
         </div>
       </div>
+
+      {/* ⚡ POPUP MODAL PER I WARNING */}
+      {dialog && dialog.isOpen && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }}>
+          <div className="animate-scaleIn" style={{ background: theme.colors.bgPanel, border: `1px solid ${theme.colors.gold}`, borderRadius: '4px', padding: '32px', maxWidth: '420px', textAlign: 'center', boxShadow: `0 0 40px ${theme.colors.goldGlow}` }}>
+            <h3 style={{ fontFamily: theme.fonts.heading, color: theme.colors.goldBright, fontSize: '18px', marginBottom: '16px', letterSpacing: '1px' }}>{dialog.title}</h3>
+            <p style={{ fontFamily: theme.fonts.mono, fontSize: '13px', color: theme.colors.textPrimary, marginBottom: '32px', lineHeight: 1.6 }}>
+              {dialog.msg}
+            </p>
+            <div style={{ display: 'flex', gap: '16px', justifyContent: 'center' }}>
+              <button onClick={() => setDialog(null)} style={{ padding: '10px 24px', background: 'none', border: `1px solid ${theme.colors.border}`, color: theme.colors.textMuted, cursor: 'pointer', fontFamily: theme.fonts.heading, letterSpacing: '1px' }}>ANNULLA</button>
+              <button onClick={dialog.action} style={{ padding: '10px 24px', background: theme.colors.dead, border: 'none', color: 'white', fontWeight: 'bold', cursor: 'pointer', borderRadius: '2px', fontFamily: theme.fonts.heading, letterSpacing: '1px' }}>PROCEDI</button>
+            </div>
+          </div>
+        </div>
+      )}
       
     </div>
   );

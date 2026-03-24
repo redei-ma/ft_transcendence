@@ -15,17 +15,50 @@ interface GameFlowProps {
   onExit: () => void;
 }
 
+const ERROR_MESSAGES: Record<string, string> = {
+  UNAUTHORIZED: 'Session expired. Please login again.',
+  UNAUTHORIZED_TOKEN: 'Session expired. Please login again.',
+  PLAYER_NOT_FOUND: 'You are not in the game list.',
+  SESSION_NOT_FOUND: 'Game session not found.',
+  MATCH_ALREADY_STARTED: 'This match has already started.',
+  SERVER_SHUTDOWN: 'The game server is shutting down.',
+  INTERNAL_ERROR: 'An internal server error occurred.',
+  MAP_LOAD_FAILED: 'Failed to load the game map.',
+};
+
 export default function GameFlow({ userId, username, onExit }: GameFlowProps) {
   const [scene, setScene] = useState<GameScene>('mode-select');
   const [selectedMode, setSelectedMode] = useState<MatchMode>(MatchMode.RANKED);
   const [p1Character, setP1Character] = useState<CharacterName>(CharacterName.ZEUS);
   const [p2Character, setP2Character] = useState<CharacterName>(CharacterName.ADE);
 
-  // Connetti matchmaking socket all'ingresso nel flusso di gioco
   useEffect(() => {
     matchmakingSocket.connect();
     return () => matchmakingSocket.disconnect();
   }, []);
+
+  // Registra handler errori da entrambi i socket
+  useEffect(() => {
+    const handleError = (code: string, message: string) => {
+      if (code === 'INVALID_INPUT') {
+        console.warn(`[GameFlow] Invalid input: ${message}`);
+        return;
+      }
+      const display = ERROR_MESSAGES[code] || message || 'Unknown error';
+      alert(display);
+      socketService.disconnect();
+      matchmakingSocket.disconnect();
+      onExit();
+    };
+
+    socketService.setOnGameError(handleError);
+    matchmakingSocket.setOnMatchError(handleError);
+
+    return () => {
+      socketService.setOnGameError(null);
+      matchmakingSocket.setOnMatchError(null);
+    };
+  }, [onExit]);
 
   const handleModeSelect = (mode: MatchMode) => {
     setSelectedMode(mode);

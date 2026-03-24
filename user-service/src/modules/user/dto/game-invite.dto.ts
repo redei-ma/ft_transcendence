@@ -27,12 +27,12 @@ export class RespondGameInviteDto {
 
 /**
  * Response when responding to a game invite.
- * lobbyId is populated only when the invite is ACCEPTED and a lobby has been created.
+ * sessionId is populated only when the invite is ACCEPTED and a session has been created.
  */
 export class RespondGameInviteResponseDto {
 	@ApiPropertyOptional({
-		description: "Lobby ID to join for character selection (only when ACCEPTED)",
-		example: "lobby_abc123",
+		description: "Session ID to join matchmaking WS for character selection (only when ACCEPTED)",
+		example: "session_abc123",
 	})
-	lobbyId: string | null;
+	sessionId: string | null;
 }

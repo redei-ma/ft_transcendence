@@ -1,6 +1,5 @@
-// types/game.types.ts
-
-import { Pillar, PlayerSnapshot, BulletSnapshot, WinnerData } from '@transcendence/types';
+import { CharacterName, EndReason, MatchMode, MatchType, Pillar, PlayerSnapshot, BulletSnapshot, WinnerData } from '@transcendence/types';
+export { CharacterName, EndReason, MatchMode, MatchType };
 
 export interface Vector {
   x: number;
@@ -19,8 +18,6 @@ export interface GameOverPayload {
   winnerData: WinnerData | undefined;
   time: number;
 }
-
-// --- Map payload ---
 
 export interface MapEmitPayload {
   map: {

@@ -145,3 +145,31 @@ export async function verify2fa(code: string): Promise<AuthResult> {
     return { ok: false, data: { error: "Network error" } };
   }
 }
+
+export async function resendVerification(email: string): Promise<{ok: boolean, message?: string}> {
+  try {
+    const res = await fetch("/api/auth/resend-verification", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email }),
+    });
+    const data = await res.json().catch(() => ({}));
+    return { ok: res.ok, message: data.message || data.error };
+  } catch (error) {
+    return { ok: false, message: "Network error" };
+  }
+}
+
+export async function resetPassword(token: string, newPassword: string): Promise<{ok: boolean, message?: string}> {
+  try {
+    const res = await fetch("/api/auth/reset-password", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token, newPassword }),
+    });
+    const data = await res.json().catch(() => ({}));
+    return { ok: res.ok, message: data.message || data.error };
+  } catch (error) {
+    return { ok: false, message: "Network error" };
+  }
+}

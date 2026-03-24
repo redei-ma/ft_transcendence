@@ -1,11 +1,12 @@
 import { useRef, useMemo, useEffect } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
-import { CharacterName, BulletSnapshot, BulletHit } from '@transcendence/types';
+import { BulletSnapshot, BulletHit, CharacterName } from '@transcendence/types';
 import { ImpactEffect } from './ImpactEffect';
+import { useGameStore } from '../../storage/gameStore';
 
 interface BulletEntityProps {
-  snapshot: BulletSnapshot;
+  bulletId: string;
 }
 
 // Scaled 2x (was 0.5)
@@ -121,7 +122,11 @@ function createLinePrimitive(geo: THREE.BufferGeometry, color: THREE.Color, opac
 
 // --- Entry ---
 
-export function BulletEntity({ snapshot }: BulletEntityProps) {
+export function BulletEntity({ bulletId }: BulletEntityProps) {
+  const snapshot = useGameStore((state) => state.gameState?.bullets.find(b => b.id === bulletId));
+
+  if (!snapshot) return null;
+
   const hasHit = snapshot.hit !== undefined && snapshot.hit !== BulletHit.NONE;
 
   if (hasHit) {
@@ -129,18 +134,18 @@ export function BulletEntity({ snapshot }: BulletEntityProps) {
   }
 
   return snapshot.characterName === CharacterName.ZEUS
-    ? <ZeusBullet snapshot={snapshot} />
-    : <AdeBullet snapshot={snapshot} />;
+    ? <ZeusBullet bulletId={bulletId} initialSnapshot={snapshot} />
+    : <AdeBullet bulletId={bulletId} initialSnapshot={snapshot} />;
 }
 
 // ============================================
 // ZEUS BULLET
 // ============================================
 
-function ZeusBullet({ snapshot }: { snapshot: BulletSnapshot }) {
+function ZeusBullet({ bulletId, initialSnapshot }: { bulletId: string, initialSnapshot: BulletSnapshot }) {
   const groupRef = useRef<THREE.Group>(null);
   const timeAccum = useRef(0);
-  const prevPos = useRef(new THREE.Vector3(snapshot.position.x, 1, snapshot.position.z));
+  const prevPos = useRef(new THREE.Vector3(initialSnapshot.position.x, 1, initialSnapshot.position.z));
 
   const boltCount = 6;
   const boltSegments = 6;
@@ -173,9 +178,14 @@ function ZeusBullet({ snapshot }: { snapshot: BulletSnapshot }) {
 
   useFrame((_, delta) => {
     if (!groupRef.current) return;
+    
+    const currentGameState = useGameStore.getState().gameState;
+    const currentBullet = currentGameState?.bullets.find(b => b.id === bulletId);
+    if (!currentBullet) return;
+
     const dt = Math.min(delta, 0.05);
 
-    const target = new THREE.Vector3(snapshot.position.x, 1, snapshot.position.z);
+    const target = new THREE.Vector3(currentBullet.position.x, 1, currentBullet.position.z);
     groupRef.current.position.lerp(target, 1 - Math.pow(0.001, dt));
 
     const currentPos = groupRef.current.position;
@@ -225,7 +235,7 @@ function ZeusBullet({ snapshot }: { snapshot: BulletSnapshot }) {
   });
 
   return (
-    <group ref={groupRef} position={[snapshot.position.x, 1, snapshot.position.z]}>
+    <group ref={groupRef} position={[initialSnapshot.position.x, 1, initialSnapshot.position.z]}>
       {/* Core */}
       <mesh>
         <sphereGeometry args={[BULLET_RADIUS * 0.35, 16, 16]} />
@@ -265,7 +275,7 @@ function ZeusBullet({ snapshot }: { snapshot: BulletSnapshot }) {
 
 const TRAIL_COUNT = 50;
 
-function AdeBullet({ snapshot }: { snapshot: BulletSnapshot }) {
+function AdeBullet({ bulletId, initialSnapshot }: { bulletId: string, initialSnapshot: BulletSnapshot }) {
   const groupRef = useRef<THREE.Group>(null);
   const fireMatRef = useRef<THREE.ShaderMaterial>(null);
   const time = useRef(0);
@@ -324,10 +334,15 @@ function AdeBullet({ snapshot }: { snapshot: BulletSnapshot }) {
 
   useFrame((_, delta) => {
     if (!groupRef.current) return;
+
+    const currentGameState = useGameStore.getState().gameState;
+    const currentBullet = currentGameState?.bullets.find(b => b.id === bulletId);
+    if (!currentBullet) return;
+
     const dt = Math.min(delta, 0.05);
     time.current += dt;
 
-    const target = new THREE.Vector3(snapshot.position.x, 1, snapshot.position.z);
+    const target = new THREE.Vector3(currentBullet.position.x, 1, currentBullet.position.z);
     groupRef.current.position.lerp(target, 1 - Math.pow(0.001, dt));
 
     if (fireMatRef.current) {
@@ -398,7 +413,7 @@ function AdeBullet({ snapshot }: { snapshot: BulletSnapshot }) {
   });
 
   return (
-    <group ref={groupRef} position={[snapshot.position.x, 1, snapshot.position.z]}>
+    <group ref={groupRef} position={[initialSnapshot.position.x, 1, initialSnapshot.position.z]}>
       {/* Core */}
       <mesh>
         <sphereGeometry args={[BULLET_RADIUS * 0.25, 10, 10]} />

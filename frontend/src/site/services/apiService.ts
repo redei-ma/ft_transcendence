@@ -192,7 +192,7 @@ export async function checkEmailAvailable(email: string): Promise<boolean> {
 
 export async function generate2fa() {
   try {
-    // ⚡ Aggiornato con la rotta esatta di Giovanni
+    // Aggiornato con la rotta esatta di Giovanni
     const res = await fetchWithAuthRetry("/api/auth/2fa/setup", { method: "POST" });
     if (!res || !res.ok) return null;
     return await res.json(); 
@@ -204,7 +204,7 @@ export async function generate2fa() {
 
 export async function turnOn2fa(code: string): Promise<boolean> {
   try {
-    // ⚡ Aggiornato con la rotta esatta di Giovanni
+    // Aggiornato con la rotta esatta di Giovanni
     const res = await fetchWithAuthRetry("/api/auth/2fa/enable", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -219,11 +219,45 @@ export async function turnOn2fa(code: string): Promise<boolean> {
 
 export async function turnOff2fa(): Promise<boolean> {
   try {
-    // ⚡ Aggiornato con la rotta esatta di Giovanni
+    // Aggiornato con la rotta esatta di Giovanni
     const res = await fetchWithAuthRetry("/api/auth/2fa/disable", { method: "POST" });
     return !!res && res.ok;
   } catch (error) {
     console.error("[API] Error turning off 2FA:", error);
     return false;
+  }
+}
+
+export async function requestEmailChange(newEmail: string): Promise<{ok: boolean, message?: string}> {
+  try {
+    const res = await fetchWithAuthRetry("/api/auth/change-email-request", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ newEmail }), 
+    });
+
+    if (!res) return { ok: false, message: "Connessione al server fallita" };
+
+    const data = await res.json().catch(() => ({}));
+    return { ok: res.ok, message: data.message || data.error };
+  } catch (error) {
+    return { ok: false, message: "Network error" };
+  }
+}
+
+export async function changePassword(oldPass: string, newPass: string): Promise<{ok: boolean, message?: string}> {
+  try {
+    const res = await fetchWithAuthRetry("/api/auth/change-password", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ oldPass, newPass }),
+    });
+	
+    if (!res) return { ok: false, message: "Connessione al server fallita" };
+
+    const data = await res.json().catch(() => ({}));
+    return { ok: res.ok, message: data.message || data.error };
+  } catch (error) {
+    return { ok: false, message: "Network error" };
   }
 }
