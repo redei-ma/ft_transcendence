@@ -5,7 +5,8 @@ import QueueScene from '../../scenes/queueScene';
 import Game from '../../game/Game';
 import { socketService } from '../../services/socketServices';
 import { matchmakingSocket } from '../../services/matchmakingSocket';
-import { CharacterName, MatchMode } from '@transcendence/types';
+import { CharacterName, MatchMode, GameEvents } from '@transcendence/types';
+import { theme } from '../../configs/theme';
 
 type GameScene = 'mode-select' | 'character-select' | 'queue' | 'game';
 
@@ -31,11 +32,49 @@ export default function GameFlow({ userId, username, onExit }: GameFlowProps) {
   const [selectedMode, setSelectedMode] = useState<MatchMode>(MatchMode.RANKED);
   const [p1Character, setP1Character] = useState<CharacterName>(CharacterName.ZEUS);
   const [p2Character, setP2Character] = useState<CharacterName>(CharacterName.ADE);
+  
+  // Stato per la schermata di riconnessione
+  const [isReconnecting, setIsReconnecting] = useState(false);
 
   useEffect(() => {
     matchmakingSocket.connect();
-    return () => matchmakingSocket.disconnect();
-  }, []);
+
+    // Ascolto GLOBALE dell'evento MATCH_FOUND
+    const handleMatchFound = () => {
+      setScene((prevScene) => {
+        // 1. Se siamo già in gioco, ignoriamo l'evento per non interrompere la partita!
+        if (prevScene === 'game') {
+          return prevScene;
+        }
+
+        // 2. Se riceviamo MATCH_FOUND ma non stavamo cercando partita (queue),
+        // significa che il server ci sta riconnettendo a una partita in corso!
+        if (prevScene !== 'queue') {
+          setIsReconnecting(true);
+          
+          // Attendiamo 3 secondi per mostrare il messaggio all'utente
+          setTimeout(() => {
+            socketService.connect('/', String(userId));
+            setIsReconnecting(false);
+            setScene('game');
+          }, 3000);
+          
+          return prevScene; // Manteniamo la scena visiva attuale sotto l'overlay
+        } 
+        
+        // 3. Flusso normale: eravamo in coda e abbiamo trovato partita
+        socketService.connect('/', String(userId));
+        return 'game';
+      });
+    };
+
+    matchmakingSocket.on(GameEvents.MATCH_FOUND, handleMatchFound);
+
+    return () => {
+      matchmakingSocket.off(GameEvents.MATCH_FOUND, handleMatchFound);
+      matchmakingSocket.disconnect();
+    };
+  }, [userId]);
 
   // Registra handler errori da entrambi i socket
   useEffect(() => {
@@ -71,11 +110,6 @@ export default function GameFlow({ userId, username, onExit }: GameFlowProps) {
     setScene('queue');
   };
 
-  const handleMatchFound = () => {
-    socketService.connect('/', String(userId));
-    setScene('game');
-  };
-
   const handlePlayAgain = () => {
     socketService.disconnect();
     matchmakingSocket.connect();
@@ -90,6 +124,45 @@ export default function GameFlow({ userId, username, onExit }: GameFlowProps) {
 
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 2000 }}>
+      
+      {/* OVERLAY RICONNESSIONE */}
+      {isReconnecting && (
+        <div className="animate-fadeIn" style={{
+          position: 'fixed', inset: 0, zIndex: 3000,
+          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+          backgroundColor: 'rgba(10, 15, 25, 0.90)', backdropFilter: 'blur(10px)'
+        }}>
+          <div style={{
+            padding: '40px 60px',
+            background: theme.colors.bgPanel,
+            border: `1px solid ${theme.colors.gold}`,
+            borderRadius: '4px',
+            textAlign: 'center',
+            boxShadow: `0 0 50px ${theme.colors.goldGlow}`
+          }}>
+            <h2 style={{
+              fontFamily: theme.fonts.heading, color: theme.colors.goldBright,
+              fontSize: '24px', letterSpacing: '2px', marginBottom: '16px',
+              textTransform: 'uppercase'
+            }}>
+              Match In Corso
+            </h2>
+            <p style={{
+              fontFamily: theme.fonts.mono, color: theme.colors.textPrimary,
+              fontSize: '14px', lineHeight: 1.6
+            }}>
+              Stavi gia' partecipando ad una partita.
+              <br/>
+              <span style={{ 
+                color: theme.colors.gold, marginTop: '12px', display: 'block', 
+                animation: 'pulse 1.5s infinite', fontWeight: 'bold' 
+              }}>
+                Riconnessione in corso . . .
+              </span>
+            </p>
+          </div>
+        </div>
+      )}
 
       {scene === 'mode-select' && (
         <ModeSelectScene
@@ -109,7 +182,6 @@ export default function GameFlow({ userId, username, onExit }: GameFlowProps) {
 
       {scene === 'queue' && (
         <QueueScene
-          onMatchFound={handleMatchFound}
           onCancel={() => {
             matchmakingSocket.disconnect();
             matchmakingSocket.connect();

@@ -1,14 +1,12 @@
 import { useEffect, useState } from 'react';
 import { matchmakingSocket } from '../services/matchmakingSocket';
-import { GameEvents } from '@transcendence/types';
 import { theme } from '../configs/theme';
 
 interface QueueSceneProps {
-  onMatchFound: () => void;
   onCancel: () => void;
 }
 
-export default function QueueScene({ onMatchFound, onCancel }: QueueSceneProps) {
+export default function QueueScene({ onCancel }: QueueSceneProps) {
   const [elapsed, setElapsed] = useState(0);
 
   useEffect(() => {
@@ -17,19 +15,6 @@ export default function QueueScene({ onMatchFound, onCancel }: QueueSceneProps) 
     }, 1000);
     return () => clearInterval(interval);
   }, []);
-
-  // Listen for MATCH_FOUND from Leonardo
-  useEffect(() => {
-    const handleMatchFound = () => {
-      console.log('[Queue] Match found!');
-      onMatchFound();
-    };
-
-    matchmakingSocket.on(GameEvents.MATCH_FOUND, handleMatchFound);
-    return () => {
-      matchmakingSocket.off(GameEvents.MATCH_FOUND, handleMatchFound);
-    };
-  }, [onMatchFound]);
 
   const handleCancel = () => {
     matchmakingSocket.disconnect(); // disconnessione = leave queue

@@ -64,11 +64,7 @@ export class MatchmakingGateway
 			);
 			
 			if (!token) {
-<<<<<<< HEAD
-				this.logger.warn(`[DEBUG] No JWT cookie for client ${client.id}. Cookie header: "${client.handshake.headers.cookie}"`);
-=======
 				this.sendErrorAndDisconnectClient(client, {status: ErrorCode.UNAUTHORIZED_TOKEN, message: 'Invalid token'});
->>>>>>> dev
 				client.disconnect();
 				return;
 			}
