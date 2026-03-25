@@ -228,12 +228,12 @@ export async function turnOff2fa(): Promise<boolean> {
   }
 }
 
-export async function requestEmailChange(newEmail: string): Promise<{ok: boolean, message?: string}> {
+export async function requestEmailChange(password: string, newEmail: string): Promise<{ok: boolean, message?: string}> {
   try {
     const res = await fetchWithAuthRetry("/api/auth/change-email-request", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ newEmail }), 
+      body: JSON.stringify({ password, newEmail }), 
     });
 
     if (!res) return { ok: false, message: "Connessione al server fallita" };

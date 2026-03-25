@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { inputStyle, sectionTitleStyle } from '../styles/shared';
 import * as Icons from '../components/Icons';
 import * as api from '../services/apiService';
+import * as authService from '../services/authService';
 import { UserProfile, UserStats, UserSettings, generate2fa, turnOn2fa, turnOff2fa } from '../services/apiService';
 import { theme } from '../../configs/theme';
 import { NAVBAR_HEIGHT } from '../components/Navbar';
@@ -87,8 +88,18 @@ export default function ProfilePage() {
   const [pwdError, setPwdError] = useState('');
   const [msg, setMsg] = useState(''); 
 
-  // ⚡ STATO DEL MODAL DI WARNING
-  const [dialog, setDialog] = useState<{ isOpen: boolean, title: string, msg: string, action: () => void } | null>(null);
+  // Password di conferma per cambio email (ref per evitare stale closure)
+  const confirmPwdRef = useRef('');
+  const [confirmPwdDisplay, setConfirmPwdDisplay] = useState('');
+
+  // STATO DEL MODAL DI WARNING
+  const [dialog, setDialog] = useState<{ 
+    isOpen: boolean; 
+    title: string; 
+    msg: string; 
+    action: () => void;
+    needsPassword?: boolean;
+  } | null>(null);
 
   useEffect(() => {
     Promise.all([api.getMyProfile(), api.getMyStats(), api.getMySettings()])
@@ -118,18 +129,27 @@ export default function ProfilePage() {
   };
   
   const handleSaveEmail = () => { 
+    confirmPwdRef.current = '';
+    setConfirmPwdDisplay('');
     setDialog({
       isOpen: true,
-      title: "Attenzione: Cambio Email",
-      msg: `Cambiando la tua email in "${tempVal}", tutti gli account collegati (es. Google) dovranno essere risincronizzati. Vuoi procedere?`,
+      title: "Conferma Cambio Email",
+      msg: `Per cambiare la tua email in "${tempVal}", inserisci la tua password attuale.`,
+      needsPassword: true,
       action: async () => {
+        if (!confirmPwdRef.current) {
+          alert("Inserisci la password per confermare.");
+          return;
+        }
         setDialog(null);
-        const result = await api.requestEmailChange(tempVal);
+        const result = await api.requestEmailChange(confirmPwdRef.current, tempVal);
         if (result.ok) {
           setMsg("Link di conferma inviato alla nuova email!");
-          setEditingEmail(false); 
+          setEditingEmail(false);
+          confirmPwdRef.current = '';
+          setConfirmPwdDisplay('');
         } else {
-          alert("Errore: " + result.message);
+          alert("Errore: " + (result.message || "Richiesta fallita"));
         }
       }
     });
@@ -150,9 +170,12 @@ export default function ProfilePage() {
         setDialog(null);
         const result = await api.changePassword(pwdData.old, pwdData.new);
         if (result.ok) {
-          setMsg("Password aggiornata con successo! Verrai disconnesso a breve.");
+          setMsg("Password aggiornata con successo! Disconnessione in corso...");
           setIsChangingPwd(false);
           setPwdData({ old: '', new: '', confirm: '' });
+          setTimeout(() => {
+            window.location.reload();
+          }, 2000);
         } else {
           setPwdError(result.message || "Errore durante il cambio password");
         }
@@ -229,7 +252,6 @@ export default function ProfilePage() {
         
         <h2 style={{ ...sectionTitleStyle, fontSize: '22px', marginBottom: '24px' }}>Settings & Personalization</h2>
         
-        {/* Messaggi di successo */}
         {msg && <div style={{ color: theme.colors.hpHigh, marginBottom: '16px', textAlign: 'center', fontFamily: theme.fonts.mono }}>{msg}</div>}
 
         <EditableField label="USERNAME" value={username} isEditing={editingUsername} tempVal={tempVal} setTempVal={setTempVal} onEdit={() => setEditingUsername(true)} onSave={handleSaveUsername} onCancel={() => setEditingUsername(false)} />
@@ -360,8 +382,8 @@ export default function ProfilePage() {
                 type="text" 
                 maxLength={6} 
                 value={setupCode}
-                onChange={(e) => setSetupCode(e.target.value.replace(/\D/g, ''))} // ⚡ FIX GHOST NUMBER
-                placeholder="123456"
+                onChange={(e) => setSetupCode(e.target.value.replace(/\D/g, ''))}
+                placeholder="— — — — — —"
                 style={{ ...inputStyle, width: '140px', textAlign: 'center', letterSpacing: '8px', fontSize: '18px', fontWeight: 'bold' }} 
               />
               
@@ -375,10 +397,32 @@ export default function ProfilePage() {
           )}
         </div>
 
+        {/* Email Verification con bottone Resend */}
         <div style={{ padding: '24px', background: theme.colors.bgPanel, border: `1px solid ${theme.colors.border}`, borderRadius: '4px', marginBottom: '12px' }}>
-          <div style={{ fontFamily: theme.fonts.heading, fontSize: '14px', fontWeight: 600, color: theme.colors.textPrimary, marginBottom: '4px' }}>Email Verification</div>
-          <div style={{ fontFamily: theme.fonts.mono, fontSize: '13px', color: sec.isEmailVerified ? theme.colors.hpHigh : theme.colors.dead }}>{sec.isEmailVerified ? '✓ Verified' : '✗ Not verified'}</div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div>
+              <div style={{ fontFamily: theme.fonts.heading, fontSize: '14px', fontWeight: 600, color: theme.colors.textPrimary, marginBottom: '4px' }}>Email Verification</div>
+              <div style={{ fontFamily: theme.fonts.mono, fontSize: '13px', color: sec.isEmailVerified ? theme.colors.hpHigh : theme.colors.dead }}>
+                {sec.isEmailVerified ? '✓ Verified' : '✗ Not verified'}
+              </div>
+            </div>
+            {!sec.isEmailVerified && (
+              <button
+                className="btn-press"
+                onClick={async () => {
+                  const result = await authService.resendVerification(email);
+                  if (result.ok) setMsg("Email di verifica inviata!");
+                  else alert("Errore: " + (result.message || "Invio fallito"));
+                }}
+                style={{ padding: '8px 20px', background: 'none', border: `1px solid ${theme.colors.gold}`, borderRadius: '2px', color: theme.colors.gold, fontFamily: theme.fonts.heading, fontSize: '11px', fontWeight: 700, letterSpacing: '1px', cursor: 'pointer' }}
+              >
+                RESEND
+              </button>
+            )}
+          </div>
         </div>
+
+        {/* Linked Accounts */}
         <div style={{ padding: '24px', background: theme.colors.bgPanel, border: `1px solid ${theme.colors.border}`, borderRadius: '4px' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div>
@@ -395,16 +439,29 @@ export default function ProfilePage() {
         </div>
       </div>
 
-      {/* ⚡ POPUP MODAL PER I WARNING */}
+      {/* POPUP MODAL PER I WARNING */}
       {dialog && dialog.isOpen && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }}>
           <div className="animate-scaleIn" style={{ background: theme.colors.bgPanel, border: `1px solid ${theme.colors.gold}`, borderRadius: '4px', padding: '32px', maxWidth: '420px', textAlign: 'center', boxShadow: `0 0 40px ${theme.colors.goldGlow}` }}>
             <h3 style={{ fontFamily: theme.fonts.heading, color: theme.colors.goldBright, fontSize: '18px', marginBottom: '16px', letterSpacing: '1px' }}>{dialog.title}</h3>
-            <p style={{ fontFamily: theme.fonts.mono, fontSize: '13px', color: theme.colors.textPrimary, marginBottom: '32px', lineHeight: 1.6 }}>
+            <p style={{ fontFamily: theme.fonts.mono, fontSize: '13px', color: theme.colors.textPrimary, marginBottom: dialog.needsPassword ? '16px' : '32px', lineHeight: 1.6 }}>
               {dialog.msg}
             </p>
+            {dialog.needsPassword && (
+              <input
+                type="password"
+                placeholder="Password attuale"
+                value={confirmPwdDisplay}
+                onChange={(e) => {
+                  confirmPwdRef.current = e.target.value;
+                  setConfirmPwdDisplay(e.target.value);
+                }}
+                style={{ ...inputStyle, marginBottom: '24px', textAlign: 'center' }}
+                autoFocus
+              />
+            )}
             <div style={{ display: 'flex', gap: '16px', justifyContent: 'center' }}>
-              <button onClick={() => setDialog(null)} style={{ padding: '10px 24px', background: 'none', border: `1px solid ${theme.colors.border}`, color: theme.colors.textMuted, cursor: 'pointer', fontFamily: theme.fonts.heading, letterSpacing: '1px' }}>ANNULLA</button>
+              <button onClick={() => { setDialog(null); confirmPwdRef.current = ''; setConfirmPwdDisplay(''); }} style={{ padding: '10px 24px', background: 'none', border: `1px solid ${theme.colors.border}`, color: theme.colors.textMuted, cursor: 'pointer', fontFamily: theme.fonts.heading, letterSpacing: '1px' }}>ANNULLA</button>
               <button onClick={dialog.action} style={{ padding: '10px 24px', background: theme.colors.dead, border: 'none', color: 'white', fontWeight: 'bold', cursor: 'pointer', borderRadius: '2px', fontFamily: theme.fonts.heading, letterSpacing: '1px' }}>PROCEDI</button>
             </div>
           </div>

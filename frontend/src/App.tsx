@@ -22,6 +22,9 @@ export default function App() {
       if (profile) {
         setUser(profile);
         setIsLoggedIn(true);
+      } else {
+        setIsLoggedIn(false);
+        setUser(null);
       }
     };
     initAuth();

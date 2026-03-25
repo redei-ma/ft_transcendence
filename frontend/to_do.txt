@@ -2,11 +2,11 @@
 TO DO:
 
   Ale
-    - Dopo cambio password cookies vengono eliminati, slogga l'utente
-    - Crea pagine forgot password( da mandare via mail dopo il reset )
-    - Register new User ( inserisci password due volte )
-    - Resend email verification ( Schermo diventa nero quando clicchi )
-    - Richiedi password per conferma identita' al cambio email dal profilo
+  X - Dopo cambio password, i cookies vengono eliminati, bisogna sloggare l'utente
+  X - Richiedi password per conferma identita' al cambio email dal profilo
+    - Crea pagina forgot password( da mandare tramite URL via e-mail)
+    - Register new User ( inserisci password due volte per conferma )
+  ? - Resend email verification ( Schermo diventa nero quando clicchi )
 
   Gio:
     - Gestione errori
@@ -17,6 +17,8 @@ TO DO:
     - History and Notifications ( live notify tramite "evoluzione" HTTP, guarda SSE )
     - Mostra current streak in statistics
 
+  Ace:
+    - Ascolta match found su selectModeScene
 
   - Sistema socket exception. togli unauthorized e usa exception
   - Guarda immagini chat di gio
@@ -43,7 +45,7 @@ DUMP:
       ! -path "*/.git/*" \
       ! -path "*/dist/*" \
       ! -path "*/.next/*" \
-      | sort | while read f; do echo "========== $f =========="; cat "$f"; echo ""; done > repo_dump.txt
+      | sort | while read f; do echo "========== $f =========="; cat "$f"; echo ""; done > frontend_dump.txt
   
 
 =====================================================================================================================================================================================================================================================================

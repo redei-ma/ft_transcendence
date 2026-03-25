@@ -360,11 +360,10 @@ export class AuthService {
       throw new ForbiddenException('Local account password required to change email.');
     }
 
-  /* const isMatch = await bcrypt.compare(dto.password, localAccount.passwordHash);
+    const isMatch = await bcrypt.compare(dto.password, localAccount.passwordHash);
     if (!isMatch) {
       throw new UnauthorizedException('Current password incorrect ');
     }
-  */
 
     if (user.email === dto.newEmail) {
       throw new BadRequestException('The new email must be different from the current one.');

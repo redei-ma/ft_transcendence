@@ -29,9 +29,9 @@ export class EmailDto {
  * Input DTO for changing email.
  */
 export class NewEmailDto {
-  /* 	@IsString()
+  @IsString()
 	@MinLength(1)
-	password: string; */
+	password: string;
 
   @IsEmailField()
   newEmail: string;
