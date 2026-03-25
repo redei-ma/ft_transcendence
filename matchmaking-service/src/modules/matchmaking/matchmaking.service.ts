@@ -6,8 +6,7 @@ import { HttpService } from "@nestjs/axios";
 import { firstValueFrom } from "rxjs";
 import { EventEmitter2 } from "@nestjs/event-emitter";
 import { Cron } from "@nestjs/schedule";
-import { CharacterName, MatchType, MatchMode } from "@transcendence/types";
-import { GameEvents } from "@transcendence/types";
+import { CharacterName, MatchType, MatchMode, GameEvents, UserStatus } from "@transcendence/types";
 
 const INGAME = "ingame";
 const INQUEUE = "searching";
@@ -19,7 +18,6 @@ const MATCHMAKING_LUA = `
   local min_rank = tonumber(ARGV[2])
   local max_rank = tonumber(ARGV[3])
 
-  -- 1. Cerchiamo potenziali avversari nel range (prendiamo i primi 10 per sicurezza)
   local potential_opponents = redis.call('ZRANGEBYSCORE', queue_key, min_rank, max_rank, 'LIMIT', 0, 10)
   local opponent_id = nil
 
@@ -31,7 +29,6 @@ const MATCHMAKING_LUA = `
       end
   end
 
-  -- 2. Se trovato, li rimuoviamo entrambi ATOMICAMENTE dalla Sorted Set
   if opponent_id then
       redis.call('ZREM', queue_key, user_id)
       redis.call('ZREM', queue_key, opponent_id)
@@ -87,7 +84,7 @@ export class MatchmakingService {
 		};
 		await this.redis.set(`status:${userId}`, JSON.stringify(payload), "EX", ttlSeconds);
 
-		/*try {
+		try {
 			if (String(userId).includes("ai_bot") || String(userId).includes("guest_")) {
 				return;
 			}
@@ -111,7 +108,7 @@ export class MatchmakingService {
 			this.logger.error(
 				`[Sync DB] Impossibile aggiornare lo stato DB per l'utente ${userId}: ${error.message}`
 			);
-		}*/
+		}
 	}
 
 	/* ---------------------------------------------------------------------------------------------------------------- */
@@ -164,7 +161,7 @@ export class MatchmakingService {
 			if (statusData.matchMode !== player.matchMode) {
 				return {
 					status: "ERROR_ALREADY_IN_ANOTHER_GAME",
-					message: `Sei già in una partita ${statusData.matchMode}. Finiscila prima di cercarne una Ranked.`,
+					message: `Sei già in una partita (modalità: ${statusData.matchMode}). Termina la partita in corso prima di avviarne un'altra.`,
 				};
 			}
 			this.logger.log(
@@ -224,6 +221,7 @@ export class MatchmakingService {
 			`[ProcessQueue] Aggiunta utente ${userId} alla coda (Rank: ${rank})`,
 		);
 
+		await this.redis.zrem("matchmaking_queue_unranked", String(userId));
 		await this.redis.zadd(QUEUE_KEY, rank, String(userId));
 
 		await this.setUserStatus(userId, {
@@ -278,7 +276,6 @@ export class MatchmakingService {
 			const maxR = Number(player.rank) + dynamicTolerance;
 
 			try {
-				// Esecuzione atomica dello script Lua
 				const opponentId = await this.redis.eval(
 					MATCHMAKING_LUA,
 					1,
@@ -299,6 +296,11 @@ export class MatchmakingService {
 					if (opponentStatusRaw) {
 						const opponentData = JSON.parse(opponentStatusRaw);
 						await this.executeMatchCreation(player, opponentData);
+					} else {
+						this.logger.warn(
+							`[Worker] Avversario ${opponentId} sparito (stato non trovato). Rimetto ${userId} in coda.`
+						);
+						await this.redis.zadd(QUEUE_KEY, player.rank, String(userId));
 					}
 				}
 			} catch (luaError) {
@@ -435,7 +437,7 @@ export class MatchmakingService {
 			if (statusData.matchMode !== player.matchMode) {
 				return {
 					status: "ERROR_ALREADY_IN_ANOTHER_GAME",
-					message: `Sei già in una partita ${statusData.matchMode}.`,
+					message: `Sei già in una partita (modalità: ${statusData.matchMode}). Termina la partita in corso prima di avviarne un'altra.`,
 				};
 			}
 			this.logger.log(
@@ -490,6 +492,8 @@ export class MatchmakingService {
 			}, 600);
 		} else {
 			const timestamp = Date.now();
+
+			await this.redis.zrem("matchmaking_queue", String(userId));
 			await this.redis.zadd(QUEUE_KEY, timestamp, String(userId));
 
 			await this.setUserStatus(userId, {
@@ -524,7 +528,6 @@ export class MatchmakingService {
 				: opponentData.characterName;
 
 			await this.redis.zrem(QUEUE_KEY, String(userId), String(opponentId));
-			const matchId = `match_unranked_${Math.random().toString(36).substring(7)}`;
 
 			const participant1 = {
 				characterName: playerChar,
@@ -532,7 +535,8 @@ export class MatchmakingService {
 				isAiPlayer: false,
 				rank: null,
 				socketId: player.socketId,
-				playerIndex: 0,
+				matchMode: player.matchMode,
+				matchType: player.matchType,
 			};
 
 			const participant2 = {
@@ -541,79 +545,15 @@ export class MatchmakingService {
 				isAiPlayer: !!opponentData.isAiPlayer,
 				rank: opponentData.rank,
 				socketId: opponentData.socketId,
-				playerIndex: 1,
+				matchMode: player.matchMode,
+				matchType: player.matchType,
 			};
 
-			await this.setUserStatus(userId, {
-				state: INGAME,
-				...participant1,
-				opponentId: Number(opponentId),
-				matchId,
-				matchMode: player.matchMode,
-				matchType: player.matchType,
-			}, 420);
+			this.logger.log(`[Unranked] Avversario trovato! Delego la creazione del match a executeMatchCreation per ${userId} vs ${opponentId}`);
+			
+			await this.executeMatchCreation(participant1, participant2);
 
-			await this.setUserStatus(opponentId, {
-				state: INGAME,
-				...participant2,
-				opponentId: userId,
-				matchId,
-				matchMode: player.matchMode,
-				matchType: player.matchType,
-			}, 420);
-
-			await this.redis.set(
-				`match_players:${matchId}`,
-				`${userId},${opponentId}`,
-				"EX",
-				3600,
-			);
-
-			const payload = {
-				gameId: matchId,
-				playersData: [participant1, participant2].map(
-					({ characterName, userDbId, isAiPlayer }) => ({
-						characterName: String(characterName),
-						userDbId: userDbId,
-						isAiPlayer: !!isAiPlayer,
-					}),
-				),
-				matchType: player.matchType,
-				matchMode: player.matchMode,
-			};
-
-			try {
-				await firstValueFrom(
-					this.httpService.post(
-						"http://game-service:3000/matchmaking/create-match",
-						payload,
-					),
-				);
-				this.logger.log(
-					`[Unranked] Match creato con successo: ${matchId}`,
-				);
-			} catch (error) {
-				this.logger.error(
-					"Errore creazione match Unranked:",
-					error.response?.data || error.message,
-				);
-			}
-
-			const matchFoundData = { status: "MATCH_FOUND", matchId };
-
-			if (opponentData.socketId) {
-				this.eventEmitter.emit(GameEvents.INTERNAL_MATCH_FOUND, {
-					socketId: opponentData.socketId,
-					data: matchFoundData,
-				});
-			}
-			if (player.socketId) {
-				this.eventEmitter.emit(GameEvents.INTERNAL_MATCH_FOUND, {
-					socketId: player.socketId,
-					data: matchFoundData,
-				});
-			}
-			return matchFoundData;
+			return { status: "MATCH_STARTING" };
 		}
 
 		return { status: "SEARCHING_UNRANKED_MATCH" };
@@ -656,9 +596,20 @@ export class MatchmakingService {
 				status: "RECONNECTED_TO_LOCAL_MATCH",
 				matchId: statusData.matchId,
 			};
+		} else if (statusData && statusData.state === INGAME) {
+
+			this.logger.log(
+				`[LocalMatch] Utente ${userId} già in partita ${statusData.matchMode}. Non posso avviare un match locale.`,
+			);
+			return {
+				status: "ERROR_ALREADY_IN_ANOTHER_GAME",
+				message: `Sei già in una partita (modalità: ${statusData.matchMode}). Termina la partita in corso prima di avviarne un'altra.`,
+			};
 		}
 
 		await this.redis.zrem("matchmaking_queue", String(userId));
+		await this.redis.zrem("matchmaking_queue_unranked", String(userId));
+
 		const matchId = `local_${Math.random().toString(36).substring(7)}`;
 
 		const names = (data.characterName as unknown as CharacterName | CharacterName[]);
@@ -782,7 +733,7 @@ export class MatchmakingService {
 			);
 			return {
 				status: "ERROR_ALREADY_IN_ANOTHER_GAME",
-				message: `Sei già in una partita ${statusData.matchMode}. Finiscila prima di avviarne una contro l'AI.`,
+				message: `Sei già in una partita (modalità: ${statusData.matchMode}). Termina la partita in corso prima di avviarne un'altra.`,
 			};
 		}
 
@@ -873,6 +824,123 @@ export class MatchmakingService {
 
 	/* ---------------------------------------------------------------------------------------------------------------- */
 
+	/**
+	 * Crea una sessione temporanea su Redis per due giocatori che hanno accettato un invito.
+	 * Nessun personaggio è ancora stato scelto.
+	 */
+	async createDirectSession(player1Id: number, player2Id: number) {
+		const sessionId = `direct_${Math.random().toString(36).substring(7)}`;
+
+		const sessionData = {
+			sessionId,
+			p1: { id: player1Id, ready: false, characterName: null, socketId: null },
+			p2: { id: player2Id, ready: false, characterName: null, socketId: null },
+			createdAt: Date.now()
+		};
+
+		await this.redis.set(`direct_session:${sessionId}`, JSON.stringify(sessionData), "EX", 300);
+
+		this.logger.log(
+			`[DirectSession] Creata pre-lobby ${sessionId} per p1:${player1Id} e p2:${player2Id}`
+		);
+
+		return { sessionId };
+	}
+
+	/* ---------------------------------------------------------------------------------------------------------------- */
+
+	/**
+	 * Chiamata dal WS quando un giocatore invia la scelta del personaggio e il sessionId.
+	 */
+	async joinDirectSession(userId: number, sessionId: string, characterName: string, socketId: string, matchMode: MatchMode = MatchMode.UNRANKED) {
+		const sessionKey = `direct_session:${sessionId}`;
+		const sessionRaw = await this.redis.get(sessionKey);
+
+		if (!sessionRaw) {
+			this.logger.warn(`[DirectSession] Sessione non trovata o scaduta: ${sessionId}`);
+			return { status: "ERROR_SESSION_NOT_FOUND", message: "Sessione scaduta o inesistente." };
+		}
+
+		const session = JSON.parse(sessionRaw);
+
+		const isP1 = session.p1.id === userId;
+		const isP2 = session.p2.id === userId;
+
+		if (!isP1 && !isP2) {
+			return { status: "ERROR_UNAUTHORIZED", message: "Non fai parte di questa sessione privata." };
+		}
+
+		const USER_STATUS_KEY = `status:${userId}`;
+		const currentStatusRaw = await this.redis.get(USER_STATUS_KEY);
+		const statusData = currentStatusRaw ? JSON.parse(currentStatusRaw) : null;
+
+		if (statusData && statusData.state === INGAME) {
+			this.logger.log(`[DirectSession] Utente ${userId} già in partita ${statusData.matchMode}. Impossibile unirsi alla pre-lobby.`);
+			return {
+				status: "ERROR_ALREADY_IN_ANOTHER_GAME",
+				message: `Sei già in una partita (modalità: ${statusData.matchMode}). Termina la partita in corso prima di avviarne un'altra.`,
+			};
+		}
+
+		if (isP1) {
+			session.p1.ready = true;
+			session.p1.characterName = characterName;
+			session.p1.socketId = socketId;
+		} else {
+			session.p2.ready = true;
+			session.p2.characterName = characterName;
+			session.p2.socketId = socketId;
+		}
+
+		await this.redis.zrem("matchmaking_queue", String(userId));
+		await this.redis.zrem("matchmaking_queue_unranked", String(userId));
+		
+		await this.setUserStatus(userId, {
+			state: "pre_match",
+			userDbId: userId,
+			characterName: characterName,
+			socketId: socketId,
+			sessionId: sessionId,
+		}, 300);
+
+		if (session.p1.ready && session.p2.ready) {
+			this.logger.log(`[DirectSession] Entrambi i giocatori pronti. Avvio match per la sessione ${sessionId}`);
+
+			await this.redis.del(sessionKey);
+
+			const p1Data = {
+				userDbId: session.p1.id,
+				characterName: session.p1.characterName,
+				isAiPlayer: false,
+				rank: null,
+				socketId: session.p1.socketId,
+				matchMode: matchMode,
+				matchType: MatchType.FFA
+			};
+
+			const p2Data = {
+				userDbId: session.p2.id,
+				characterName: session.p2.characterName,
+				isAiPlayer: false,
+				rank: null,
+				socketId: session.p2.socketId,
+				matchMode: matchMode,
+				matchType: MatchType.FFA
+			};
+
+			await this.executeMatchCreation(p1Data, p2Data);
+
+			return { status: "MATCH_STARTING" };
+		}
+
+		await this.redis.set(sessionKey, JSON.stringify(session), "EX", 300);
+		this.logger.log(`[DirectSession] Utente ${userId} pronto. In attesa dell'avversario...`);
+
+		return { status: "WAITING_FOR_OPPONENT" };
+	}
+
+	/* ---------------------------------------------------------------------------------------------------------------- */
+
 	async getQueueCount() {
 		const QUEUE_KEY = "matchmaking_queue";
 		const count = await this.redis.zcard(QUEUE_KEY); 
@@ -883,25 +951,135 @@ export class MatchmakingService {
 
 	async leaveQueue(userId: number, player: JoinQueueDto) {
 
-    const resultRanked = await this.redis.zrem("matchmaking_queue", String(userId));
-    const resultUnranked = await this.redis.zrem("matchmaking_queue_unranked", String(userId));
+		const resultRanked = await this.redis.zrem("matchmaking_queue", String(userId));
+		const resultUnranked = await this.redis.zrem("matchmaking_queue_unranked", String(userId));
 
-    const wasInQueue = resultRanked === 1 || resultUnranked === 1;
+		const wasInQueue = resultRanked === 1 || resultUnranked === 1;
 
-    await this.setUserStatus(userId, {
-        state: LOBBY,
-        characterName: player.characterName,
-        isAiPlayer: player.isAiPlayer,
-        socketId: player.socketId || undefined,
-    }, 3600);
+		await this.setUserStatus(userId, {
+			state: LOBBY,
+			characterName: player.characterName,
+			isAiPlayer: player.isAiPlayer,
+			socketId: player.socketId || undefined,
+		}, 3600);
 
-    if (wasInQueue) {
-        this.logger.log(`[Logic] Utente ${userId} rimosso dalla coda (Ranked o Unranked) e riportato in lobby.`);
-        return { status: "LEFT_QUEUE_SUCCESS", userId };
-    } else {
-        this.logger.log(`[Logic] Tentativo di rimozione: ${userId} non era in nessuna coda, ma lo stato è stato resettato a lobby.`);
-        return { status: "NOT_IN_QUEUE", userId };
-    }
+		if (wasInQueue) {
+			this.logger.log(`[Logic] Utente ${userId} rimosso dalla coda (Ranked o Unranked) e riportato in lobby.`);
+			return { status: "LEFT_QUEUE_SUCCESS", userId };
+		} else {
+			this.logger.log(`[Logic] Tentativo di rimozione: ${userId} non era in nessuna coda, ma lo stato è stato resettato a lobby.`);
+			return { status: "NOT_IN_QUEUE", userId };
+		}
+	}
+
+	/* ---------------------------------------------------------------------------------------------------------------- */
+
+	/**
+	 * Controlla se un utente appena connesso era già in partita (INGAME).
+	 * In caso affermativo, aggiorna il suo socketId su Redis e lo avvisa
+	 * per forzare il frontend a ricollegarsi alla schermata di gioco.
+	 */
+	async checkAndReconnectUser(userId: number, socketId: string) {
+		const USER_STATUS_KEY = `status:${userId}`;
+		const currentStatusRaw = await this.redis.get(USER_STATUS_KEY);
+		
+		if (!currentStatusRaw) return null;
+
+		const statusData = JSON.parse(currentStatusRaw);
+
+		if (statusData && statusData.state === "pre_match" && statusData.sessionId) {
+			this.logger.log(`[Auto-Reconnect] Utente ${userId} disconnesso/ricaricato in pre_match. Annullamento sessione ${statusData.sessionId}.`);
+
+			const sessionRaw = await this.redis.get(`direct_session:${statusData.sessionId}`);
+			if (sessionRaw) {
+				const session = JSON.parse(sessionRaw);
+				const opponentId = session.p1.id === userId ? session.p2.id : session.p1.id;
+				
+				const opponentStatusRaw = await this.redis.get(`status:${opponentId}`);
+				if (opponentStatusRaw) {
+					const opponentData = JSON.parse(opponentStatusRaw);
+					if (opponentData.socketId) {
+						this.eventEmitter.emit(GameEvents.INTERNAL_MATCH_FOUND, {
+							socketId: opponentData.socketId,
+							data: { status: "MATCH_CANCELLED", message: "L'avversario si è disconnesso. Partita annullata." }
+						});
+					}
+					await this.setUserStatus(opponentId, { 
+						state: LOBBY, 
+						socketId: opponentData.socketId 
+					}, 3600);
+				}
+				await this.redis.del(`direct_session:${statusData.sessionId}`);
+			}
+
+			await this.setUserStatus(userId, { state: LOBBY, socketId: socketId }, 3600);
+			
+			setTimeout(() => {
+				this.eventEmitter.emit(GameEvents.INTERNAL_MATCH_FOUND, {
+					socketId: socketId,
+					data: { status: "MATCH_CANCELLED", message: "Ti sei disconnesso durante la preparazione. Partita annullata." }
+				});
+			}, 1000);
+
+			return null; 
+		}
+
+		if (statusData && statusData.state === INGAME && statusData.matchId) {
+			const matchId = statusData.matchId;
+			const matchFoundData = { status: "MATCH_FOUND", matchId };
+
+			if (statusData.matchMode !== MatchMode.LOCAL && statusData.matchMode !== MatchMode.AI) {
+				const opponentStatusRaw = await this.redis.get(`status:${statusData.opponentId}`);
+				
+				if (!opponentStatusRaw) {
+					this.logger.warn(
+						`[Auto-Reconnect] Opponent ${statusData.opponentId} non trovato. Match scaduto. Riporto utente ${userId} in lobby.`
+					);
+					await this.setUserStatus(userId, {
+						state: LOBBY,
+						characterName: statusData.characterName,
+						isAiPlayer: statusData.isAiPlayer,
+						socketId: socketId,
+					}, 3600);
+					
+					return null; 
+				}
+
+				const opponentData = JSON.parse(opponentStatusRaw);
+				if (opponentData.socketId) {
+					this.eventEmitter.emit(GameEvents.INTERNAL_MATCH_FOUND, {
+						socketId: opponentData.socketId,
+						data: matchFoundData,
+					});
+				}
+			}
+
+			this.logger.log(
+				`[Auto-Reconnect] Utente ${userId} si è ricollegato col socket ${socketId}. Riconnessione al match: ${statusData.matchId}`
+			);
+
+			const isLongMatch = statusData.matchMode === MatchMode.LOCAL || statusData.matchMode === MatchMode.AI;
+			const ttl = isLongMatch ? 3600 : 420;
+
+			await this.setUserStatus(userId, {
+				...statusData,
+				socketId: socketId,
+			}, ttl);
+
+			if (socketId) {
+				setTimeout(() => {
+					this.eventEmitter.emit(GameEvents.INTERNAL_MATCH_FOUND, {
+						socketId: socketId,
+						data: matchFoundData,
+					});
+					this.logger.log(`[Delayed Reconnect] Evento interno emesso per il match ${statusData.matchId}`);
+				}, 1000);
+			}
+			
+			return statusData;
+		}
+		
+		return null;
 	}
 
 	/* ---------------------------------------------------------------------------------------------------------------- */
