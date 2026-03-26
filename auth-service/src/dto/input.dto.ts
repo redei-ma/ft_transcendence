@@ -60,7 +60,7 @@ export class ResetPasswordDto {
   token: string;
 
   @IsPasswordField()
-  password: string;
+  newPassword: string;
 }
 
 /**

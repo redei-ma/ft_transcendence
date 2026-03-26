@@ -247,7 +247,7 @@ export class AuthService {
       throw new ForbiddenException('Invalid token type');
     }
 
-    const hashed = await bcrypt.hash(dto.password, 10);
+    const hashed = await bcrypt.hash(dto.newPassword, 10);
 
     await this.usersService.updatePassword(payload.sub, { passwordHash: hashed });
 
