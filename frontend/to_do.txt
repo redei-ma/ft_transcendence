@@ -10,6 +10,7 @@ TO DO:
 
   Gio:
     - Gestione errori
+    - Fixare doppio messaggio su chat di gioco
 
   Renato:
     - Mostra ELO vicino alla chat o comunque ad un certo punto ( magari vicino chat Win = ELO Lose = ELO Drau = ELO )
@@ -18,7 +19,7 @@ TO DO:
     - Mostra current streak in statistics
 
   Ace:
-    - Ascolta match found su selectModeScene
+  X - Ascolta match found su selectModeScene
 
   - Sistema socket exception. togli unauthorized e usa exception
   - Guarda immagini chat di gio
@@ -30,8 +31,7 @@ TO DO:
 
 
 DA COMMITTARE
-  - Modificato login ( user/email )
-  - Resend e-mail verification code fixato
+
 
 
 
