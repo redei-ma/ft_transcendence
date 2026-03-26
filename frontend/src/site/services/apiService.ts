@@ -24,6 +24,7 @@ export interface UserStats {
 	totalLosses: number;
 	totalDraws: number;
 	bestWinStreak: number;
+	currentWinStreak: number;
 	totalKills: number;
 	totalDeaths: number;
 	characterStats: CharacterStat[];

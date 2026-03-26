@@ -228,7 +228,7 @@ export default function ProfilePage() {
   const userStatus = profile?.status || 'OFFLINE';
   const createdAt = profile?.createdAt || new Date().toISOString();
   
-  const s: UserStats = stats || { eloCurrent: 0, eloPeak: 0, totalWins: 0, totalLosses: 0, totalDraws: 0, bestWinStreak: 0, totalKills: 0, totalDeaths: 1, characterStats: [] };
+  const s: UserStats = stats || { eloCurrent: 0, eloPeak: 0, totalWins: 0, totalLosses: 0, totalDraws: 0, currentWinStreak: 0, bestWinStreak: 0, totalKills: 0, totalDeaths: 1, characterStats: [] };
   const total = s.totalWins + s.totalLosses + s.totalDraws;
   const winRate = total > 0 ? Math.round((s.totalWins / total) * 100) : 0;
   
@@ -289,12 +289,13 @@ export default function ProfilePage() {
           <StatBox label="ELO" value={s.eloCurrent} />
           <StatBox label="PEAK ELO" value={s.eloPeak} color={theme.colors.goldBright} />
           <StatBox label="WIN RATE" value={`${winRate}%`} color={theme.colors.zeus} />
-          <StatBox label="BEST STREAK" value={s.bestWinStreak} color={theme.colors.zeus} />
+          <StatBox label="K/D RATIO" value={s.totalDeaths > 0 ? (s.totalKills / s.totalDeaths).toFixed(2) : '0'} />
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', marginBottom: '32px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px', marginBottom: '32px' }}>
           <StatBox label="WINS" value={s.totalWins} color={theme.colors.hpHigh} />
           <StatBox label="LOSSES" value={s.totalLosses} color={theme.colors.dead} />
-          <StatBox label="K/D RATIO" value={s.totalDeaths > 0 ? (s.totalKills / s.totalDeaths).toFixed(2) : '0'} />
+          <StatBox label="BEST STREAK" value={s.bestWinStreak} color={theme.colors.zeus} />
+          <StatBox label="CURRENT STREAK" value={s.currentWinStreak} color={theme.colors.zeus} />
         </div>
 
         {s.characterStats && s.characterStats.length > 0 && (
