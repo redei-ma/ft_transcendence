@@ -6,7 +6,7 @@ TO DO:
   X - Richiedi password per conferma identita' al cambio email dal profilo
     - Crea pagina forgot password( da mandare tramite URL via e-mail)
     - Register new User ( inserisci password due volte per conferma )
-    - Resend email verification ( Schermo diventa nero quando clicchi - Dopo resend link mostra form da riempire )
+  X - Resend email verification ( Schermo diventa nero quando clicchi - Dopo resend link mostra form da riempire )
 
   Gio:
     - Gestione errori
