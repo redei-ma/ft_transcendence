@@ -33,7 +33,7 @@ export class AuthController {
   }
 
   @Post('resend-verification')
-  async resendVerification(@Body('email') body: EmailDto) {
+  async resendVerification(@Body() body: EmailDto) {
     return this.authService.resendVerificationEmail(body);
   }
 
