@@ -1,5 +1,5 @@
-import { Injectable } from '@nestjs/common';
-import { HttpService } from '@nestjs/axios';
+
+import { Injectable, HttpException, HttpStatus } from '@nestjs/common';
 import {
   CreateLocalUserDto,
   CreateOAuthUserDto,
@@ -15,134 +15,128 @@ import {
 
 @Injectable()
 export class UserClient {
-  constructor(private readonly http: HttpService) {}
+  private readonly baseUrl = 'http://user-service:3001/internal/users';
 
-  async findUser(
-    query: FindUserQueryDto,
-  ): Promise<UserWithAccountsResponseDto | null> {
-    try {
-      const { data } =
-        await this.http.axiosRef.get<UserWithAccountsResponseDto>(
-          'http://user-service:3001/internal/users',
-          { params: query },
-        );
-      return data;
-    } catch (e) {
-      if (e?.response?.status === 404) return null;
-      throw e;
+  // Helper to handle repetitive fetch logic
+  private async request<T>(
+    path: string,
+    options: RequestInit = {},
+    params?: Record<string, any>,
+  ): Promise<T> {
+    const url = new URL(`${this.baseUrl}${path}`);
+
+    if (params) {
+      Object.keys(params).forEach((key) =>
+        url.searchParams.append(key, params[key].toString()),
+      );
     }
+
+    const response = await fetch(url.toString(), {
+      ...options,
+      headers: {
+        'Content-Type': 'application/json',
+        ...options.headers,
+      },
+    });
+
+    if (response.status === 404) return null as T;
+
+    if (!response.ok) {
+      throw new HttpException(
+        `UserClient Error: ${response.statusText}`,
+        response.status,
+      );
+    }
+
+    // For 204 No Content or empty responses
+    if (response.status === 204 || response.headers.get('content-length') === '0') {
+      return {} as T;
+    }
+
+    return response.json();
   }
 
-  async createUser(
-    dto: CreateLocalUserDto,
-  ): Promise<UserWithAccountsResponseDto> {
-    const { data } = await this.http.axiosRef.post<UserWithAccountsResponseDto>(
-      `http://user-service:3001/internal/users`,
-      dto,
-    );
-    return data;
+  async findUser(query: FindUserQueryDto): Promise<UserWithAccountsResponseDto | null> {
+    return this.request<UserWithAccountsResponseDto>('', { method: 'GET' }, query);
   }
 
-  async createOAuthUser(
-    dto: CreateOAuthUserDto,
-  ): Promise<UserWithAccountsResponseDto> {
-    const { data } = await this.http.axiosRef.post<UserWithAccountsResponseDto>(
-      `http://user-service:3001/internal/users/oauth`,
-      dto,
-    );
-    return data;
+  async createUser(dto: CreateLocalUserDto): Promise<UserWithAccountsResponseDto> {
+    return this.request<UserWithAccountsResponseDto>('', {
+      method: 'POST',
+      body: JSON.stringify(dto),
+    });
+  }
+
+  async createOAuthUser(dto: CreateOAuthUserDto): Promise<UserWithAccountsResponseDto> {
+    return this.request<UserWithAccountsResponseDto>('/oauth', {
+      method: 'POST',
+      body: JSON.stringify(dto),
+    });
   }
 
   async invalidateRefreshTokens(userId: number): Promise<void> {
-    await this.http.axiosRef.patch(
-      `http://user-service:3001/internal/users/${userId}/token-version`,
-    );
+    await this.request(`/${userId}/token-version`, { method: 'PATCH' });
   }
 
   async markEmailVerified(userId: number): Promise<void> {
-    await this.http.axiosRef.patch(
-      `http://user-service:3001/internal/users/${userId}/verify-email`,
-    );
+    await this.request(`/${userId}/verify-email`, { method: 'PATCH' });
   }
 
   async updatePassword(userId: number, dto: UpdatePasswordDto): Promise<void> {
-    await this.http.axiosRef.patch(
-      `http://user-service:3001/internal/users/${userId}/password/change`,
-      dto,
-    );
+    await this.request(`/${userId}/password/change`, {
+      method: 'PATCH',
+      body: JSON.stringify(dto),
+    });
   }
 
-  async findByProvider(
-    provider: string,
-    oauthId: string,
-  ): Promise<UserWithAccountsResponseDto | null> {
-    try {
-      const { data } =
-        await this.http.axiosRef.get<UserWithAccountsResponseDto>(
-          `http://user-service:3001/internal/users/${provider}/${oauthId}`,
-        );
-      return data;
-    } catch (e) {
-      if (e?.response?.status === 404) return null;
-      throw e;
-    }
+  async findByProvider(provider: string, oauthId: string): Promise<UserWithAccountsResponseDto | null> {
+    return this.request<UserWithAccountsResponseDto>(`/${provider}/${oauthId}`, { method: 'GET' });
   }
 
-  async linkProvider(
-    userId: number,
-    provider: string,
-    dto: LinkOAuthDto,
-  ): Promise<void> {
-    await this.http.axiosRef.post(
-      `http://user-service:3001/internal/users/${userId}/oauth/${provider}`,
-      dto,
-    );
+  async linkProvider(userId: number, provider: string, dto: LinkOAuthDto): Promise<void> {
+    await this.request(`/${userId}/oauth/${provider}`, {
+      method: 'POST',
+      body: JSON.stringify(dto),
+    });
   }
 
   async setup2fa(userId: number, dto: Setup2faDto): Promise<void> {
-    await this.http.axiosRef.patch(
-      `http://user-service:3001/internal/users/${userId}/2fa/setup`,
-      dto,
-    );
+    await this.request(`/${userId}/2fa/setup`, {
+      method: 'PATCH',
+      body: JSON.stringify(dto),
+    });
   }
 
   async enable2fa(userId: number): Promise<void> {
-    await this.http.axiosRef.patch(
-      `http://user-service:3001/internal/users/${userId}/2fa/enable`,
-    );
+    await this.request(`/${userId}/2fa/enable`, { method: 'PATCH' });
   }
 
   async disable2fa(userId: number): Promise<void> {
-    await this.http.axiosRef.delete(
-      `http://user-service:3001/internal/users/${userId}/2fa/disable`,
-    );
+    await this.request(`/${userId}/2fa/disable`, { method: 'DELETE' });
   }
 
   async updateEmail(userId: number, dto: UpdateEmailDto): Promise<void> {
-    await this.http.axiosRef.patch(
-      `http://user-service:3001/internal/users/${userId}/email`,
-      dto
-    );
+    await this.request(`/${userId}/email`, {
+      method: 'PATCH',
+      body: JSON.stringify(dto),
+    });
   }
 
-  async setPassword(userId: number, dto: SetPasswordDto ): Promise<void> {
-    await this.http.axiosRef.post(
-      `http://user-service:3001/internal/users/${userId}/password/set`,
-      dto,
-    );
+  async setPassword(userId: number, dto: SetPasswordDto): Promise<void> {
+    await this.request(`/${userId}/password/set`, {
+      method: 'POST',
+      body: JSON.stringify(dto),
+    });
   }
 
-  async updateStatus(userId: number, dto: UpdateStatusDto ): Promise<void> {
-    await this.http.axiosRef.patch(
-      `http://user-service:3001/internal/users/${userId}/status`,
-      dto,
-    );
+  async updateStatus(userId: number, dto: UpdateStatusDto): Promise<void> {
+    await this.request(`/${userId}/status`, {
+      method: 'PATCH',
+      body: JSON.stringify(dto),
+    });
   }
 
   async unlinkOAuth(userId: number, provider: string): Promise<void> {
-    await this.http.axiosRef.delete(
-      `http://user-service:3001/internal/users/${userId}/oauth/${provider}`,
-    );
+    await this.request(`/${userId}/oauth/${provider}`, { method: 'DELETE' });
   }
-
 }
