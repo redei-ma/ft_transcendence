@@ -1,12 +1,12 @@
 import { Module } from "@nestjs/common";
 import { MatchResultService } from "./match-result.service";
-import { UserNotificationClient } from "./user-notification.client";
 import { PrismaModule } from "../prisma/prisma.module";
 import { AchievementModule } from "../achievement/achievement.module";
+import { UserModule } from "../user/user.module";
 
 @Module({
-	imports: [PrismaModule, AchievementModule],
-	providers: [MatchResultService, UserNotificationClient],
+	imports: [PrismaModule, AchievementModule, UserModule],
+	providers: [MatchResultService],
 	exports: [MatchResultService],
 })
 export class MatchResultModule {}

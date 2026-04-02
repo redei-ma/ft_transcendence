@@ -15,7 +15,7 @@ import {
 	AchievementService,
 	UpdatedPlayerStats,
 } from "../achievement/achievement.service";
-import { UserNotificationClient } from "./user-notification.client";
+import { UserNotificationClient } from "../user/user-notification.client";
 
 @Injectable()
 export class MatchResultService {

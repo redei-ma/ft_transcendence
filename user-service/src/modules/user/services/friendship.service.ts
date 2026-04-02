@@ -16,6 +16,7 @@ import {
 	FriendResponseDto,
 	FriendListResponseDto,
 	FriendRequestsResponseDto,
+	FriendshipStatusResponseDto,
 	RespondFriendRequestDto,
 } from "../dto";
 
@@ -114,6 +115,54 @@ export class FriendshipService {
 			received: rows
 				.filter((f) => f.receiverId === userId)
 				.map((f) => toDto(f, "RECEIVED")),
+		};
+	}
+
+	/**
+	 * Returns the friendship status between the current user and targetId.
+	 * Useful for the frontend to decide which button to show (Add Friend / Pending / etc.).
+	 * All fields are null when no relationship exists.
+	 *
+	 * @param userId - ID of the requesting user (from JWT).
+	 * @param targetId - ID of the other user to check against.
+	 * @returns FriendshipStatusResponseDto — status, direction, and record ID (or nulls).
+	 * @throws BadRequestException (400) — if userId and targetId are the same.
+	 * @throws NotFoundException (404) — if targetId does not exist.
+	 */
+	async getFriendshipStatus(
+		userId: number,
+		targetId: number,
+	): Promise<FriendshipStatusResponseDto> {
+		if (userId === targetId) {
+			throw new BadRequestException(
+				"Cannot check friendship status with yourself",
+			);
+		}
+
+		const target = await this.prisma.user.findUnique({
+			where: { id: targetId },
+			select: { id: true },
+		});
+		if (!target) throw new NotFoundException("User not found");
+
+		const friendship = await this.prisma.friendship.findFirst({
+			where: {
+				OR: [
+					{ senderId: userId, receiverId: targetId },
+					{ senderId: targetId, receiverId: userId },
+				],
+			},
+			select: { id: true, status: true, senderId: true },
+		});
+
+		if (!friendship) {
+			return { friendshipId: null, status: null, direction: null };
+		}
+
+		return {
+			friendshipId: friendship.id,
+			status: friendship.status,
+			direction: friendship.senderId === userId ? "SENT" : "RECEIVED",
 		};
 	}
 

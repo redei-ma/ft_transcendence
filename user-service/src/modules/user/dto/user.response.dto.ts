@@ -431,6 +431,36 @@ export class FriendRequestsResponseDto {
 	received: FriendResponseDto[];
 }
 
+/**
+ * Friendship status between the current user and another player.
+ * All fields are null when no relationship exists.
+ */
+export class FriendshipStatusResponseDto {
+	@ApiProperty({
+		description: "Friendship record ID. Null if no relationship exists.",
+		example: 42,
+		nullable: true,
+	})
+	friendshipId: number | null;
+
+	@ApiProperty({
+		enum: FriendshipStatus,
+		example: "PENDING",
+		nullable: true,
+		description: "Current status of the relationship. Null if none.",
+	})
+	status: FriendshipStatus | null;
+
+	@ApiProperty({
+		description:
+			"SENT = current user sent the request; RECEIVED = current user received it. Null if no relationship.",
+		enum: ["SENT", "RECEIVED"],
+		nullable: true,
+		example: "SENT",
+	})
+	direction: "SENT" | "RECEIVED" | null;
+}
+
 // ─── GAME INVITE ─────────────────────────────────────────────────────────────
 
 /**

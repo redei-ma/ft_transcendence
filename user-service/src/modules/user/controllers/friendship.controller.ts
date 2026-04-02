@@ -25,6 +25,7 @@ import {
 	FriendResponseDto,
 	FriendListResponseDto,
 	FriendRequestsResponseDto,
+	FriendshipStatusResponseDto,
 } from "../dto";
 
 @ApiTags("Friendships")
@@ -54,6 +55,30 @@ export class FriendshipController {
 		@CurrentUser("sub") userId: number,
 	): Promise<FriendRequestsResponseDto> {
 		return this.friendshipService.getFriendRequests(userId);
+	}
+
+	@Get(":targetId/status")
+	@ApiOperation({
+		summary: "Get friendship status with a specific user",
+		description:
+			"Returns the current relationship state between the authenticated user and targetId. All fields are null if no relationship exists.",
+	})
+	@ApiParam({ name: "targetId", type: Number })
+	@ApiResponse({ status: HttpStatus.OK, type: FriendshipStatusResponseDto })
+	@ApiResponse({
+		status: HttpStatus.BAD_REQUEST,
+		description: "Cannot check status with yourself",
+	})
+	@ApiResponse({
+		status: HttpStatus.NOT_FOUND,
+		description: "User not found",
+	})
+	@ApiResponse({ status: HttpStatus.UNAUTHORIZED })
+	async getFriendshipStatus(
+		@CurrentUser("sub") userId: number,
+		@Param("targetId", ParseIntPipe) targetId: number,
+	): Promise<FriendshipStatusResponseDto> {
+		return this.friendshipService.getFriendshipStatus(userId, targetId);
 	}
 
 	// ─── Mutate ────────────────────────────────────────────────────────────────
