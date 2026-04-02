@@ -6,7 +6,12 @@ import {
 	ForbiddenException,
 } from "@nestjs/common";
 import { PrismaService } from "../../prisma/prisma.service";
-import { FriendshipStatus } from "@transcendence/types";
+import { NotificationService } from "./notification.service";
+import {
+	FriendshipStatus,
+	NotificationType,
+	NotificationTemplates,
+} from "@transcendence/types";
 import {
 	FriendResponseDto,
 	FriendListResponseDto,
@@ -34,7 +39,10 @@ const FRIENDSHIP_SELECT = {
 
 @Injectable()
 export class FriendshipService {
-	constructor(private readonly prisma: PrismaService) {}
+	constructor(
+		private readonly prisma: PrismaService,
+		private readonly notificationService: NotificationService,
+	) {}
 
 	// ─── Read ──────────────────────────────────────────────────────────────────
 
@@ -133,10 +141,16 @@ export class FriendshipService {
 			);
 		}
 
-		const target = await this.prisma.user.findUnique({
-			where: { id: targetId },
-			select: FRIEND_USER_SELECT,
-		});
+		const [target, sender] = await Promise.all([
+			this.prisma.user.findUnique({
+				where: { id: targetId },
+				select: FRIEND_USER_SELECT,
+			}),
+			this.prisma.user.findUnique({
+				where: { id: userId },
+				select: { username: true },
+			}),
+		]);
 		if (!target) throw new NotFoundException("User not found");
 
 		const existing = await this.prisma.friendship.findFirst({
@@ -147,6 +161,8 @@ export class FriendshipService {
 				],
 			},
 		});
+
+		let result: FriendResponseDto;
 
 		if (existing) {
 			if (existing.status === FriendshipStatus.ACCEPTED) {
@@ -165,7 +181,7 @@ export class FriendshipService {
 				},
 				select: FRIENDSHIP_SELECT,
 			});
-			return {
+			result = {
 				id: updated.id,
 				friend: updated.receiver,
 				status: updated.status,
@@ -173,25 +189,32 @@ export class FriendshipService {
 				createdAt: updated.createdAt,
 				updatedAt: updated.updatedAt,
 			};
+		} else {
+			const created = await this.prisma.friendship.create({
+				data: {
+					senderId: userId,
+					receiverId: targetId,
+					status: FriendshipStatus.PENDING,
+				},
+				select: FRIENDSHIP_SELECT,
+			});
+			result = {
+				id: created.id,
+				friend: created.receiver,
+				status: created.status,
+				direction: "SENT",
+				createdAt: created.createdAt,
+				updatedAt: created.updatedAt,
+			};
 		}
 
-		const created = await this.prisma.friendship.create({
-			data: {
-				senderId: userId,
-				receiverId: targetId,
-				status: FriendshipStatus.PENDING,
-			},
-			select: FRIENDSHIP_SELECT,
+		const { message } = NotificationTemplates.FRIEND_REQ(sender!.username);
+		await this.notificationService.createNotification(targetId, {
+			type: NotificationType.FRIEND_REQ,
+			message,
 		});
 
-		return {
-			id: created.id,
-			friend: created.receiver,
-			status: created.status,
-			direction: "SENT",
-			createdAt: created.createdAt,
-			updatedAt: created.updatedAt,
-		};
+		return result;
 	}
 
 	/**
@@ -230,6 +253,20 @@ export class FriendshipService {
 						: FriendshipStatus.REJECTED,
 			},
 		});
+
+		if (dto.action === "ACCEPTED") {
+			const responder = await this.prisma.user.findUnique({
+				where: { id: userId },
+				select: { username: true },
+			});
+			const { message } = NotificationTemplates.FRIEND_ACCEPTED(
+				responder!.username,
+			);
+			await this.notificationService.createNotification(targetId, {
+				type: NotificationType.FRIEND_ACCEPTED,
+				message,
+			});
+		}
 	}
 
 	/**

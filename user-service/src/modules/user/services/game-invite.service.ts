@@ -6,7 +6,12 @@ import {
 	BadRequestException,
 } from "@nestjs/common";
 import { PrismaService } from "../../prisma/prisma.service";
-import { InviteStatus } from "@transcendence/types";
+import { NotificationService } from "./notification.service";
+import {
+	InviteStatus,
+	NotificationType,
+	NotificationTemplates,
+} from "@transcendence/types";
 import {
 	SendGameInviteDto,
 	RespondGameInviteDto,
@@ -33,7 +38,10 @@ const INVITE_SELECT = {
 
 @Injectable()
 export class GameInviteService {
-	constructor(private readonly prisma: PrismaService) {}
+	constructor(
+		private readonly prisma: PrismaService,
+		private readonly notificationService: NotificationService,
+	) {}
 
 	// ─── Public API ────────────────────────────────────────────────────────────
 
@@ -82,7 +90,7 @@ export class GameInviteService {
 			Date.now() + (dto.expiresInSeconds ?? 60) * 1000,
 		);
 
-		return this.prisma.gameInvite.create({
+		const invite = await this.prisma.gameInvite.create({
 			data: {
 				senderId,
 				receiverId,
@@ -91,6 +99,16 @@ export class GameInviteService {
 			},
 			select: INVITE_SELECT,
 		});
+
+		const { message } = NotificationTemplates.GAME_INVITE(
+			invite.sender.username,
+		);
+		await this.notificationService.createNotification(receiverId, {
+			type: NotificationType.GAME_INVITE,
+			message,
+		});
+
+		return invite;
 	}
 
 	/**
