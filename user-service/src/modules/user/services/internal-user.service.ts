@@ -5,6 +5,7 @@ import {
 	ConflictException,
 } from "@nestjs/common";
 import { PrismaService } from "../../prisma/prisma.service";
+import { SseService } from "./sse.service";
 import { Provider } from "@transcendence/types";
 import {
 	CreateLocalUserDto,
@@ -29,7 +30,10 @@ import {
 
 @Injectable()
 export class InternalUserService {
-	constructor(private readonly prisma: PrismaService) {}
+	constructor(
+		private readonly prisma: PrismaService,
+		private readonly sseService: SseService,
+	) {}
 
 	// ─── Create user ───────────────────────────────────────────────────────────────────────────────
 
@@ -313,6 +317,7 @@ export class InternalUserService {
 			where: { id },
 			data: { status: dto.status },
 		});
+		await this.sseService.notifyStatusChange(id, dto.status);
 	}
 
 	/**

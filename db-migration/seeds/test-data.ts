@@ -68,8 +68,8 @@ export async function seedTestData(prisma: PrismaClient): Promise<void> {
 			status: UserStatus.OFFLINE,
 			accounts: {
 				create: {
-					provider: Provider.GOOGLE,
-					oauthId: "google_bob_456",
+					provider: Provider.LOCAL,
+					passwordHash: TEST_PASSWORD_HASH,
 				},
 			},
 			stats: {
@@ -88,7 +88,7 @@ export async function seedTestData(prisma: PrismaClient): Promise<void> {
 			},
 		},
 	});
-	console.log("  ✓ bob (GOOGLE only, verified, offline)");
+	console.log("  ✓ bob (LOCAL, verified, offline)");
 
 	const charlie = await prisma.user.upsert({
 		where: { email: "charlie@test.com" },
@@ -189,7 +189,7 @@ export async function seedTestData(prisma: PrismaClient): Promise<void> {
 			username: "frank",
 			isEmailVerified: true,
 			avatarUrl: "https://api.dicebear.com/9.x/shapes/svg?seed=frank",
-			status: UserStatus.OFFLINE,
+			status: UserStatus.IN_QUEUE,
 			accounts: {
 				create: {
 					provider: Provider.LOCAL,
@@ -212,7 +212,7 @@ export async function seedTestData(prisma: PrismaClient): Promise<void> {
 			},
 		},
 	});
-	console.log("  ✓ frank (LOCAL only, verified, offline, elo 1100)");
+	console.log("  ✓ frank (LOCAL only, verified, in_queue, elo 1100)");
 
 	// ─── Character Stats ──────────────────────────────────────────
 
@@ -540,49 +540,64 @@ export async function seedTestData(prisma: PrismaClient): Promise<void> {
 
 	await prisma.notification.createMany({
 		data: [
-			// Alice: mix of read and unread
+			// Alice sent friend requests to bob and diana — both accepted
+			// → alice receives FRIEND_ACCEPTED from both
+			{
+				userId: alice.id,
+				type: NotificationType.FRIEND_ACCEPTED,
+				message: "bob accepted your friend request.",
+				isRead: true,
+			},
+			{
+				userId: alice.id,
+				type: NotificationType.FRIEND_ACCEPTED,
+				message: "diana accepted your friend request.",
+				isRead: true,
+			},
+			// charlie sent alice a friend request → alice receives FRIEND_REQ
 			{
 				userId: alice.id,
 				type: NotificationType.FRIEND_REQ,
 				message: "charlie sent you a friend request.",
 				isRead: false,
 			},
+			// Alice unlocked an achievement
 			{
 				userId: alice.id,
 				type: NotificationType.ACHV_UNLOCKED,
-				message:
-					'Congratulations! You\'ve earned the "Kill Machine" achievement.',
+				message: 'Congratulations! You\'ve earned the "Kill Machine" achievement.',
 				isRead: false,
 			},
+			// Diana sent alice a game invite → alice receives GAME_INVITE
 			{
 				userId: alice.id,
 				type: NotificationType.GAME_INVITE,
 				message: "diana invited you to play a match.",
 				isRead: true,
 			},
-			// Bob: unread notifications
-			{
-				userId: bob.id,
-				type: NotificationType.FRIEND_ACCEPTED,
-				message: "alice accepted your friend request.",
-				isRead: true,
-			},
+			// Bob: game invite from alice (unread), achievement (read)
 			{
 				userId: bob.id,
 				type: NotificationType.GAME_INVITE,
 				message: "alice invited you to play a match.",
 				isRead: false,
 			},
-			// Diana: all read
+			{
+				userId: bob.id,
+				type: NotificationType.ACHV_UNLOCKED,
+				message: 'Congratulations! You\'ve earned the "First Blood" achievement.',
+				isRead: true,
+			},
+			// Diana: achievement unlocked (read)
 			{
 				userId: diana.id,
-				type: NotificationType.FRIEND_ACCEPTED,
-				message: "alice accepted your friend request.",
+				type: NotificationType.ACHV_UNLOCKED,
+				message: 'Congratulations! You\'ve earned the "Flawless Victory" achievement.',
 				isRead: true,
 			},
 		],
 	});
-	console.log("  ✓ Notifications (read and unread)");
+	console.log("  ✓ Notifications (read and unread, logically consistent with friendships)");
 
 	console.log("Test data seeding complete!");
 }

@@ -6,7 +6,7 @@ import { HttpService } from "@nestjs/axios";
 import { firstValueFrom } from "rxjs";
 import { EventEmitter2 } from "@nestjs/event-emitter";
 import { Cron } from "@nestjs/schedule";
-import { CharacterName, MatchType, MatchMode } from "@transcendence/types";
+import { CharacterName, MatchType, MatchMode, UserStatus } from "@transcendence/types";
 import { GameEvents } from "@transcendence/types";
 
 const INGAME = "ingame";
@@ -87,31 +87,30 @@ export class MatchmakingService {
 		};
 		await this.redis.set(`status:${userId}`, JSON.stringify(payload), "EX", ttlSeconds);
 
-		/*try {
+		try {
 			if (String(userId).includes("ai_bot") || String(userId).includes("guest_")) {
 				return;
 			}
 			let dbStatus: UserStatus;
-			
+
 			if (statusData.state === INGAME) {
 				dbStatus = UserStatus.IN_GAME;
 			} else if (statusData.state === INQUEUE) {
 				dbStatus = UserStatus.IN_QUEUE;
 			} else {
-				dbStatus = UserStatus.ONLINE; 
+				dbStatus = UserStatus.ONLINE;
 			}
 
-			const url = `http://user-service:3001/internal/users/${userId}/status`; 
-			
+			const url = `http://user-service:3001/internal/users/${userId}/status`;
+
 			await firstValueFrom(
 				this.httpService.patch(url, { status: dbStatus })
 			);
-			
 		} catch (error) {
 			this.logger.error(
 				`[Sync DB] Impossibile aggiornare lo stato DB per l'utente ${userId}: ${error.message}`
 			);
-		}*/
+		}
 	}
 
 	/* ---------------------------------------------------------------------------------------------------------------- */
