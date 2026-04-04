@@ -1,6 +1,5 @@
 import { MapEmitPayload } from '../../types/game.types';
 import { theme } from '../../configs/theme';
-import HPBar from './components/HPBar';
 import { CharacterName } from '@transcendence/types';
 import { useGameStore } from '../../storage/gameStore';
 
@@ -20,24 +19,13 @@ export default function GameUI({
   gameOver,
 }: GameUIProps) {
   
-  // ⚡ FIX: La parentesi chiude il selettore PRIMA del || []. 
-  // Così Zustand restituisce undefined, e l'array vuoto lo creiamo in sicurezza fuori.
   const players = useGameStore((state) => state.gameState?.players) || [];
   const playersCount = players.length;
 
   return (
     <>
-      {players.map((player) => (
-        <HPBar
-          key={player.id}
-          characterName={player.characterName}
-          currentHP={player.hp}
-          maxHP={100}
-          isDisconnected={player.isDisconnected}
-          disconnectionTimer={player.disconnectionTimer}
-          playerPosition={player.position}
-        />
-      ))}
+      {/* ⚡ RIMOSSO: Il blocco <HPBar /> che era qui è stato cancellato 
+          perché ora vive in PlayerEntity.tsx sopra i modelli 3D! */}
 
       {players.map((player) => {
         if (!player.isDead) return null;
@@ -71,8 +59,9 @@ export default function GameUI({
         );
       })}
 
+      {/* ⚡ SPOSTATO: Messo a right: 20 per non accavallarsi con i testi a sinistra */}
       <div style={{
-        position: 'absolute', top: 20, left: 20,
+        position: 'absolute', top: 20, right: 20, 
         color: theme.colors.textPrimary, fontFamily: theme.fonts.mono,
         fontSize: '13px', backgroundColor: theme.colors.bgPanel,
         padding: '14px', borderRadius: '8px',

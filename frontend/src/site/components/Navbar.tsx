@@ -3,6 +3,8 @@ import { navLinkBase } from '../styles/shared';
 import { useDropdown, DropdownPanel, DropdownItem } from './Dropdown';
 import * as Icons from './Icons';
 import { theme } from '../../configs/theme';
+import * as api from '../services/apiService';
+import { NotificationItem } from '../services/apiService';
 
 export const NAVBAR_HEIGHT = 64;
 
@@ -19,22 +21,129 @@ export default function Navbar({ currentPage, onNavigate, onLogout, username, av
   const profile = useDropdown();
   const notif = useDropdown();
 
-  // ⚡ Stati per la responsività
+  // Stati per la responsività
   const [isMobile, setIsMobile] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  // Stati per le Notifiche
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  // Funzione per il caricamento iniziale (storico)
+  const fetchNotifications = async () => {
+    if (!username) return; 
+    const data = await api.getNotifications(1, 20);
+    if (data) {
+      setNotifications(data.notifications);
+      setUnreadCount(data.unreadCount);
+    }
+  };
 
   useEffect(() => {
     const handleResize = () => {
       setIsMobile(window.innerWidth < 850);
       if (window.innerWidth >= 850) {
-        setMobileMenuOpen(false); // Chiude il menu se allarghiamo lo schermo
+        setMobileMenuOpen(false);
       }
     };
     
-    handleResize(); // Check iniziale
+    handleResize();
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
+
+  // Integrazione SSE (Server-Sent Events) per le Notifiche Live
+  useEffect(() => {
+    if (!username) return;
+
+    // 1. Carica lo storico iniziale
+    fetchNotifications();
+
+    // 2. Apri il canale SSE per ricevere le nuove in tempo reale
+    // ASSICURATI CHE L'URL SIA QUELLO DEL BACKEND
+    const SSE_URL = '/api/users/me/notifications/stream'; 
+    
+    const eventSource = new EventSource(SSE_URL, {
+      withCredentials: true // FONDAMENTALE per far leggere i cookie di sessione a NestJS
+    });
+
+    // Quando il backend "spinge" un nuovo dato (messaggio generico)
+    eventSource.onmessage = (event) => {
+      try {
+        const newNotif: NotificationItem = JSON.parse(event.data);
+        
+        // Aggiungiamo la nuova notifica in cima alla lista
+        setNotifications(prev => [newNotif, ...prev]);
+        
+        // Aumentiamo il contatore dei non letti se necessario
+        if (!newNotif.isRead) {
+          setUnreadCount(prev => prev + 1);
+        }
+      } catch (err) {
+        console.error("[SSE] Errore nel parsing della notifica:", err);
+      }
+    };
+
+    eventSource.onerror = (err) => {
+      console.error("[SSE] Errore di connessione al flusso notifiche. Tentativo di riconnessione automatico...", err);
+      // L'EventSource del browser proverà a riconnettersi automaticamente, 
+      // non c'è bisogno di logiche astruse di reconnect.
+    };
+
+    // Cleanup: chiudiamo il "tubo" se cambiamo utente o il componente viene smontato
+    return () => {
+      eventSource.close();
+    };
+  }, [username]);
+
+  const handleMarkAllRead = async () => {
+    if (await api.markAllNotificationsRead()) {
+      setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+      setUnreadCount(0);
+    }
+  };
+
+  const handleNotifClick = async (n: NotificationItem) => {
+    if (!n.isRead) {
+      const ok = await api.markNotificationRead(n.id);
+      if (ok) {
+        setNotifications(prev => prev.map(x => x.id === n.id ? { ...x, isRead: true } : x));
+        setUnreadCount(prev => Math.max(0, prev - 1));
+      }
+    }
+    notif.setOpen(false);
+    
+    // Indirizzamento specifico in base al tipo di notifica
+    if (n.type === 'FRIEND_REQ' || n.type === 'FRIEND_ACCEPTED') {
+      scrollTo('profile', 'profile-friends');
+    } else if (n.type === 'ACHV_UNLOCKED') {
+      scrollTo('profile', 'profile-stats');
+    }
+  };
+
+  const handleDeleteNotif = async (e: React.MouseEvent, id: number) => {
+    e.stopPropagation();
+    const ok = await api.deleteNotification(id);
+    if (ok) {
+      setNotifications(prev => prev.filter(n => n.id !== id));
+      // Se eliminiamo una non-letta, dobbiamo scalare anche l'unreadCount 
+      // (ma per sicurezza il modo migliore è rifare la fetch se lo vogliamo preciso, 
+      // o semplicemente sottrarlo localmente come fatto sotto).
+      const deletedNotif = notifications.find(n => n.id === id);
+      if (deletedNotif && !deletedNotif.isRead) {
+        setUnreadCount(prev => Math.max(0, prev - 1));
+      }
+    }
+  };
+
+  const timeAgo = (dateString: string) => {
+    const diff = Math.floor((new Date().getTime() - new Date(dateString).getTime()) / 60000);
+    if (diff < 1) return 'Just now';
+    if (diff < 60) return `${diff}m ago`;
+    const hours = Math.floor(diff / 60);
+    if (hours < 24) return `${hours}h ago`;
+    return new Date(dateString).toLocaleDateString();
+  };
 
   const navLink = (page: string): React.CSSProperties => ({
     ...navLinkBase,
@@ -44,11 +153,61 @@ export default function Navbar({ currentPage, onNavigate, onLogout, username, av
 
   const scrollTo = (page: string, sectionId: string) => {
     onNavigate(page);
-    setMobileMenuOpen(false); // Chiude il menu mobile se aperto
+    setMobileMenuOpen(false);
     setTimeout(() => {
       document.getElementById(sectionId)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }, 50);
   };
+
+  // ================= UI NOTIFICHE CONDIVISA =================
+  const RenderNotificationList = () => (
+    <div style={{ display: 'flex', flexDirection: 'column', maxHeight: '400px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', borderBottom: `1px solid ${theme.colors.border}` }}>
+        <span style={{ fontFamily: theme.fonts.heading, fontSize: '14px', color: theme.colors.goldBright, fontWeight: 700 }}>Notifications</span>
+        {unreadCount > 0 && (
+          <button onClick={handleMarkAllRead} style={{ background: 'none', border: 'none', color: theme.colors.textMuted, fontSize: '11px', fontFamily: theme.fonts.heading, cursor: 'pointer', textTransform: 'uppercase' }}>
+            Mark all read
+          </button>
+        )}
+      </div>
+      <div style={{ overflowY: 'auto', flex: 1, padding: '4px 0' }}>
+        {notifications.length === 0 ? (
+          <div style={{ padding: '32px 16px', textAlign: 'center' }}>
+            <span style={{ fontFamily: theme.fonts.heading, fontSize: '12px', color: theme.colors.textMuted, letterSpacing: '1px' }}>
+              No notifications yet
+            </span>
+          </div>
+        ) : (
+          notifications.map(n => {
+            const isAchv = n.type === 'ACHV_UNLOCKED';
+            return (
+              <div key={n.id} onClick={() => handleNotifClick(n)} style={{
+                padding: '12px 16px', borderBottom: `1px solid rgba(255,255,255,0.05)`,
+                background: n.isRead ? 'transparent' : 'rgba(200, 170, 100, 0.08)',
+                cursor: 'pointer', display: 'flex', gap: '12px', alignItems: 'flex-start',
+                transition: 'background 0.2s'
+              }}>
+                <div style={{ color: isAchv ? theme.colors.hpMid : theme.colors.zeus, marginTop: '2px' }}>
+                  {isAchv ? <Icons.Trophy size={16} /> : <Icons.User size={16} />}
+                </div>
+                <div style={{ flex: 1 }}>
+                  <p style={{ fontFamily: theme.fonts.mono, fontSize: '12px', color: n.isRead ? theme.colors.textSecondary : theme.colors.textPrimary, lineHeight: 1.4, margin: 0 }}>
+                    {n.message}
+                  </p>
+                  <p style={{ fontFamily: theme.fonts.mono, fontSize: '10px', color: theme.colors.textMuted, marginTop: '4px' }}>
+                    {timeAgo(n.createdAt)}
+                  </p>
+                </div>
+                <button onClick={(e) => handleDeleteNotif(e, n.id)} style={{ background: 'none', border: 'none', color: theme.colors.textMuted, cursor: 'pointer', opacity: 0.5, padding: '2px' }}>
+                  <Icons.X size={14} />
+                </button>
+              </div>
+            );
+          })
+        )}
+      </div>
+    </div>
+  );
 
   return (
     <>
@@ -60,7 +219,7 @@ export default function Navbar({ currentPage, onNavigate, onLogout, username, av
         display: 'flex', alignItems: 'center', padding: '0 24px',
         zIndex: 999, backdropFilter: 'blur(12px)',
       }}>
-        {/* Logo (Sempre visibile) */}
+        {/* Logo */}
         <div onClick={() => onNavigate('dashboard')} style={{
           display: 'flex', alignItems: 'center', gap: '12px',
           marginRight: '32px', flexShrink: 0, cursor: 'pointer',
@@ -91,16 +250,17 @@ export default function Navbar({ currentPage, onNavigate, onLogout, username, av
               <button onClick={() => notif.setOpen(!notif.open)} style={{
                 background: 'none', border: 'none', padding: '4px', cursor: 'pointer',
                 color: notif.open ? theme.colors.gold : theme.colors.textSecondary,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative'
               }}>
                 <Icons.Bell size={24} />
-              </button>
-              <DropdownPanel isOpen={notif.open} right={0} minWidth="240px">
-                <div style={{ padding: '16px', textAlign: 'center' }}>
-                  <span style={{ fontFamily: theme.fonts.heading, fontSize: '12px', color: theme.colors.textMuted }}>
-                    No notifications yet
+                {unreadCount > 0 && (
+                  <span style={{ position: 'absolute', top: 0, right: 2, background: theme.colors.dead, color: '#fff', fontSize: '9px', fontWeight: 'bold', width: '14px', height: '14px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    {unreadCount > 9 ? '9+' : unreadCount}
                   </span>
-                </div>
+                )}
+              </button>
+              <DropdownPanel isOpen={notif.open} right={0} minWidth="280px">
+                <RenderNotificationList />
               </DropdownPanel>
             </div>
 
@@ -162,21 +322,24 @@ export default function Navbar({ currentPage, onNavigate, onLogout, username, av
 
             {/* Lato Destro (Notifiche, Avatar, Logout) */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexShrink: 0 }}>
+              
+              {/* Notifiche Desktop */}
               <div ref={notif.ref} style={{ position: 'relative' }}>
                 <button onClick={() => notif.setOpen(!notif.open)} style={{
                   background: 'none', border: '1px solid transparent', borderRadius: '4px',
-                  padding: '8px', cursor: 'pointer',
+                  padding: '8px', cursor: 'pointer', position: 'relative',
                   color: notif.open ? theme.colors.gold : theme.colors.textSecondary,
                   transition: 'all 0.2s', display: 'flex', alignItems: 'center', justifyContent: 'center',
                 }}>
                   <Icons.Bell size={20} />
-                </button>
-                <DropdownPanel isOpen={notif.open} right={0} minWidth="280px">
-                  <div style={{ padding: '16px 20px', textAlign: 'center' }}>
-                    <span style={{ fontFamily: theme.fonts.heading, fontSize: '12px', color: theme.colors.textMuted, letterSpacing: '1px' }}>
-                      No notifications yet
+                  {unreadCount > 0 && (
+                    <span style={{ position: 'absolute', top: 2, right: 2, background: theme.colors.dead, color: '#fff', fontSize: '9px', fontWeight: 'bold', width: '14px', height: '14px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', border: `1px solid ${theme.colors.bgPanel}` }}>
+                      {unreadCount > 9 ? '9+' : unreadCount}
                     </span>
-                  </div>
+                  )}
+                </button>
+                <DropdownPanel isOpen={notif.open} right={0} minWidth="320px">
+                  <RenderNotificationList />
                 </DropdownPanel>
               </div>
 
@@ -214,7 +377,6 @@ export default function Navbar({ currentPage, onNavigate, onLogout, username, av
           overflowY: 'auto'
         }}>
           
-          {/* Avatar e Nome Mobile */}
           <div onClick={() => scrollTo('profile', 'profile-settings')} style={{
             display: 'flex', alignItems: 'center', gap: '16px', paddingBottom: '24px', 
             borderBottom: `1px solid ${theme.colors.border}`, cursor: 'pointer'
@@ -231,7 +393,6 @@ export default function Navbar({ currentPage, onNavigate, onLogout, username, av
             </div>
           </div>
 
-          {/* Link Principali */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '24px', flex: 1 }}>
             
             <div onClick={() => scrollTo('dashboard', 'section-game')} style={{
@@ -256,7 +417,6 @@ export default function Navbar({ currentPage, onNavigate, onLogout, username, av
 
           </div>
 
-          {/* Logout Mobile */}
           <button onClick={onLogout} style={{
             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px',
             width: '100%', padding: '16px', marginTop: '24px',

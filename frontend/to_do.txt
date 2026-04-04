@@ -4,19 +4,20 @@ TO DO:
   Ale
   X - Dopo cambio password, i cookies vengono eliminati, bisogna sloggare l'utente
   X - Richiedi password per conferma identita' al cambio email dal profilo
-    - Crea pagina forgot password( da mandare tramite URL via e-mail)
+  X - Crea pagina forgot password( da mandare tramite URL via e-mail )
     - Register new User ( inserisci password due volte per conferma )
   X - Resend email verification ( Schermo diventa nero quando clicchi - Dopo resend link mostra form da riempire )
 
   Gio:
     - Gestione errori
     - Fixare doppio messaggio su chat di gioco
+    - Interpolation a 30 fps
 
   Renato:
     - Mostra ELO vicino alla chat o comunque ad un certo punto ( magari vicino chat Win = ELO Lose = ELO Drau = ELO )
     - Possibilita' eliminare account ( con warning di conferma )
     - History and Notifications ( live notify tramite "evoluzione" HTTP, guarda SSE )
-    - Mostra current streak in statistics
+  X - Mostra current streak in statistics
 
   Ace:
   X - Ascolta match found su selectModeScene
