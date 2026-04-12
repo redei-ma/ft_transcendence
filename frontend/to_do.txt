@@ -16,7 +16,8 @@ TO DO:
   Renato:
     - Mostra ELO vicino alla chat o comunque ad un certo punto ( magari vicino chat Win = ELO Lose = ELO Drau = ELO )
     - Possibilita' eliminare account ( con warning di conferma )
-    - History and Notifications ( live notify tramite "evoluzione" HTTP, guarda SSE )
+    - History 
+  X - Live Notify (evoluzione HTTP guarda SSE)
   X - Mostra current streak in statistics
 
   Ace:

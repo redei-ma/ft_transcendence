@@ -10,6 +10,7 @@ import { logout } from "./site/services/authService";
 import { getMyProfile, UserProfile } from "./site/services/apiService";
 import { theme } from "./configs/theme";
 import DesktopOnlyGuard from "./site/components/desktopOnlyGuard";
+import FriendsSidebar from "./site/components/FriendSidebar";
 
 export default function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(true);
@@ -61,15 +62,17 @@ export default function App() {
       return null;
     }
     
-    // ⚡ AVVOLGIAMO IL GIOCO CON IL GUARDIANO
     return (
-      <DesktopOnlyGuard>
-        <GameFlow
-          userId={user.id}
-          username={user.username}
-          onExit={() => setCurrentPage("dashboard")}
-        />
-      </DesktopOnlyGuard>
+      <>
+        <DesktopOnlyGuard>
+          <GameFlow
+            userId={user.id}
+            username={user.username}
+            onExit={() => setCurrentPage("dashboard")}
+          />
+        </DesktopOnlyGuard>
+        <FriendsSidebar />
+      </>
     );
   }
 
@@ -96,6 +99,7 @@ export default function App() {
         avatarUrl={user?.avatarUrl || ""}
       />
       {renderPage()}
+      <FriendsSidebar />
     </div>
   );
 }

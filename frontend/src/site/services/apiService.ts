@@ -69,6 +69,32 @@ export interface NotificationListResponse {
     limit: number;
 }
 
+export interface FriendUser {
+    id: number;
+    username: string;
+    avatarUrl: string;
+    status: string;
+}
+
+export interface FriendEntry {
+    id: number;
+    friend: FriendUser;
+    status: 'PENDING' | 'ACCEPTED' | 'REJECTED';
+    direction: 'SENT' | 'RECEIVED';
+    createdAt: string;
+    updatedAt: string;
+}
+
+export interface FriendListResponse {
+    friends: FriendEntry[];
+    total: number;
+}
+
+export interface FriendRequestsResponse {
+    sent: FriendEntry[];
+    received: FriendEntry[];
+}
+
 // ==========================================
 // 📡 CHIAMATE API GENERALI
 // ==========================================
@@ -279,7 +305,7 @@ export async function changePassword(oldPass: string, newPass: string): Promise<
 }
 
 // ==========================================
-// 🔔 NOTIFICHE
+// NOTIFICHE
 // ==========================================
 
 export async function getNotifications(page = 1, limit = 20, unreadOnly = false): Promise<NotificationListResponse | null> {
@@ -319,6 +345,72 @@ export async function deleteNotification(id: number): Promise<boolean> {
         return !!res && res.ok;
     } catch (error) {
         console.error(`[API] Error deleting notif ${id}:`, error);
+        return false;
+    }
+}
+
+// ==========================================
+// FRIENDS
+// ==========================================
+
+export async function getFriends(): Promise<FriendListResponse | null> {
+    try {
+        const res = await fetchWithAuthRetry("/api/users/me/friends");
+        if (!res || !res.ok) return null;
+        return (await res.json()) as FriendListResponse;
+    } catch (error) {
+        console.error("[API] Error fetching friends:", error);
+        return null;
+    }
+}
+
+export async function getFriendRequests(): Promise<FriendRequestsResponse | null> {
+    try {
+        const res = await fetchWithAuthRetry("/api/users/me/friends/requests");
+        if (!res || !res.ok) return null;
+        return (await res.json()) as FriendRequestsResponse;
+    } catch (error) {
+        console.error("[API] Error fetching friend requests:", error);
+        return null;
+    }
+}
+
+export async function sendFriendRequest(targetId: number): Promise<{ ok: boolean; message?: string }> {
+    try {
+        const res = await fetchWithAuthRetry(`/api/users/me/friends/${targetId}`, { method: "POST" });
+        if (!res) return { ok: false, message: "Connessione fallita" };
+        if (res.ok) return { ok: true };
+        const data = await res.json().catch(() => ({}));
+        const msg = res.status === 400 ? "Non puoi aggiungerti da solo"
+            : res.status === 404 ? "Utente non trovato"
+            : res.status === 409 ? "Richiesta già inviata o già amici"
+            : data.message || "Errore";
+        return { ok: false, message: msg };
+    } catch (error) {
+        return { ok: false, message: "Network error" };
+    }
+}
+
+export async function respondFriendRequest(targetId: number, action: 'ACCEPTED' | 'REJECTED'): Promise<boolean> {
+    try {
+        const res = await fetchWithAuthRetry(`/api/users/me/friends/${targetId}/respond`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ action }),
+        });
+        return !!res && res.ok;
+    } catch (error) {
+        console.error("[API] Error responding to friend request:", error);
+        return false;
+    }
+}
+
+export async function removeFriend(targetId: number): Promise<boolean> {
+    try {
+        const res = await fetchWithAuthRetry(`/api/users/me/friends/${targetId}`, { method: "DELETE" });
+        return !!res && (res.ok || res.status === 204);
+    } catch (error) {
+        console.error("[API] Error removing friend:", error);
         return false;
     }
 }

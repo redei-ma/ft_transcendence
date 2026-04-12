@@ -24,31 +24,6 @@ export function toErrorString(val: unknown): string {
   return String(val);
 }
 
-// export async function fetchWithAuthRetry(
-//   url: string,
-//   options: RequestInit = {},
-// ): Promise<Response | null> {
-//   try {
-//     let res = await fetch(url, { ...options, credentials: "include" });
-
-//     if (res.status === 401) {
-//       const refreshed = await fetch("/api/auth/refresh", {
-//         method: "POST",
-//         credentials: "include",
-//       });
-
-//       if (!refreshed.ok) {
-//         return null;
-//       }
-//       res = await fetch(url, { ...options, credentials: "include" });
-//     }
-
-//     return res;
-//   } catch (error) {
-//     console.error("[Auth] Fetch error:", error);
-//     return null;
-//   }
-// }
 export async function fetchWithAuthRetry(
   url: string,
   options: RequestInit = {},

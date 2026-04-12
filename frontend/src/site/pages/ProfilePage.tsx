@@ -71,28 +71,23 @@ export default function ProfilePage() {
   const [settings, setSettings] = useState<UserSettings | null>(null);
   const [loading, setLoading] = useState(true);
   
-  // Stati 2FA
   const [isSettingUp2fa, setIsSettingUp2fa] = useState(false);
   const [qrCodeUrl, setQrCodeUrl] = useState<string | null>(null);
   const [setupCode, setSetupCode] = useState('');
   const [error2fa, setError2fa] = useState('');
 
-  // Stati Edit Profilo
   const [editingUsername, setEditingUsername] = useState(false);
   const [editingEmail, setEditingEmail] = useState(false);
   const [tempVal, setTempVal] = useState('');
   
-  // Stati Password e Notifiche
   const [isChangingPwd, setIsChangingPwd] = useState(false);
   const [pwdData, setPwdData] = useState({ old: '', new: '', confirm: '' });
   const [pwdError, setPwdError] = useState('');
   const [msg, setMsg] = useState(''); 
 
-  // Password di conferma per cambio email (ref per evitare stale closure)
   const confirmPwdRef = useRef('');
   const [confirmPwdDisplay, setConfirmPwdDisplay] = useState('');
 
-  // STATO DEL MODAL DI WARNING
   const [dialog, setDialog] = useState<{ 
     isOpen: boolean; 
     title: string; 
@@ -110,8 +105,6 @@ export default function ProfilePage() {
       })
       .finally(() => setLoading(false));
   }, []);
-
-  // --- FUNZIONI DI SALVATAGGIO CON WARNING ---
 
   const handleSaveUsername = () => { 
     setDialog({
@@ -182,8 +175,6 @@ export default function ProfilePage() {
       }
     });
   };
-
-  // --- FUNZIONI 2FA ---
 
   const handleEnable2faClick = async () => {
     setError2fa('');
@@ -334,14 +325,21 @@ export default function ProfilePage() {
       {/* Friends */}
       <div id="profile-friends" style={{ paddingTop: '80px', scrollMarginTop: `${NAVBAR_HEIGHT}px` }}>
         <h2 style={{ ...sectionTitleStyle, fontSize: '22px', marginBottom: '24px' }}>Friends</h2>
-        <p style={{ fontFamily: theme.fonts.heading, color: theme.colors.textMuted, textAlign: 'center', letterSpacing: '2px', fontSize: '13px' }}>Coming soon</p>
+        <div style={{ textAlign: 'center', padding: '24px', background: theme.colors.bgPanel, border: `1px solid ${theme.colors.border}`, borderRadius: '4px' }}>
+          <div style={{ color: theme.colors.goldDim, marginBottom: '12px' }}><Icons.Users size={32} /></div>
+          <p style={{ fontFamily: theme.fonts.heading, color: theme.colors.textSecondary, fontSize: '13px', letterSpacing: '1px' }}>
+            Use the Friends panel on the right side of the screen to manage your friends, send requests, and invite players to a game.
+          </p>
+          <p style={{ fontFamily: theme.fonts.mono, color: theme.colors.textMuted, fontSize: '11px', marginTop: '12px' }}>
+            Your ID: <span style={{ color: theme.colors.gold, fontWeight: 700, fontSize: '14px' }}>{profile?.id}</span> — share it with friends!
+          </p>
+        </div>
       </div>
 
       {/* Security */}
       <div id="profile-security" style={{ paddingTop: '80px', paddingBottom: '40px', scrollMarginTop: `${NAVBAR_HEIGHT}px` }}>
         <h2 style={{ ...sectionTitleStyle, fontSize: '22px', marginBottom: '24px' }}>Security & 2FA</h2>
         
-        {/* Blocco 2FA */}
         <div style={{ padding: '24px', background: theme.colors.bgPanel, border: `1px solid ${theme.colors.border}`, borderRadius: '4px', marginBottom: '12px' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div>
@@ -398,7 +396,7 @@ export default function ProfilePage() {
           )}
         </div>
 
-        {/* Email Verification con bottone Resend */}
+        {/* Email Verification */}
         <div style={{ padding: '24px', background: theme.colors.bgPanel, border: `1px solid ${theme.colors.border}`, borderRadius: '4px', marginBottom: '12px' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div>
@@ -440,7 +438,7 @@ export default function ProfilePage() {
         </div>
       </div>
 
-      {/* POPUP MODAL PER I WARNING */}
+      {/* POPUP MODAL */}
       {dialog && dialog.isOpen && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }}>
           <div className="animate-scaleIn" style={{ background: theme.colors.bgPanel, border: `1px solid ${theme.colors.gold}`, borderRadius: '4px', padding: '32px', maxWidth: '420px', textAlign: 'center', boxShadow: `0 0 40px ${theme.colors.goldGlow}` }}>

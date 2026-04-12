@@ -1,12 +1,131 @@
-========== ./.env.example ==========
-# The frontend connects to all services via relative URLs through the Nginx
-# gateway (port 2443). No environment variables are required for local development.
-#
-# If you need to override the API base URL for a standalone frontend build
-# outside of Docker, you can add VITE_ variables here and reference them
-# via import.meta.env in the source code.
+]633;E;for f in ./frontend/vite.config.ts ./frontend/tsconfig.json ./frontend/tsconfig.node.json ./frontend/tailwind.config.js ./frontend/postcss.config.js ./frontend/package.json ./frontend/Dockerfile ./frontend/index.html;85c51b8e-cc70-43ad-8643-c4ca27976bf4]633;C========== ./frontend/vite.config.ts ==========
+import { defineConfig } from "vite";
+import react from "@vitejs/plugin-react";
 
-========== ./Dockerfile ==========
+export default defineConfig({
+	plugins: [react()],
+	server: {
+		port: 5173,
+		host: true,
+		hmr: {
+			clientPort: 2443,
+		},
+		watch: {
+			usePolling: process.env.CHOKIDAR_USEPOLLING === "true",
+		},
+		allowedHosts: [
+			"frontend",
+			...(process.env.NGROK_DOMAIN ? [process.env.NGROK_DOMAIN] : []),
+		],
+		proxy: {
+			"/api": {
+				target: "http://localhost:3001",
+				changeOrigin: true,
+			},
+			"/auth": {
+				target: "http://localhost:3002",
+				changeOrigin: true,
+			},
+		},
+	},
+});
+
+========== ./frontend/tsconfig.json ==========
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "strict": true,
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "jsx": "react-jsx",
+    "types": ["vite/client"]
+  },
+  "include": ["src"],
+  "references": [{ "path": "./tsconfig.node.json" }]
+}
+========== ./frontend/tsconfig.node.json ==========
+{
+  "compilerOptions": {
+    "composite": true,
+    "skipLibCheck": true,
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "allowSyntheticDefaultImports": true
+  },
+  "include": ["vite.config.ts"]
+}
+
+========== ./frontend/tailwind.config.js ==========
+/** @type {import('tailwindcss').Config} */
+export default {
+  content: [
+    "./index.html",
+    "./src/**/*.{js,ts,jsx,tsx}",
+  ],
+  theme: {
+    extend: {},
+  },
+  plugins: [],
+}
+
+========== ./frontend/postcss.config.js ==========
+module.exports = {
+  plugins: {
+    tailwindcss: {},
+    autoprefixer: {},
+  },
+}
+
+========== ./frontend/package.json ==========
+{
+  "name": "frontend",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "type-check": "tsc --noEmit"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@react-three/drei": "^10.7.7",
+    "@react-three/fiber": "^9.5.0",
+    "@react-three/postprocessing": "^3.0.4",
+    "@transcendence/types": "file:../shared/types",
+    "autoprefixer": "^10.4.23",
+    "axios": "^1.13.2",
+    "postcss": "^8.5.6",
+    "react": "^19.2.3",
+    "react-dom": "^19.2.3",
+    "socket.io-client": "^4.8.3",
+    "socket.io-msgpack-parser": "^3.0.0",
+    "tailwindcss": "^3.4.19",
+    "three": "^0.182.0",
+    "zustand": "^5.0.11"
+  },
+  "devDependencies": {
+    "@types/node": "^25.0.8",
+    "@types/react": "^19.2.8",
+    "@types/react-dom": "^19.2.3",
+    "@types/three": "^0.182.0",
+    "@vitejs/plugin-react": "^5.1.2",
+    "typescript": "^5.9.3",
+    "vite": "^7.3.1"
+  }
+}
+
+========== ./frontend/Dockerfile ==========
 # --- Stage 1: Build (dev mode uses this stage via target: build) ---
 FROM node:20-alpine AS build
 
@@ -42,7 +161,7 @@ RUN printf 'server {\n\
 EXPOSE 5173
 
 CMD ["nginx", "-g", "daemon off;"]
-========== ./index.html ==========
+========== ./frontend/index.html ==========
 <!DOCTYPE html>
 <html lang="en">
   <head>
@@ -55,15 +174,7 @@ CMD ["nginx", "-g", "daemon off;"]
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
-========== ./postcss.config.js ==========
-module.exports = {
-  plugins: {
-    tailwindcss: {},
-    autoprefixer: {},
-  },
-}
-
-========== ./src/App.tsx ==========
+========== ./frontend/src/App.tsx ==========
 import { useState, useEffect } from "react";
 import "./site/styles/site.css";
 import LoginPage from "./site/pages/LoginPage";
@@ -165,7 +276,7 @@ export default function App() {
     </div>
   );
 }
-========== ./src/configs/auraConfig.ts ==========
+========== ./frontend/src/configs/auraConfig.ts ==========
 export const AURA_CONFIG = {
   zeus: {
     characterName: 'Zeus' as const,
@@ -252,7 +363,7 @@ export const AURA_CONFIG = {
 
 export type ZeusAuraConfig = typeof AURA_CONFIG.zeus;
 export type AdeAuraConfig = typeof AURA_CONFIG.ade;
-========== ./src/configs/config.ts ==========
+========== ./frontend/src/configs/config.ts ==========
 export const GameConfig = {
 	SERVER: {
 		TICK_RATE: 16,
@@ -297,7 +408,7 @@ export const GameConfig = {
     	INTERPOLATION_SPEED: 0.15,
   	},
 }
-========== ./src/configs/logger.ts ==========
+========== ./frontend/src/configs/logger.ts ==========
 // utils/logger.ts
 // Sistema di logging condizionale.
 // In produzione (e in valutazione) la console resta pulita.
@@ -327,7 +438,7 @@ export const log = {
   warn:   (...args: unknown[]) => DEBUG && console.warn('⚠️', ...args),
   error:  (...args: unknown[]) => console.error('❌', ...args), // sempre attivo
 };
-========== ./src/configs/theme.ts ==========
+========== ./frontend/src/configs/theme.ts ==========
 export const theme = {
   colors: {
     // Base
@@ -379,7 +490,7 @@ export const theme = {
     xl: '40px',
   },
 };
-========== ./src/game/Game.tsx ==========
+========== ./frontend/src/game/Game.tsx ==========
 import { Canvas } from '@react-three/fiber';
 import { useGameSocket } from '../hooks/useGameSocket';
 import { InputManager } from './input/inputManager';
@@ -516,7 +627,7 @@ function GameOverOverlayWrapper({ gameOver, onPlayAgain, onQuit }: {
   const players = useGameStore((state) => state.gameState?.players) || [];
   return <GameOverOverlay gameOver={gameOver} players={players} onPlayAgain={onPlayAgain} onQuit={onQuit} />;
 }
-========== ./src/game/UI/components/GameChat.tsx ==========
+========== ./frontend/src/game/UI/components/GameChat.tsx ==========
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { socketService } from '../../../services/socketServices';
 import { GameEvents } from '@transcendence/types';
@@ -770,7 +881,7 @@ export default function GameChat({ myUserId, isVisible }: GameChatProps) {
   );
 }
 
-========== ./src/game/UI/components/GameOverOverlay.tsx ==========
+========== ./frontend/src/game/UI/components/GameOverOverlay.tsx ==========
 import { GameOverPayload } from '../../../types/game.types';
 import {PlayerSnapshot} from '@transcendence/types';
 import { theme } from '../../../configs/theme';
@@ -1005,10 +1116,10 @@ function StatCell({ children }: { children: string }) {
     </span>
   );
 }
-========== ./src/game/UI/components/HPBar.tsx ==========
+========== ./frontend/src/game/UI/components/HPBar.tsx ==========
 import { Vector } from '../../../types/game.types';
 import { theme } from '../../../configs/theme';
-import {CharacterName} from '@transcendence/types';
+import { CharacterName } from '@transcendence/types';
 
 interface HPBarProps {
   characterName: string;
@@ -1016,7 +1127,8 @@ interface HPBarProps {
   currentHP: number;
   isDisconnected?: boolean;
   disconnectionTimer?: number;
-  playerPosition: Vector | null;
+  playerPosition?: Vector | null; // Reso opzionale per evitare errori
+  isFloating?: boolean; // ⚡ NUOVA PROP: Se true, non si attacca agli angoli
 }
 
 export default function HPBar({
@@ -1025,6 +1137,7 @@ export default function HPBar({
   currentHP,
   isDisconnected = false,
   disconnectionTimer = 0,
+  isFloating = false, // Di base è false così non rompiamo nulla
 }: HPBarProps) {
   const clampedHP = Math.max(0, currentHP);
   const hpPercent = (clampedHP / maxHP) * 100;
@@ -1037,10 +1150,11 @@ export default function HPBar({
 
   return (
     <div style={{
-      position: 'absolute',
-      top: characterName === CharacterName.ZEUS ? '20px' : 'auto',
-      bottom: characterName === CharacterName.ADE ? '20px' : 'auto',
-      left: '20px',
+      // ⚡ MODIFICA: Se fluttua usa position 'relative', altrimenti 'absolute' con i suoi angoli
+      position: isFloating ? 'relative' : 'absolute',
+      top: isFloating ? 'auto' : (characterName === CharacterName.ZEUS ? '20px' : 'auto'),
+      bottom: isFloating ? 'auto' : (characterName === CharacterName.ADE ? '20px' : 'auto'),
+      left: isFloating ? 'auto' : '20px',
       width: '120px',
       fontFamily: theme.fonts.mono,
       pointerEvents: 'none',
@@ -1048,53 +1162,33 @@ export default function HPBar({
     }}>
       {/* Name */}
       <div style={{
-        color: theme.colors.goldDim,
-        fontSize: '13px',
-        fontWeight: 'bold',
-        marginBottom: '4px',
-        textAlign: 'center',
-        textShadow: `0 0 8px ${theme.colors.goldDim}`,
+        color: theme.colors.goldDim, fontSize: '13px', fontWeight: 'bold',
+        marginBottom: '4px', textAlign: 'center', textShadow: `0 0 8px ${theme.colors.goldDim}`,
       }}>
         {characterName}
       </div>
 
       {/* Bar container */}
       <div style={{
-        width: '100%',
-        height: '8px',
-        backgroundColor: theme.colors.bgDark,
-        border: `1px solid ${theme.colors.border}`,
-        borderRadius: '4px',
-        overflow: 'hidden',
+        width: '100%', height: '8px', backgroundColor: theme.colors.bgDark,
+        border: `1px solid ${theme.colors.border}`, borderRadius: '4px', overflow: 'hidden',
       }}>
         <div style={{
-          width: `${hpPercent}%`,
-          height: '100%',
-          backgroundColor: barColor,
-          transition: 'width 0.3s ease, background-color 0.3s ease',
-          boxShadow: `0 0 8px ${barColor}`,
+          width: `${hpPercent}%`, height: '100%', backgroundColor: barColor,
+          transition: 'width 0.3s ease, background-color 0.3s ease', boxShadow: `0 0 8px ${barColor}`,
         }} />
       </div>
 
       {/* HP text */}
-      <div style={{
-        color: theme.colors.textSecondary,
-        fontSize: '10px',
-        marginTop: '3px',
-        textAlign: 'center',
-      }}>
+      <div style={{ color: theme.colors.textSecondary, fontSize: '10px', marginTop: '3px', textAlign: 'center' }}>
         {clampedHP}/{maxHP}
       </div>
 
       {/* AFK indicator */}
       {isDisconnected && (
         <div style={{
-          color: theme.colors.afk,
-          fontSize: '11px',
-          fontWeight: 'bold',
-          marginTop: '4px',
-          textAlign: 'center',
-          animation: 'pulse 1s infinite',
+          color: theme.colors.afk, fontSize: '11px', fontWeight: 'bold',
+          marginTop: '4px', textAlign: 'center', animation: 'pulse 1s infinite',
         }}>
           ⚠️ AFK {Math.ceil(disconnectionTimer)}s
         </div>
@@ -1109,10 +1203,9 @@ export default function HPBar({
     </div>
   );
 }
-========== ./src/game/UI/gameUI.tsx ==========
+========== ./frontend/src/game/UI/gameUI.tsx ==========
 import { MapEmitPayload } from '../../types/game.types';
 import { theme } from '../../configs/theme';
-import HPBar from './components/HPBar';
 import { CharacterName } from '@transcendence/types';
 import { useGameStore } from '../../storage/gameStore';
 
@@ -1132,24 +1225,13 @@ export default function GameUI({
   gameOver,
 }: GameUIProps) {
   
-  // ⚡ FIX: La parentesi chiude il selettore PRIMA del || []. 
-  // Così Zustand restituisce undefined, e l'array vuoto lo creiamo in sicurezza fuori.
   const players = useGameStore((state) => state.gameState?.players) || [];
   const playersCount = players.length;
 
   return (
     <>
-      {players.map((player) => (
-        <HPBar
-          key={player.id}
-          characterName={player.characterName}
-          currentHP={player.hp}
-          maxHP={100}
-          isDisconnected={player.isDisconnected}
-          disconnectionTimer={player.disconnectionTimer}
-          playerPosition={player.position}
-        />
-      ))}
+      {/* ⚡ RIMOSSO: Il blocco <HPBar /> che era qui è stato cancellato 
+          perché ora vive in PlayerEntity.tsx sopra i modelli 3D! */}
 
       {players.map((player) => {
         if (!player.isDead) return null;
@@ -1183,8 +1265,9 @@ export default function GameUI({
         );
       })}
 
+      {/* ⚡ SPOSTATO: Messo a right: 20 per non accavallarsi con i testi a sinistra */}
       <div style={{
-        position: 'absolute', top: 20, left: 20,
+        position: 'absolute', top: 20, right: 20, 
         color: theme.colors.textPrimary, fontFamily: theme.fonts.mono,
         fontSize: '13px', backgroundColor: theme.colors.bgPanel,
         padding: '14px', borderRadius: '8px',
@@ -1217,7 +1300,7 @@ export default function GameUI({
     </>
   );
 }
-========== ./src/game/core/gameCamera.ts ==========
+========== ./frontend/src/game/core/gameCamera.ts ==========
 import * as THREE from 'three';
 import { GameConfig } from '@transcendence/types';
 
@@ -1258,7 +1341,7 @@ export class GameCamera {
     this.camera.updateProjectionMatrix();
   }
 }
-========== ./src/game/core/gameScene.ts ==========
+========== ./frontend/src/game/core/gameScene.ts ==========
 /**
  * GameScene: Setup e gestione della scena Three.js.
  * 
@@ -1361,7 +1444,7 @@ export class GameScene {
     this.renderer.dispose();
   }
 }
-========== ./src/game/entities/AdeAura.tsx ==========
+========== ./frontend/src/game/entities/AdeAura.tsx ==========
 import { useRef, useMemo, useEffect } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
@@ -1629,7 +1712,7 @@ function respawnEmber(pos: Float32Array, vel: Float32Array, life: Float32Array, 
   const l = 0.3+Math.random()*0.6;
   life[i] = l; maxLife[i] = l;
 }
-========== ./src/game/entities/BulletEntity.tsx ==========
+========== ./frontend/src/game/entities/BulletEntity.tsx ==========
 import { useRef, useMemo, useEffect } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
@@ -2088,7 +2171,7 @@ function AdeBullet({ bulletId, initialSnapshot }: { bulletId: string, initialSna
     </group>
   );
 }
-========== ./src/game/entities/GameArena.tsx ==========
+========== ./frontend/src/game/entities/GameArena.tsx ==========
 import { Vector } from '../../types/game.types';
 
 interface WallData {
@@ -2130,7 +2213,7 @@ export function GameArena({ mapData }: GameArenaProps) {
     </group>
   );
 }
-========== ./src/game/entities/ImpactEffect.tsx ==========
+========== ./frontend/src/game/entities/ImpactEffect.tsx ==========
 import { useRef, useMemo, useState } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
@@ -2314,110 +2397,19 @@ export function ImpactEffect({ snapshot }: ImpactEffectProps) {
   );
 }
 
-========== ./src/game/entities/PlayerEntity.tsx ==========
-// // import { useRef } from 'react';
-// // import { useFrame } from '@react-three/fiber';
-// // import * as THREE from 'three';
-// // import { CharacterName } from '@transcendence/types';
-// // import { ZeusAura } from './ZeusAura';
-// // import { AdeAura } from './AdeAura';
-// // import { PlayerModel } from './PlayerModel';
-// // import { useGameStore } from '../../storage/gameStore';
-
-// // interface PlayerEntityProps {
-// //   playerId: string;
-// // }
-
-// // export function PlayerEntity({ playerId }: PlayerEntityProps) {
-// //   const groupRef = useRef<THREE.Group>(null);
-// //   const initialPlayer = useGameStore((state) =>
-// //     state.gameState?.players.find(p => p.id === playerId)
-// //   );
-
-// //   useFrame((_, delta) => {
-// //     if (!groupRef.current) return;
-
-// //     const currentPlayer = useGameStore.getState().gameState?.players.find(
-// //       p => p.id === playerId
-// //     );
-// //     if (!currentPlayer) return;
-
-// //     const target = new THREE.Vector3(currentPlayer.position.x, 0, currentPlayer.position.z);
-// //     groupRef.current.position.lerp(target, 1 - Math.pow(0.001, delta));
-// //     groupRef.current.rotation.y = currentPlayer.rotation;
-// //   });
-
-// //   if (!initialPlayer) return null;
-
-// //   return (
-// //     <group ref={groupRef}>
-// //       <PlayerModel characterName={initialPlayer.characterName} playerId={playerId} />
-
-// //       {initialPlayer.characterName === CharacterName.ZEUS ? (
-// //         <ZeusAura playerId={playerId} />
-// //       ) : (
-// //         <AdeAura playerId={playerId} />
-// //       )}
-// //     </group>
-// //   );
-// // }
-// import { useRef } from 'react';
-// import { useFrame } from '@react-three/fiber';
-// import * as THREE from 'three';
-// import { CharacterName } from '@transcendence/types';
-// import { ZeusAura } from './ZeusAura';
-// import { AdeAura } from './AdeAura';
-// import { PlayerModel } from './PlayerModel';
-// import { useGameStore } from '../../storage/gameStore';
-
-// interface PlayerEntityProps {
-//   playerId: string;
-// }
-
-// export function PlayerEntity({ playerId }: PlayerEntityProps) {
-//   const groupRef = useRef<THREE.Group>(null);
-//   const initialPlayer = useGameStore((state) =>
-//     state.gameState?.players.find(p => p.id === playerId)
-//   );
-
-//   useFrame((_, delta) => {
-//     if (!groupRef.current) return;
-
-//     const currentPlayer = useGameStore.getState().gameState?.players.find(
-//       p => p.id === playerId
-//     );
-//     if (!currentPlayer) return;
-
-//     const target = new THREE.Vector3(currentPlayer.position.x, 0, currentPlayer.position.z);
-//     groupRef.current.position.lerp(target, 1 - Math.pow(0.001, delta));
-
-//     // Inversione della rotazione: il server manda la rotazione con convenzione opposta
-//     // a quella del modello — negando il valore si allinea su/giù
-//     groupRef.current.rotation.y = -currentPlayer.rotation;
-//   });
-
-//   if (!initialPlayer) return null;
-
-//   return (
-//     <group ref={groupRef}>
-//       <PlayerModel characterName={initialPlayer.characterName} playerId={playerId} />
-
-//       {initialPlayer.characterName === CharacterName.ZEUS ? (
-//         <ZeusAura playerId={playerId} />
-//       ) : (
-//         <AdeAura playerId={playerId} />
-//       )}
-//     </group>
-//   );
-// }
+========== ./frontend/src/game/entities/PlayerEntity.tsx ==========
 import { useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
+import { Html } from '@react-three/drei'; 
 import * as THREE from 'three';
-import { CharacterName } from '@transcendence/types';
+import { useGameStore } from '../../storage/gameStore';
+import { PlayerModel } from './PlayerModel';
+import HPBar from '../UI/components/HPBar'; 
+import { CharacterName } from '@transcendence/types'; // ⚡ Serve per controllare il nome
+
+// ⚡ RE-IMPORTIAMO LE TUE AURE
 import { ZeusAura } from './ZeusAura';
 import { AdeAura } from './AdeAura';
-import { PlayerModel } from './PlayerModel';
-import { useGameStore } from '../../storage/gameStore';
 
 interface PlayerEntityProps {
   playerId: string;
@@ -2425,146 +2417,70 @@ interface PlayerEntityProps {
 
 export function PlayerEntity({ playerId }: PlayerEntityProps) {
   const groupRef = useRef<THREE.Group>(null);
-  const initialPlayer = useGameStore((state) =>
-    state.gameState?.players.find(p => p.id === playerId)
-  );
+  
+  const initialPlayer = useGameStore(state => state.gameState?.players.find(p => p.id === playerId));
+  const reactivePlayer = useGameStore(state => state.gameState?.players.find(p => p.id === playerId));
 
   useFrame((_, delta) => {
     if (!groupRef.current) return;
 
-    const currentPlayer = useGameStore.getState().gameState?.players.find(
-      p => p.id === playerId
-    );
+    const currentPlayer = useGameStore.getState().gameState?.players.find(p => p.id === playerId);
     if (!currentPlayer) return;
 
-    const target = new THREE.Vector3(currentPlayer.position.x, 0, currentPlayer.position.z);
-    groupRef.current.position.lerp(target, 1 - Math.pow(0.001, delta));
-    groupRef.current.rotation.y = -currentPlayer.rotation;
+    const targetPos = new THREE.Vector3(currentPlayer.position.x, 0, currentPlayer.position.z);
+    groupRef.current.position.lerp(targetPos, 1 - Math.pow(0.001, delta));
+
+    if (currentPlayer.rotation !== undefined) {
+      groupRef.current.rotation.y = -currentPlayer.rotation;
+    }
   });
 
-  if (!initialPlayer) return null;
+  if (!initialPlayer || !reactivePlayer) return null;
+
+  // Lettura delle variabili (Forzata per bypassare TS)
+  const currentHP = (reactivePlayer as any).health ?? (reactivePlayer as any).hp ?? 100;
+  const maxHP = (reactivePlayer as any).maxHealth ?? (reactivePlayer as any).maxHp ?? 100;
+  const isDisconnected = (reactivePlayer as any).isDisconnected;
 
   return (
     <group ref={groupRef}>
-      <PlayerModel characterName={initialPlayer.characterName} playerId={playerId} />
+      
+      {/* 1. LA HP BAR FLUTTUANTE */}
+      <Html 
+        position={[0, 20, 0]} 
+        center 
+        zIndexRange={[100, 0]} 
+      >
+        <div style={{ transform: 'scale(0.8)' }}>
+          <HPBar 
+            characterName={initialPlayer.characterName}
+            currentHP={currentHP}
+            maxHP={maxHP}
+            isDisconnected={isDisconnected}
+            isFloating={true} 
+          />
+        </div>
+      </Html>
 
+      {/* 2. IL MODELLO ANIMATO */}
+      <PlayerModel 
+        characterName={initialPlayer.characterName} 
+        playerId={playerId} 
+      />
+
+      {/* 3. ⚡ LE AURE RIPRISTINATE */}
       {initialPlayer.characterName === CharacterName.ZEUS ? (
         <ZeusAura playerId={playerId} />
       ) : (
         <AdeAura playerId={playerId} />
       )}
+
     </group>
   );
 }
-========== ./src/game/entities/PlayerModel.tsx ==========
-// import { useRef, useMemo } from 'react';
-// import { useGLTF } from '@react-three/drei';
-// import { useFrame } from '@react-three/fiber';
-// import * as THREE from 'three';
-// import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
-// import { CharacterName, GameConfig } from '@transcendence/types';
-// import { useGameStore } from '../../storage/gameStore';
-
-// const MODEL_PATHS: Record<string, string> = {
-//   [CharacterName.ZEUS]: '/models/Zeus.glb',
-//   [CharacterName.ADE]: '/models/Hades.glb',
-// };
-
-// // Torniamo alla TUA scala visiva corretta
-// const VISUAL_TARGET_HEIGHT = 0.06;
-// const MODEL_ROTATION_OFFSET = Math.PI/2;
-
-// interface PlayerModelProps {
-//   characterName: CharacterName;
-//   playerId: string;
-// }
-
-// export function PlayerModel({ characterName, playerId }: PlayerModelProps) {
-//   const groupRef = useRef<THREE.Group>(null);
-//   const modelRef = useRef<THREE.Group>(null);
-//   const { scene } = useGLTF(MODEL_PATHS[characterName]);
-//   const currentOpacity = useRef(1);
-
-//   const { clonedScene, computedScale, offset } = useMemo(() => {
-//     // LOG sulla scena ORIGINALE, non sul clone
-//     const origBox = new THREE.Box3().setFromObject(scene);
-//     const origSize = new THREE.Vector3();
-//     origBox.getSize(origSize);
-//     console.log(`[MODEL] ${characterName} ORIGINAL size: x=${origSize.x.toFixed(1)} y=${origSize.y.toFixed(1)} z=${origSize.z.toFixed(1)}`);
-
-//     const clone = SkeletonUtils.clone(scene);
-
-//     clone.traverse((child) => {
-//       if ((child as THREE.Mesh).isMesh) {
-//         const mesh = child as THREE.Mesh;
-//         mesh.frustumCulled = false;
-//         if (Array.isArray(mesh.material)) {
-//           mesh.material = mesh.material.map(m => m.clone());
-//         } else {
-//           mesh.material = mesh.material.clone();
-//         }
-//       }
-//     });
-
-//     const box = new THREE.Box3().setFromObject(clone);
-//     const size = new THREE.Vector3();
-//     box.getSize(size);
-//     const maxDim = Math.max(size.x, size.y, size.z);
-    
-//     const scale = VISUAL_TARGET_HEIGHT / maxDim;
-
-//     // Calcoliamo l'offset per mettere i piedi a y=0 tenendo conto della nuova scala.
-//     // NON centiamo X e Z qui, ci fidiamo del pivot nativo del modello .glb per non sfasarlo.
-//     const scaledMinY = box.min.y * scale;
-
-//     return { 
-//       clonedScene: clone, 
-//       computedScale: scale,
-//       offset: new THREE.Vector3(0, -scaledMinY, 0)
-//     };
-//   }, [scene]);
-
-//   useFrame((_, delta) => {
-//     const player = useGameStore.getState().gameState?.players.find(p => p.id === playerId);
-//     if (!player) return;
-
-//     const targetOpacity = player.isDead ? 0.2 : 1;
-//     if (currentOpacity.current === targetOpacity) return;
-
-//     // Interpolazione opacità
-//     const lerpFactor = GameConfig.RENDERING.INTERPOLATION_SPEED * (delta * 60);
-//     currentOpacity.current = THREE.MathUtils.lerp(currentOpacity.current, targetOpacity, lerpFactor);
-    
-//     clonedScene.traverse((child) => {
-//       if ((child as THREE.Mesh).isMesh) {
-//         const mesh = child as THREE.Mesh;
-//         const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
-//         for (const mat of materials) {
-//           mat.transparent = currentOpacity.current < 1;
-//           mat.opacity = currentOpacity.current;
-//         }
-//       }
-//     });
-//   });
-
-//   return (
-//     <group ref={groupRef}>
-//       <group ref={modelRef} rotation={[0, MODEL_ROTATION_OFFSET, 0]}>
-//         <primitive 
-//           object={clonedScene} 
-//           scale={computedScale} 
-//           position={[offset.x, offset.y, offset.z]} 
-//         />
-//       </group>
-//     </group>
-//   );
-// }
-
-// useGLTF.preload(MODEL_PATHS[CharacterName.ZEUS]);
-// useGLTF.preload(MODEL_PATHS[CharacterName.ADE]);
-
-import { useRef, useMemo } from 'react';
-import { useGLTF } from '@react-three/drei';
+========== ./frontend/src/game/entities/PlayerModel.tsx ==========
+import { useRef, useMemo, useEffect } from 'react';
+import { useGLTF, useAnimations } from '@react-three/drei';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
@@ -2572,11 +2488,10 @@ import { CharacterName, GameConfig } from '@transcendence/types';
 import { useGameStore } from '../../storage/gameStore';
 
 const MODEL_PATHS: Record<string, string> = {
-  [CharacterName.ZEUS]: '/models/Zeus.glb',
-  [CharacterName.ADE]: '/models/Hades.glb',
+  [CharacterName.ZEUS]: '/models/ZeusWalking.glb', // Assicurati di puntare ai file con le animazioni
+  [CharacterName.ADE]: '/models/HadesWalking.glb',
 };
 
-// Derivati dal config — se PLAYER.RADIUS cambia, tutto si riscala
 const MODEL_HEIGHT = GameConfig.PLAYER.RADIUS * 3;
 const MODEL_ROTATION_OFFSET = Math.PI / 2;
 
@@ -2587,7 +2502,9 @@ interface PlayerModelProps {
 
 export function PlayerModel({ characterName, playerId }: PlayerModelProps) {
   const groupRef = useRef<THREE.Group>(null);
-  const { scene } = useGLTF(MODEL_PATHS[characterName]);
+  
+  // 1. Estraiamo anche le animazioni dal file GLTF
+  const { scene, animations } = useGLTF(MODEL_PATHS[characterName]);
   const currentOpacity = useRef(1);
 
   const { clonedScene, computedScale, offsetY } = useMemo(() => {
@@ -2605,16 +2522,12 @@ export function PlayerModel({ characterName, playerId }: PlayerModelProps) {
       }
     });
 
-    // Calcola la scala dal modello originale (non dal clone — evita bbox zero su skinned mesh)
     const box = new THREE.Box3().setFromObject(scene);
     const size = new THREE.Vector3();
     box.getSize(size);
     const nativeHeight = size.y;
 
-    // Scala per raggiungere MODEL_HEIGHT
     const scale = nativeHeight > 0 ? MODEL_HEIGHT / nativeHeight : 1;
-
-    // Offset Y per piedi a terra
     const scaledMinY = box.min.y * scale;
 
     return {
@@ -2624,26 +2537,55 @@ export function PlayerModel({ characterName, playerId }: PlayerModelProps) {
     };
   }, [scene]);
 
-  // Transient update: opacità ghost
+  // 2. Agganciamo le animazioni al clone
+  const { actions } = useAnimations(animations, groupRef);
+  const isCurrentlyMoving = useRef(false);
+  const lastVisualPos = useRef(new THREE.Vector3());
+
+  // Logica di Animazione e Opacità
   useFrame(() => {
     const player = useGameStore.getState().gameState?.players.find(p => p.id === playerId);
-    if (!player) return;
+    if (!player || !groupRef.current) return;
 
+    // --- GESTIONE OPACITÀ (Tuo codice originale) ---
     const targetOpacity = player.isDead ? 0.2 : 1;
-    if (Math.abs(currentOpacity.current - targetOpacity) < 0.01) {
-      if (currentOpacity.current !== targetOpacity) {
-        currentOpacity.current = targetOpacity;
-        applyOpacity(clonedScene, targetOpacity);
-      }
-      return;
+    if (Math.abs(currentOpacity.current - targetOpacity) > 0.01) {
+      currentOpacity.current += (targetOpacity - currentOpacity.current) * 0.1;
+      applyOpacity(clonedScene, currentOpacity.current);
     }
 
-    currentOpacity.current += (targetOpacity - currentOpacity.current) * 0.1;
-    applyOpacity(clonedScene, currentOpacity.current);
+    // --- GESTIONE ANIMAZIONI (Nuovo!) ---
+    // Otteniamo la posizione globale reale del modello nel mondo 3D
+    const currentWorldPos = new THREE.Vector3();
+    groupRef.current.getWorldPosition(currentWorldPos);
+
+    // Calcoliamo quanto si è spostato dall'ultimo frame
+    const dist = lastVisualPos.current.distanceTo(currentWorldPos);
+    const isMovingNow = dist > 0.005 && !player.isDead; // Non animiamo i fantasmi morti!
+
+    if (isMovingNow !== isCurrentlyMoving.current) {
+      isCurrentlyMoving.current = isMovingNow;
+      
+      if (animations.length > 0) {
+        const walkAnimName = animations[0].name; 
+        const action = actions[walkAnimName];
+
+        if (action) {
+          if (isMovingNow) {
+            action.reset().fadeIn(0.2).play(); // Inizia a camminare morbido
+          } else {
+            action.fadeOut(0.2); // Smette di camminare
+          }
+        }
+      }
+    }
+    
+    lastVisualPos.current.copy(currentWorldPos);
   });
 
   return (
-    <group ref={groupRef}>
+    // ⚡ groupRef deve stare qui per far funzionare useAnimations
+    <group ref={groupRef}> 
       <group rotation={[0, MODEL_ROTATION_OFFSET, 0]}>
         <primitive
           object={clonedScene}
@@ -2668,9 +2610,10 @@ function applyOpacity(scene: THREE.Object3D, opacity: number) {
   });
 }
 
+// Preload dei file
 useGLTF.preload(MODEL_PATHS[CharacterName.ZEUS]);
 useGLTF.preload(MODEL_PATHS[CharacterName.ADE]);
-========== ./src/game/entities/ZeusAura.tsx ==========
+========== ./frontend/src/game/entities/ZeusAura.tsx ==========
 
 import { useRef, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
@@ -2825,7 +2768,7 @@ function regenerateBolts(geometries: THREE.BufferGeometry[], segments: number, j
     posAttr.needsUpdate = true;
   }
 }
-========== ./src/game/input/inputManager.ts ==========
+========== ./frontend/src/game/input/inputManager.ts ==========
 import { socketService } from '../../services/socketServices';
 import { GameEvents } from '@transcendence/types';
 import { AttackType } from '@transcendence/types';
@@ -2975,7 +2918,7 @@ export class InputManager {
     }
   }
 }
-========== ./src/hooks/useGameSocket.ts ==========
+========== ./frontend/src/hooks/useGameSocket.ts ==========
 import { useEffect } from 'react';
 import { socketService } from '../services/socketServices';
 import { PlayerSnapshot, BulletSnapshot, GameEvents } from '@transcendence/types';
@@ -3037,7 +2980,7 @@ export function useGameSocket() {
     };
   }, []);
 }
-========== ./src/index.css ==========
+========== ./frontend/src/index.css ==========
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -3072,7 +3015,7 @@ body {
   color: #ffffff;
   overflow-x: hidden;
 }
-========== ./src/main.tsx ==========
+========== ./frontend/src/main.tsx ==========
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App'
@@ -3082,7 +3025,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
     <App />
 )
 
-========== ./src/scenes/characterSelectScene.tsx ==========
+========== ./frontend/src/scenes/characterSelectScene.tsx ==========
 import { useState, useEffect, useRef } from 'react';
 import { matchmakingSocket } from '../services/matchmakingSocket';
 import { CharacterName, MatchMode, MatchType, GameEvents } from '@transcendence/types';
@@ -3741,7 +3684,7 @@ export default function CharacterSelectScene({
     </div>
   );
 }
-========== ./src/scenes/modeSelectScene.tsx ==========
+========== ./frontend/src/scenes/modeSelectScene.tsx ==========
 import { useState } from 'react';
 import { MatchMode } from '@transcendence/types';
 import { theme } from '../configs/theme';
@@ -3953,7 +3896,7 @@ export default function ModeSelectScene({ onModeSelect, onBack }: ModeSelectScen
   );
 }
 
-========== ./src/scenes/queueScene.tsx ==========
+========== ./frontend/src/scenes/queueScene.tsx ==========
 import { useEffect, useState } from 'react';
 import { matchmakingSocket } from '../services/matchmakingSocket';
 import { theme } from '../configs/theme';
@@ -4127,7 +4070,7 @@ export default function QueueScene({ onCancel }: QueueSceneProps) {
     </div>
   );
 }
-========== ./src/scenes/welcomeScene.tsx ==========
+========== ./frontend/src/scenes/welcomeScene.tsx ==========
 import { useState } from 'react';
 import { theme } from '../configs/theme';
 import welcomeScene from '../assets/welcomeScene.png';
@@ -4263,7 +4206,7 @@ export default function WelcomeScene({ onStart }: WelcomeSceneProps) {
   );
 }
 
-========== ./src/services/matchmakingSocket.ts ==========
+========== ./frontend/src/services/matchmakingSocket.ts ==========
 import { io, Socket } from "socket.io-client";
 import { GameEvents } from '@transcendence/types';
 import { refreshToken } from "../site/services/authService";
@@ -4386,7 +4329,7 @@ class MatchmakingSocket {
 }
 
 export const matchmakingSocket = new MatchmakingSocket();
-========== ./src/services/socketServices.ts ==========
+========== ./frontend/src/services/socketServices.ts ==========
 import { io, Socket } from "socket.io-client";
 import * as msgpackParser from "socket.io-msgpack-parser";
 import { GameEvents } from '@transcendence/types';
@@ -4543,7 +4486,7 @@ export class SocketService {
 }
 
 export const socketService = new SocketService();
-========== ./src/site/components/Dropdown.tsx ==========
+========== ./frontend/src/site/components/Dropdown.tsx ==========
 import React, { useState, useEffect, useRef } from 'react';
 import { dropdownItemBase } from '../styles/shared';
 import { theme } from '../../configs/theme';
@@ -4603,7 +4546,7 @@ export function DropdownItem({ icon: Icon, label, onClick }: {
     </button>
   );
 }
-========== ./src/site/components/Icons.tsx ==========
+========== ./frontend/src/site/components/Icons.tsx ==========
 import React from 'react';
 
 interface IconProps {
@@ -4751,12 +4694,14 @@ export const Menu = ({ size = 24 }: IconProps) => (
     <line x1="3" y1="18" x2="21" y2="18" />
   </svg>
 );
-========== ./src/site/components/Navbar.tsx ==========
+========== ./frontend/src/site/components/Navbar.tsx ==========
 import { useState, useEffect } from 'react';
 import { navLinkBase } from '../styles/shared';
 import { useDropdown, DropdownPanel, DropdownItem } from './Dropdown';
 import * as Icons from './Icons';
 import { theme } from '../../configs/theme';
+import * as api from '../services/apiService';
+import { NotificationItem } from '../services/apiService';
 
 export const NAVBAR_HEIGHT = 64;
 
@@ -4773,22 +4718,129 @@ export default function Navbar({ currentPage, onNavigate, onLogout, username, av
   const profile = useDropdown();
   const notif = useDropdown();
 
-  // ⚡ Stati per la responsività
+  // Stati per la responsività
   const [isMobile, setIsMobile] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  // Stati per le Notifiche
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  // Funzione per il caricamento iniziale (storico)
+  const fetchNotifications = async () => {
+    if (!username) return; 
+    const data = await api.getNotifications(1, 20);
+    if (data) {
+      setNotifications(data.notifications);
+      setUnreadCount(data.unreadCount);
+    }
+  };
 
   useEffect(() => {
     const handleResize = () => {
       setIsMobile(window.innerWidth < 850);
       if (window.innerWidth >= 850) {
-        setMobileMenuOpen(false); // Chiude il menu se allarghiamo lo schermo
+        setMobileMenuOpen(false);
       }
     };
     
-    handleResize(); // Check iniziale
+    handleResize();
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
+
+  // Integrazione SSE (Server-Sent Events) per le Notifiche Live
+  useEffect(() => {
+    if (!username) return;
+
+    // 1. Carica lo storico iniziale
+    fetchNotifications();
+
+    // 2. Apri il canale SSE per ricevere le nuove in tempo reale
+    // ASSICURATI CHE L'URL SIA QUELLO DEL BACKEND
+    const SSE_URL = '/api/users/me/notifications/stream'; 
+    
+    const eventSource = new EventSource(SSE_URL, {
+      withCredentials: true // FONDAMENTALE per far leggere i cookie di sessione a NestJS
+    });
+
+    // Quando il backend "spinge" un nuovo dato (messaggio generico)
+    eventSource.onmessage = (event) => {
+      try {
+        const newNotif: NotificationItem = JSON.parse(event.data);
+        
+        // Aggiungiamo la nuova notifica in cima alla lista
+        setNotifications(prev => [newNotif, ...prev]);
+        
+        // Aumentiamo il contatore dei non letti se necessario
+        if (!newNotif.isRead) {
+          setUnreadCount(prev => prev + 1);
+        }
+      } catch (err) {
+        console.error("[SSE] Errore nel parsing della notifica:", err);
+      }
+    };
+
+    eventSource.onerror = (err) => {
+      console.error("[SSE] Errore di connessione al flusso notifiche. Tentativo di riconnessione automatico...", err);
+      // L'EventSource del browser proverà a riconnettersi automaticamente, 
+      // non c'è bisogno di logiche astruse di reconnect.
+    };
+
+    // Cleanup: chiudiamo il "tubo" se cambiamo utente o il componente viene smontato
+    return () => {
+      eventSource.close();
+    };
+  }, [username]);
+
+  const handleMarkAllRead = async () => {
+    if (await api.markAllNotificationsRead()) {
+      setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+      setUnreadCount(0);
+    }
+  };
+
+  const handleNotifClick = async (n: NotificationItem) => {
+    if (!n.isRead) {
+      const ok = await api.markNotificationRead(n.id);
+      if (ok) {
+        setNotifications(prev => prev.map(x => x.id === n.id ? { ...x, isRead: true } : x));
+        setUnreadCount(prev => Math.max(0, prev - 1));
+      }
+    }
+    notif.setOpen(false);
+    
+    // Indirizzamento specifico in base al tipo di notifica
+    if (n.type === 'FRIEND_REQ' || n.type === 'FRIEND_ACCEPTED') {
+      scrollTo('profile', 'profile-friends');
+    } else if (n.type === 'ACHV_UNLOCKED') {
+      scrollTo('profile', 'profile-stats');
+    }
+  };
+
+  const handleDeleteNotif = async (e: React.MouseEvent, id: number) => {
+    e.stopPropagation();
+    const ok = await api.deleteNotification(id);
+    if (ok) {
+      setNotifications(prev => prev.filter(n => n.id !== id));
+      // Se eliminiamo una non-letta, dobbiamo scalare anche l'unreadCount 
+      // (ma per sicurezza il modo migliore è rifare la fetch se lo vogliamo preciso, 
+      // o semplicemente sottrarlo localmente come fatto sotto).
+      const deletedNotif = notifications.find(n => n.id === id);
+      if (deletedNotif && !deletedNotif.isRead) {
+        setUnreadCount(prev => Math.max(0, prev - 1));
+      }
+    }
+  };
+
+  const timeAgo = (dateString: string) => {
+    const diff = Math.floor((new Date().getTime() - new Date(dateString).getTime()) / 60000);
+    if (diff < 1) return 'Just now';
+    if (diff < 60) return `${diff}m ago`;
+    const hours = Math.floor(diff / 60);
+    if (hours < 24) return `${hours}h ago`;
+    return new Date(dateString).toLocaleDateString();
+  };
 
   const navLink = (page: string): React.CSSProperties => ({
     ...navLinkBase,
@@ -4798,11 +4850,61 @@ export default function Navbar({ currentPage, onNavigate, onLogout, username, av
 
   const scrollTo = (page: string, sectionId: string) => {
     onNavigate(page);
-    setMobileMenuOpen(false); // Chiude il menu mobile se aperto
+    setMobileMenuOpen(false);
     setTimeout(() => {
       document.getElementById(sectionId)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }, 50);
   };
+
+  // ================= UI NOTIFICHE CONDIVISA =================
+  const RenderNotificationList = () => (
+    <div style={{ display: 'flex', flexDirection: 'column', maxHeight: '400px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', borderBottom: `1px solid ${theme.colors.border}` }}>
+        <span style={{ fontFamily: theme.fonts.heading, fontSize: '14px', color: theme.colors.goldBright, fontWeight: 700 }}>Notifications</span>
+        {unreadCount > 0 && (
+          <button onClick={handleMarkAllRead} style={{ background: 'none', border: 'none', color: theme.colors.textMuted, fontSize: '11px', fontFamily: theme.fonts.heading, cursor: 'pointer', textTransform: 'uppercase' }}>
+            Mark all read
+          </button>
+        )}
+      </div>
+      <div style={{ overflowY: 'auto', flex: 1, padding: '4px 0' }}>
+        {notifications.length === 0 ? (
+          <div style={{ padding: '32px 16px', textAlign: 'center' }}>
+            <span style={{ fontFamily: theme.fonts.heading, fontSize: '12px', color: theme.colors.textMuted, letterSpacing: '1px' }}>
+              No notifications yet
+            </span>
+          </div>
+        ) : (
+          notifications.map(n => {
+            const isAchv = n.type === 'ACHV_UNLOCKED';
+            return (
+              <div key={n.id} onClick={() => handleNotifClick(n)} style={{
+                padding: '12px 16px', borderBottom: `1px solid rgba(255,255,255,0.05)`,
+                background: n.isRead ? 'transparent' : 'rgba(200, 170, 100, 0.08)',
+                cursor: 'pointer', display: 'flex', gap: '12px', alignItems: 'flex-start',
+                transition: 'background 0.2s'
+              }}>
+                <div style={{ color: isAchv ? theme.colors.hpMid : theme.colors.zeus, marginTop: '2px' }}>
+                  {isAchv ? <Icons.Trophy size={16} /> : <Icons.User size={16} />}
+                </div>
+                <div style={{ flex: 1 }}>
+                  <p style={{ fontFamily: theme.fonts.mono, fontSize: '12px', color: n.isRead ? theme.colors.textSecondary : theme.colors.textPrimary, lineHeight: 1.4, margin: 0 }}>
+                    {n.message}
+                  </p>
+                  <p style={{ fontFamily: theme.fonts.mono, fontSize: '10px', color: theme.colors.textMuted, marginTop: '4px' }}>
+                    {timeAgo(n.createdAt)}
+                  </p>
+                </div>
+                <button onClick={(e) => handleDeleteNotif(e, n.id)} style={{ background: 'none', border: 'none', color: theme.colors.textMuted, cursor: 'pointer', opacity: 0.5, padding: '2px' }}>
+                  <Icons.X size={14} />
+                </button>
+              </div>
+            );
+          })
+        )}
+      </div>
+    </div>
+  );
 
   return (
     <>
@@ -4814,7 +4916,7 @@ export default function Navbar({ currentPage, onNavigate, onLogout, username, av
         display: 'flex', alignItems: 'center', padding: '0 24px',
         zIndex: 999, backdropFilter: 'blur(12px)',
       }}>
-        {/* Logo (Sempre visibile) */}
+        {/* Logo */}
         <div onClick={() => onNavigate('dashboard')} style={{
           display: 'flex', alignItems: 'center', gap: '12px',
           marginRight: '32px', flexShrink: 0, cursor: 'pointer',
@@ -4845,16 +4947,17 @@ export default function Navbar({ currentPage, onNavigate, onLogout, username, av
               <button onClick={() => notif.setOpen(!notif.open)} style={{
                 background: 'none', border: 'none', padding: '4px', cursor: 'pointer',
                 color: notif.open ? theme.colors.gold : theme.colors.textSecondary,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative'
               }}>
                 <Icons.Bell size={24} />
-              </button>
-              <DropdownPanel isOpen={notif.open} right={0} minWidth="240px">
-                <div style={{ padding: '16px', textAlign: 'center' }}>
-                  <span style={{ fontFamily: theme.fonts.heading, fontSize: '12px', color: theme.colors.textMuted }}>
-                    No notifications yet
+                {unreadCount > 0 && (
+                  <span style={{ position: 'absolute', top: 0, right: 2, background: theme.colors.dead, color: '#fff', fontSize: '9px', fontWeight: 'bold', width: '14px', height: '14px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    {unreadCount > 9 ? '9+' : unreadCount}
                   </span>
-                </div>
+                )}
+              </button>
+              <DropdownPanel isOpen={notif.open} right={0} minWidth="280px">
+                <RenderNotificationList />
               </DropdownPanel>
             </div>
 
@@ -4916,21 +5019,24 @@ export default function Navbar({ currentPage, onNavigate, onLogout, username, av
 
             {/* Lato Destro (Notifiche, Avatar, Logout) */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexShrink: 0 }}>
+              
+              {/* Notifiche Desktop */}
               <div ref={notif.ref} style={{ position: 'relative' }}>
                 <button onClick={() => notif.setOpen(!notif.open)} style={{
                   background: 'none', border: '1px solid transparent', borderRadius: '4px',
-                  padding: '8px', cursor: 'pointer',
+                  padding: '8px', cursor: 'pointer', position: 'relative',
                   color: notif.open ? theme.colors.gold : theme.colors.textSecondary,
                   transition: 'all 0.2s', display: 'flex', alignItems: 'center', justifyContent: 'center',
                 }}>
                   <Icons.Bell size={20} />
-                </button>
-                <DropdownPanel isOpen={notif.open} right={0} minWidth="280px">
-                  <div style={{ padding: '16px 20px', textAlign: 'center' }}>
-                    <span style={{ fontFamily: theme.fonts.heading, fontSize: '12px', color: theme.colors.textMuted, letterSpacing: '1px' }}>
-                      No notifications yet
+                  {unreadCount > 0 && (
+                    <span style={{ position: 'absolute', top: 2, right: 2, background: theme.colors.dead, color: '#fff', fontSize: '9px', fontWeight: 'bold', width: '14px', height: '14px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', border: `1px solid ${theme.colors.bgPanel}` }}>
+                      {unreadCount > 9 ? '9+' : unreadCount}
                     </span>
-                  </div>
+                  )}
+                </button>
+                <DropdownPanel isOpen={notif.open} right={0} minWidth="320px">
+                  <RenderNotificationList />
                 </DropdownPanel>
               </div>
 
@@ -4968,7 +5074,6 @@ export default function Navbar({ currentPage, onNavigate, onLogout, username, av
           overflowY: 'auto'
         }}>
           
-          {/* Avatar e Nome Mobile */}
           <div onClick={() => scrollTo('profile', 'profile-settings')} style={{
             display: 'flex', alignItems: 'center', gap: '16px', paddingBottom: '24px', 
             borderBottom: `1px solid ${theme.colors.border}`, cursor: 'pointer'
@@ -4985,7 +5090,6 @@ export default function Navbar({ currentPage, onNavigate, onLogout, username, av
             </div>
           </div>
 
-          {/* Link Principali */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '24px', flex: 1 }}>
             
             <div onClick={() => scrollTo('dashboard', 'section-game')} style={{
@@ -5010,7 +5114,6 @@ export default function Navbar({ currentPage, onNavigate, onLogout, username, av
 
           </div>
 
-          {/* Logout Mobile */}
           <button onClick={onLogout} style={{
             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px',
             width: '100%', padding: '16px', marginTop: '24px',
@@ -5025,7 +5128,7 @@ export default function Navbar({ currentPage, onNavigate, onLogout, username, av
     </>
   );
 }
-========== ./src/site/components/desktopOnlyGuard.tsx ==========
+========== ./frontend/src/site/components/desktopOnlyGuard.tsx ==========
 import { useState, useEffect } from 'react';
 import { theme } from '../../configs/theme';
 import welcomeScene from '../../assets/welcomeScene.png';
@@ -5113,139 +5216,277 @@ export default function DesktopOnlyGuard({ children }: { children: React.ReactNo
   // Se passa tutti i controlli, carica il gioco!
   return <>{children}</>;
 }
-========== ./src/site/pages/DashboardPage.tsx ==========
+========== ./frontend/src/site/pages/DashboardPage.tsx ==========
 import { sectionTitleStyle } from '../styles/shared';
 import { theme } from '../../configs/theme';
 import { NAVBAR_HEIGHT } from '../components/Navbar';
-import {  } from '../../services/matchmakingSocket';
+import * as Icons from '../components/Icons';
+
+import zeusDescImg from '../../assets/ZeusDescription.png';
+import adeDescImg from '../../assets/AdeDescription.png';
 
 interface DashboardPageProps {
   onNavigate: (page: string) => void;
 }
 
+// ⚡ Componente di supporto per renderizzare i tasti in modo ordinato
+const ControlRow = ({ keys, action, stacked = false }: { keys: string[], action: string, stacked?: boolean }) => (
+  <div style={{
+    display: "flex", 
+    flexDirection: stacked ? "column" : "row", 
+    alignItems: stacked ? "flex-start" : "center", 
+    gap: stacked ? "8px" : "16px", 
+    padding: "12px 16px",
+    background: theme.colors.bgDark, 
+    border: `1px solid ${theme.colors.border}`, 
+    borderRadius: "4px",
+  }}>
+    <div style={{ display: "flex", gap: "6px", alignItems: "center", flexWrap: "wrap" }}>
+      {keys.map((k, i) => (
+        <span key={k} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <kbd style={{
+            padding: "4px 10px", background: theme.colors.bgPanel,
+            border: `1px solid ${theme.colors.textMuted}`, borderRadius: "3px",
+            color: theme.colors.gold, fontFamily: theme.fonts.heading, fontSize: "11px", 
+            fontWeight: 700, letterSpacing: "1px", whiteSpace: "nowrap",
+          }}>{k}</kbd>
+          {i < keys.length - 1 && <span style={{color: theme.colors.textMuted, fontSize: "12px", fontFamily: theme.fonts.mono}}>+</span>}
+        </span>
+      ))}
+    </div>
+    <span style={{ color: theme.colors.textSecondary, fontFamily: theme.fonts.mono, fontSize: "12px" }}>{action}</span>
+  </div>
+);
+
+
 export default function DashboardPage({ onNavigate }: DashboardPageProps) {
   return (
     <div className="animate-fadeIn" style={{ paddingTop: `${NAVBAR_HEIGHT}px` }}>
-      {/* Hero */}
+      
+      {/* ================= SECTION CON BACKGROUND VIDEO ================= */}
       <div id="section-game" style={{
-        height: `calc(100vh - ${NAVBAR_HEIGHT}px)`,
+        position: "relative",
+        minHeight: `calc(100vh - ${NAVBAR_HEIGHT}px)`,
         display: "flex", 
         flexDirection: "column", 
         alignItems: "center", 
         justifyContent: "center",
-        background: `radial-gradient(ellipse at center top, ${theme.colors.goldSubtle} 0%, transparent 50%), ${theme.colors.bgDark}`,
-        textAlign: "center", 
+        overflow: "hidden",
         scrollMarginTop: `${NAVBAR_HEIGHT}px`,
       }}>
-        <h1 style={{
-          fontSize: "clamp(36px, 6vw, 72px)", 
-          fontFamily: theme.fonts.heading,
-          fontWeight: 900,
-          background: `linear-gradient(180deg, ${theme.colors.goldBright}, ${theme.colors.gold}, ${theme.colors.goldDark})`,
-          WebkitBackgroundClip: "text", 
-          WebkitTextFillColor: "transparent",
-          letterSpacing: "6px", 
-          lineHeight: 1.1, 
-          marginBottom: "16px", 
-          textTransform: "uppercase",
-        }}>Clash of<br />Olympus</h1>
-        <p style={{ 
-          color: theme.colors.textSecondary, 
-          fontFamily: theme.fonts.heading,
-          fontSize: "14px", 
-          letterSpacing: "4px", 
-          textTransform: "uppercase", 
-          marginBottom: "48px" 
-        }}>
-          An Isometric Mythological Brawler
-        </p>
-        <button className="btn-press" onClick={() => onNavigate("play")} style={{
-          padding: "18px 64px",
-          background: `linear-gradient(180deg, ${theme.colors.gold}, ${theme.colors.goldDark})`,
-          border: `2px solid ${theme.colors.goldBright}`, 
-          borderRadius: "2px",
-          color: theme.colors.bgDark, 
-          fontFamily: theme.fonts.heading, 
-          fontSize: "16px",
-          fontWeight: 800, 
-          letterSpacing: "4px", 
-          textTransform: "uppercase", 
-          cursor: "pointer",
-          transition: "all 0.3s",
-          boxShadow: `0 0 30px ${theme.colors.goldGlow}, inset 0 1px 0 rgba(255,255,255,0.2)`,
-          animation: "float 3s ease-in-out infinite",
-        }}>Play Now</button>
-      </div>
+        
+        {/* Sfondo Video Assoluto */}
+        <video 
+          src="/videos/video1.mp4" 
+          autoPlay 
+          loop 
+          muted 
+          playsInline
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            width: "100%",
+            height: "100%",
+            objectFit: "cover",
+            zIndex: 0,
+          }}
+        />
 
-      {/* Characters */}
+        {/* Overlay Scuro */}
+        <div style={{
+          position: "absolute",
+          inset: 0,
+          background: `linear-gradient(180deg, rgba(6, 14, 20, 0.4) 0%, rgba(6, 14, 20, 0.7) 70%, ${theme.colors.bgDark} 100%)`,
+          zIndex: 1,
+          pointerEvents: "none"
+        }} />
+
+        {/* Contenuto in Primo Piano */}
+        <div className="animate-slideUp" style={{
+          position: "relative",
+          zIndex: 2,
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          textAlign: "center",
+          padding: "24px",
+          width: "100%"
+        }}>
+          <h1 style={{
+            fontSize: "clamp(42px, 8vw, 86px)", 
+            fontFamily: theme.fonts.heading,
+            fontWeight: 900,
+            background: `linear-gradient(180deg, ${theme.colors.goldBright}, ${theme.colors.gold}, ${theme.colors.goldDark})`,
+            WebkitBackgroundClip: "text", 
+            WebkitTextFillColor: "transparent",
+            letterSpacing: "6px", 
+            lineHeight: 1.1, 
+            marginBottom: "16px", 
+            textTransform: "uppercase",
+            textShadow: "0 4px 20px rgba(0,0,0,0.8)"
+          }}>Clash of<br />Olympus</h1>
+          
+          <p style={{ 
+            color: theme.colors.textSecondary, 
+            fontFamily: theme.fonts.heading,
+            fontSize: "clamp(12px, 2vw, 16px)", 
+            letterSpacing: "6px", 
+            textTransform: "uppercase", 
+            marginBottom: "48px",
+            textShadow: "0 2px 10px rgba(0,0,0,0.9)"
+          }}>
+            An Isometric Mythological Brawler
+          </p>
+          
+          {/* BOTTONE TONDO */}
+          <button className="btn-press" onClick={() => onNavigate("play")} style={{
+            marginTop: "20px",
+            width: "150px",
+            height: "150px",
+            borderRadius: "50%",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: "8px",
+            background: `radial-gradient(circle at center, rgba(232,213,163,0.15) 0%, rgba(62,52,26,0.6) 80%, rgba(6,14,20,0.9) 100%)`,
+            border: `2px solid ${theme.colors.goldBright}`,
+            color: theme.colors.goldBright, 
+            fontFamily: theme.fonts.heading, 
+            fontSize: "14px",
+            fontWeight: 800, 
+            letterSpacing: "2px", 
+            textTransform: "uppercase", 
+            cursor: "pointer",
+            transition: "all 0.3s",
+            boxShadow: `0 0 50px ${theme.colors.goldGlow}, inset 0 0 30px rgba(232,213,163,0.2)`,
+            backdropFilter: "blur(4px)",
+            animation: "orbPulse 3s ease-in-out infinite",
+          }}>
+            <Icons.Zap size={36} />
+            <span>Play<br/>Now</span>
+          </button>
+        </div>
+      </div>
+      {/* ========================================================================= */}
+
+      {/* ================= CHARACTERS SECTION ===================== */}
       <div id="section-characters" style={{
         padding: "80px 48px",
-        background: `linear-gradient(180deg, ${theme.colors.bg} 0%, ${theme.colors.bgDark} 100%)`,
+        background: `linear-gradient(180deg, ${theme.colors.bgDark} 0%, ${theme.colors.bg} 100%)`,
         borderTop: `1px solid ${theme.colors.border}`, 
         scrollMarginTop: `${NAVBAR_HEIGHT}px`,
       }}>
-        <h2 style={sectionTitleStyle}>Choose Your Champion</h2>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "32px", maxWidth: "900px", margin: "0 auto" }}>
+        <h2 style={sectionTitleStyle}>CHARACTERS</h2>
+        
+        <div style={{ 
+          display: "grid", 
+          gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
+          gap: "40px", 
+          maxWidth: "1400px", 
+          margin: "0 auto" 
+        }}>
           {[
-            { name: "ZEUS", emoji: "⚡", desc: "God of Thunder. Commands lightning-based AoE attacks that strike all who dare approach.", bg: "rgba(10,50,60,0.6)" },
-            { name: "HADES", emoji: "🔥", desc: "Lord of the Underworld. Wields fire-based AoE attacks that consume enemies in flames.", bg: "rgba(60,20,20,0.3)" },
+            { name: "HADES", img: adeDescImg },
+            { name: "ZEUS", img: zeusDescImg },
           ].map((c) => (
             <div key={c.name} style={{
-              background: `linear-gradient(135deg, ${c.bg}, ${theme.colors.bgPanel})`,
+              background: theme.colors.bgPanel,
               border: `1px solid ${theme.colors.border}`, 
-              borderRadius: "4px",
-              padding: "40px 32px", 
-              textAlign: "center", 
-              transition: "all 0.3s", 
+              borderRadius: "8px",
+              overflow: "hidden",
+              transition: "all 0.3s ease", 
               cursor: "pointer",
+              boxShadow: `0 10px 30px rgba(0,0,0,0.5)`,
+              display: "flex",
             }}
               onMouseEnter={(e) => { 
                 e.currentTarget.style.borderColor = theme.colors.gold; 
-                e.currentTarget.style.transform = "translateY(-4px)"; 
+                e.currentTarget.style.transform = "translateY(-6px)"; 
+                e.currentTarget.style.boxShadow = `0 15px 40px rgba(0,0,0,0.7), 0 0 25px ${theme.colors.goldGlow}`; 
               }}
               onMouseLeave={(e) => { 
                 e.currentTarget.style.borderColor = theme.colors.border; 
                 e.currentTarget.style.transform = "translateY(0)"; 
+                e.currentTarget.style.boxShadow = `0 10px 30px rgba(0,0,0,0.5)`; 
               }}>
-              <div style={{ fontSize: "48px", marginBottom: "16px" }}>{c.emoji}</div>
-              <h3 style={{ fontFamily: theme.fonts.heading, color: theme.colors.goldBright, fontSize: "22px", fontWeight: 700, letterSpacing: "3px", marginBottom: "12px" }}>{c.name}</h3>
-              <p style={{ color: theme.colors.textSecondary, fontFamily: theme.fonts.mono, fontSize: "12px", lineHeight: 1.6 }}>{c.desc}</p>
+              
+              <img 
+                src={c.img} 
+                alt={`${c.name} Character Card`} 
+                style={{
+                  width: "100%",
+                  height: "auto",
+                  display: "block",
+                  objectFit: "cover"
+                }} 
+              />
             </div>
           ))}
         </div>
       </div>
+      {/* ========================================================================= */}
 
-      {/* Controls */}
+      {/* ================= CONTROLS SECTION ===================== */}
       <div id="section-commands" style={{
         padding: "80px 48px", 
         borderTop: `1px solid ${theme.colors.border}`,
-        maxWidth: "700px",
+        maxWidth: "1100px", // ⚡ Allargato per fare spazio a 2 colonne
         margin: "0 auto", 
         scrollMarginTop: `${NAVBAR_HEIGHT}px`,
       }}>
         <h2 style={sectionTitleStyle}>Controls</h2>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
-          {[
-            { key: "W A S D", action: "Movement" },
-            { key: "SPACE", action: "Attack (AoE Burst)" },
-            { key: "SHIFT", action: "Defense Stance" },
-            { key: "ESC", action: "Pause Menu" },
-          ].map((c) => (
-            <div key={c.key} style={{
-              display: "flex", alignItems: "center", gap: "16px", padding: "16px 20px",
-              background: theme.colors.bgPanel, border: `1px solid ${theme.colors.border}`, borderRadius: "4px",
-            }}>
-              <kbd style={{
-                padding: "6px 12px", background: theme.colors.bgDark,
-                border: `1px solid ${theme.colors.textMuted}`, borderRadius: "3px",
-                color: theme.colors.gold, fontFamily: theme.fonts.heading, fontSize: "12px", 
-                fontWeight: 700, letterSpacing: "1px", whiteSpace: "nowrap",
-              }}>{c.key}</kbd>
-              <span style={{ color: theme.colors.textSecondary, fontFamily: theme.fonts.mono, fontSize: "13px" }}>{c.action}</span>
+        
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: "32px" }}>
+          
+          {/* PANNELLO 1: Single Player / Online */}
+          <div style={{ background: theme.colors.bgPanel, border: `1px solid ${theme.colors.border}`, borderRadius: "8px", padding: "24px" }}>
+            <h3 style={{ fontFamily: theme.fonts.heading, color: theme.colors.goldBright, fontSize: "16px", letterSpacing: "2px", marginBottom: "20px", textTransform: "uppercase", textAlign: "center", borderBottom: `1px solid ${theme.colors.border}`, paddingBottom: "12px" }}>
+              Single Player / Online
+            </h3>
+            <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+              <ControlRow keys={["W A S D"]} action="Movement" />
+              <ControlRow keys={["SPACE"]} action="Melee Attack" />
+              <ControlRow keys={["SHIFT", "L-CLICK"]} action="Aim & Shoot Spell" />
+              <ControlRow keys={["CTRL"]} action="Defense Stance" />
+              <ControlRow keys={["ENTER"]} action="Open Game Chat" />
             </div>
-          ))}
+          </div>
+
+          {/* PANNELLO 2: Local Game */}
+          <div style={{ background: theme.colors.bgPanel, border: `1px solid ${theme.colors.border}`, borderRadius: "8px", padding: "24px" }}>
+            <h3 style={{ fontFamily: theme.fonts.heading, color: theme.colors.goldBright, fontSize: "16px", letterSpacing: "2px", marginBottom: "20px", textTransform: "uppercase", textAlign: "center", borderBottom: `1px solid ${theme.colors.border}`, paddingBottom: "12px" }}>
+              Local Game (Shared Keyboard)
+            </h3>
+            
+            <div style={{ display: "flex", gap: "16px" }}>
+              {/* Player 1 */}
+              <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: "10px" }}>
+                <span style={{ fontFamily: theme.fonts.heading, color: theme.colors.zeus, fontSize: "13px", letterSpacing: "1px", textTransform: "uppercase", textAlign: "center", marginBottom: "8px", fontWeight: "bold" }}>Player 1</span>
+                <ControlRow keys={["W A S D"]} action="Move" stacked />
+                <ControlRow keys={["SPACE"]} action="Melee" stacked />
+                <ControlRow keys={["SHIFT"]} action="Spell" stacked />
+                <ControlRow keys={["CTRL"]} action="Defense" stacked />
+              </div>
+              
+              {/* Divisore */}
+              <div style={{ width: "1px", background: theme.colors.border }} />
+
+              {/* Player 2 */}
+              <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: "10px" }}>
+                <span style={{ fontFamily: theme.fonts.heading, color: theme.colors.ade, fontSize: "13px", letterSpacing: "1px", textTransform: "uppercase", textAlign: "center", marginBottom: "8px", fontWeight: "bold" }}>Player 2</span>
+                <ControlRow keys={["ARROWS"]} action="Move" stacked />
+                <ControlRow keys={["NUM 1"]} action="Melee" stacked />
+                <ControlRow keys={["NUM 2"]} action="Spell" stacked />
+                <ControlRow keys={["NUM 3"]} action="Defense" stacked />
+              </div>
+            </div>
+          </div>
+
         </div>
       </div>
+      {/* ========================================================================= */}
 
       {/* Footer */}
       <footer style={{
@@ -5259,7 +5500,7 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
     </div>
   );
 }
-========== ./src/site/pages/GameFlow.tsx ==========
+========== ./frontend/src/site/pages/GameFlow.tsx ==========
 import { useState, useEffect } from 'react';
 import ModeSelectScene from '../../scenes/modeSelectScene';
 import CharacterSelectScene from '../../scenes/characterSelectScene';
@@ -5467,7 +5708,7 @@ export default function GameFlow({ userId, username, onExit }: GameFlowProps) {
     </div>
   );
 }
-========== ./src/site/pages/LeaderboardPage.tsx ==========
+========== ./frontend/src/site/pages/LeaderboardPage.tsx ==========
 import { useState, useEffect } from 'react';
 import { inputStyle } from '../styles/shared';
 import * as Icons from '../components/Icons';
@@ -5615,303 +5856,8 @@ export default function LeaderboardPage() {
     </div>
   );
 }
-========== ./src/site/pages/LoginPage.tsx ==========
-// import { useState, useCallback, useEffect } from 'react';
-// import { inputStyle } from '../styles/shared';
-// import * as Icons from '../components/Icons';
-// import * as authService from '../services/authService';
-// import { toErrorString } from '../services/authService';
-// import welcomeScene from '../../assets/welcomeScene.png';
-// import { theme } from '../../configs/theme';
-
-// interface LoginPageProps {
-//   onLogin: () => void;
-// }
-
-// // Validazione
-// const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-// const PWD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
-// const USERNAME_MIN = 3;
-// const USERNAME_MAX = 20;
-
-// export default function LoginPage({ onLogin }: LoginPageProps) {
-//   const [mode, setMode] = useState<"login" | "register" | "forgot" | "reset">("login");
-//   const [showPassword, setShowPassword] = useState(false);
-//   const [show2fa, setShow2fa] = useState(false);
-//   const [loading, setLoading] = useState(false);
-//   const [error, setError] = useState("");
-//   const [successMsg, setSuccessMsg] = useState("");
-
-//   const [formData, setFormData] = useState({
-//     identifier: "", username: "", email: "", password: "", confirmPassword: "", totp: "", resetToken: ""
-//   });
-
-//   // SE L'UTENTE APRE IL LINK "reset-password?token=..."
-//   useEffect(() => {
-//     const params = new URLSearchParams(window.location.search);
-//     const token = params.get('token');
-//     if (token) {
-//       setMode("reset");
-//       setFormData(prev => ({ ...prev, resetToken: token }));
-//       window.history.replaceState({}, document.title, "/");
-//     }
-//   }, []);
-
-//   // Validazione locale prima dell'invio
-//   const validate = (): string | null => {
-//     if (mode === "login") {
-//       if (!formData.identifier.trim()) return "Inserisci username o email.";
-//       if (!formData.password) return "Inserisci la password.";
-//       if (show2fa && formData.totp.length !== 6) return "Il codice 2FA deve essere di 6 cifre.";
-//     }
-
-//     if (mode === "register") {
-//       if (!formData.username.trim()) return "Inserisci un username.";
-//       if (formData.username.trim().length < USERNAME_MIN) return `Username troppo corto (min ${USERNAME_MIN} caratteri).`;
-//       if (formData.username.trim().length > USERNAME_MAX) return `Username troppo lungo (max ${USERNAME_MAX} caratteri).`;
-//       if (!formData.email.trim()) return "Inserisci un'email.";
-//       if (!EMAIL_REGEX.test(formData.email)) return "Formato email non valido.";
-//       if (!formData.password) return "Inserisci la password.";
-//       if (!PWD_REGEX.test(formData.password)) return "La password deve contenere min 8 car., maiuscola, minuscola, numero e simbolo speciale.";
-//     }
-
-//     if (mode === "forgot") {
-//       if (!formData.email.trim()) return "Inserisci la tua email.";
-//       if (!EMAIL_REGEX.test(formData.email)) return "Formato email non valido.";
-//     }
-
-//     if (mode === "reset") {
-//       if (!formData.password) return "Inserisci la nuova password.";
-//       if (formData.password !== formData.confirmPassword) return "Le password non combaciano.";
-//       if (!PWD_REGEX.test(formData.password)) return "La password deve contenere min 8 car., maiuscola, minuscola, numero e simbolo speciale.";
-//     }
-
-//     return null;
-//   };
-
-//   const handleSubmit = useCallback(async () => {
-//     setError("");
-//     setSuccessMsg("");
-
-//     const validationError = validate();
-//     if (validationError) { setError(validationError); return; }
-
-//     setLoading(true);
-
-//     try {
-//       if (mode === "login") {
-//         if (show2fa) {
-//           const { ok, data } = await authService.login(formData.identifier, formData.password, formData.totp);
-//           if (ok) return onLogin();
-//           setError(toErrorString(data.message || data.error || "Invalid 2FA code"));
-//         } else {
-//           const { ok, data } = await authService.login(formData.identifier, formData.password);
-
-//           if (data.requires2fa || data.message === '2FA required') {
-//             setShow2fa(true);
-//             setLoading(false);
-//             return;
-//           }
-//           if (ok) return onLogin();
-
-//           setError(toErrorString(data.message || data.error || "Login failed"));
-//         }
-
-//       } else if (mode === "register") {
-//         const { ok, data } = await authService.register(formData.username, formData.email, formData.password);
-//         if (ok) {
-//           setSuccessMsg("Registrazione completata! Controlla l'email per verificare l'account.");
-//           setMode("login");
-//           setFormData(prev => ({ ...prev, password: "" }));
-//         } else {
-//           setError(toErrorString(data.error || data.message || "Registration failed"));
-//         }
-
-//       } else if (mode === "forgot") {
-//         const ok = await authService.forgotPassword(formData.email);
-//         if (ok) setSuccessMsg("Se l'email esiste, ti abbiamo inviato un link per resettare la password.");
-//         else setError("Errore nell'invio dell'email.");
-
-//       } else if (mode === "reset") {
-//         const result = await authService.resetPassword(formData.resetToken, formData.password);
-//         if (result.ok) {
-//           setSuccessMsg("Password resettata con successo! Ora puoi accedere.");
-//           setMode("login");
-//         } else {
-//           setError(toErrorString(result.message || "Errore nel reset della password. Token scaduto?"));
-//         }
-//       }
-//     } catch {
-//       setError("Network error. Please try again.");
-//     }
-//     setLoading(false);
-//   }, [mode, formData, show2fa, onLogin]);
-
-//   // RESEND VERIFICATION
-//   const handleResend = async () => {
-//     if (!formData.email && !formData.identifier) return setError("Inserisci la tua email per ricevere il link.");
-//     setLoading(true);
-//     const emailToUse = formData.email || formData.identifier;
-//     const result = await authService.resendVerification(emailToUse);
-//     if (result.ok) setSuccessMsg("Se l'account esiste, l'email di verifica è stata inviata nuovamente!");
-//     else setError(toErrorString(result.message || "Errore nell'invio dell'email."));
-//     setLoading(false);
-//   };
-
-//   const switchMode = (m: typeof mode) => { setMode(m); setError(""); setSuccessMsg(""); setShow2fa(false); };
-
-//   return (
-//     <div className="animate-fadeIn" style={{
-//       minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center",
-//       backgroundColor: theme.colors.bgDark,
-//       backgroundImage: `radial-gradient(circle at center, rgba(200,170,110,0.4) 0%, transparent 60%), radial-gradient(circle at 20% 80%, rgba(10,200,185,0.04) 0%, transparent 90%), url(${welcomeScene})`,
-//       backgroundSize: 'cover', backgroundPosition: 'center', backgroundRepeat: 'no-repeat',
-//       position: "relative", overflow: "hidden",
-//     }}>
-//       <div style={{
-//         position: "absolute", inset: 0, pointerEvents: "none",
-//         background: `radial-gradient(1px 1px at 20% 30%, ${theme.colors.goldGlow}, transparent), radial-gradient(1px 1px at 80% 70%, ${theme.colors.goldSubtle}, transparent)`,
-//         backgroundSize: "200px 200px, 300px 300px",
-//       }} />
-
-//       <div style={{
-//         width: "440px", borderRadius: "50%",
-//         background: `radial-gradient(circle at center, ${theme.colors.bgPanel}00 20%, ${theme.colors.bgDark}00 70%)`,
-//         transform: 'translateY(70px)', border: `1px solid ${theme.colors.border}`,
-//         animation: "orbPulse 4s ease-in-out infinite", display: "flex", flexDirection: "column",
-//         alignItems: "center", justifyContent: "center", padding: "60px 50px", position: "relative",
-//       }}>
-//         <h1 style={{
-//           fontSize: "20px", fontWeight: 700, fontFamily: theme.fonts.heading,
-//           background: `linear-gradient(180deg, ${theme.colors.goldBright}, ${theme.colors.goldDark})`,
-//           WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent",
-//           marginBottom: "4px", letterSpacing: "3px", textAlign: "center", textTransform: "uppercase",
-//         }}>
-//           {mode === "login" && "Clash of Olympus"}
-//           {mode === "register" && "Join the Arena"}
-//           {mode === "forgot" && "Reset Password"}
-//           {mode === "reset" && "Nuova Password"}
-//         </h1>
-
-//         {successMsg && (
-//           <div style={{ width: "100%", padding: "8px 12px", marginBottom: "12px", background: "rgba(168,198,108,0.15)", border: `1px solid ${theme.colors.hpHigh}`, borderRadius: "2px", color: theme.colors.hpHigh, fontFamily: theme.fonts.mono, fontSize: "12px", textAlign: "center" }}>
-//             {successMsg}
-//           </div>
-//         )}
-
-//         {error && (
-//           <div style={{ width: "100%", padding: "8px 12px", marginBottom: "12px", background: "rgba(232,64,87,0.15)", border: `1px solid ${theme.colors.dead}`, borderRadius: "2px", color: theme.colors.dead, fontFamily: theme.fonts.mono, fontSize: "12px", textAlign: "center" }}>
-//             {error}
-//             {error.toLowerCase().includes("verify your email") && (
-//               <button onClick={handleResend} style={{ display: 'block', margin: '8px auto 0', padding: '4px 8px', background: 'none', border: `1px solid ${theme.colors.dead}`, color: theme.colors.textPrimary, cursor: 'pointer', fontSize: '11px' }}>Re-invia email</button>
-//             )}
-//           </div>
-//         )}
-
-//         <div style={{ width: "100%", display: "flex", flexDirection: "column", gap: "12px" }}>
-
-//           {/* LOGIN: campo identifier (username o email) */}
-//           {mode === "login" && (
-//             <input className="input-glow" type="text" placeholder="Username or Email"
-//               value={formData.identifier}
-//               onChange={(e) => setFormData({ ...formData, identifier: e.target.value })}
-//               style={inputStyle} />
-//           )}
-
-//           {/* REGISTER: campi separati username + email */}
-//           {mode === "register" && (
-//             <>
-//               <input className="input-glow" type="text" placeholder="Username"
-//                 value={formData.username}
-//                 onChange={(e) => setFormData({ ...formData, username: e.target.value })}
-//                 style={inputStyle} />
-//               <input className="input-glow" type="email" placeholder="Email"
-//                 value={formData.email}
-//                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-//                 style={inputStyle} />
-//             </>
-//           )}
-
-//           {/* FORGOT: solo email */}
-//           {mode === "forgot" && (
-//             <input className="input-glow" type="email" placeholder="Email"
-//               value={formData.email}
-//               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-//               style={inputStyle} />
-//           )}
-
-//           {/* Password (login, register, reset) */}
-//           {(mode === "login" || mode === "register" || mode === "reset") && (
-//             <div style={{ position: "relative" }}>
-//               <input className="input-glow" type={showPassword ? "text" : "password"} placeholder="Password"
-//                 value={formData.password}
-//                 onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-//                 style={{ ...inputStyle, paddingRight: "44px" }} />
-//               <button type="button" onClick={() => setShowPassword(!showPassword)}
-//                 style={{ position: "absolute", right: "12px", top: "50%", transform: "translateY(-50%)", background: "none", border: "none", color: theme.colors.textMuted, cursor: "pointer", padding: "4px", display: "flex" }}>
-//                 {showPassword ? <Icons.EyeOff size={18} /> : <Icons.Eye size={18} />}
-//               </button>
-//             </div>
-//           )}
-
-//           {/* Confirm password (reset only) */}
-//           {mode === "reset" && (
-//             <input className="input-glow" type="password" placeholder="Conferma Password"
-//               value={formData.confirmPassword}
-//               onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
-//               style={inputStyle} />
-//           )}
-
-//           {/* 2FA */}
-//           {show2fa && mode === "login" && (
-//             <div className="animate-slideUp">
-//               <input className="input-glow" type="text" placeholder="— — — — — —"
-//                 value={formData.totp}
-//                 onChange={(e) => {
-//                   const val = e.target.value.replace(/\D/g, '');
-//                   setFormData({ ...formData, totp: val });
-//                 }}
-//                 style={{ ...inputStyle, textAlign: "center", letterSpacing: "8px", fontSize: "20px" }}
-//                 maxLength={6} />
-//             </div>
-//           )}
-
-//           {/* Submit */}
-//           <button className="btn-press" type="button" onClick={handleSubmit} disabled={loading} style={{
-//             width: "100%", padding: "12px",
-//             background: loading ? theme.colors.textMuted : `linear-gradient(180deg, ${theme.colors.gold}, ${theme.colors.goldDark})`,
-//             border: "none", borderRadius: "2px", color: theme.colors.goldDark, fontFamily: theme.fonts.heading, fontSize: "13px", fontWeight: 700, letterSpacing: "2px", textTransform: "uppercase", cursor: loading ? "wait" : "pointer", transition: "all 0.2s", marginTop: "4px",
-//           }}>
-//             {loading ? "..." : mode === "login" ? "Enter" : mode === "register" ? "Register" : mode === "forgot" ? "Send Link" : "Reset Pwd"}
-//           </button>
-
-//           {/* Google OAuth */}
-//           {mode !== "forgot" && mode !== "reset" && (
-//             <button type="button" className="btn-press" onClick={authService.redirectToGoogle} style={{
-//               width: "100%", padding: "10px", background: "rgba(255,255,255,0.05)", border: `1px solid ${theme.colors.border}`, borderRadius: "2px", color: theme.colors.goldDark, fontFamily: theme.fonts.heading, fontSize: "11px", fontWeight: 600, letterSpacing: "1px", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "10px", transition: "all 0.2s",
-//             }}>
-//               <Icons.Google size={16} /> Continue with Google
-//             </button>
-//           )}
-//         </div>
-
-//         <div style={{ marginTop: "16px", textAlign: "center" }}>
-//           {mode === "login" && (
-//             <>
-//               <button onClick={() => switchMode("register")} style={{ background: "none", border: "none", color: theme.colors.bgDark, cursor: "pointer", fontFamily: theme.fonts.mono, fontSize: "13px" }}>Create an account</button>
-//               <span style={{ color: theme.colors.textMuted, margin: "0 8px" }}>·</span>
-//               <button onClick={() => switchMode("forgot")} style={{ background: "none", border: "none", color: theme.colors.bgDark, cursor: "pointer", fontFamily: theme.fonts.mono, fontSize: "13px" }}>Forgot password?</button>
-//             </>
-//           )}
-//           {(mode === "register" || mode === "forgot" || mode === "reset") && (
-//             <button onClick={() => switchMode("login")} style={{ background: "none", border: "none", color: theme.colors.zeus, cursor: "pointer", fontFamily: theme.fonts.mono, fontSize: "13px" }}>Back to login</button>
-//           )}
-//         </div>
-//       </div>
-//     </div>
-//   );
-// }
-import { useState, useCallback, useEffect } from 'react';
+========== ./frontend/src/site/pages/LoginPage.tsx ==========
+import React, { useState, useCallback, useEffect } from 'react';
 import { inputStyle } from '../styles/shared';
 import * as Icons from '../components/Icons';
 import * as authService from '../services/authService';
@@ -5970,7 +5916,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
       if (!formData.email.trim()) return "Inserisci un'email.";
       if (!EMAIL_REGEX.test(formData.email.trim())) return "Formato email non valido.";
       if (!formData.password) return "Inserisci la password.";
-      if (!PWD_REGEX.test(formData.password)) return "La password deve contenere min 8 car., maiuscola, minuscola, numero e simbolo speciale.";
+      if (!PWD_REGEX.test(formData.password)) return "La password deve contenere almeno 8 caratteri, una lettera maiuscola, una minuscola, un numero e un carattere speciale.";
     }
 
     if (mode === "forgot") {
@@ -5987,7 +5933,10 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
     return null;
   };
 
-  const handleSubmit = useCallback(async () => {
+  
+  const handleSubmit = useCallback(async (e?: React.FormEvent) => { //  'e?: React.FormEvent' per supportare l'invio tramite form
+    if (e) e.preventDefault(); // Evita che il browser ricarichi la pagina quando premi Enter
+
     setError("");
     setSuccessMsg("");
 
@@ -6046,19 +5995,17 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
     setLoading(false);
   }, [mode, formData, show2fa, onLogin]);
 
-  // RESEND VERIFICATION - Riscritto per essere a prova di bomba
+  // RESEND VERIFICATION
   const handleResend = async () => {
     setError("");
     setSuccessMsg("");
     
     let targetEmail = "";
 
-    // Pulizia stringhe
     const cleanRegEmail = registeredEmail.trim();
     const cleanFormEmail = formData.email.trim();
     const cleanId = formData.identifier.trim();
 
-    // Ricerca a cascata dell'email corretta
     if (cleanRegEmail && EMAIL_REGEX.test(cleanRegEmail)) {
       targetEmail = cleanRegEmail;
     } else if (cleanFormEmail && EMAIL_REGEX.test(cleanFormEmail)) {
@@ -6067,7 +6014,6 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
       targetEmail = cleanId;
     }
 
-    // Se non abbiamo trovato nulla che assomigli a un'email (es. ha inserito solo l'username)
     if (!targetEmail) {
       return setError("Per reinviare il link, inserisci il tuo indirizzo email valido nel campo di testo.");
     }
@@ -6121,7 +6067,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
           <div style={{ width: "100%", padding: "8px 12px", marginBottom: "12px", background: "rgba(168,198,108,0.15)", border: `1px solid ${theme.colors.hpHigh}`, borderRadius: "2px", color: theme.colors.hpHigh, fontFamily: theme.fonts.mono, fontSize: "12px", textAlign: "center" }}>
             {successMsg}
             {(successMsg.includes("Registrazione completata") || successMsg.includes("reinviata a")) && (
-              <button onClick={handleResend} style={{ display: 'block', margin: '8px auto 0', padding: '4px 8px', background: 'none', border: `1px solid ${theme.colors.hpHigh}`, color: theme.colors.hpHigh, cursor: 'pointer', fontSize: '11px', borderRadius: '2px' }}>
+              <button type="button" onClick={handleResend} style={{ display: 'block', margin: '8px auto 0', padding: '4px 8px', background: 'none', border: `1px solid ${theme.colors.hpHigh}`, color: theme.colors.hpHigh, cursor: 'pointer', fontSize: '11px', borderRadius: '2px' }}>
                 Re-invia email
               </button>
             )}
@@ -6132,14 +6078,15 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
           <div style={{ width: "100%", padding: "8px 12px", marginBottom: "12px", background: "rgba(232,64,87,0.15)", border: `1px solid ${theme.colors.dead}`, borderRadius: "2px", color: theme.colors.dead, fontFamily: theme.fonts.mono, fontSize: "12px", textAlign: "center" }}>
             {error}
             {error.toLowerCase().includes("verify your email") && (
-              <button onClick={handleResend} style={{ display: 'block', margin: '8px auto 0', padding: '4px 8px', background: 'none', border: `1px solid ${theme.colors.dead}`, color: theme.colors.textPrimary, cursor: 'pointer', fontSize: '11px' }}>
+              <button type="button" onClick={handleResend} style={{ display: 'block', margin: '8px auto 0', padding: '4px 8px', background: 'none', border: `1px solid ${theme.colors.dead}`, color: theme.colors.textPrimary, cursor: 'pointer', fontSize: '11px' }}>
                 Re-invia email
               </button>
             )}
           </div>
         )}
 
-        <div style={{ width: "100%", display: "flex", flexDirection: "column", gap: "12px" }}>
+        {/* ⚡ Da un normale DIV a un FORM con onSubmit collegato */}
+        <form onSubmit={handleSubmit} style={{ width: "100%", display: "flex", flexDirection: "column", gap: "12px" }}>
 
           {/* LOGIN: campo identifier (username o email) */}
           {mode === "login" && (
@@ -6207,8 +6154,8 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
             </div>
           )}
 
-          {/* Submit */}
-          <button className="btn-press" type="button" onClick={handleSubmit} disabled={loading} style={{
+          {/* Submit -> type="submit" in modo che reagisca al tasto ENTER! */}
+          <button className="btn-press" type="submit" disabled={loading} style={{
             width: "100%", padding: "12px",
             background: loading ? theme.colors.textMuted : `linear-gradient(180deg, ${theme.colors.gold}, ${theme.colors.goldDark})`,
             border: "none", borderRadius: "2px", color: theme.colors.goldDark, fontFamily: theme.fonts.heading, fontSize: "13px", fontWeight: 700, letterSpacing: "2px", textTransform: "uppercase", cursor: loading ? "wait" : "pointer", transition: "all 0.2s", marginTop: "4px",
@@ -6216,7 +6163,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
             {loading ? "..." : mode === "login" ? "Enter" : mode === "register" ? "Register" : mode === "forgot" ? "Send Link" : "Reset Pwd"}
           </button>
 
-          {/* Google OAuth */}
+          {/* Google OAuth -> type="button" fondamentale qui, per non inviare il form normale! */}
           {mode !== "forgot" && mode !== "reset" && (
             <button type="button" className="btn-press" onClick={authService.redirectToGoogle} style={{
               width: "100%", padding: "10px", background: "rgba(255,255,255,0.05)", border: `1px solid ${theme.colors.border}`, borderRadius: "2px", color: theme.colors.goldDark, fontFamily: theme.fonts.heading, fontSize: "11px", fontWeight: 600, letterSpacing: "1px", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "10px", transition: "all 0.2s",
@@ -6224,25 +6171,25 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
               <Icons.Google size={16} /> Continue with Google
             </button>
           )}
-        </div>
+        </form>
 
         <div style={{ marginTop: "16px", textAlign: "center" }}>
           {mode === "login" && (
             <>
-              <button onClick={() => switchMode("register")} style={{ background: "none", border: "none", color: theme.colors.bgDark, cursor: "pointer", fontFamily: theme.fonts.mono, fontSize: "13px" }}>Create an account</button>
+              <button type="button" onClick={() => switchMode("register")} style={{ background: "none", border: "none", color: theme.colors.bgDark, cursor: "pointer", fontFamily: theme.fonts.mono, fontSize: "13px" }}>Create an account</button>
               <span style={{ color: theme.colors.textMuted, margin: "0 8px" }}>·</span>
-              <button onClick={() => switchMode("forgot")} style={{ background: "none", border: "none", color: theme.colors.bgDark, cursor: "pointer", fontFamily: theme.fonts.mono, fontSize: "13px" }}>Forgot password?</button>
+              <button type="button" onClick={() => switchMode("forgot")} style={{ background: "none", border: "none", color: theme.colors.bgDark, cursor: "pointer", fontFamily: theme.fonts.mono, fontSize: "13px" }}>Forgot password?</button>
             </>
           )}
           {(mode === "register" || mode === "forgot" || mode === "reset") && (
-            <button onClick={() => switchMode("login")} style={{ background: "none", border: "none", color: theme.colors.zeus, cursor: "pointer", fontFamily: theme.fonts.mono, fontSize: "13px" }}>Back to login</button>
+            <button type="button" onClick={() => switchMode("login")} style={{ background: "none", border: "none", color: theme.colors.zeus, cursor: "pointer", fontFamily: theme.fonts.mono, fontSize: "13px" }}>Back to login</button>
           )}
         </div>
       </div>
     </div>
   );
 }
-========== ./src/site/pages/ProfilePage.tsx ==========
+========== ./frontend/src/site/pages/ProfilePage.tsx ==========
 import { useState, useEffect, useRef } from 'react';
 import { inputStyle, sectionTitleStyle } from '../styles/shared';
 import * as Icons from '../components/Icons';
@@ -6717,203 +6664,220 @@ export default function ProfilePage() {
     </div>
   );
 }
-========== ./src/site/services/apiService.ts ==========
+========== ./frontend/src/site/services/apiService.ts ==========
+
 import { fetchWithAuthRetry } from "./authService";
 
 export interface UserProfile {
-	id: number;
-	username: string;
-	avatarUrl: string;
-	email: string;
-	status: "ONLINE" | "OFFLINE" | "IN_GAME" | string;
-	createdAt: string;
+    id: number;
+    username: string;
+    avatarUrl: string;
+    email: string;
+    status: "ONLINE" | "OFFLINE" | "IN_GAME" | string;
+    createdAt: string;
 }
 
 export interface CharacterStat {
-	characterName: string;
-	wins: number;
-	losses: number;
-	kills: number;
-	deaths: number;
+    characterName: string;
+    wins: number;
+    losses: number;
+    kills: number;
+    deaths: number;
 }
 
 export interface UserStats {
-	eloCurrent: number;
-	eloPeak: number;
-	totalWins: number;
-	totalLosses: number;
-	totalDraws: number;
-	bestWinStreak: number;
-	currentWinStreak: number;
-	totalKills: number;
-	totalDeaths: number;
-	characterStats: CharacterStat[];
+    eloCurrent: number;
+    eloPeak: number;
+    totalWins: number;
+    totalLosses: number;
+    totalDraws: number;
+    bestWinStreak: number;
+    currentWinStreak: number;
+    totalKills: number;
+    totalDeaths: number;
+    characterStats: CharacterStat[];
 }
 
 export interface UserSettings {
-	is2faEnabled: boolean;
-	isEmailVerified: boolean;
-	linkedProviders: string[];
+    is2faEnabled: boolean;
+    isEmailVerified: boolean;
+    linkedProviders: string[];
 }
 
 export interface LeaderboardEntry {
-	id: number;
-	rank: number;
-	username: string;
-	avatarUrl: string;
-	eloCurrent: number;
-	totalWins: number;
-	totalLosses: number;
+    id: number;
+    rank: number;
+    username: string;
+    avatarUrl: string;
+    eloCurrent: number;
+    totalWins: number;
+    totalLosses: number;
 }
 
 export interface LeaderboardResponse {
-	entries: LeaderboardEntry[];
-	total?: number;
+    entries: LeaderboardEntry[];
+    total?: number;
+}
+
+// Interfacce Notifiche
+export interface NotificationItem {
+    id: number;
+    type: string; // FRIEND_REQ, FRIEND_ACCEPTED, ACHV_UNLOCKED
+    message: string;
+    isRead: boolean;
+    createdAt: string;
+}
+
+export interface NotificationListResponse {
+    notifications: NotificationItem[];
+    total: number;
+    unreadCount: number;
+    page: number;
+    limit: number;
 }
 
 // ==========================================
-// 📡 CHIAMATE API
+// 📡 CHIAMATE API GENERALI
 // ==========================================
 
 export async function getMyProfile(): Promise<UserProfile | null> {
-	try {
-		const res = await fetchWithAuthRetry("/api/users/me");
-		if (!res || !res.ok) return null;
-		return (await res.json()) as UserProfile;
-	} catch (error) {
-		console.error("[API] Error fetching profile:", error);
-		return null;
-	}
+    try {
+        const res = await fetchWithAuthRetry("/api/users/me");
+        if (!res || !res.ok) return null;
+        return (await res.json()) as UserProfile;
+    } catch (error) {
+        console.error("[API] Error fetching profile:", error);
+        return null;
+    }
 }
 
 export async function getMyStats(): Promise<UserStats | null> {
-	try {
-		const res = await fetchWithAuthRetry("/api/users/me/stats");
-		if (!res || !res.ok) return null;
-		return (await res.json()) as UserStats;
-	} catch (error) {
-		console.error("[API] Error fetching stats:", error);
-		return null;
-	}
+    try {
+        const res = await fetchWithAuthRetry("/api/users/me/stats");
+        if (!res || !res.ok) return null;
+        return (await res.json()) as UserStats;
+    } catch (error) {
+        console.error("[API] Error fetching stats:", error);
+        return null;
+    }
 }
 
 export async function getMySettings(): Promise<UserSettings | null> {
-	try {
-		const res = await fetchWithAuthRetry("/api/users/me/settings");
-		if (!res || !res.ok) return null;
-		return (await res.json()) as UserSettings;
-	} catch (error) {
-		console.error("[API] Error fetching settings:", error);
-		return null;
-	}
+    try {
+        const res = await fetchWithAuthRetry("/api/users/me/settings");
+        if (!res || !res.ok) return null;
+        return (await res.json()) as UserSettings;
+    } catch (error) {
+        console.error("[API] Error fetching settings:", error);
+        return null;
+    }
 }
 
 export async function updateUsername(username: string): Promise<boolean> {
-	try {
-		const res = await fetchWithAuthRetry("/api/users/me/username", {
-			method: "PATCH",
-			headers: { "Content-Type": "application/json" },
-			body: JSON.stringify({ username }),
-		});
-		return !!res && res.ok;
-	} catch (error) {
-		console.error("[API] Error updating username:", error);
-		return false;
-	}
+    try {
+        const res = await fetchWithAuthRetry("/api/users/me/username", {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ username }),
+        });
+        return !!res && res.ok;
+    } catch (error) {
+        console.error("[API] Error updating username:", error);
+        return false;
+    }
 }
 
 export async function updateEmail(email: string): Promise<boolean> {
-	try {
-		const res = await fetchWithAuthRetry("/api/users/me/email", {
-			method: "PATCH",
-			headers: { "Content-Type": "application/json" },
-			body: JSON.stringify({ email }),
-		});
-		return !!res && res.ok;
-	} catch (error) {
-		console.error("[API] Error updating email:", error);
-		return false;
-	}
+    try {
+        const res = await fetchWithAuthRetry("/api/users/me/email", {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email }),
+        });
+        return !!res && res.ok;
+    } catch (error) {
+        console.error("[API] Error updating email:", error);
+        return false;
+    }
 }
 
 export async function updateAvatar(avatarUrl: string | null): Promise<boolean> {
-	try {
-		const res = await fetchWithAuthRetry("/api/users/me/avatar", {
-			method: "PATCH",
-			headers: { "Content-Type": "application/json" },
-			body: JSON.stringify({ avatarUrl }),
-		});
-		return !!res && res.ok;
-	} catch (error) {
-		console.error("[API] Error updating avatar:", error);
-		return false;
-	}
+    try {
+        const res = await fetchWithAuthRetry("/api/users/me/avatar", {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ avatarUrl }),
+        });
+        return !!res && res.ok;
+    } catch (error) {
+        console.error("[API] Error updating avatar:", error);
+        return false;
+    }
 }
 
 export async function getLeaderboard(
-	page = 1,
-	limit = 20,
+    page = 1,
+    limit = 20,
 ): Promise<LeaderboardResponse | null> {
-	try {
-		const res = await fetchWithAuthRetry(
-			`/api/users/leaderboard?page=${page}&limit=${limit}`,
-		);
-		if (!res || !res.ok) return null;
-		return (await res.json()) as LeaderboardResponse;
-	} catch (error) {
-		console.error("[API] Error fetching leaderboard:", error);
-		return null;
-	}
+    try {
+        const res = await fetchWithAuthRetry(
+            `/api/users/leaderboard?page=${page}&limit=${limit}`,
+        );
+        if (!res || !res.ok) return null;
+        return (await res.json()) as LeaderboardResponse;
+    } catch (error) {
+        console.error("[API] Error fetching leaderboard:", error);
+        return null;
+    }
 }
 
 export async function getPublicProfile(
-	userId: number,
+    userId: number,
 ): Promise<UserProfile | null> {
-	try {
-		const res = await fetchWithAuthRetry(`/api/users/${userId}`);
-		if (!res || !res.ok) return null;
-		return (await res.json()) as UserProfile;
-	} catch (error) {
-		console.error("[API] Error fetching public profile:", error);
-		return null;
-	}
+    try {
+        const res = await fetchWithAuthRetry(`/api/users/${userId}`);
+        if (!res || !res.ok) return null;
+        return (await res.json()) as UserProfile;
+    } catch (error) {
+        console.error("[API] Error fetching public profile:", error);
+        return null;
+    }
 }
 
 export async function checkUsernameAvailable(
-	username: string,
+    username: string,
 ): Promise<boolean> {
-	try {
-		const res = await fetchWithAuthRetry(
-			`/api/users/check/username?username=${encodeURIComponent(username)}`,
-		);
-		if (!res || !res.ok) return false;
-		const data = await res.json();
-		return !data.exists;
-	} catch (error) {
-		console.error("[API] Error checking username:", error);
-		return false;
-	}
+    try {
+        const res = await fetchWithAuthRetry(
+            `/api/users/check/username?username=${encodeURIComponent(username)}`,
+        );
+        if (!res || !res.ok) return false;
+        const data = await res.json();
+        return !data.exists;
+    } catch (error) {
+        console.error("[API] Error checking username:", error);
+        return false;
+    }
 }
 
 export async function checkEmailAvailable(email: string): Promise<boolean> {
-	try {
-		const res = await fetchWithAuthRetry(
-			`/api/users/check/email?email=${encodeURIComponent(email)}`,
-		);
-		if (!res || !res.ok) return false;
-		const data = await res.json();
-		return !data.exists;
-	} catch (error) {
-		console.error("[API] Error checking email:", error);
-		return false;
-	}
+    try {
+        const res = await fetchWithAuthRetry(
+            `/api/users/check/email?email=${encodeURIComponent(email)}`,
+        );
+        if (!res || !res.ok) return false;
+        const data = await res.json();
+        return !data.exists;
+    } catch (error) {
+        console.error("[API] Error checking email:", error);
+        return false;
+    }
 }
 
-// --- 2FA SETUP ---
+// --- 2FA & AUTH SETUP ---
 
 export async function generate2fa() {
   try {
-    // Aggiornato con la rotta esatta di Giovanni
     const res = await fetchWithAuthRetry("/api/auth/2fa/setup", { method: "POST" });
     if (!res || !res.ok) return null;
     return await res.json(); 
@@ -6925,7 +6889,6 @@ export async function generate2fa() {
 
 export async function turnOn2fa(code: string): Promise<boolean> {
   try {
-    // Aggiornato con la rotta esatta di Giovanni
     const res = await fetchWithAuthRetry("/api/auth/2fa/enable", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -6940,7 +6903,6 @@ export async function turnOn2fa(code: string): Promise<boolean> {
 
 export async function turnOff2fa(): Promise<boolean> {
   try {
-    // Aggiornato con la rotta esatta di Giovanni
     const res = await fetchWithAuthRetry("/api/auth/2fa/disable", { method: "POST" });
     return !!res && res.ok;
   } catch (error) {
@@ -6973,7 +6935,7 @@ export async function changePassword(oldPass: string, newPass: string): Promise<
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ oldPass, newPass }),
     });
-	
+    
     if (!res) return { ok: false, message: "Connessione al server fallita" };
 
     const data = await res.json().catch(() => ({}));
@@ -6982,7 +6944,52 @@ export async function changePassword(oldPass: string, newPass: string): Promise<
     return { ok: false, message: "Network error" };
   }
 }
-========== ./src/site/services/authService.ts ==========
+
+// ==========================================
+// NOTIFICHE
+// ==========================================
+
+export async function getNotifications(page = 1, limit = 20, unreadOnly = false): Promise<NotificationListResponse | null> {
+    try {
+        const res = await fetchWithAuthRetry(`/api/users/me/notifications?page=${page}&limit=${limit}&unreadOnly=${unreadOnly}`);
+        if (!res || !res.ok) return null;
+        return (await res.json()) as NotificationListResponse;
+    } catch (error) {
+        console.error("[API] Error fetching notifications:", error);
+        return null;
+    }
+}
+
+export async function markAllNotificationsRead(): Promise<boolean> {
+    try {
+        const res = await fetchWithAuthRetry("/api/users/me/notifications/read-all", { method: "PATCH" });
+        return !!res && res.ok;
+    } catch (error) {
+        console.error("[API] Error marking all read:", error);
+        return false;
+    }
+}
+
+export async function markNotificationRead(id: number): Promise<boolean> {
+    try {
+        const res = await fetchWithAuthRetry(`/api/users/me/notifications/${id}/read`, { method: "PATCH" });
+        return !!res && res.ok;
+    } catch (error) {
+        console.error(`[API] Error marking notif ${id} read:`, error);
+        return false;
+    }
+}
+
+export async function deleteNotification(id: number): Promise<boolean> {
+    try {
+        const res = await fetchWithAuthRetry(`/api/users/me/notifications/${id}`, { method: "DELETE" });
+        return !!res && res.ok;
+    } catch (error) {
+        console.error(`[API] Error deleting notif ${id}:`, error);
+        return false;
+    }
+}
+========== ./frontend/src/site/services/authService.ts ==========
 /**
  * Auth service — basato sui prototipi di Ale (authFetch.js, socketAuth.js)
  * Gestisce: login, register, logout, refresh, forgot/reset password, 2FA, OAuth
@@ -7009,12 +7016,49 @@ export function toErrorString(val: unknown): string {
   return String(val);
 }
 
+// export async function fetchWithAuthRetry(
+//   url: string,
+//   options: RequestInit = {},
+// ): Promise<Response | null> {
+//   try {
+//     let res = await fetch(url, { ...options, credentials: "include" });
+
+//     if (res.status === 401) {
+//       const refreshed = await fetch("/api/auth/refresh", {
+//         method: "POST",
+//         credentials: "include",
+//       });
+
+//       if (!refreshed.ok) {
+//         return null;
+//       }
+//       res = await fetch(url, { ...options, credentials: "include" });
+//     }
+
+//     return res;
+//   } catch (error) {
+//     console.error("[Auth] Fetch error:", error);
+//     return null;
+//   }
+// }
 export async function fetchWithAuthRetry(
   url: string,
   options: RequestInit = {},
 ): Promise<Response | null> {
   try {
-    let res = await fetch(url, { ...options, credentials: "include" });
+    const fetchOptions: RequestInit = {  // Pparametri anti-cache: evitano che utenti diversi sullo stesso PC vedano i dati dell'altro.
+      ...options,
+      credentials: "include",
+      cache: "no-store", // Dice al browser di bypassare la cache locale
+      headers: {
+        "Cache-Control": "no-cache, no-store, must-revalidate",
+        "Pragma": "no-cache",
+        "Expires": "0",
+        ...options.headers,
+      }
+    };
+
+    let res = await fetch(url, fetchOptions);
 
     if (res.status === 401) {
       const refreshed = await fetch("/api/auth/refresh", {
@@ -7025,7 +7069,7 @@ export async function fetchWithAuthRetry(
       if (!refreshed.ok) {
         return null;
       }
-      res = await fetch(url, { ...options, credentials: "include" });
+      res = await fetch(url, fetchOptions);
     }
 
     return res;
@@ -7152,7 +7196,7 @@ export async function resetPassword(token: string, newPassword: string): Promise
     return { ok: false, message: "Network error" };
   }
 }
-========== ./src/site/styles/shared.ts ==========
+========== ./frontend/src/site/styles/shared.ts ==========
 import React from 'react';
 import { theme } from '../../configs/theme';
 
@@ -7213,7 +7257,7 @@ export const sectionTitleStyle: React.CSSProperties = {
   textAlign: "center",
   fontFamily: theme.fonts.heading,
 };
-========== ./src/site/styles/site.css ==========
+========== ./frontend/src/site/styles/site.css ==========
 /* ─── Clash of Olympus — Global Site CSS ─── */
 @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;700&display=swap');
 
@@ -7255,7 +7299,7 @@ body {
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes badgePop { 0% { transform: scale(0); } 50% { transform: scale(1.3); } 100% { transform: scale(1); } }
-========== ./src/storage/gameStore.ts ==========
+========== ./frontend/src/storage/gameStore.ts ==========
 import { create } from 'zustand';
 import { GameStatePayload, GameOverPayload, MapEmitPayload } from '../types/game.types';
 
@@ -7284,7 +7328,7 @@ export const useGameStore = create<GameStore>((set) => ({
   setGameOver: (gameOver) => set({ gameOver }),
   resetGame: () => set({ world: null, gameState: null, gameOver: null }),
 }));
-========== ./src/types/game.types.ts ==========
+========== ./frontend/src/types/game.types.ts ==========
 import { CharacterName, EndReason, MatchMode, MatchType, Pillar, PlayerSnapshot, BulletSnapshot, WinnerData } from '@transcendence/types';
 export { CharacterName, EndReason, MatchMode, MatchType };
 
@@ -7326,7 +7370,7 @@ export interface MapEmitPayload {
     playerSpeed: number;
   };
 }
-========== ./src/types/socket.types.ts ==========
+========== ./frontend/src/types/socket.types.ts ==========
 import { PlayerSnapshot, BulletSnapshot, WinnerData, CharacterName } from '@transcendence/types';
 
 export interface JoinLobbyPayload {
@@ -7351,51 +7395,6 @@ export interface GameOverPayload {
   winnerData: WinnerData;
   time: number;
 }
-========== ./src/vite-env.d.ts ==========
+========== ./frontend/src/vite-env.d.ts ==========
 // src/vite-env.d.ts
 /// <reference types="vite/client" />
-========== ./tailwind.config.js ==========
-/** @type {import('tailwindcss').Config} */
-export default {
-  content: [
-    "./index.html",
-    "./src/**/*.{js,ts,jsx,tsx}",
-  ],
-  theme: {
-    extend: {},
-  },
-  plugins: [],
-}
-
-========== ./vite.config.ts ==========
-import { defineConfig } from "vite";
-import react from "@vitejs/plugin-react";
-
-export default defineConfig({
-	plugins: [react()],
-	server: {
-		port: 5173,
-		host: true,
-		hmr: {
-			clientPort: 2443,
-		},
-		watch: {
-			usePolling: process.env.CHOKIDAR_USEPOLLING === "true",
-		},
-		allowedHosts: [
-			"frontend",
-			...(process.env.NGROK_DOMAIN ? [process.env.NGROK_DOMAIN] : []),
-		],
-		proxy: {
-			"/api": {
-				target: "http://localhost:3001",
-				changeOrigin: true,
-			},
-			"/auth": {
-				target: "http://localhost:3002",
-				changeOrigin: true,
-			},
-		},
-	},
-});
-

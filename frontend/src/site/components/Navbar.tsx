@@ -61,7 +61,7 @@ export default function Navbar({ currentPage, onNavigate, onLogout, username, av
 
     // 2. Apri il canale SSE per ricevere le nuove in tempo reale
     // ASSICURATI CHE L'URL SIA QUELLO DEL BACKEND
-    const SSE_URL = '/api/users/me/notifications/stream'; 
+    const SSE_URL = '/api/users/me/notification/stream'; 
     
     const eventSource = new EventSource(SSE_URL, {
       withCredentials: true // FONDAMENTALE per far leggere i cookie di sessione a NestJS
