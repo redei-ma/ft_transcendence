@@ -1,0 +1,28 @@
+{
+  "meta": {
+    "name": "Classic Arena",
+    "version": "1.0",
+    "author": "Giovanni"
+  },
+  "settings": {
+    "width": 130,
+    "depth": 130,
+    "maxPlayers": 2
+  },
+  "walls": [
+    {"id": "wall", "x": 0, "z": 0, "width": 130, "depth": 5},
+    {"id": "wall", "x": 125, "z": 0, "width": 5, "depth": 130},
+    {"id": "wall", "x": 0, "z": 0, "width": 5, "depth": 130},
+    {"id": "wall", "x": 0, "z": 125, "width": 130, "depth": 5}
+  ],
+  "pillars": [
+    {"id": "pillar", "x": 30, "z": 30, "radius": 3},
+    {"id": "pillar", "x": 100, "z": 30, "radius": 3},
+    {"id": "pillar", "x": 30, "z": 100, "radius": 3},
+    {"id": "pillar", "x": 100, "z": 100, "radius": 3}
+  ],
+  "spawn_points": [
+    { "x": 65, "z": 15 },
+    { "x": 65, "z": 115 }
+  ]
+}

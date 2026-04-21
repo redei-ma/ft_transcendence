@@ -1,8 +1,35 @@
-version: "3.8"
+# =============================================================
+#  docker-compose.yml — PRODUCTION configuration
+#
+#  Uses the "production" Docker stage for all NestJS services:
+#  TypeScript is already compiled during "docker build", so
+#  containers start in ~10s instead of ~2min.
+#
+#  For local development, Docker Compose automatically merges
+#  this file with docker-compose.override.yml (if present),
+#  which switches services back to watch mode with hot reload.
+#
+#  To run in production mode explicitly (ignoring the override):
+#    docker compose -f docker-compose.yml up -d --build
+#  or simply:
+#    make up-prod
+# =============================================================
+
+# Shared healthcheck defaults — referenced with <<: *healthcheck.
+# start_period is short because production containers start fast.
+x-healthcheck: &healthcheck
+    interval: 10s
+    timeout: 5s
+    retries: 5
+    start_period: 30s
 
 services:
+    # ---------------------------------------------------------
+    #  Infrastructure
+    # ---------------------------------------------------------
+
     postgres:
-        container_name: transcendence_postgres
+        container_name: transcendence-postgres
         image: postgres:17-alpine
         restart: unless-stopped
         networks:
@@ -22,87 +49,206 @@ services:
             interval: 5s
             timeout: 5s
             retries: 5
+
     db-migration:
-        container_name: transcendence_db_migration
-        image: transcendence_db_migration:20-alpine
+        container_name: transcendence-db-migration
+        image: transcendence-db-migration:latest
         build:
             context: .
             dockerfile: ./db-migration/Dockerfile
+        restart: "no"
         depends_on:
             postgres:
                 condition: service_healthy
-        restart: "no"
         networks:
             - backend-network
         env_file:
             - .env.shared
         volumes:
-            - ./shared_storage/prisma:/app/prisma
+            - ./shared/prisma:/app/prisma
 
-    user-service:
-        container_name: transcendence_user_service
-        image: transcendence_user_service:20-alpine
+    redis:
+        container_name: transcendence-redis
+        image: redis:alpine
+        restart: unless-stopped
+        networks:
+            - backend-network
+        healthcheck:
+            test: ["CMD", "redis-cli", "ping"]
+            interval: 5s
+            timeout: 3s
+            retries: 5
+
+    # ---------------------------------------------------------
+    #  Application services — production stage
+    #  "node dist/main" — no TypeScript compilation at startup.
+    # ---------------------------------------------------------
+
+    auth-service:
+        container_name: transcendence-auth
+        image: transcendence-auth:latest
         build:
             context: .
-            dockerfile: ./user-service/Dockerfile
-            target: build
+            dockerfile: ./auth-service/Dockerfile
+            target: production
+        restart: unless-stopped
         depends_on:
             db-migration:
                 condition: service_completed_successfully
-        command: sh -c "npx prisma generate && npm run start:dev"
+        networks:
+            - backend-network
+        expose:
+            - "3002"
+        env_file:
+            - .env.shared
+            - ./auth-service/.env
+        environment:
+            NODE_ENV: production
+        healthcheck:
+            test:
+                [
+                    "CMD-SHELL",
+                    "wget -qO- http://127.0.0.1:3002/health || exit 1",
+                ]
+            <<: *healthcheck
+
+    user-service:
+        container_name: transcendence-user
+        image: transcendence-user:latest
+        build:
+            context: .
+            dockerfile: ./user-service/Dockerfile
+            target: production
         restart: unless-stopped
+        depends_on:
+            db-migration:
+                condition: service_completed_successfully
         networks:
             - backend-network
         expose:
             - "3001"
         env_file:
             - .env.shared
+            - ./user-service/.env
+        environment:
+            NODE_ENV: production
         volumes:
-            - ./user-service/src:/app/src
-            - ./shared_storage/prisma/schema.prisma:/app/prisma/schema.prisma:ro
             - uploads_data:/uploads
         healthcheck:
             test:
                 [
                     "CMD-SHELL",
-                    "wget -qO- http://localhost:3001/health || exit 1",
+                    "wget -qO- http://127.0.0.1:3001/health || exit 1",
                 ]
-            interval: 10s
-            timeout: 5s
-            retries: 5
-            start_period: 15s
+            <<: *healthcheck
 
     game-service:
-        container_name: transcendence_game_service
-        image: transcendence_game_service:20-alpine
+        container_name: transcendence-game
+        image: transcendence-game:latest
         build:
             context: .
             dockerfile: ./game-service/Dockerfile
-            target: build
+            target: production
+        restart: unless-stopped
         depends_on:
             db-migration:
                 condition: service_completed_successfully
-        command: sh -c "npx prisma generate && npm run start:dev"
-        restart: unless-stopped
+            redis:
+                condition: service_healthy
         networks:
             - backend-network
         expose:
             - "3000"
         env_file:
             - .env.shared
-        volumes:
-            - ./game-service/src:/app/src
-            - ./shared_storage/prisma/schema.prisma:/app/prisma/schema.prisma:ro
+            - ./game-service/.env
+        environment:
+            NODE_ENV: production
         healthcheck:
             test:
                 [
                     "CMD-SHELL",
-                    "wget -qO- http://localhost:3000/health || exit 1",
+                    "wget -qO- http://127.0.0.1:3000/health || exit 1",
                 ]
-            interval: 10s
-            timeout: 5s
-            retries: 5
-            start_period: 15s
+            <<: *healthcheck
+
+    matchmaking-service:
+        container_name: transcendence-matchmaking
+        image: transcendence-matchmaking:latest
+        build:
+            context: .
+            dockerfile: ./matchmaking-service/Dockerfile
+            target: production
+        restart: unless-stopped
+        depends_on:
+            redis:
+                condition: service_healthy
+        networks:
+            - backend-network
+        expose:
+            - "3500"
+        env_file:
+            - .env.shared
+            - ./matchmaking-service/.env
+        environment:
+            NODE_ENV: production
+        healthcheck:
+            test:
+                [
+                    "CMD-SHELL",
+                    "wget -qO- http://127.0.0.1:3500/health || exit 1",
+                ]
+            <<: *healthcheck
+
+    # ---------------------------------------------------------
+    #  Frontend — static files served by nginx on :80.
+    # ---------------------------------------------------------
+
+    frontend:
+        container_name: transcendence-frontend
+        image: transcendence-frontend:latest
+        build:
+            context: .
+            dockerfile: ./frontend/Dockerfile
+            target: production
+        restart: unless-stopped
+        networks:
+            - backend-network
+        expose:
+            - "5173"
+        env_file:
+            - .env.shared
+        healthcheck:
+            test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:5173/ || exit 1"]
+            <<: *healthcheck
+
+    # ---------------------------------------------------------
+    #  Gateway + tunnel
+    # ---------------------------------------------------------
+
+    gateway:
+        container_name: transcendence-gateway
+        image: nginx:stable-alpine
+        restart: unless-stopped
+        depends_on:
+            auth-service:
+                condition: service_healthy
+            user-service:
+                condition: service_healthy
+            game-service:
+                condition: service_healthy
+            matchmaking-service:
+                condition: service_healthy
+            frontend:
+                condition: service_healthy
+        networks:
+            - nginx_network
+            - backend-network
+        ports:
+            - "2080:2080"
+        volumes:
+            - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+            - uploads_data:/uploads
 
 volumes:
     postgres_data:
@@ -111,3 +257,5 @@ volumes:
 networks:
     backend-network:
         driver: bridge
+    nginx_network:
+        external: true

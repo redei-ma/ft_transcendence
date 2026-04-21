@@ -1,0 +1,154 @@
+
+import { useRef, useMemo } from 'react';
+import { useFrame } from '@react-three/fiber';
+import * as THREE from 'three';
+import { AttackType, GameConfig } from '@transcendence/types';
+import { useGameStore } from '../../storage/gameStore';
+
+interface ZeusAuraProps {
+  playerId: string;
+}
+
+// Derivati dal config
+const AURA_RADIUS = GameConfig.PLAYER.RADIUS * 2;
+const AURA_CENTER_Y = GameConfig.PLAYER.RADIUS * 3 * 0.5;
+const BOLT_RADIUS = AURA_RADIUS * 1.36;
+const SPARK_SPAWN_RADIUS = AURA_RADIUS * 0.55;
+
+export function ZeusAura({ playerId }: ZeusAuraProps) {
+  const groupRef = useRef<THREE.Group>(null);
+  const boltsRef = useRef<THREE.Group>(null);
+  const sparksRef = useRef<THREE.Points>(null);
+  const timeAccum = useRef(0);
+  const currentScale = useRef(1.0);
+
+  const boltCount = 8;
+  const segmentsPerBolt = 10;
+  const sparkCount = 300;
+
+  const boltLines = useMemo(() => {
+    const lines: THREE.BufferGeometry[] = [];
+    for (let i = 0; i < boltCount; i++) {
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(segmentsPerBolt * 3), 3));
+      lines.push(geo);
+    }
+    return lines;
+  }, []);
+
+  const sparkData = useMemo(() => {
+    const pos = new Float32Array(sparkCount * 3);
+    const dir = new Float32Array(sparkCount * 3);
+    const life = new Float32Array(sparkCount);
+    const speed = new Float32Array(sparkCount);
+    for (let i = 0; i < sparkCount; i++) respawnSpark(pos, dir, life, speed, i);
+    return { positions: pos, directions: dir, lifetimes: life, speeds: speed };
+  }, []);
+
+  useFrame((_, delta) => {
+    if (!groupRef.current) return;
+
+    const player = useGameStore.getState().gameState?.players.find(p => p.id === playerId);
+    if (!player || player.isDead) {
+      groupRef.current.visible = false;
+      return;
+    }
+    groupRef.current.visible = true;
+
+    const isMelee = player.isAttacking && player.attackType === AttackType.MELEE_ATTACK;
+    const isDefending = player.isDefending;
+
+    let targetScale = 1.0;
+    if (isDefending) targetScale = 0.85;
+    else if (isMelee) targetScale = 1.6;
+
+    currentScale.current = THREE.MathUtils.lerp(currentScale.current, targetScale, 1 - Math.pow(0.001, delta));
+    groupRef.current.scale.setScalar(currentScale.current);
+
+    const speedMult = isDefending ? 0.4 : isMelee ? 3.0 : 1.0;
+    const jitterMult = isDefending ? 0.3 : isMelee ? 1.5 : 1.0;
+    const refreshRate = isDefending ? 0.12 : isMelee ? 0.03 : 0.05;
+
+    timeAccum.current += delta;
+    if (boltsRef.current && timeAccum.current > refreshRate) {
+      timeAccum.current = 0;
+      regenerateBolts(boltLines, segmentsPerBolt, jitterMult);
+    }
+
+    if (sparksRef.current) {
+      const posAttr = sparksRef.current.geometry.getAttribute('position') as THREE.BufferAttribute;
+      const { positions, directions, lifetimes, speeds } = sparkData;
+
+      for (let i = 0; i < sparkCount; i++) {
+        lifetimes[i] -= delta * 1.2 * speedMult;
+        if (lifetimes[i] <= 0) respawnSpark(positions, directions, lifetimes, speeds, i);
+
+        positions[i * 3]     += directions[i * 3]     * speeds[i] * delta * speedMult;
+        positions[i * 3 + 1] += directions[i * 3 + 1] * speeds[i] * delta * speedMult;
+        positions[i * 3 + 2] += directions[i * 3 + 2] * speeds[i] * delta * speedMult;
+
+        positions[i * 3]     += (Math.random() - 0.5) * 0.15 * jitterMult;
+        positions[i * 3 + 1] += (Math.random() - 0.5) * 0.15 * jitterMult;
+        positions[i * 3 + 2] += (Math.random() - 0.5) * 0.15 * jitterMult;
+
+        posAttr.array[i * 3]     = positions[i * 3];
+        posAttr.array[i * 3 + 1] = positions[i * 3 + 1];
+        posAttr.array[i * 3 + 2] = positions[i * 3 + 2];
+      }
+      posAttr.needsUpdate = true;
+    }
+  });
+
+ return (
+    <group ref={groupRef} position={[0, AURA_CENTER_Y, 0]}>
+      <group ref={boltsRef}>
+
+        {boltLines.map((geo, i) => {
+          const line = new THREE.Line(geo, new THREE.LineBasicMaterial({
+            color: new THREE.Color(0, 2, 5), transparent: true, opacity: 0.9, toneMapped: false, blending: THREE.AdditiveBlending,
+          }));
+          return <primitive key={i} object={line} />;
+        })}
+      </group>
+
+      <points ref={sparksRef}>
+        <bufferGeometry>
+          <bufferAttribute attach="attributes-position" args={[sparkData.positions, 3]} />
+        </bufferGeometry>
+        <pointsMaterial size={0.08} color={new THREE.Color(0, 4, 10)} transparent opacity={0.9} toneMapped={false} blending={THREE.AdditiveBlending} depthWrite={false} />
+      </points>
+    </group>
+  );
+}
+
+function respawnSpark(pos: Float32Array, dir: Float32Array, life: Float32Array, speed: Float32Array, i: number) {
+  const theta = Math.random() * Math.PI * 2;
+  const phi = Math.acos(2 * Math.random() - 1);
+  const r = SPARK_SPAWN_RADIUS + Math.random() * (AURA_RADIUS * 0.36);
+  const x = Math.sin(phi) * Math.cos(theta);
+  const y = Math.sin(phi) * Math.sin(theta);
+  const z = Math.cos(phi);
+  pos[i*3] = x*r; pos[i*3+1] = y*r; pos[i*3+2] = z*r;
+  dir[i*3] = x; dir[i*3+1] = y; dir[i*3+2] = z;
+  speed[i] = 1.5 + Math.random() * 2.5;
+  life[i] = 0.3 + Math.random() * 0.5;
+}
+
+function regenerateBolts(geometries: THREE.BufferGeometry[], segments: number, jitterMult: number) {
+  const jitter = 0.5 * jitterMult;
+  for (const geo of geometries) {
+    const posAttr = geo.getAttribute('position') as THREE.BufferAttribute;
+    const sT = Math.random()*Math.PI*2, sP = Math.acos(2*Math.random()-1);
+    const eT = sT+(Math.random()-0.5)*Math.PI, eP = sP+(Math.random()-0.5)*Math.PI*0.5;
+    for (let j = 0; j < segments; j++) {
+      const t = j/(segments-1);
+      const theta = sT+(eT-sT)*t, phi = sP+(eP-sP)*t;
+      const r = BOLT_RADIUS*(0.6+Math.random()*0.4);
+      const js = Math.sin(t*Math.PI)*jitter;
+      posAttr.array[j*3]   = r*Math.sin(phi)*Math.cos(theta)+(Math.random()-0.5)*js;
+      posAttr.array[j*3+1] = r*Math.sin(phi)*Math.sin(theta)+(Math.random()-0.5)*js;
+      posAttr.array[j*3+2] = r*Math.cos(phi)+(Math.random()-0.5)*js;
+    }
+    posAttr.needsUpdate = true;
+  }
+}
