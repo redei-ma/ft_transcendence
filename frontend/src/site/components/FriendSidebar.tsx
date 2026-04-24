@@ -4,7 +4,8 @@ import * as Icons from './Icons';
 import { theme } from '../../configs/theme';
 
 const SIDEBAR_WIDTH = 300;
-const POLL_INTERVAL = 30000; // 30 secondi
+const FRIENDS_POLL = 30000;
+const INVITES_POLL = 5000;
 
 type Tab = 'friends' | 'requests' | 'add';
 
@@ -20,12 +21,20 @@ const statusLabel = (s: string) =>
   : s === 'IN_QUEUE' ? 'In Queue'
   : 'Offline';
 
-export default function FriendsSidebar() {
+interface FriendsSidebarProps {
+  onGameInviteAccepted: (sessionId: string) => void;
+}
+
+export default function FriendsSidebar({ onGameInviteAccepted }: FriendsSidebarProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [tab, setTab] = useState<Tab>('friends');
   const [friends, setFriends] = useState<api.FriendEntry[]>([]);
   const [requests, setRequests] = useState<api.FriendRequestsResponse | null>(null);
   const [loading, setLoading] = useState(true);
+
+  // Game invites
+  const [gameInvites, setGameInvites] = useState<api.GameInvite[]>([]);
+  const [now, setNow] = useState(Date.now());
 
   // Add friend
   const [addId, setAddId] = useState('');
@@ -35,7 +44,7 @@ export default function FriendsSidebar() {
   // Invite feedback
   const [inviteMsg, setInviteMsg] = useState<Record<number, string>>({});
 
-  const fetchAll = useCallback(async () => {
+  const fetchFriends = useCallback(async () => {
     const [friendsData, reqData] = await Promise.all([
       api.getFriends(),
       api.getFriendRequests(),
@@ -45,18 +54,33 @@ export default function FriendsSidebar() {
     setLoading(false);
   }, []);
 
-  // Fetch iniziale + polling
+  const fetchInvites = useCallback(async () => {
+    const data = await api.getGameInvites();
+    if (data) setGameInvites(data.invites);
+  }, []);
+
+  // Polling amici (30s) + inviti (5s)
   useEffect(() => {
-    fetchAll();
-    const interval = setInterval(fetchAll, POLL_INTERVAL);
-    return () => clearInterval(interval);
-  }, [fetchAll]);
+    fetchFriends();
+    fetchInvites();
+    const friendsInterval = setInterval(fetchFriends, FRIENDS_POLL);
+    const invitesInterval = setInterval(fetchInvites, INVITES_POLL);
+    return () => { clearInterval(friendsInterval); clearInterval(invitesInterval); };
+  }, [fetchFriends, fetchInvites]);
+
+  // Countdown timer
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   // Contatori
   const receivedCount = requests?.received?.length || 0;
+  const activeInvites = gameInvites.filter(inv => new Date(inv.expiresAt).getTime() > now);
+  const badgeCount = receivedCount + activeInvites.length;
   const onlineCount = friends.filter(f => f.friend.status === 'ONLINE').length;
 
-  // Ordina: online first, poi in-game, poi offline
+  // Ordina: online first
   const sortedFriends = [...friends].sort((a, b) => {
     const order: Record<string, number> = { 'ONLINE': 0, 'IN_QUEUE': 1, 'IN_GAME': 2, 'OFFLINE': 3 };
     return (order[a.friend.status] ?? 4) - (order[b.friend.status] ?? 4);
@@ -71,29 +95,26 @@ export default function FriendsSidebar() {
     if (result.ok) {
       setAddMsg('Richiesta inviata!');
       setAddId('');
-      fetchAll();
+      fetchFriends();
     } else {
       setAddError(result.message || 'Errore');
     }
   };
 
-  const handleAccept = async (targetId: number) => {
-    if (await api.respondFriendRequest(targetId, 'ACCEPTED')) fetchAll();
+  const handleAcceptFriend = async (targetId: number) => {
+    if (await api.respondFriendRequest(targetId, 'ACCEPTED')) fetchFriends();
   };
 
-  const handleReject = async (targetId: number) => {
-    if (await api.respondFriendRequest(targetId, 'REJECTED')) fetchAll();
+  const handleRejectFriend = async (targetId: number) => {
+    if (await api.respondFriendRequest(targetId, 'REJECTED')) fetchFriends();
   };
 
   const handleRemove = async (targetId: number) => {
-    if (await api.removeFriend(targetId)) fetchAll();
+    if (await api.removeFriend(targetId)) fetchFriends();
   };
 
-  const handleInvite = async (targetId: number) => {
-    // Temporarily mock the API response to bypass the TS2339 error
-    // const result = await api.sendGameInvite(targetId); 
-    const result = { ok: true, message: 'Invited!' }; 
-    
+  const handleSendInvite = async (targetId: number) => {
+    const result = await api.sendGameInvite(targetId);
     setInviteMsg(prev => ({
       ...prev,
       [targetId]: result.ok ? 'Invited!' : (result.message || 'Error'),
@@ -101,6 +122,21 @@ export default function FriendsSidebar() {
     setTimeout(() => {
       setInviteMsg(prev => { const n = { ...prev }; delete n[targetId]; return n; });
     }, 3000);
+  };
+
+  const handleAcceptInvite = async (invite: api.GameInvite) => {
+    const result = await api.respondGameInvite(invite.id, 'ACCEPTED');
+    if (result.ok && result.sessionId) {
+      setGameInvites(prev => prev.filter(i => i.id !== invite.id));
+      onGameInviteAccepted(result.sessionId);
+    }
+  };
+
+  const handleRejectInvite = async (invite: api.GameInvite) => {
+    const result = await api.respondGameInvite(invite.id, 'REJECTED');
+    if (result.ok) {
+      setGameInvites(prev => prev.filter(i => i.id !== invite.id));
+    }
   };
 
   // ─── Tab button ───
@@ -127,7 +163,7 @@ export default function FriendsSidebar() {
     </button>
   );
 
-  // ─── Toggle button (sempre visibile) ───
+  // ─── Toggle button ───
   const toggleBtn = (
     <button onClick={() => setIsOpen(!isOpen)} style={{
       position: 'fixed', right: isOpen ? SIDEBAR_WIDTH : 0,
@@ -135,7 +171,7 @@ export default function FriendsSidebar() {
       width: 36, height: 72, border: `1px solid ${theme.colors.border}`,
       borderRight: isOpen ? 'none' : `1px solid ${theme.colors.border}`,
       borderLeft: isOpen ? `1px solid ${theme.colors.border}` : 'none',
-      borderRadius: isOpen ? '8px 0 0 8px' : '8px 0 0 8px',
+      borderRadius: '8px 0 0 8px',
       background: theme.colors.bgPanel, color: theme.colors.goldDim,
       cursor: 'pointer', display: 'flex', flexDirection: 'column',
       alignItems: 'center', justifyContent: 'center', gap: '4px',
@@ -143,12 +179,12 @@ export default function FriendsSidebar() {
       backdropFilter: 'blur(8px)',
     }}>
       <Icons.Users size={16} />
-      {(receivedCount > 0 || onlineCount > 0) && (
+      {(badgeCount > 0 || onlineCount > 0) && (
         <span style={{
           fontSize: '9px', fontWeight: 'bold',
-          color: receivedCount > 0 ? theme.colors.dead : theme.colors.hpHigh,
+          color: badgeCount > 0 ? theme.colors.dead : theme.colors.hpHigh,
         }}>
-          {receivedCount > 0 ? receivedCount : onlineCount}
+          {badgeCount > 0 ? badgeCount : onlineCount}
         </span>
       )}
     </button>
@@ -158,7 +194,6 @@ export default function FriendsSidebar() {
     <>
       {toggleBtn}
 
-      {/* Sidebar panel */}
       <div style={{
         position: 'fixed', top: 0, right: 0, bottom: 0,
         width: SIDEBAR_WIDTH,
@@ -186,11 +221,11 @@ export default function FriendsSidebar() {
         {/* Tabs */}
         <div style={{ display: 'flex', borderBottom: `1px solid ${theme.colors.border}` }}>
           <TabBtn id="friends" label="List" />
-          <TabBtn id="requests" label="Requests" badge={receivedCount} />
+          <TabBtn id="requests" label="Requests" badge={badgeCount} />
           <TabBtn id="add" label="Add" />
         </div>
 
-        {/* Content — scrollable */}
+        {/* Content */}
         <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden' }}>
 
           {loading && (
@@ -199,7 +234,7 @@ export default function FriendsSidebar() {
             </div>
           )}
 
-          {/* ═══ FRIENDS LIST TAB ═══ */}
+          {/* ═══ FRIENDS LIST ═══ */}
           {!loading && tab === 'friends' && (
             sortedFriends.length === 0 ? (
               <div style={{ padding: '32px 16px', textAlign: 'center' }}>
@@ -221,7 +256,6 @@ export default function FriendsSidebar() {
                     onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(200,170,100,0.05)'}
                     onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
                   >
-                    {/* Avatar + status dot */}
                     <div style={{ position: 'relative', flexShrink: 0 }}>
                       <img
                         src={f.friend.avatarUrl || `https://api.dicebear.com/9.x/pixel-art/svg?seed=${f.friend.username}`}
@@ -235,7 +269,6 @@ export default function FriendsSidebar() {
                       }} />
                     </div>
 
-                    {/* Name + status */}
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{
                         fontFamily: theme.fonts.heading, fontWeight: 600, fontSize: '12px',
@@ -247,16 +280,14 @@ export default function FriendsSidebar() {
                       </div>
                     </div>
 
-                    {/* Actions */}
                     <div style={{ display: 'flex', gap: '4px', alignItems: 'center', flexShrink: 0 }}>
-                      {/* Invite (solo se online) */}
                       {isOnline && (
                         inviteMsg[f.friend.id] ? (
                           <span style={{
                             fontSize: '9px', color: inviteMsg[f.friend.id] === 'Invited!' ? theme.colors.hpHigh : theme.colors.dead,
                           }}>{inviteMsg[f.friend.id]}</span>
                         ) : (
-                          <button onClick={() => handleInvite(f.friend.id)} title="Invite to game" style={{
+                          <button onClick={() => handleSendInvite(f.friend.id)} title="Invite to game" style={{
                             background: 'none', border: `1px solid ${theme.colors.goldSubtle}`,
                             borderRadius: '4px', color: theme.colors.goldDim, cursor: 'pointer',
                             padding: '3px 6px', display: 'flex', alignItems: 'center',
@@ -270,7 +301,6 @@ export default function FriendsSidebar() {
                         )
                       )}
 
-                      {/* Remove */}
                       <button onClick={() => handleRemove(f.friend.id)} title="Remove friend" style={{
                         background: 'none', border: 'none', color: theme.colors.textMuted,
                         cursor: 'pointer', padding: '3px', display: 'flex', opacity: 0.4,
@@ -288,20 +318,95 @@ export default function FriendsSidebar() {
             )
           )}
 
-          {/* ═══ REQUESTS TAB ═══ */}
+          {/* ═══ REQUESTS TAB (Friend Requests + Game Invites) ═══ */}
           {!loading && tab === 'requests' && (
             <div style={{ padding: '8px 0' }}>
-              {/* Received */}
+
+              {/* ── GAME INVITES ── */}
+              {activeInvites.length > 0 && (
+                <>
+                  <div style={{ padding: '8px 16px 4px' }}>
+                    <span style={{ fontFamily: theme.fonts.heading, fontSize: '10px', color: theme.colors.gold, letterSpacing: '1.5px', textTransform: 'uppercase' }}>
+                      Game Invites ({activeInvites.length})
+                    </span>
+                  </div>
+                  {activeInvites.map((inv) => {
+                    const expiresAt = new Date(inv.expiresAt).getTime();
+                    const remaining = Math.max(0, Math.ceil((expiresAt - now) / 1000));
+                    const ttlTotal = Math.max(1, Math.ceil((expiresAt - new Date(inv.createdAt).getTime()) / 1000));
+                    const progressPct = (remaining / ttlTotal) * 100;
+
+                    return (
+                      <div key={`invite-${inv.id}`} style={{
+                        padding: '10px 16px', borderBottom: `1px solid rgba(200,170,100,0.06)`,
+                        background: 'rgba(200,170,100,0.04)',
+                      }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
+                          <img
+                            src={inv.sender.avatarUrl || `https://api.dicebear.com/9.x/pixel-art/svg?seed=${inv.sender.username}`}
+                            alt="" style={{ width: 28, height: 28, borderRadius: '50%', border: `2px solid ${theme.colors.gold}`, flexShrink: 0 }}
+                          />
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{
+                              fontFamily: theme.fonts.heading, fontSize: '12px', fontWeight: 600,
+                              color: theme.colors.textPrimary,
+                            }}>{inv.sender.username}</div>
+                            <div style={{ fontFamily: theme.fonts.mono, fontSize: '10px', color: theme.colors.goldDim }}>
+                              wants to fight!
+                            </div>
+                          </div>
+                          <span style={{
+                            fontFamily: theme.fonts.mono, fontSize: '16px', fontWeight: 700,
+                            color: remaining <= 10 ? theme.colors.dead : theme.colors.gold,
+                            transition: 'color 0.3s', minWidth: '32px', textAlign: 'right',
+                          }}>{remaining}s</span>
+                        </div>
+
+                        {/* Progress bar */}
+                        <div style={{
+                          width: '100%', height: '2px', background: theme.colors.bgDark,
+                          borderRadius: '1px', overflow: 'hidden', marginBottom: '8px',
+                        }}>
+                          <div style={{
+                            height: '100%', width: `${progressPct}%`,
+                            background: remaining <= 10 ? theme.colors.dead : theme.colors.gold,
+                            transition: 'width 1s linear, background 0.3s',
+                          }} />
+                        </div>
+
+                        {/* Buttons */}
+                        <div style={{ display: 'flex', gap: '6px' }}>
+                          <button onClick={() => handleAcceptInvite(inv)} style={{
+                            flex: 1, padding: '6px', border: 'none', borderRadius: '3px',
+                            background: `linear-gradient(180deg, ${theme.colors.gold}, ${theme.colors.goldDark})`,
+                            color: theme.colors.bgDark, fontFamily: theme.fonts.heading,
+                            fontSize: '10px', fontWeight: 700, letterSpacing: '1px', cursor: 'pointer',
+                          }}>ACCEPT</button>
+                          <button onClick={() => handleRejectInvite(inv)} style={{
+                            flex: 1, padding: '6px', border: `1px solid ${theme.colors.border}`,
+                            borderRadius: '3px', background: 'transparent',
+                            color: theme.colors.textMuted, fontFamily: theme.fonts.heading,
+                            fontSize: '10px', fontWeight: 600, letterSpacing: '1px', cursor: 'pointer',
+                          }}>DECLINE</button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                  <div style={{ height: 1, background: theme.colors.border, margin: '4px 16px' }} />
+                </>
+              )}
+
+              {/* ── FRIEND REQUESTS: Received ── */}
               <div style={{ padding: '8px 16px 4px' }}>
                 <span style={{ fontFamily: theme.fonts.heading, fontSize: '10px', color: theme.colors.textMuted, letterSpacing: '1.5px', textTransform: 'uppercase' }}>
-                  Received ({requests?.received?.length || 0})
+                  Friend Requests — Received ({receivedCount})
                 </span>
               </div>
               {(!requests?.received || requests.received.length === 0) ? (
                 <div style={{ padding: '12px 16px', fontSize: '11px', color: theme.colors.textMuted }}>None</div>
               ) : (
                 requests.received.map((r) => (
-                  <div key={r.id} style={{
+                  <div key={`freq-${r.id}`} style={{
                     display: 'flex', alignItems: 'center', gap: '10px',
                     padding: '8px 16px', borderBottom: `1px solid rgba(200,170,100,0.06)`,
                   }}>
@@ -310,12 +415,12 @@ export default function FriendsSidebar() {
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <span style={{ fontFamily: theme.fonts.heading, fontSize: '12px', color: theme.colors.textPrimary }}>{r.friend.username}</span>
                     </div>
-                    <button onClick={() => handleAccept(r.friend.id)} style={{
+                    <button onClick={() => handleAcceptFriend(r.friend.id)} style={{
                       padding: '4px 10px', background: theme.colors.hpHigh, border: 'none',
                       borderRadius: '2px', color: theme.colors.bgDark, fontFamily: theme.fonts.heading,
                       fontSize: '9px', fontWeight: 700, cursor: 'pointer',
                     }}>OK</button>
-                    <button onClick={() => handleReject(r.friend.id)} style={{
+                    <button onClick={() => handleRejectFriend(r.friend.id)} style={{
                       padding: '4px 8px', background: 'none', border: `1px solid ${theme.colors.dead}`,
                       borderRadius: '2px', color: theme.colors.dead, fontFamily: theme.fonts.heading,
                       fontSize: '9px', fontWeight: 700, cursor: 'pointer',
@@ -329,17 +434,17 @@ export default function FriendsSidebar() {
               {/* Divider */}
               <div style={{ height: 1, background: theme.colors.border, margin: '8px 16px' }} />
 
-              {/* Sent */}
+              {/* ── FRIEND REQUESTS: Sent ── */}
               <div style={{ padding: '8px 16px 4px' }}>
                 <span style={{ fontFamily: theme.fonts.heading, fontSize: '10px', color: theme.colors.textMuted, letterSpacing: '1.5px', textTransform: 'uppercase' }}>
-                  Sent ({requests?.sent?.length || 0})
+                  Friend Requests — Sent ({requests?.sent?.length || 0})
                 </span>
               </div>
               {(!requests?.sent || requests.sent.length === 0) ? (
                 <div style={{ padding: '12px 16px', fontSize: '11px', color: theme.colors.textMuted }}>None</div>
               ) : (
                 requests.sent.map((r) => (
-                  <div key={r.id} style={{
+                  <div key={`fsent-${r.id}`} style={{
                     display: 'flex', alignItems: 'center', gap: '10px',
                     padding: '8px 16px', borderBottom: `1px solid rgba(200,170,100,0.06)`,
                   }}>

@@ -313,6 +313,7 @@ export default function Navbar({ currentPage, onNavigate, onLogout, username, av
                     <DropdownItem icon={Icons.Settings} label="Settings" onClick={() => scrollTo('profile', 'profile-settings')} />
                     <DropdownItem icon={Icons.BarChart} label="Statistics" onClick={() => scrollTo('profile', 'profile-stats')} />
                     <DropdownItem icon={Icons.Users} label="Friends" onClick={() => scrollTo('profile', 'profile-friends')} />
+                    <DropdownItem icon={Icons.Trophy} label="Achievements" onClick={() => scrollTo('profile', 'profile-achievements')} />
                     <div style={{ height: '1px', background: theme.colors.border, margin: '4px 12px' }} />
                     <DropdownItem icon={Icons.Shield} label="Security & 2FA" onClick={() => scrollTo('profile', 'profile-security')} />
                   </DropdownPanel>

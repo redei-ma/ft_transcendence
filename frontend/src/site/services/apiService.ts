@@ -95,6 +95,35 @@ export interface FriendRequestsResponse {
     received: FriendEntry[];
 }
 
+export interface GameInvite {
+    id: number;
+    sender: FriendUser;
+    receiver: FriendUser;
+    status: string;
+    createdAt: string;
+    expiresAt: string;
+}
+
+export interface GameInviteListResponse {
+    invites: GameInvite[];
+    total: number;
+}
+
+export interface Achievement {
+    name: string;
+    description: string;
+    iconPath: string;
+    tier: 'BRONZE' | 'SILVER' | 'GOLD' | 'PLATINUM';
+    unlockedAt: string;
+}
+
+export interface UserAchievementsResponse {
+    unlocked: Achievement[];
+    unlockedCount: number;
+    totalCount: number;
+}
+
+
 // ==========================================
 // 📡 CHIAMATE API GENERALI
 // ==========================================
@@ -412,5 +441,59 @@ export async function removeFriend(targetId: number): Promise<boolean> {
     } catch (error) {
         console.error("[API] Error removing friend:", error);
         return false;
+    }
+}
+
+export async function sendGameInvite(targetId: number, expiresInSeconds = 60): Promise<{ ok: boolean; message?: string }> {
+    try {
+        const res = await fetchWithAuthRetry(`/api/users/me/invites/${targetId}`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ expiresInSeconds }),
+        });
+        if (!res) return { ok: false, message: "Connessione fallita" };
+        if (res.ok) return { ok: true };
+        const data = await res.json().catch(() => ({}));
+        const msg = res.status === 409 ? "Invito già inviato" : data.message || "Errore";
+        return { ok: false, message: msg };
+    } catch (error) {
+        return { ok: false, message: "Network error" };
+    }
+}
+
+export async function getGameInvites(): Promise<GameInviteListResponse | null> {
+    try {
+        const res = await fetchWithAuthRetry("/api/users/me/invites");
+        if (!res || !res.ok) return null;
+        return (await res.json()) as GameInviteListResponse;
+    } catch (error) {
+        console.error("[API] Error fetching game invites:", error);
+        return null;
+    }
+}
+
+export async function respondGameInvite(inviteId: number, action: 'ACCEPTED' | 'REJECTED'): Promise<{ ok: boolean; sessionId?: string }> {
+    try {
+        const res = await fetchWithAuthRetry(`/api/users/me/invites/${inviteId}/respond`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ action }),
+        });
+        if (!res) return { ok: false };
+        const data = await res.json().catch(() => ({}));
+        return { ok: res.ok, sessionId: data.sessionId };
+    } catch (error) {
+        return { ok: false };
+    }
+}
+
+export async function getMyAchievements(): Promise<UserAchievementsResponse | null> {
+    try {
+        const res = await fetchWithAuthRetry("/api/users/me/achievements");
+        if (!res || !res.ok) return null;
+        return (await res.json()) as UserAchievementsResponse;
+    } catch (error) {
+        console.error("[API] Error fetching achievements:", error);
+        return null;
     }
 }

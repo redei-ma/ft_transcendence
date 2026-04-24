@@ -3,7 +3,7 @@ import { inputStyle, sectionTitleStyle } from '../styles/shared';
 import * as Icons from '../components/Icons';
 import * as api from '../services/apiService';
 import * as authService from '../services/authService';
-import { UserProfile, UserStats, UserSettings, generate2fa, turnOn2fa, turnOff2fa } from '../services/apiService';
+import { UserProfile, UserStats, UserSettings, UserAchievementsResponse, generate2fa, turnOn2fa, turnOff2fa } from '../services/apiService';
 import { theme } from '../../configs/theme';
 import { NAVBAR_HEIGHT } from '../components/Navbar';
 import { CharacterName } from '@transcendence/types';
@@ -88,6 +88,8 @@ export default function ProfilePage() {
   const confirmPwdRef = useRef('');
   const [confirmPwdDisplay, setConfirmPwdDisplay] = useState('');
 
+  const [achievements, setAchievements] = useState<UserAchievementsResponse | null>(null);
+
   const [dialog, setDialog] = useState<{ 
     isOpen: boolean; 
     title: string; 
@@ -97,11 +99,12 @@ export default function ProfilePage() {
   } | null>(null);
 
   useEffect(() => {
-    Promise.all([api.getMyProfile(), api.getMyStats(), api.getMySettings()])
-      .then(([p, s, set]) => { 
+    Promise.all([api.getMyProfile(), api.getMyStats(), api.getMySettings(), api.getMyAchievements()])
+      .then(([p, s, set, ach]) => { 
         if (p) setProfile(p); 
         if (s) setStats(s); 
-        if (set) setSettings(set); 
+        if (set) setSettings(set);
+        if (ach) setAchievements(ach);
       })
       .finally(() => setLoading(false));
   }, []);
@@ -319,6 +322,78 @@ export default function ProfilePage() {
               ))}
             </div>
           </>
+        )}
+      </div>
+
+      {/* Achievements */}
+      <div id="profile-achievements" style={{ paddingTop: '80px', scrollMarginTop: `${NAVBAR_HEIGHT}px` }}>
+        <h2 style={{ ...sectionTitleStyle, fontSize: '22px', marginBottom: '24px' }}>Achievements</h2>
+        
+        {/* Progress bar */}
+        <div style={{ marginBottom: '24px', padding: '16px 20px', background: theme.colors.bgPanel, border: `1px solid ${theme.colors.border}`, borderRadius: '4px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+            <span style={{ fontFamily: theme.fonts.heading, fontSize: '12px', color: theme.colors.textSecondary, letterSpacing: '1px' }}>PROGRESS</span>
+            <span style={{ fontFamily: theme.fonts.mono, fontSize: '14px', color: theme.colors.gold, fontWeight: 700 }}>
+              {achievements?.unlockedCount || 0} / {achievements?.totalCount || 0}
+            </span>
+          </div>
+          <div style={{ width: '100%', height: '6px', background: theme.colors.bgDark, borderRadius: '3px', overflow: 'hidden' }}>
+            <div style={{
+              height: '100%', borderRadius: '3px',
+              width: achievements && achievements.totalCount > 0 ? `${(achievements.unlockedCount / achievements.totalCount) * 100}%` : '0%',
+              background: `linear-gradient(90deg, ${theme.colors.goldDark}, ${theme.colors.gold})`,
+              transition: 'width 0.5s ease',
+            }} />
+          </div>
+        </div>
+
+        {/* Achievement cards */}
+        {(!achievements?.unlocked || achievements.unlocked.length === 0) ? (
+          <div style={{ textAlign: 'center', padding: '32px', background: theme.colors.bgPanel, border: `1px solid ${theme.colors.border}`, borderRadius: '4px' }}>
+            <p style={{ fontFamily: theme.fonts.heading, color: theme.colors.textMuted, fontSize: '13px', letterSpacing: '1px' }}>
+              No achievements unlocked yet. Keep playing!
+            </p>
+          </div>
+        ) : (
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+            {achievements.unlocked.map((ach, i) => {
+              const tierColor = ach.tier === 'PLATINUM' ? '#a8e6cf'
+                : ach.tier === 'GOLD' ? theme.colors.gold
+                : ach.tier === 'SILVER' ? '#c0c0c0'
+                : '#cd7f32';
+              return (
+                <div key={i} style={{
+                  padding: '16px', background: theme.colors.bgPanel,
+                  border: `1px solid ${tierColor}33`, borderRadius: '4px',
+                  display: 'flex', gap: '12px', alignItems: 'flex-start',
+                  transition: 'border-color 0.2s',
+                }}
+                  onMouseEnter={(e) => e.currentTarget.style.borderColor = tierColor}
+                  onMouseLeave={(e) => e.currentTarget.style.borderColor = `${tierColor}33`}
+                >
+                  <div style={{
+                    width: 40, height: 40, borderRadius: '8px', flexShrink: 0,
+                    background: `${tierColor}15`, border: `1px solid ${tierColor}40`,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: '20px',
+                  }}>
+                    {ach.tier === 'PLATINUM' ? '💎' : ach.tier === 'GOLD' ? '🏆' : ach.tier === 'SILVER' ? '🥈' : '🥉'}
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontFamily: theme.fonts.heading, fontSize: '13px', fontWeight: 700, color: tierColor, letterSpacing: '0.5px', marginBottom: '2px' }}>
+                      {ach.name}
+                    </div>
+                    <div style={{ fontFamily: theme.fonts.mono, fontSize: '11px', color: theme.colors.textSecondary, lineHeight: 1.4, marginBottom: '4px' }}>
+                      {ach.description}
+                    </div>
+                    <div style={{ fontFamily: theme.fonts.mono, fontSize: '9px', color: theme.colors.textMuted }}>
+                      {new Date(ach.unlockedAt).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         )}
       </div>
 

@@ -11,6 +11,7 @@ import { getMyProfile, UserProfile } from "./site/services/apiService";
 import { theme } from "./configs/theme";
 import DesktopOnlyGuard from "./site/components/desktopOnlyGuard";
 import FriendsSidebar from "./site/components/FriendSidebar";
+import GameInviteToast from "./site/components/GameInviteToast";
 
 export default function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(true);
@@ -51,6 +52,24 @@ export default function App() {
     setCurrentPage("dashboard");
   };
 
+  const handleGameInviteAccepted = (sessionId: string) => {
+    setCurrentPage("play");
+    console.log("[App] Game invite accepted, sessionId:", sessionId);
+  };
+
+  const renderPage = () => {
+    switch (currentPage) {
+      case "dashboard":
+        return <DashboardPage onNavigate={setCurrentPage} />;
+      case "leaderboard":
+        return <LeaderboardPage />;
+      case "profile":
+        return <ProfilePage />;
+      default:
+        return <DashboardPage onNavigate={setCurrentPage} />;
+    }
+  };
+
   if (!isLoggedIn) {
     return <LoginPage onLogin={handleLogin} />;
   }
@@ -71,23 +90,11 @@ export default function App() {
             onExit={() => setCurrentPage("dashboard")}
           />
         </DesktopOnlyGuard>
-        <FriendsSidebar />
+        <FriendsSidebar onGameInviteAccepted={handleGameInviteAccepted} />
+        <GameInviteToast onAccepted={handleGameInviteAccepted} />
       </>
     );
   }
-
-  const renderPage = () => {
-    switch (currentPage) {
-      case "dashboard":
-        return <DashboardPage onNavigate={setCurrentPage} />;
-      case "leaderboard":
-        return <LeaderboardPage />;
-      case "profile":
-        return <ProfilePage />;
-      default:
-        return <DashboardPage onNavigate={setCurrentPage} />;
-    }
-  };
 
   return (
     <div style={{ minHeight: "100vh", backgroundColor: theme.colors.bgDark }}>
@@ -99,7 +106,8 @@ export default function App() {
         avatarUrl={user?.avatarUrl || ""}
       />
       {renderPage()}
-      <FriendsSidebar />
+      <FriendsSidebar onGameInviteAccepted={handleGameInviteAccepted} />
+      <GameInviteToast onAccepted={handleGameInviteAccepted} />
     </div>
   );
 }
