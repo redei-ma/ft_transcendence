@@ -240,7 +240,7 @@ export default function Navbar({ currentPage, onNavigate, onLogout, username, av
           </div>
         </div>
 
-        {/* ⚡ LOGICA RESPONSIVE */}
+        {/* LOGICA RESPONSIVE */}
         {isMobile ? (
           /* ================= LAYOUT MOBILE ================= */
           <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginLeft: 'auto' }}>
@@ -312,8 +312,9 @@ export default function Navbar({ currentPage, onNavigate, onLogout, username, av
                   <DropdownPanel isOpen={profile.open}>
                     <DropdownItem icon={Icons.Settings} label="Settings" onClick={() => scrollTo('profile', 'profile-settings')} />
                     <DropdownItem icon={Icons.BarChart} label="Statistics" onClick={() => scrollTo('profile', 'profile-stats')} />
-                    <DropdownItem icon={Icons.Users} label="Friends" onClick={() => scrollTo('profile', 'profile-friends')} />
+                    <DropdownItem icon={Icons.BarChart} label="Match History" onClick={() => scrollTo('profile', 'profile-matches')} />
                     <DropdownItem icon={Icons.Trophy} label="Achievements" onClick={() => scrollTo('profile', 'profile-achievements')} />
+                    <DropdownItem icon={Icons.Users} label="Friends" onClick={() => scrollTo('profile', 'profile-friends')} />
                     <div style={{ height: '1px', background: theme.colors.border, margin: '4px 12px' }} />
                     <DropdownItem icon={Icons.Shield} label="Security & 2FA" onClick={() => scrollTo('profile', 'profile-security')} />
                   </DropdownPanel>

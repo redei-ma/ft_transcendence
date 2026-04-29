@@ -123,6 +123,34 @@ export interface UserAchievementsResponse {
     totalCount: number;
 }
 
+export interface MatchPartecipant {
+    userId: number | null;
+    username: string | null;
+    avatarUrl: string | null;
+    teamId: number;
+    characterName: string;
+    kills: number;
+    deaths: number;
+}
+
+export interface MatchHistoryEntry {
+    matchId: number;
+    playedAt: string;
+    mode: 'RANKED' | 'UNRANKED' | 'LOCAL' | 'AI';
+    type: string;
+    durationSeconds: number;
+    endReason: string | null;
+    result: 'WIN' | 'LOSS' | 'DRAW';
+    participants: MatchPartecipant[];
+}
+
+export interface MatchHistoryResponse {
+    entries: MatchHistoryEntry[];
+    total: number;
+    page: number;
+    limit: number;
+}
+
 
 // ==========================================
 // 📡 CHIAMATE API GENERALI
@@ -494,6 +522,24 @@ export async function getMyAchievements(): Promise<UserAchievementsResponse | nu
         return (await res.json()) as UserAchievementsResponse;
     } catch (error) {
         console.error("[API] Error fetching achievements:", error);
+        return null;
+    }
+}
+
+// ==========================================
+// MATCH HISTORY
+// ==========================================
+
+export async function getMyMatches(page = 1, limit = 10, mode?: string): Promise<MatchHistoryResponse | null> {
+    try {
+        let url = `/api/users/me/matches?page=${page}&limit=${limit}`;
+        if (mode) url += `&mode=${mode}`;
+        const res = await fetchWithAuthRetry(url);
+        if (!res || !res.ok) return null;
+        return (await res.json()) as MatchHistoryResponse; 
+    }
+    catch (error) {
+        console.error("[API] Error fetching matches:", error);
         return null;
     }
 }

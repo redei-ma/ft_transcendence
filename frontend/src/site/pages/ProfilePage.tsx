@@ -3,7 +3,7 @@ import { inputStyle, sectionTitleStyle } from '../styles/shared';
 import * as Icons from '../components/Icons';
 import * as api from '../services/apiService';
 import * as authService from '../services/authService';
-import { UserProfile, UserStats, UserSettings, UserAchievementsResponse, generate2fa, turnOn2fa, turnOff2fa } from '../services/apiService';
+import { UserProfile, UserStats, UserSettings, UserAchievementsResponse, MatchHistoryResponse, generate2fa, turnOn2fa, turnOff2fa } from '../services/apiService';
 import { theme } from '../../configs/theme';
 import { NAVBAR_HEIGHT } from '../components/Navbar';
 import { CharacterName } from '@transcendence/types';
@@ -90,6 +90,8 @@ export default function ProfilePage() {
 
   const [achievements, setAchievements] = useState<UserAchievementsResponse | null>(null);
 
+  const [matches, setMatches] = useState<MatchHistoryResponse | null>(null);
+
   const [dialog, setDialog] = useState<{ 
     isOpen: boolean; 
     title: string; 
@@ -99,12 +101,13 @@ export default function ProfilePage() {
   } | null>(null);
 
   useEffect(() => {
-    Promise.all([api.getMyProfile(), api.getMyStats(), api.getMySettings(), api.getMyAchievements()])
-      .then(([p, s, set, ach]) => { 
+    Promise.all([api.getMyProfile(), api.getMyStats(), api.getMySettings(), api.getMyAchievements(), api.getMyMatches()])
+      .then(([p, s, set, ach, mat]) => { 
         if (p) setProfile(p); 
         if (s) setStats(s); 
         if (set) setSettings(set);
         if (ach) setAchievements(ach);
+        if (mat) setMatches(mat);
       })
       .finally(() => setLoading(false));
   }, []);
@@ -324,6 +327,81 @@ export default function ProfilePage() {
           </>
         )}
       </div>
+
+{/* Match History */}
+      <div id="profile-matches" style={{ paddingTop: '80px', scrollMarginTop: `${NAVBAR_HEIGHT}px` }}>
+        <h2 style={{ ...sectionTitleStyle, fontSize: '22px', marginBottom: '24px' }}>Match History</h2>
+
+        {(!matches?.entries || matches.entries.length === 0) ? (
+          <div style={{ textAlign: 'center', padding: '32px', background: theme.colors.bgPanel, border: `1px solid ${theme.colors.border}`, borderRadius: '4px' }}>
+            <p style={{ fontFamily: theme.fonts.heading, color: theme.colors.textMuted, fontSize: '13px', letterSpacing: '1px' }}>
+              No matches played yet. Start fighting!
+            </p>
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            {matches.entries.map((m) => {
+              const resultColor = m.result === 'WIN' ? theme.colors.hpHigh
+                : m.result === 'LOSS' ? theme.colors.dead
+                : theme.colors.hpMid;
+              const mins = Math.floor(m.durationSeconds / 60);
+              const secs = m.durationSeconds % 60;
+              const me = m.participants.find(p => p.userId === profile?.id);
+              const opponent = m.participants.find(p => p.userId !== profile?.id);
+
+              return (
+                <div key={m.matchId} style={{
+                  display: 'flex', alignItems: 'center', gap: '16px',
+                  padding: '14px 20px', background: theme.colors.bgPanel,
+                  border: `1px solid ${theme.colors.border}`, borderRadius: '4px',
+                  borderLeft: `3px solid ${resultColor}`,
+                }}>
+                  {/* Result */}
+                  <div style={{
+                    fontFamily: theme.fonts.heading, fontSize: '13px', fontWeight: 700,
+                    color: resultColor, letterSpacing: '1px', width: '40px', textAlign: 'center',
+                  }}>{m.result}</div>
+
+                  {/* Character + Mode */}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span style={{ fontSize: '16px' }}>{me?.characterName === 'ZEUS' ? '⚡' : '🔥'}</span>
+                      <span style={{ fontFamily: theme.fonts.heading, fontSize: '13px', fontWeight: 600, color: theme.colors.textPrimary }}>
+                        {me?.characterName || '?'}
+                      </span>
+                      <span style={{ fontFamily: theme.fonts.mono, fontSize: '10px', color: theme.colors.textMuted }}>vs</span>
+                      <span style={{ fontFamily: theme.fonts.heading, fontSize: '13px', color: theme.colors.textSecondary }}>
+                        {opponent?.username || 'Deleted User'}
+                      </span>
+                      <span style={{ fontSize: '14px' }}>{opponent?.characterName === 'ZEUS' ? '⚡' : '🔥'}</span>
+                    </div>
+                    <div style={{ display: 'flex', gap: '12px', marginTop: '4px' }}>
+                      <span style={{ fontFamily: theme.fonts.mono, fontSize: '10px', color: theme.colors.textMuted }}>
+                        {m.mode}
+                      </span>
+                      <span style={{ fontFamily: theme.fonts.mono, fontSize: '10px', color: theme.colors.textMuted }}>
+                        {mins}:{secs.toString().padStart(2, '0')}
+                      </span>
+                      <span style={{ fontFamily: theme.fonts.mono, fontSize: '10px', color: theme.colors.textMuted }}>
+                        {new Date(m.playedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* K/D */}
+                  <div style={{ textAlign: 'center' }}>
+                    <div style={{ fontFamily: theme.fonts.mono, fontSize: '14px', fontWeight: 700, color: theme.colors.textPrimary }}>
+                      {me?.kills || 0}/{me?.deaths || 0}
+                    </div>
+                    <div style={{ fontFamily: theme.fonts.heading, fontSize: '9px', color: theme.colors.textMuted }}>K/D</div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
 
       {/* Achievements */}
       <div id="profile-achievements" style={{ paddingTop: '80px', scrollMarginTop: `${NAVBAR_HEIGHT}px` }}>
