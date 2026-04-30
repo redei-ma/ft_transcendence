@@ -23,22 +23,22 @@ export class AiService{
         const currentState: IAiStates | undefined = this.botToState.get(bot.entityId);
         const threat: Player | Bullet | undefined = threatDetector(bot, allPlayers, gameWorld);
         if (threat && currentState?.name !== 'DefendState'){
-            this.transitionTo(bot, currentState, new DefendState(threat));
+            this.transitionTo(bot, currentState, new DefendState(threat), gameWorld);
             return ;
         }
 
         if (currentState){
             const newState = currentState.update(bot, gameWorld, allPlayers, dt);
             if (newState){
-                this.transitionTo(bot, currentState, newState);
+                this.transitionTo(bot, currentState, newState, gameWorld);
             }
         }
     }
 
-    private transitionTo(bot: Player, currentState: IAiStates | undefined, newState: IAiStates){
+    private transitionTo(bot: Player, currentState: IAiStates | undefined, newState: IAiStates, gameWorld: World){
         if (currentState)
             currentState.onExit(bot);
-        newState.onEnter(bot);
+        newState.onEnter(bot, gameWorld);
         this.botToState.set(bot.entityId, newState);
     }
 

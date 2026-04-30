@@ -1,9 +1,8 @@
 import { IAiStates } from "../aiInterfaces/IAiStates";
 import { Logger } from "@nestjs/common";
-import { GameWorld } from '../../../game-interfaces';
 import { Player, Vector, AttackType, GameConfig } from '@transcendence/types'
-import { ChaseState } from "./ai.ChaseState";
 import { tacticsHelper } from "../ai.tactics.helper";
+import { World } from "../../game.world";
 
 export class SpellAttackState implements IAiStates{
 
@@ -22,8 +21,17 @@ export class SpellAttackState implements IAiStates{
     onEnter(bot: Player): void {
         this.logger.debug('ai in spellAttackState');
 
-        const dx = this.victim.position.x - bot.position.x;
-        const dz = this.victim.position.z - bot.position.z;
+        let dx: number = this.victim.position.x - bot.position.x;
+        let dz: number = this.victim.position.z - bot.position.z;
+
+        const baseAngle: number = Math.atan2(dz, dx);
+
+        const maxSpreadRadiants: number = GameConfig.BOT.SPELL_AIM_SPREAD_DEG * (Math.PI / 180);
+        const randomSpread: number = (Math.random() - 0.5) * 2 * maxSpreadRadiants;
+        const finalAngle: number = baseAngle + randomSpread;
+
+        dx = Math.cos(finalAngle);
+        dz = Math.sin(finalAngle);
 
         this.moveInput.set(dx, dz);
         this.moveInput.normalize();
@@ -34,7 +42,7 @@ export class SpellAttackState implements IAiStates{
         })
     }
 
-    update(bot: Player, gameWorld: GameWorld, allPlayers: Readonly<Map<string, Player>>, dt: number): IAiStates | undefined {
+    update(bot: Player, gameWorld: World, allPlayers: Readonly<Map<string, Player>>, dt: number): IAiStates | undefined {
 
         this.stuckTimer += dt;
 

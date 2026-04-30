@@ -11,11 +11,12 @@ export class World implements GameWorld{
 	position: Vector;
 	width: number;
 	depth: number;
-	public bullets: Bullet[];
 	spawnPoints: Vector[];
+	public bullets: Bullet[];
 	private bulletIndex: number = 0;
 	public readonly maxPlayers: number;
 	public readonly MAX_BULLETS: number = 100;
+	public pathFindingGrid: Array<number>;
 
 	constructor(private readonly mapData: MapData){
 		this.id = mapData.meta.name;
@@ -28,6 +29,7 @@ export class World implements GameWorld{
 		this.bullets = [];
 		this.spawnPoints = [];
 		this.pillars = [];
+		this.pathFindingGrid = [];
 		for (const spawn of mapData.spawn_points.values()){
 			this.spawnPoints.push(new Vector(spawn.x, spawn.z));
 		}
@@ -67,6 +69,7 @@ export class World implements GameWorld{
 		this.gridDepth = Math.ceil(this.depth / GameConfig.MAP.CELL_SIZE);
 
 		this.buildGrid();
+		this.buildPathFindingGrid();
 	};
 
 	public spawnBullet(ownerId: string, characherName: CharacterName, team: number, newPosition: Vector,
@@ -88,6 +91,32 @@ export class World implements GameWorld{
 		bullet.lifeTime = GameConfig.COMBAT.BULLET_LIFE;
 
 		this.bulletIndex = (this.bulletIndex + 1) % this.MAX_BULLETS;
+	}
+
+	private buildPathFindingGrid(){
+		this.pathFindingGrid = [...this.grid];
+
+		for (const pillar of this.pillars.values()){
+			const startCellX: number = Math.floor((pillar.position.x - pillar.radius) / GameConfig.MAP.CELL_SIZE);
+			const endCellX: number = Math.floor((pillar.position.x + pillar.radius) / GameConfig.MAP.CELL_SIZE);
+			const startCellZ: number = Math.floor((pillar.position.z - pillar.radius) / GameConfig.MAP.CELL_SIZE);
+			const endCellZ: number = Math.floor((pillar.position.z + pillar.radius) / GameConfig.MAP.CELL_SIZE);
+
+			for (let z: number = startCellZ; z <= endCellZ; z++){
+				for (let x: number = startCellX; x <= endCellX; x++){
+					if (x >= 0 && x < this.gridWidth && z >= 0 && z < this.gridDepth){
+						const closest = this.getClosestPointOnCell(pillar.position, x, z);
+						const dx: number = pillar.position.x - closest.x;
+						const dz: number = pillar.position.z - closest.z;
+
+						if ((dx * dx + dz * dz) <= pillar.radius * pillar.radius){
+							let index = x + (z * this.gridWidth);
+							this.pathFindingGrid[index] = 1;
+						}
+					}
+				}
+			}
+		}
 	}
 
 	private buildGrid(): void{

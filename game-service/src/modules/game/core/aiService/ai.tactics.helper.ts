@@ -17,7 +17,7 @@ export function tacticsHelper(bot: Player, victim: Player): IAiStates{
     return new ChaseState(victim);
 }
 
-function checkVisualForDefend(bot: Player, allPlayers: Readonly<Map<string, Player>>): Player | undefined{
+export function checkVisualForDefend(bot: Player, allPlayers: Readonly<Map<string, Player>>): Player | undefined{
     let distanceSqRecord: number = Infinity;
     let murderer: Player | undefined = undefined;
     for (const targetPlayer of allPlayers.values()){
@@ -36,6 +36,27 @@ function checkVisualForDefend(bot: Player, allPlayers: Readonly<Map<string, Play
         }
     }
     return (murderer);
+}
+
+export function checkVisualForAttack(bot: Player, allPlayers: Readonly<Map<string, Player>>): Player | undefined{
+	let distanceSqRecord: number = Infinity;
+	let victim: Player | undefined = undefined;
+	for (const targetPlayer of allPlayers.values()){
+		if (targetPlayer.entityId !== bot.entityId && targetPlayer.teamId !== bot.teamId){
+			if (!targetPlayer.isDead && !targetPlayer.isGhost){
+				const dx: number = targetPlayer.position.x - bot.position.x;
+				const dz: number = targetPlayer.position.z - bot.position.z;
+				const distanceSq: number = (dx * dx) + (dz * dz);
+				if (distanceSq < GameConfig.BOT.VISUAL_RADIUS_SQ){
+					if (distanceSq < distanceSqRecord){
+						distanceSqRecord = distanceSq;
+						victim = targetPlayer;
+					}
+				}
+			}
+		}
+	}
+	return (victim);
 }
 
 export function threatDetector(bot: Player, allPlayers: Map<string, Player>, gameWorld: World): Bullet | Player | undefined{

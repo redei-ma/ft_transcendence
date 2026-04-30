@@ -19,6 +19,8 @@ export class PlayState implements IGameState {
 	name = "PLAY";
 
 	private fullEvents: (GameStateEvents | GameEndEvents)[];
+	private NETWORK_TICK_RATE: number = (1 / 30);
+	private networkAccumulator = 0.0;
 	constructor(private readonly session: GameSession) {}
 	
 	addPlayer(player: MatchMakingData, socketId: string | undefined): ExitStatus {
@@ -30,6 +32,14 @@ export class PlayState implements IGameState {
 	}
 
 	update(dt: number): void {
+		let shouldSendGameState: boolean = false;
+		this.networkAccumulator += dt;
+
+		if (this.networkAccumulator >= this.NETWORK_TICK_RATE){
+			shouldSendGameState = true;
+			this.networkAccumulator -= this.NETWORK_TICK_RATE;
+		}
+
 		this.fullEvents = this.session.engine.updateEvents(dt);
 		for (const event of this.fullEvents.values()) {
 			const remaningTime = Math.max(
@@ -39,6 +49,7 @@ export class PlayState implements IGameState {
 
 			/* sending the snapshots */
 			if (event.eventName === "game-state") {
+				// if (shouldSendGameState) da mettere quando francesco mettera' interpolazione
 				this.session.server
 					.to(this.session.gameId)
 					.emit(GameEvents.GAME_STATE, {

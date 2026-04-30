@@ -7,11 +7,11 @@ export function IsPasswordField() {
     return applyDecorators(
         ApiProperty({
             example: "StrongP@ss123",
-            minLength: 8,
-            description: "At least 8 chars, 1 uppercase, 1 lowercase, 1 number, and 1 special char: @$!%*?&  "
+            minLength: 10,
+            description: "At least 10 chars, 1 uppercase, 1 lowercase, 1 number, and 1 special char: @$!%*?&  "
         }),
         IsString(),
-        MinLength(8, { message: "Password must be at least 8 characters long" }),
+        MinLength(10, { message: "Password must be at least 10 characters long" }),
         Matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]*$/, {
             message: "Password is too weak. It must contain at least one uppercase letter, one lowercase letter, one number, and one special character: @$!%*?& ",
         }),
@@ -40,9 +40,9 @@ export function IsEmailField() {
 
 export function IsPasswordHashField() {
 	return applyDecorators(
-		ApiProperty({ example: "$2b$10$abc...", minLength: 8 }),
+		ApiProperty({ example: "$2b$10$abc...", minLength: 10 }),
 		IsString(),
-		MinLength(8, { message: "Invalid password hash format" }),
+		MinLength(10, { message: "Invalid password hash format" }),
 	);
 }
 
