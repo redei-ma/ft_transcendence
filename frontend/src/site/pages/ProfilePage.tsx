@@ -3,7 +3,7 @@ import { inputStyle, sectionTitleStyle } from '../styles/shared';
 import * as Icons from '../components/Icons';
 import * as api from '../services/apiService';
 import * as authService from '../services/authService';
-import { UserProfile, UserStats, UserSettings, generate2fa, turnOn2fa, turnOff2fa } from '../services/apiService';
+import { UserProfile, UserStats, UserSettings, UserAchievementsResponse, MatchHistoryResponse, generate2fa, turnOn2fa, turnOff2fa } from '../services/apiService';
 import { theme } from '../../configs/theme';
 import { NAVBAR_HEIGHT } from '../components/Navbar';
 import { CharacterName } from '@transcendence/types';
@@ -71,28 +71,27 @@ export default function ProfilePage() {
   const [settings, setSettings] = useState<UserSettings | null>(null);
   const [loading, setLoading] = useState(true);
   
-  // Stati 2FA
   const [isSettingUp2fa, setIsSettingUp2fa] = useState(false);
   const [qrCodeUrl, setQrCodeUrl] = useState<string | null>(null);
   const [setupCode, setSetupCode] = useState('');
   const [error2fa, setError2fa] = useState('');
 
-  // Stati Edit Profilo
   const [editingUsername, setEditingUsername] = useState(false);
   const [editingEmail, setEditingEmail] = useState(false);
   const [tempVal, setTempVal] = useState('');
   
-  // Stati Password e Notifiche
   const [isChangingPwd, setIsChangingPwd] = useState(false);
   const [pwdData, setPwdData] = useState({ old: '', new: '', confirm: '' });
   const [pwdError, setPwdError] = useState('');
   const [msg, setMsg] = useState(''); 
 
-  // Password di conferma per cambio email (ref per evitare stale closure)
   const confirmPwdRef = useRef('');
   const [confirmPwdDisplay, setConfirmPwdDisplay] = useState('');
 
-  // STATO DEL MODAL DI WARNING
+  const [achievements, setAchievements] = useState<UserAchievementsResponse | null>(null);
+
+  const [matches, setMatches] = useState<MatchHistoryResponse | null>(null);
+
   const [dialog, setDialog] = useState<{ 
     isOpen: boolean; 
     title: string; 
@@ -102,16 +101,16 @@ export default function ProfilePage() {
   } | null>(null);
 
   useEffect(() => {
-    Promise.all([api.getMyProfile(), api.getMyStats(), api.getMySettings()])
-      .then(([p, s, set]) => { 
+    Promise.all([api.getMyProfile(), api.getMyStats(), api.getMySettings(), api.getMyAchievements(), api.getMyMatches()])
+      .then(([p, s, set, ach, mat]) => { 
         if (p) setProfile(p); 
         if (s) setStats(s); 
-        if (set) setSettings(set); 
+        if (set) setSettings(set);
+        if (ach) setAchievements(ach);
+        if (mat) setMatches(mat);
       })
       .finally(() => setLoading(false));
   }, []);
-
-  // --- FUNZIONI DI SALVATAGGIO CON WARNING ---
 
   const handleSaveUsername = () => { 
     setDialog({
@@ -182,8 +181,6 @@ export default function ProfilePage() {
       }
     });
   };
-
-  // --- FUNZIONI 2FA ---
 
   const handleEnable2faClick = async () => {
     setError2fa('');
@@ -331,17 +328,171 @@ export default function ProfilePage() {
         )}
       </div>
 
+{/* Match History */}
+      <div id="profile-matches" style={{ paddingTop: '80px', scrollMarginTop: `${NAVBAR_HEIGHT}px` }}>
+        <h2 style={{ ...sectionTitleStyle, fontSize: '22px', marginBottom: '24px' }}>Match History</h2>
+
+        {(!matches?.entries || matches.entries.length === 0) ? (
+          <div style={{ textAlign: 'center', padding: '32px', background: theme.colors.bgPanel, border: `1px solid ${theme.colors.border}`, borderRadius: '4px' }}>
+            <p style={{ fontFamily: theme.fonts.heading, color: theme.colors.textMuted, fontSize: '13px', letterSpacing: '1px' }}>
+              No matches played yet. Start fighting!
+            </p>
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            {matches.entries.map((m) => {
+              const resultColor = m.result === 'WIN' ? theme.colors.hpHigh
+                : m.result === 'LOSS' ? theme.colors.dead
+                : theme.colors.hpMid;
+              const mins = Math.floor(m.durationSeconds / 60);
+              const secs = m.durationSeconds % 60;
+              const me = m.participants.find(p => p.userId === profile?.id);
+              const opponent = m.participants.find(p => p.userId !== profile?.id);
+
+              return (
+                <div key={m.matchId} style={{
+                  display: 'flex', alignItems: 'center', gap: '16px',
+                  padding: '14px 20px', background: theme.colors.bgPanel,
+                  border: `1px solid ${theme.colors.border}`, borderRadius: '4px',
+                  borderLeft: `3px solid ${resultColor}`,
+                }}>
+                  {/* Result */}
+                  <div style={{
+                    fontFamily: theme.fonts.heading, fontSize: '13px', fontWeight: 700,
+                    color: resultColor, letterSpacing: '1px', width: '40px', textAlign: 'center',
+                  }}>{m.result}</div>
+
+                  {/* Character + Mode */}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span style={{ fontSize: '16px' }}>{me?.characterName === 'ZEUS' ? '⚡' : '🔥'}</span>
+                      <span style={{ fontFamily: theme.fonts.heading, fontSize: '13px', fontWeight: 600, color: theme.colors.textPrimary }}>
+                        {me?.characterName || '?'}
+                      </span>
+                      <span style={{ fontFamily: theme.fonts.mono, fontSize: '10px', color: theme.colors.textMuted }}>vs</span>
+                      <span style={{ fontFamily: theme.fonts.heading, fontSize: '13px', color: theme.colors.textSecondary }}>
+                        {opponent?.username || 'Deleted User'}
+                      </span>
+                      <span style={{ fontSize: '14px' }}>{opponent?.characterName === 'ZEUS' ? '⚡' : '🔥'}</span>
+                    </div>
+                    <div style={{ display: 'flex', gap: '12px', marginTop: '4px' }}>
+                      <span style={{ fontFamily: theme.fonts.mono, fontSize: '10px', color: theme.colors.textMuted }}>
+                        {m.mode}
+                      </span>
+                      <span style={{ fontFamily: theme.fonts.mono, fontSize: '10px', color: theme.colors.textMuted }}>
+                        {mins}:{secs.toString().padStart(2, '0')}
+                      </span>
+                      <span style={{ fontFamily: theme.fonts.mono, fontSize: '10px', color: theme.colors.textMuted }}>
+                        {new Date(m.playedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* K/D */}
+                  <div style={{ textAlign: 'center' }}>
+                    <div style={{ fontFamily: theme.fonts.mono, fontSize: '14px', fontWeight: 700, color: theme.colors.textPrimary }}>
+                      {me?.kills || 0}/{me?.deaths || 0}
+                    </div>
+                    <div style={{ fontFamily: theme.fonts.heading, fontSize: '9px', color: theme.colors.textMuted }}>K/D</div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+
+      {/* Achievements */}
+      <div id="profile-achievements" style={{ paddingTop: '80px', scrollMarginTop: `${NAVBAR_HEIGHT}px` }}>
+        <h2 style={{ ...sectionTitleStyle, fontSize: '22px', marginBottom: '24px' }}>Achievements</h2>
+        
+        {/* Progress bar */}
+        <div style={{ marginBottom: '24px', padding: '16px 20px', background: theme.colors.bgPanel, border: `1px solid ${theme.colors.border}`, borderRadius: '4px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+            <span style={{ fontFamily: theme.fonts.heading, fontSize: '12px', color: theme.colors.textSecondary, letterSpacing: '1px' }}>PROGRESS</span>
+            <span style={{ fontFamily: theme.fonts.mono, fontSize: '14px', color: theme.colors.gold, fontWeight: 700 }}>
+              {achievements?.unlockedCount || 0} / {achievements?.totalCount || 0}
+            </span>
+          </div>
+          <div style={{ width: '100%', height: '6px', background: theme.colors.bgDark, borderRadius: '3px', overflow: 'hidden' }}>
+            <div style={{
+              height: '100%', borderRadius: '3px',
+              width: achievements && achievements.totalCount > 0 ? `${(achievements.unlockedCount / achievements.totalCount) * 100}%` : '0%',
+              background: `linear-gradient(90deg, ${theme.colors.goldDark}, ${theme.colors.gold})`,
+              transition: 'width 0.5s ease',
+            }} />
+          </div>
+        </div>
+
+        {/* Achievement cards */}
+        {(!achievements?.unlocked || achievements.unlocked.length === 0) ? (
+          <div style={{ textAlign: 'center', padding: '32px', background: theme.colors.bgPanel, border: `1px solid ${theme.colors.border}`, borderRadius: '4px' }}>
+            <p style={{ fontFamily: theme.fonts.heading, color: theme.colors.textMuted, fontSize: '13px', letterSpacing: '1px' }}>
+              No achievements unlocked yet. Keep playing!
+            </p>
+          </div>
+        ) : (
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+            {achievements.unlocked.map((ach, i) => {
+              const tierColor = ach.tier === 'PLATINUM' ? '#a8e6cf'
+                : ach.tier === 'GOLD' ? theme.colors.gold
+                : ach.tier === 'SILVER' ? '#c0c0c0'
+                : '#cd7f32';
+              return (
+                <div key={i} style={{
+                  padding: '16px', background: theme.colors.bgPanel,
+                  border: `1px solid ${tierColor}33`, borderRadius: '4px',
+                  display: 'flex', gap: '12px', alignItems: 'flex-start',
+                  transition: 'border-color 0.2s',
+                }}
+                  onMouseEnter={(e) => e.currentTarget.style.borderColor = tierColor}
+                  onMouseLeave={(e) => e.currentTarget.style.borderColor = `${tierColor}33`}
+                >
+                  <div style={{
+                    width: 40, height: 40, borderRadius: '8px', flexShrink: 0,
+                    background: `${tierColor}15`, border: `1px solid ${tierColor}40`,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: '20px',
+                  }}>
+                    {ach.tier === 'PLATINUM' ? '💎' : ach.tier === 'GOLD' ? '🏆' : ach.tier === 'SILVER' ? '🥈' : '🥉'}
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontFamily: theme.fonts.heading, fontSize: '13px', fontWeight: 700, color: tierColor, letterSpacing: '0.5px', marginBottom: '2px' }}>
+                      {ach.name}
+                    </div>
+                    <div style={{ fontFamily: theme.fonts.mono, fontSize: '11px', color: theme.colors.textSecondary, lineHeight: 1.4, marginBottom: '4px' }}>
+                      {ach.description}
+                    </div>
+                    <div style={{ fontFamily: theme.fonts.mono, fontSize: '9px', color: theme.colors.textMuted }}>
+                      {new Date(ach.unlockedAt).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
       {/* Friends */}
       <div id="profile-friends" style={{ paddingTop: '80px', scrollMarginTop: `${NAVBAR_HEIGHT}px` }}>
         <h2 style={{ ...sectionTitleStyle, fontSize: '22px', marginBottom: '24px' }}>Friends</h2>
-        <p style={{ fontFamily: theme.fonts.heading, color: theme.colors.textMuted, textAlign: 'center', letterSpacing: '2px', fontSize: '13px' }}>Coming soon</p>
+        <div style={{ textAlign: 'center', padding: '24px', background: theme.colors.bgPanel, border: `1px solid ${theme.colors.border}`, borderRadius: '4px' }}>
+          <div style={{ color: theme.colors.goldDim, marginBottom: '12px' }}><Icons.Users size={32} /></div>
+          <p style={{ fontFamily: theme.fonts.heading, color: theme.colors.textSecondary, fontSize: '13px', letterSpacing: '1px' }}>
+            Use the Friends panel on the right side of the screen to manage your friends, send requests, and invite players to a game.
+          </p>
+          <p style={{ fontFamily: theme.fonts.mono, color: theme.colors.textMuted, fontSize: '11px', marginTop: '12px' }}>
+            Your ID: <span style={{ color: theme.colors.gold, fontWeight: 700, fontSize: '14px' }}>{profile?.id}</span> — share it with friends!
+          </p>
+        </div>
       </div>
 
       {/* Security */}
       <div id="profile-security" style={{ paddingTop: '80px', paddingBottom: '40px', scrollMarginTop: `${NAVBAR_HEIGHT}px` }}>
         <h2 style={{ ...sectionTitleStyle, fontSize: '22px', marginBottom: '24px' }}>Security & 2FA</h2>
         
-        {/* Blocco 2FA */}
         <div style={{ padding: '24px', background: theme.colors.bgPanel, border: `1px solid ${theme.colors.border}`, borderRadius: '4px', marginBottom: '12px' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div>
@@ -398,7 +549,7 @@ export default function ProfilePage() {
           )}
         </div>
 
-        {/* Email Verification con bottone Resend */}
+        {/* Email Verification */}
         <div style={{ padding: '24px', background: theme.colors.bgPanel, border: `1px solid ${theme.colors.border}`, borderRadius: '4px', marginBottom: '12px' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div>
@@ -440,7 +591,7 @@ export default function ProfilePage() {
         </div>
       </div>
 
-      {/* POPUP MODAL PER I WARNING */}
+      {/* POPUP MODAL */}
       {dialog && dialog.isOpen && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }}>
           <div className="animate-scaleIn" style={{ background: theme.colors.bgPanel, border: `1px solid ${theme.colors.gold}`, borderRadius: '4px', padding: '32px', maxWidth: '420px', textAlign: 'center', boxShadow: `0 0 40px ${theme.colors.goldGlow}` }}>

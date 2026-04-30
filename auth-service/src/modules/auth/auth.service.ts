@@ -317,7 +317,7 @@ export class AuthService {
   async setup2fa(userId: number) {
     const secret = speakeasy.generateSecret({
       length: 20,
-      name: `Clash of Olympus (${userId})`,
+      name: `Clash of Olympus`,
     });
 
     const qrCode = await QRCode.toDataURL(secret.otpauth_url);
@@ -331,6 +331,8 @@ export class AuthService {
 
   async enable2fa(userId: number, dto: Enable2FADto) {
     const user = await this.usersService.findUser({ id: userId });
+
+    if (!user) throw new NotFoundException();
 
     const verified = speakeasy.totp.verify({
       secret: user?.twoFactorSecret,
@@ -408,6 +410,8 @@ export class AuthService {
 
   async changePassword(userId: number, body: ChangePasswordDto) {
     const user = await this.usersService.findUser({ id: userId });
+    if (!user) throw new NotFoundException();
+
     const localAccount = user?.accounts.find(a => a.provider === Provider.LOCAL);
 
     // If they have a password, they MUST verify the old one
@@ -424,12 +428,6 @@ export class AuthService {
     }
     // If no local account exists yet, we will create one during updatePassword
     // or update the existing LOCAL entry if it exists without a password.
-
-  /* // Validate new password
-    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
-    if (body.newPass.length < 10 || !passwordRegex.test(body.newPass)) {
-      throw new BadRequestException('New password does not meet security requirements.');
-    } */
 
     // Hash and Update
     const hashed = await bcrypt.hash(body.newPass, 10);

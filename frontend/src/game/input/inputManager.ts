@@ -46,7 +46,7 @@ export class InputManager {
       'arrowup', 'arrowdown', 'arrowleft', 'arrowright',
       ' ', 'shift', 'control', 'tab', 'alt', 'meta',
       'f1', 'f2', 'f3', 'f4', 'f5', 'f6', 'f7', 'f8', 'f9', 'f10', 'f11', 'f12',
-      '1', '2', '3',
+      'p', 'o', 'i',
     ].includes(key)) {
       e.preventDefault();
     }
@@ -63,7 +63,7 @@ export class InputManager {
       this.attackSent[0] = false;
     }
     // Reset attack sent per P1
-    if (key === '1' || key === '2' || key === '3') {
+    if (key === 'p' || key === 'o' || key === 'i') {
       this.attackSent[1] = false;
     }
   };
@@ -82,7 +82,7 @@ export class InputManager {
     if (this.isLocalGame) {
       const p1 = this.buildPayload(
         'arrowup', 'arrowdown', 'arrowleft', 'arrowright',
-        '1', '2', '3',
+        'p', 'o', 'i',
         1
       );
       if (p1.attackType) console.log('P1 attack:', p1.attackType);

@@ -10,6 +10,8 @@ import { logout } from "./site/services/authService";
 import { getMyProfile, UserProfile } from "./site/services/apiService";
 import { theme } from "./configs/theme";
 import DesktopOnlyGuard from "./site/components/desktopOnlyGuard";
+import FriendsSidebar from "./site/components/FriendSidebar";
+import GameInviteToast from "./site/components/GameInviteToast";
 
 export default function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(true);
@@ -50,28 +52,10 @@ export default function App() {
     setCurrentPage("dashboard");
   };
 
-  if (!isLoggedIn) {
-    return <LoginPage onLogin={handleLogin} />;
-  }
-
-  if (currentPage === "play") {
-    if (!user) {
-      alert("Errore di sessione: Dati utente mancanti. Effettua nuovamente il login.");
-      handleLogout();
-      return null;
-    }
-    
-    // ⚡ AVVOLGIAMO IL GIOCO CON IL GUARDIANO
-    return (
-      <DesktopOnlyGuard>
-        <GameFlow
-          userId={user.id}
-          username={user.username}
-          onExit={() => setCurrentPage("dashboard")}
-        />
-      </DesktopOnlyGuard>
-    );
-  }
+  const handleGameInviteAccepted = (sessionId: string) => {
+    setCurrentPage("play");
+    console.log("[App] Game invite accepted, sessionId:", sessionId);
+  };
 
   const renderPage = () => {
     switch (currentPage) {
@@ -86,6 +70,32 @@ export default function App() {
     }
   };
 
+  if (!isLoggedIn) {
+    return <LoginPage onLogin={handleLogin} />;
+  }
+
+  if (currentPage === "play") {
+    if (!user) {
+      alert("Errore di sessione: Dati utente mancanti. Effettua nuovamente il login.");
+      handleLogout();
+      return null;
+    }
+    
+    return (
+      <>
+        <DesktopOnlyGuard>
+          <GameFlow
+            userId={user.id}
+            username={user.username}
+            onExit={() => setCurrentPage("dashboard")}
+          />
+        </DesktopOnlyGuard>
+        <FriendsSidebar onGameInviteAccepted={handleGameInviteAccepted} />
+        <GameInviteToast onAccepted={handleGameInviteAccepted} />
+      </>
+    );
+  }
+
   return (
     <div style={{ minHeight: "100vh", backgroundColor: theme.colors.bgDark }}>
       <Navbar
@@ -96,6 +106,8 @@ export default function App() {
         avatarUrl={user?.avatarUrl || ""}
       />
       {renderPage()}
+      <FriendsSidebar onGameInviteAccepted={handleGameInviteAccepted} />
+      <GameInviteToast onAccepted={handleGameInviteAccepted} />
     </div>
   );
 }
