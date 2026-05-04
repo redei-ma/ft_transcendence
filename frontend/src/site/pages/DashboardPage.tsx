@@ -77,6 +77,10 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
         {/* Overlay Scuro */}
         <div style={{
           position: "absolute",
+          top: 0,
+          left: 0,
+          width: "100%",
+          height: "100%",
           inset: 0,
           background: `linear-gradient(180deg, rgba(6, 14, 20, 0.4) 0%, rgba(6, 14, 20, 0.7) 70%, ${theme.colors.bgDark} 100%)`,
           zIndex: 1,

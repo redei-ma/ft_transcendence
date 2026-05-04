@@ -9,7 +9,7 @@ import { BulletEntity } from './entities/BulletEntity';
 import { GameOverOverlay } from './UI/components/GameOverOverlay';
 import GameChat from './UI/components/GameChat';
 import { EffectComposer, Bloom } from '@react-three/postprocessing';
-import mapTexture from '../assets/mapTexture.png';
+import mapTexture from '../assets/mapTexture1.png';
 import { useGameStore } from '../storage/gameStore';
 
 interface GameProps {
@@ -67,6 +67,9 @@ export default function Game({ selectedCharacter, selectedMode, onPlayAgain, onQ
     onQuit();
   };
 
+console.log('WORLD:', world);
+console.log('WALLS:', world?.map?.walls);
+
   return (
     <div style={{
       position: 'fixed', inset: 0,
@@ -98,6 +101,20 @@ export default function Game({ selectedCharacter, selectedMode, onPlayAgain, onQ
           <PlayerEntity key={id} playerId={id} />
         ))}
 
+        {world?.map?.walls?.map((w: any, i: number) => {
+          const wx = w.position?.x ?? 0;
+          const wz = w.position?.z ?? 0;
+          return (
+            <mesh 
+              key={`wall-${i}`} 
+              position={[wx + w.width/2, 2.5, wz + w.depth/2]}
+            >
+              <boxGeometry args={[w.width, 5, w.depth]} />
+              <meshStandardMaterial color="#1a1a2e" transparent opacity={0.6} />
+            </mesh>
+          );
+        })}
+        
         {bulletIds.map((id) => (
           <BulletEntity key={id} bulletId={id} />
         ))}
