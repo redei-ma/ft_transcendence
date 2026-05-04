@@ -1,28 +1,56 @@
 {
   "meta": {
-    "name": "Classic Arena",
-    "version": "1.0",
+    "name": "Olympus Arena",
+    "version": "1.2",
     "author": "Giovanni"
   },
   "settings": {
-    "width": 130,
-    "depth": 130,
+    "width": 250,
+    "depth": 250,
     "maxPlayers": 2
   },
   "walls": [
-    {"id": "wall", "x": 0, "z": 0, "width": 130, "depth": 5},
-    {"id": "wall", "x": 125, "z": 0, "width": 5, "depth": 130},
-    {"id": "wall", "x": 0, "z": 0, "width": 5, "depth": 130},
-    {"id": "wall", "x": 0, "z": 125, "width": 130, "depth": 5}
+    {"id": "wall", "x": 62, "z": 15, "width": 126, "depth": 5},
+    {"id": "wall", "x": 62, "z": 230, "width": 126, "depth": 5},
+    {"id": "wall", "x": 15, "z": 78, "width": 5, "depth": 94},
+    {"id": "wall", "x": 230, "z": 78, "width": 5, "depth": 94}
   ],
   "pillars": [
-    {"id": "pillar", "x": 30, "z": 30, "radius": 3},
-    {"id": "pillar", "x": 100, "z": 30, "radius": 3},
-    {"id": "pillar", "x": 30, "z": 100, "radius": 3},
-    {"id": "pillar", "x": 100, "z": 100, "radius": 3}
+    {"id": "pillar_edge", "x": 60, "z": 22, "radius": 3},
+    {"id": "pillar_edge", "x": 53, "z": 30, "radius": 3},
+    {"id": "pillar_edge", "x": 45, "z": 39, "radius": 3},
+    {"id": "pillar_edge", "x": 37, "z": 50, "radius": 3},
+    {"id": "pillar_edge", "x": 29, "z": 61, "radius": 3},
+    {"id": "pillar_edge", "x": 22, "z": 72, "radius": 3},
+
+    {"id": "pillar_edge", "x": 190, "z": 22, "radius": 3},
+    {"id": "pillar_edge", "x": 197, "z": 30, "radius": 3},
+    {"id": "pillar_edge", "x": 205, "z": 39, "radius": 3},
+    {"id": "pillar_edge", "x": 213, "z": 50, "radius": 3},
+    {"id": "pillar_edge", "x": 221, "z": 61, "radius": 3},
+    {"id": "pillar_edge", "x": 228, "z": 72, "radius": 3},
+
+    {"id": "pillar_edge", "x": 22, "z": 175, "radius": 3},
+    {"id": "pillar_edge", "x": 30, "z": 187, "radius": 3},
+    {"id": "pillar_edge", "x": 40, "z": 198, "radius": 3},
+    {"id": "pillar_edge", "x": 50, "z": 208, "radius": 3},
+    {"id": "pillar_edge", "x": 60, "z": 217, "radius": 3},
+    {"id": "pillar_edge", "x": 70, "z": 225, "radius": 3},
+
+    {"id": "pillar_edge", "x": 228, "z": 175, "radius": 3},
+    {"id": "pillar_edge", "x": 220, "z": 187, "radius": 3},
+    {"id": "pillar_edge", "x": 210, "z": 198, "radius": 3},
+    {"id": "pillar_edge", "x": 200, "z": 208, "radius": 3},
+    {"id": "pillar_edge", "x": 190, "z": 217, "radius": 3},
+    {"id": "pillar_edge", "x": 180, "z": 225, "radius": 3},
+
+    {"id": "pillar", "x": 80, "z": 80, "radius": 4},
+    {"id": "pillar", "x": 170, "z": 80, "radius": 4},
+    {"id": "pillar", "x": 80, "z": 170, "radius": 4},
+    {"id": "pillar", "x": 170, "z": 170, "radius": 4}
   ],
   "spawn_points": [
-    { "x": 65, "z": 15 },
-    { "x": 65, "z": 115 }
+    { "x": 125, "z": 35 },
+    { "x": 125, "z": 215 }
   ]
 }

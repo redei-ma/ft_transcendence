@@ -67,9 +67,6 @@ export default function Game({ selectedCharacter, selectedMode, onPlayAgain, onQ
     onQuit();
   };
 
-console.log('WORLD:', world);
-console.log('WALLS:', world?.map?.walls);
-
   return (
     <div style={{
       position: 'fixed', inset: 0,
@@ -100,6 +97,26 @@ console.log('WALLS:', world?.map?.walls);
         {playerIds.map((id) => (
           <PlayerEntity key={id} playerId={id} />
         ))}
+
+        {world?.map?.pillars?.map((p: any, i: number) => {
+        const px = p.position?.x ?? p.x ?? 0;
+        const pz = p.position?.z ?? p.z ?? 0;
+        return (
+          <mesh 
+            key={`pillar-${i}`} 
+            position={[px, 2.5, pz]}
+          >
+            <cylinderGeometry args={[p.radius, p.radius, 5, 16]} />
+            <meshStandardMaterial 
+              color="#1a1a2e" 
+              emissive="#d4af37" 
+              emissiveIntensity={0.1}
+              transparent 
+              opacity={0.7} 
+            />
+          </mesh>
+        );
+        })}
 
         {world?.map?.walls?.map((w: any, i: number) => {
           const wx = w.position?.x ?? 0;
