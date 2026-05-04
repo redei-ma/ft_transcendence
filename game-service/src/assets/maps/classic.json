@@ -10,44 +10,452 @@
     "maxPlayers": 2
   },
   "walls": [
-    {"id": "wall", "x": 62, "z": 15, "width": 126, "depth": 5},
-    {"id": "wall", "x": 62, "z": 230, "width": 126, "depth": 5},
-    {"id": "wall", "x": 15, "z": 78, "width": 5, "depth": 94},
-    {"id": "wall", "x": 230, "z": 78, "width": 5, "depth": 94}
   ],
   "pillars": [
-    {"id": "pillar_edge", "x": 60, "z": 22, "radius": 3},
-    {"id": "pillar_edge", "x": 53, "z": 30, "radius": 3},
-    {"id": "pillar_edge", "x": 45, "z": 39, "radius": 3},
-    {"id": "pillar_edge", "x": 37, "z": 50, "radius": 3},
-    {"id": "pillar_edge", "x": 29, "z": 61, "radius": 3},
-    {"id": "pillar_edge", "x": 22, "z": 72, "radius": 3},
-
-    {"id": "pillar_edge", "x": 190, "z": 22, "radius": 3},
-    {"id": "pillar_edge", "x": 197, "z": 30, "radius": 3},
-    {"id": "pillar_edge", "x": 205, "z": 39, "radius": 3},
-    {"id": "pillar_edge", "x": 213, "z": 50, "radius": 3},
-    {"id": "pillar_edge", "x": 221, "z": 61, "radius": 3},
-    {"id": "pillar_edge", "x": 228, "z": 72, "radius": 3},
-
-    {"id": "pillar_edge", "x": 22, "z": 175, "radius": 3},
-    {"id": "pillar_edge", "x": 30, "z": 187, "radius": 3},
-    {"id": "pillar_edge", "x": 40, "z": 198, "radius": 3},
-    {"id": "pillar_edge", "x": 50, "z": 208, "radius": 3},
-    {"id": "pillar_edge", "x": 60, "z": 217, "radius": 3},
-    {"id": "pillar_edge", "x": 70, "z": 225, "radius": 3},
-
-    {"id": "pillar_edge", "x": 228, "z": 175, "radius": 3},
-    {"id": "pillar_edge", "x": 220, "z": 187, "radius": 3},
-    {"id": "pillar_edge", "x": 210, "z": 198, "radius": 3},
-    {"id": "pillar_edge", "x": 200, "z": 208, "radius": 3},
-    {"id": "pillar_edge", "x": 190, "z": 217, "radius": 3},
-    {"id": "pillar_edge", "x": 180, "z": 225, "radius": 3},
-
-    {"id": "pillar", "x": 80, "z": 80, "radius": 4},
-    {"id": "pillar", "x": 170, "z": 80, "radius": 4},
-    {"id": "pillar", "x": 80, "z": 170, "radius": 4},
-    {"id": "pillar", "x": 170, "z": 170, "radius": 4}
+    {
+      "id": "custom_pil_1",
+      "x": 54,
+      "z": 82,
+      "radius": 4
+    },
+    {
+      "id": "custom_pil_2",
+      "x": 53,
+      "z": 71,
+      "radius": 4
+    },
+    {
+      "id": "custom_pil_3",
+      "x": 55,
+      "z": 62,
+      "radius": 4
+    },
+    {
+      "id": "custom_pil_4",
+      "x": 60,
+      "z": 56,
+      "radius": 4
+    },
+    {
+      "id": "custom_pil_5",
+      "x": 68,
+      "z": 52,
+      "radius": 4
+    },
+    {
+      "id": "custom_pil_6",
+      "x": 78,
+      "z": 51,
+      "radius": 4
+    },
+    {
+      "id": "custom_pil_7",
+      "x": 87,
+      "z": 53,
+      "radius": 4
+    },
+    {
+      "id": "custom_pil_8",
+      "x": 195,
+      "z": 193,
+      "radius": 4
+    },
+    {
+      "id": "custom_pil_9",
+      "x": 156,
+      "z": 196,
+      "radius": 4
+    },
+    {
+      "id": "custom_pil_10",
+      "x": 200,
+      "z": 153,
+      "radius": 4
+    },
+    {
+      "id": "custom_pil_11",
+      "x": 205,
+      "z": 172,
+      "radius": 4
+    },
+    {
+      "id": "custom_pil_12",
+      "x": 174,
+      "z": 204,
+      "radius": 4
+    },
+    {
+      "id": "custom_pil_13",
+      "x": 186,
+      "z": 201,
+      "radius": 4
+    },
+    {
+      "id": "custom_pil_14",
+      "x": 203,
+      "z": 184,
+      "radius": 4
+    },
+    {
+      "id": "custom_pil_15",
+      "x": 203,
+      "z": 160,
+      "radius": 4
+    },
+    {
+      "id": "custom_pil_16",
+      "x": 163,
+      "z": 201,
+      "radius": 4
+    },
+    {
+      "id": "custom_pil_17",
+      "x": 151,
+      "z": 206,
+      "radius": 4
+    },
+    {
+      "id": "custom_pil_18",
+      "x": 143,
+      "z": 213,
+      "radius": 4
+    },
+    {
+      "id": "custom_pil_19",
+      "x": 135,
+      "z": 221,
+      "radius": 4
+    },
+    {
+      "id": "custom_pil_20",
+      "x": 126,
+      "z": 229,
+      "radius": 4
+    },
+    {
+      "id": "custom_pil_21",
+      "x": 116,
+      "z": 233,
+      "radius": 4
+    },
+    {
+      "id": "custom_pil_22",
+      "x": 93,
+      "z": 230,
+      "radius": 4
+    },
+    {
+      "id": "custom_pil_23",
+      "x": 81,
+      "z": 229,
+      "radius": 4
+    },
+    {
+      "id": "custom_pil_24",
+      "x": 68,
+      "z": 224,
+      "radius": 4
+    },
+    {
+      "id": "custom_pil_25",
+      "x": 53,
+      "z": 206,
+      "radius": 4
+    },
+    {
+      "id": "custom_pil_26",
+      "x": 58,
+      "z": 215,
+      "radius": 4
+    },
+    {
+      "id": "custom_pil_27",
+      "x": 43,
+      "z": 188,
+      "radius": 4
+    },
+    {
+      "id": "custom_pil_28",
+      "x": 42,
+      "z": 195,
+      "radius": 4
+    },
+    {
+      "id": "custom_pil_29",
+      "x": 43,
+      "z": 202,
+      "radius": 4
+    },
+    {
+      "id": "custom_pil_30",
+      "x": 34,
+      "z": 185,
+      "radius": 4
+    },
+    {
+      "id": "custom_pil_31",
+      "x": 31,
+      "z": 175,
+      "radius": 4
+    },
+    {
+      "id": "custom_pil_32",
+      "x": 26,
+      "z": 164,
+      "radius": 4
+    },
+    {
+      "id": "custom_pil_33",
+      "x": 24,
+      "z": 154,
+      "radius": 4
+    },
+    {
+      "id": "custom_pil_34",
+      "x": 22,
+      "z": 141,
+      "radius": 4
+    },
+    {
+      "id": "custom_pil_35",
+      "x": 26,
+      "z": 132,
+      "radius": 4
+    },
+    {
+      "id": "custom_pil_36",
+      "x": 27,
+      "z": 122,
+      "radius": 4
+    },
+    {
+      "id": "custom_pil_37",
+      "x": 28,
+      "z": 112,
+      "radius": 4
+    },
+    {
+      "id": "custom_pil_38",
+      "x": 34,
+      "z": 104,
+      "radius": 4
+    },
+    {
+      "id": "custom_pil_39",
+      "x": 40,
+      "z": 96,
+      "radius": 4
+    },
+    {
+      "id": "custom_pil_40",
+      "x": 47,
+      "z": 89,
+      "radius": 4
+    },
+    {
+      "id": "custom_pil_41",
+      "x": 92,
+      "z": 46,
+      "radius": 4
+    },
+    {
+      "id": "custom_pil_42",
+      "x": 98,
+      "z": 39,
+      "radius": 4
+    },
+    {
+      "id": "custom_pil_43",
+      "x": 104,
+      "z": 31,
+      "radius": 4
+    },
+    {
+      "id": "custom_pil_44",
+      "x": 113,
+      "z": 27,
+      "radius": 4
+    },
+    {
+      "id": "custom_pil_45",
+      "x": 122,
+      "z": 27,
+      "radius": 4
+    },
+    {
+      "id": "custom_pil_46",
+      "x": 121,
+      "z": 18,
+      "radius": 4
+    },
+    {
+      "id": "custom_pil_47",
+      "x": 130,
+      "z": 16,
+      "radius": 4
+    },
+    {
+      "id": "custom_pil_48",
+      "x": 136,
+      "z": 21,
+      "radius": 4
+    },
+    {
+      "id": "custom_pil_49",
+      "x": 147,
+      "z": 19,
+      "radius": 4
+    },
+    {
+      "id": "custom_pil_50",
+      "x": 158,
+      "z": 18,
+      "radius": 4
+    },
+    {
+      "id": "custom_pil_51",
+      "x": 168,
+      "z": 21,
+      "radius": 4
+    },
+    {
+      "id": "custom_pil_52",
+      "x": 178,
+      "z": 25,
+      "radius": 4
+    },
+    {
+      "id": "custom_pil_53",
+      "x": 186,
+      "z": 25,
+      "radius": 4
+    },
+    {
+      "id": "custom_pil_54",
+      "x": 211,
+      "z": 41,
+      "radius": 4
+    },
+    {
+      "id": "custom_pil_55",
+      "x": 212,
+      "z": 47,
+      "radius": 4
+    },
+    {
+      "id": "custom_pil_56",
+      "x": 221,
+      "z": 53,
+      "radius": 4
+    },
+    {
+      "id": "custom_pil_57",
+      "x": 228,
+      "z": 63,
+      "radius": 4
+    },
+    {
+      "id": "custom_pil_58",
+      "x": 233,
+      "z": 74,
+      "radius": 4
+    },
+    {
+      "id": "custom_pil_59",
+      "x": 234,
+      "z": 82,
+      "radius": 4
+    },
+    {
+      "id": "custom_pil_60",
+      "x": 235,
+      "z": 90,
+      "radius": 4
+    },
+    {
+      "id": "custom_pil_61",
+      "x": 241,
+      "z": 96,
+      "radius": 4
+    },
+    {
+      "id": "custom_pil_62",
+      "x": 243,
+      "z": 103,
+      "radius": 4
+    },
+    {
+      "id": "custom_pil_63",
+      "x": 240,
+      "z": 110,
+      "radius": 4
+    },
+    {
+      "id": "custom_pil_64",
+      "x": 234,
+      "z": 117,
+      "radius": 4
+    },
+    {
+      "id": "custom_pil_65",
+      "x": 228,
+      "z": 124,
+      "radius": 4
+    },
+    {
+      "id": "custom_pil_66",
+      "x": 223,
+      "z": 130,
+      "radius": 4
+    },
+    {
+      "id": "custom_pil_67",
+      "x": 217,
+      "z": 136,
+      "radius": 4
+    },
+    {
+      "id": "custom_pil_68",
+      "x": 211,
+      "z": 142,
+      "radius": 4
+    },
+    {
+      "id": "custom_pil_69",
+      "x": 205,
+      "z": 147,
+      "radius": 4
+    },
+    {
+      "id": "custom_pil_70",
+      "x": 101,
+      "z": 236,
+      "radius": 4
+    },
+    {
+      "id": "custom_pil_71",
+      "x": 109,
+      "z": 237,
+      "radius": 4
+    },
+    {
+      "id": "custom_pil_72",
+      "x": 194,
+      "z": 30,
+      "radius": 4
+    },
+    {
+      "id": "custom_pil_73",
+      "x": 201,
+      "z": 34,
+      "radius": 4
+    },
+    {
+      "id": "custom_pil_74",
+      "x": 192,
+      "z": 35,
+      "radius": 4
+    }
   ],
   "spawn_points": [
     { "x": 125, "z": 35 },

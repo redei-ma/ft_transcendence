@@ -1,7 +1,7 @@
 import { World } from "../../game.world";
 import { Vector, GameConfig } from '@transcendence/types'
 
-export class PathNode{
+export interface PathNode{
     gridX: number;
     gridZ: number;
 
