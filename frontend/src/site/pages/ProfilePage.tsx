@@ -591,6 +591,38 @@ export default function ProfilePage() {
         </div>
       </div>
 
+      {/* Delete Account */}
+      <div style={{ padding: '24px', background: 'rgba(232,64,87,0.05)', border: `1px solid ${theme.colors.dead}`, borderRadius: '4px', marginTop: '24px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div>
+            <div style={{ fontFamily: theme.fonts.heading, fontSize: '14px', fontWeight: 600, color: theme.colors.dead, marginBottom: '4px' }}>Delete Account</div>
+            <div style={{ fontFamily: theme.fonts.mono, fontSize: '12px', color: theme.colors.textMuted }}>
+              Permanently delete your account and all associated data.
+            </div>
+          </div>
+          <button className="btn-press" onClick={() => {
+            setDialog({
+              isOpen: true,
+              title: "Elimina Account",
+              msg: "Sei sicuro? Questa azione è irreversibile. Il tuo account di gioco e tutti i tuoi dati, statistiche e amicizie verranno eliminati permanentemente.",
+              action: async () => {
+                setDialog(null);
+                const ok = await api.deleteAccount();
+                if (ok) {
+                  window.location.reload();
+                } else {
+                  alert("Errore durante l'eliminazione dell'account.");
+                }
+              }
+            });
+          }} style={{
+            padding: '8px 20px', background: 'none', border: `1px solid ${theme.colors.dead}`,
+            borderRadius: '2px', color: theme.colors.dead, fontFamily: theme.fonts.heading,
+            fontSize: '11px', fontWeight: 700, letterSpacing: '1px', cursor: 'pointer',
+          }}>DELETE</button>
+        </div>
+      </div>
+
       {/* POPUP MODAL */}
       {dialog && dialog.isOpen && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }}>

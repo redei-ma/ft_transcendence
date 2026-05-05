@@ -262,9 +262,9 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
               <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: "10px" }}>
                 <span style={{ fontFamily: theme.fonts.heading, color: theme.colors.ade, fontSize: "13px", letterSpacing: "1px", textTransform: "uppercase", textAlign: "center", marginBottom: "8px", fontWeight: "bold" }}>Player 2</span>
                 <ControlRow keys={["ARROWS"]} action="Move" stacked />
-                <ControlRow keys={["NUM 1"]} action="Melee" stacked />
-                <ControlRow keys={["NUM 2"]} action="Spell" stacked />
-                <ControlRow keys={["NUM 3"]} action="Defense" stacked />
+                <ControlRow keys={["P"]} action="Melee" stacked />
+                <ControlRow keys={["O"]} action="Spell" stacked />
+                <ControlRow keys={["I"]} action="Defense" stacked />
               </div>
             </div>
           </div>

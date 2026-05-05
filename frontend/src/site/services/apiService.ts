@@ -543,3 +543,17 @@ export async function getMyMatches(page = 1, limit = 10, mode?: string): Promise
         return null;
     }
 }
+
+// ==========================================
+// DELETE ACCOUNT
+// ==========================================
+
+export async function deleteAccount(): Promise<boolean> {
+    try {
+        const res = await fetchWithAuthRetry("/api/users/me", { method: "DELETE" });
+        return !!res && (res.ok || res.status === 204);
+    } catch (error) {
+        console.error("[API] Error deleting account:", error);
+        return false;
+    }
+}
