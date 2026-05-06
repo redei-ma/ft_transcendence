@@ -12,6 +12,8 @@ interface NotificationSseData {
 	id: number;
 	type: NotificationType;
 	message: string;
+	isRead: boolean;
+	createdAt: Date;
 }
 
 /** Payload sent over SSE when a friend changes online status. */

@@ -143,7 +143,7 @@ export class NotificationService {
 	): Promise<void> {
 		const notification = await this.prisma.notification.create({
 			data: { userId, type: dto.type, message: dto.message },
-			select: { id: true, type: true, message: true },
+			select: { id: true, type: true, message: true, isRead: true, createdAt: true },
 		});
 
 		this.sseService.pushNotification(userId, notification);
