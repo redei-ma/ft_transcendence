@@ -87,7 +87,7 @@ export default function Navbar({ currentPage, onNavigate, onLogout, username, av
     eventSource.onerror = (err) => {
       console.error("[SSE] Errore di connessione al flusso notifiche. Tentativo di riconnessione automatico...", err);
       // L'EventSource del browser proverà a riconnettersi automaticamente, 
-      // non c'è bisogno di logiche astruse di reconnect.
+      // non c'è bisogno di logiche di reconnect.
     };
 
     // Cleanup: chiudiamo il "tubo" se cambiamo utente o il componente viene smontato
