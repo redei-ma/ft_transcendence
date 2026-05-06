@@ -68,6 +68,19 @@ export default function FriendsSidebar({ onGameInviteAccepted }: FriendsSidebarP
     return () => { clearInterval(friendsInterval); clearInterval(invitesInterval); };
   }, [fetchFriends, fetchInvites]);
 
+  // 5. Ricezione live degli status amici via SSE (propagato dalla Navbar tramite CustomEvent)
+  //    Aggiorna lo status dell'amico nella lista locale senza rifare il fetch.
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const { userId, status } = (e as CustomEvent).detail;
+      setFriends(prev => prev.map(f =>
+        f.friend.id === userId ? { ...f, friend: { ...f.friend, status } } : f
+      ));
+    };
+    window.addEventListener('friend-status-update', handler);
+    return () => window.removeEventListener('friend-status-update', handler);
+  }, []);
+
   // Countdown timer
   useEffect(() => {
     const timer = setInterval(() => setNow(Date.now()), 1000);
