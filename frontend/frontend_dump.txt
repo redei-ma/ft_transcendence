@@ -1,131 +1,12 @@
-]633;E;for f in ./frontend/vite.config.ts ./frontend/tsconfig.json ./frontend/tsconfig.node.json ./frontend/tailwind.config.js ./frontend/postcss.config.js ./frontend/package.json ./frontend/Dockerfile ./frontend/index.html;85c51b8e-cc70-43ad-8643-c4ca27976bf4]633;C========== ./frontend/vite.config.ts ==========
-import { defineConfig } from "vite";
-import react from "@vitejs/plugin-react";
+========== ./.env.example ==========
+# The frontend connects to all services via relative URLs through the Nginx
+# gateway (port 2443). No environment variables are required for local development.
+#
+# If you need to override the API base URL for a standalone frontend build
+# outside of Docker, you can add VITE_ variables here and reference them
+# via import.meta.env in the source code.
 
-export default defineConfig({
-	plugins: [react()],
-	server: {
-		port: 5173,
-		host: true,
-		hmr: {
-			clientPort: 2443,
-		},
-		watch: {
-			usePolling: process.env.CHOKIDAR_USEPOLLING === "true",
-		},
-		allowedHosts: [
-			"frontend",
-			...(process.env.NGROK_DOMAIN ? [process.env.NGROK_DOMAIN] : []),
-		],
-		proxy: {
-			"/api": {
-				target: "http://localhost:3001",
-				changeOrigin: true,
-			},
-			"/auth": {
-				target: "http://localhost:3002",
-				changeOrigin: true,
-			},
-		},
-	},
-});
-
-========== ./frontend/tsconfig.json ==========
-{
-  "compilerOptions": {
-    "target": "ES2020",
-    "lib": ["ES2020", "DOM", "DOM.Iterable"],
-    "module": "ESNext",
-    "skipLibCheck": true,
-    "esModuleInterop": true,
-    "allowSyntheticDefaultImports": true,
-    "strict": true,
-    "moduleResolution": "bundler",
-    "resolveJsonModule": true,
-    "isolatedModules": true,
-    "noEmit": true,
-    "jsx": "react-jsx",
-    "types": ["vite/client"]
-  },
-  "include": ["src"],
-  "references": [{ "path": "./tsconfig.node.json" }]
-}
-========== ./frontend/tsconfig.node.json ==========
-{
-  "compilerOptions": {
-    "composite": true,
-    "skipLibCheck": true,
-    "module": "ESNext",
-    "moduleResolution": "bundler",
-    "allowSyntheticDefaultImports": true
-  },
-  "include": ["vite.config.ts"]
-}
-
-========== ./frontend/tailwind.config.js ==========
-/** @type {import('tailwindcss').Config} */
-export default {
-  content: [
-    "./index.html",
-    "./src/**/*.{js,ts,jsx,tsx}",
-  ],
-  theme: {
-    extend: {},
-  },
-  plugins: [],
-}
-
-========== ./frontend/postcss.config.js ==========
-module.exports = {
-  plugins: {
-    tailwindcss: {},
-    autoprefixer: {},
-  },
-}
-
-========== ./frontend/package.json ==========
-{
-  "name": "frontend",
-  "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
-  "scripts": {
-    "dev": "vite",
-    "build": "tsc && vite build",
-    "preview": "vite preview",
-    "type-check": "tsc --noEmit"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "dependencies": {
-    "@react-three/drei": "^10.7.7",
-    "@react-three/fiber": "^9.5.0",
-    "@react-three/postprocessing": "^3.0.4",
-    "@transcendence/types": "file:../shared/types",
-    "autoprefixer": "^10.4.23",
-    "axios": "^1.13.2",
-    "postcss": "^8.5.6",
-    "react": "^19.2.3",
-    "react-dom": "^19.2.3",
-    "socket.io-client": "^4.8.3",
-    "socket.io-msgpack-parser": "^3.0.0",
-    "tailwindcss": "^3.4.19",
-    "three": "^0.182.0",
-    "zustand": "^5.0.11"
-  },
-  "devDependencies": {
-    "@types/node": "^25.0.8",
-    "@types/react": "^19.2.8",
-    "@types/react-dom": "^19.2.3",
-    "@types/three": "^0.182.0",
-    "@vitejs/plugin-react": "^5.1.2",
-    "typescript": "^5.9.3",
-    "vite": "^7.3.1"
-  }
-}
-
-========== ./frontend/Dockerfile ==========
+========== ./Dockerfile ==========
 # --- Stage 1: Build (dev mode uses this stage via target: build) ---
 FROM node:20-alpine AS build
 
@@ -161,7 +42,7 @@ RUN printf 'server {\n\
 EXPOSE 5173
 
 CMD ["nginx", "-g", "daemon off;"]
-========== ./frontend/index.html ==========
+========== ./index.html ==========
 <!DOCTYPE html>
 <html lang="en">
   <head>
@@ -174,7 +55,15 @@ CMD ["nginx", "-g", "daemon off;"]
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
-========== ./frontend/src/App.tsx ==========
+========== ./postcss.config.js ==========
+module.exports = {
+  plugins: {
+    tailwindcss: {},
+    autoprefixer: {},
+  },
+}
+
+========== ./src/App.tsx ==========
 import { useState, useEffect } from "react";
 import "./site/styles/site.css";
 import LoginPage from "./site/pages/LoginPage";
@@ -187,6 +76,8 @@ import { logout } from "./site/services/authService";
 import { getMyProfile, UserProfile } from "./site/services/apiService";
 import { theme } from "./configs/theme";
 import DesktopOnlyGuard from "./site/components/desktopOnlyGuard";
+import FriendsSidebar from "./site/components/FriendSidebar";
+import GameInviteToast from "./site/components/GameInviteToast";
 
 export default function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(true);
@@ -227,28 +118,10 @@ export default function App() {
     setCurrentPage("dashboard");
   };
 
-  if (!isLoggedIn) {
-    return <LoginPage onLogin={handleLogin} />;
-  }
-
-  if (currentPage === "play") {
-    if (!user) {
-      alert("Errore di sessione: Dati utente mancanti. Effettua nuovamente il login.");
-      handleLogout();
-      return null;
-    }
-    
-    // ⚡ AVVOLGIAMO IL GIOCO CON IL GUARDIANO
-    return (
-      <DesktopOnlyGuard>
-        <GameFlow
-          userId={user.id}
-          username={user.username}
-          onExit={() => setCurrentPage("dashboard")}
-        />
-      </DesktopOnlyGuard>
-    );
-  }
+  const handleGameInviteAccepted = (sessionId: string) => {
+    setCurrentPage("play");
+    console.log("[App] Game invite accepted, sessionId:", sessionId);
+  };
 
   const renderPage = () => {
     switch (currentPage) {
@@ -263,6 +136,32 @@ export default function App() {
     }
   };
 
+  if (!isLoggedIn) {
+    return <LoginPage onLogin={handleLogin} />;
+  }
+
+  if (currentPage === "play") {
+    if (!user) {
+      alert("Errore di sessione: Dati utente mancanti. Effettua nuovamente il login.");
+      handleLogout();
+      return null;
+    }
+    
+    return (
+      <>
+        <DesktopOnlyGuard>
+          <GameFlow
+            userId={user.id}
+            username={user.username}
+            onExit={() => setCurrentPage("dashboard")}
+          />
+        </DesktopOnlyGuard>
+        <FriendsSidebar onGameInviteAccepted={handleGameInviteAccepted} />
+        <GameInviteToast onAccepted={handleGameInviteAccepted} />
+      </>
+    );
+  }
+
   return (
     <div style={{ minHeight: "100vh", backgroundColor: theme.colors.bgDark }}>
       <Navbar
@@ -273,10 +172,12 @@ export default function App() {
         avatarUrl={user?.avatarUrl || ""}
       />
       {renderPage()}
+      <FriendsSidebar onGameInviteAccepted={handleGameInviteAccepted} />
+      <GameInviteToast onAccepted={handleGameInviteAccepted} />
     </div>
   );
 }
-========== ./frontend/src/configs/auraConfig.ts ==========
+========== ./src/configs/auraConfig.ts ==========
 export const AURA_CONFIG = {
   zeus: {
     characterName: 'Zeus' as const,
@@ -363,7 +264,7 @@ export const AURA_CONFIG = {
 
 export type ZeusAuraConfig = typeof AURA_CONFIG.zeus;
 export type AdeAuraConfig = typeof AURA_CONFIG.ade;
-========== ./frontend/src/configs/config.ts ==========
+========== ./src/configs/config.ts ==========
 export const GameConfig = {
 	SERVER: {
 		TICK_RATE: 16,
@@ -408,7 +309,7 @@ export const GameConfig = {
     	INTERPOLATION_SPEED: 0.15,
   	},
 }
-========== ./frontend/src/configs/logger.ts ==========
+========== ./src/configs/logger.ts ==========
 // utils/logger.ts
 // Sistema di logging condizionale.
 // In produzione (e in valutazione) la console resta pulita.
@@ -438,7 +339,7 @@ export const log = {
   warn:   (...args: unknown[]) => DEBUG && console.warn('⚠️', ...args),
   error:  (...args: unknown[]) => console.error('❌', ...args), // sempre attivo
 };
-========== ./frontend/src/configs/theme.ts ==========
+========== ./src/configs/theme.ts ==========
 export const theme = {
   colors: {
     // Base
@@ -490,7 +391,7 @@ export const theme = {
     xl: '40px',
   },
 };
-========== ./frontend/src/game/Game.tsx ==========
+========== ./src/game/Game.tsx ==========
 import { Canvas } from '@react-three/fiber';
 import { useGameSocket } from '../hooks/useGameSocket';
 import { InputManager } from './input/inputManager';
@@ -502,7 +403,7 @@ import { BulletEntity } from './entities/BulletEntity';
 import { GameOverOverlay } from './UI/components/GameOverOverlay';
 import GameChat from './UI/components/GameChat';
 import { EffectComposer, Bloom } from '@react-three/postprocessing';
-import mapTexture from '../assets/mapTexture.png';
+import mapTexture from '../assets/mapTexture1.png';
 import { useGameStore } from '../storage/gameStore';
 
 interface GameProps {
@@ -518,20 +419,20 @@ interface GameProps {
 export default function Game({ selectedCharacter, selectedMode, onPlayAgain, onQuit, myUserId }: GameProps) {
   const inputManagerRef = useRef<InputManager | null>(null);
   
-  // ⚡ Il Socket Hook ora non restituisce nulla, aggiorna solo lo store
+  // Il Socket Hook ora non restituisce nulla, aggiorna solo lo store
   useGameSocket();
 
-  // ⚡ Estraiamo i dati "lenti" dallo store per l'interfaccia 2D
+  // Estraiamo i dati "lenti" dallo store per l'interfaccia 2D
   const isConnected = useGameStore((state) => state.isConnected);
   const world = useGameStore((state) => state.world);
   const gameOver = useGameStore((state) => state.gameOver);
   const resetGame = useGameStore((state) => state.resetGame);
 
-  // ⚡ FIX ZUSTAND v5: Estraiamo gli ID come stringa (es. "id1,id2") così non serve la funzione di comparazione!
+  // FIX ZUSTAND v5: Estraiamo gli ID come stringa (es. "id1,id2") così non serve la funzione di comparazione!
   const playerIdsStr = useGameStore((state) => state.gameState?.players.map(p => p.id).join(',') || '');
   const bulletIdsStr = useGameStore((state) => state.gameState?.bullets.map(b => b.id).join(',') || '');
 
-  // ⚡ Ritrasformiamo la stringa in array solo se cambia
+  // Ritrasformiamo la stringa in array solo se cambia
   const playerIds = useMemo(() => playerIdsStr ? playerIdsStr.split(',') : [], [playerIdsStr]);
   const bulletIds = useMemo(() => bulletIdsStr ? bulletIdsStr.split(',') : [], [bulletIdsStr]);
 
@@ -591,6 +492,40 @@ export default function Game({ selectedCharacter, selectedMode, onPlayAgain, onQ
           <PlayerEntity key={id} playerId={id} />
         ))}
 
+        {world?.map?.pillars?.map((p: any, i: number) => {
+        const px = p.position?.x ?? p.x ?? 0;
+        const pz = p.position?.z ?? p.z ?? 0;
+        return (
+          <mesh 
+            key={`pillar-${i}`} 
+            position={[px, 2.5, pz]}
+          >
+            <cylinderGeometry args={[p.radius, p.radius, 5, 16]} />
+            <meshStandardMaterial 
+              color="#1a1a2e" 
+              emissive="#d4af37" 
+              emissiveIntensity={0.1}
+              transparent 
+              opacity={0.7} 
+            />
+          </mesh>
+        );
+        })}
+
+        {world?.map?.walls?.map((w: any, i: number) => {
+          const wx = w.position?.x ?? 0;
+          const wz = w.position?.z ?? 0;
+          return (
+            <mesh 
+              key={`wall-${i}`} 
+              position={[wx + w.width/2, 2.5, wz + w.depth/2]}
+            >
+              <boxGeometry args={[w.width, 5, w.depth]} />
+              <meshStandardMaterial color="#1a1a2e" transparent opacity={0.6} />
+            </mesh>
+          );
+        })}
+        
         {bulletIds.map((id) => (
           <BulletEntity key={id} bulletId={id} />
         ))}
@@ -627,7 +562,7 @@ function GameOverOverlayWrapper({ gameOver, onPlayAgain, onQuit }: {
   const players = useGameStore((state) => state.gameState?.players) || [];
   return <GameOverOverlay gameOver={gameOver} players={players} onPlayAgain={onPlayAgain} onQuit={onQuit} />;
 }
-========== ./frontend/src/game/UI/components/GameChat.tsx ==========
+========== ./src/game/UI/components/GameChat.tsx ==========
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { socketService } from '../../../services/socketServices';
 import { GameEvents } from '@transcendence/types';
@@ -881,7 +816,7 @@ export default function GameChat({ myUserId, isVisible }: GameChatProps) {
   );
 }
 
-========== ./frontend/src/game/UI/components/GameOverOverlay.tsx ==========
+========== ./src/game/UI/components/GameOverOverlay.tsx ==========
 import { GameOverPayload } from '../../../types/game.types';
 import {PlayerSnapshot} from '@transcendence/types';
 import { theme } from '../../../configs/theme';
@@ -1116,7 +1051,7 @@ function StatCell({ children }: { children: string }) {
     </span>
   );
 }
-========== ./frontend/src/game/UI/components/HPBar.tsx ==========
+========== ./src/game/UI/components/HPBar.tsx ==========
 import { Vector } from '../../../types/game.types';
 import { theme } from '../../../configs/theme';
 import { CharacterName } from '@transcendence/types';
@@ -1203,7 +1138,7 @@ export default function HPBar({
     </div>
   );
 }
-========== ./frontend/src/game/UI/gameUI.tsx ==========
+========== ./src/game/UI/gameUI.tsx ==========
 import { MapEmitPayload } from '../../types/game.types';
 import { theme } from '../../configs/theme';
 import { CharacterName } from '@transcendence/types';
@@ -1300,7 +1235,7 @@ export default function GameUI({
     </>
   );
 }
-========== ./frontend/src/game/core/gameCamera.ts ==========
+========== ./src/game/core/gameCamera.ts ==========
 import * as THREE from 'three';
 import { GameConfig } from '@transcendence/types';
 
@@ -1341,7 +1276,7 @@ export class GameCamera {
     this.camera.updateProjectionMatrix();
   }
 }
-========== ./frontend/src/game/core/gameScene.ts ==========
+========== ./src/game/core/gameScene.ts ==========
 /**
  * GameScene: Setup e gestione della scena Three.js.
  * 
@@ -1444,7 +1379,7 @@ export class GameScene {
     this.renderer.dispose();
   }
 }
-========== ./frontend/src/game/entities/AdeAura.tsx ==========
+========== ./src/game/entities/AdeAura.tsx ==========
 import { useRef, useMemo, useEffect } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
@@ -1712,7 +1647,7 @@ function respawnEmber(pos: Float32Array, vel: Float32Array, life: Float32Array, 
   const l = 0.3+Math.random()*0.6;
   life[i] = l; maxLife[i] = l;
 }
-========== ./frontend/src/game/entities/BulletEntity.tsx ==========
+========== ./src/game/entities/BulletEntity.tsx ==========
 import { useRef, useMemo, useEffect } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
@@ -2171,7 +2106,7 @@ function AdeBullet({ bulletId, initialSnapshot }: { bulletId: string, initialSna
     </group>
   );
 }
-========== ./frontend/src/game/entities/GameArena.tsx ==========
+========== ./src/game/entities/GameArena.tsx ==========
 import { Vector } from '../../types/game.types';
 
 interface WallData {
@@ -2213,7 +2148,7 @@ export function GameArena({ mapData }: GameArenaProps) {
     </group>
   );
 }
-========== ./frontend/src/game/entities/ImpactEffect.tsx ==========
+========== ./src/game/entities/ImpactEffect.tsx ==========
 import { useRef, useMemo, useState } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
@@ -2397,7 +2332,7 @@ export function ImpactEffect({ snapshot }: ImpactEffectProps) {
   );
 }
 
-========== ./frontend/src/game/entities/PlayerEntity.tsx ==========
+========== ./src/game/entities/PlayerEntity.tsx ==========
 import { useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { Html } from '@react-three/drei'; 
@@ -2478,7 +2413,7 @@ export function PlayerEntity({ playerId }: PlayerEntityProps) {
     </group>
   );
 }
-========== ./frontend/src/game/entities/PlayerModel.tsx ==========
+========== ./src/game/entities/PlayerModel.tsx ==========
 import { useRef, useMemo, useEffect } from 'react';
 import { useGLTF, useAnimations } from '@react-three/drei';
 import { useFrame } from '@react-three/fiber';
@@ -2613,7 +2548,7 @@ function applyOpacity(scene: THREE.Object3D, opacity: number) {
 // Preload dei file
 useGLTF.preload(MODEL_PATHS[CharacterName.ZEUS]);
 useGLTF.preload(MODEL_PATHS[CharacterName.ADE]);
-========== ./frontend/src/game/entities/ZeusAura.tsx ==========
+========== ./src/game/entities/ZeusAura.tsx ==========
 
 import { useRef, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
@@ -2768,7 +2703,7 @@ function regenerateBolts(geometries: THREE.BufferGeometry[], segments: number, j
     posAttr.needsUpdate = true;
   }
 }
-========== ./frontend/src/game/input/inputManager.ts ==========
+========== ./src/game/input/inputManager.ts ==========
 import { socketService } from '../../services/socketServices';
 import { GameEvents } from '@transcendence/types';
 import { AttackType } from '@transcendence/types';
@@ -2817,7 +2752,7 @@ export class InputManager {
       'arrowup', 'arrowdown', 'arrowleft', 'arrowright',
       ' ', 'shift', 'control', 'tab', 'alt', 'meta',
       'f1', 'f2', 'f3', 'f4', 'f5', 'f6', 'f7', 'f8', 'f9', 'f10', 'f11', 'f12',
-      '1', '2', '3',
+      'p', 'o', 'i',
     ].includes(key)) {
       e.preventDefault();
     }
@@ -2834,7 +2769,7 @@ export class InputManager {
       this.attackSent[0] = false;
     }
     // Reset attack sent per P1
-    if (key === '1' || key === '2' || key === '3') {
+    if (key === 'p' || key === 'o' || key === 'i') {
       this.attackSent[1] = false;
     }
   };
@@ -2853,7 +2788,7 @@ export class InputManager {
     if (this.isLocalGame) {
       const p1 = this.buildPayload(
         'arrowup', 'arrowdown', 'arrowleft', 'arrowright',
-        '1', '2', '3',
+        'p', 'o', 'i',
         1
       );
       if (p1.attackType) console.log('P1 attack:', p1.attackType);
@@ -2918,7 +2853,7 @@ export class InputManager {
     }
   }
 }
-========== ./frontend/src/hooks/useGameSocket.ts ==========
+========== ./src/hooks/useGameSocket.ts ==========
 import { useEffect } from 'react';
 import { socketService } from '../services/socketServices';
 import { PlayerSnapshot, BulletSnapshot, GameEvents } from '@transcendence/types';
@@ -2980,7 +2915,7 @@ export function useGameSocket() {
     };
   }, []);
 }
-========== ./frontend/src/index.css ==========
+========== ./src/index.css ==========
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -3015,7 +2950,7 @@ body {
   color: #ffffff;
   overflow-x: hidden;
 }
-========== ./frontend/src/main.tsx ==========
+========== ./src/main.tsx ==========
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App'
@@ -3025,7 +2960,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
     <App />
 )
 
-========== ./frontend/src/scenes/characterSelectScene.tsx ==========
+========== ./src/scenes/characterSelectScene.tsx ==========
 import { useState, useEffect, useRef } from 'react';
 import { matchmakingSocket } from '../services/matchmakingSocket';
 import { CharacterName, MatchMode, MatchType, GameEvents } from '@transcendence/types';
@@ -3684,7 +3619,7 @@ export default function CharacterSelectScene({
     </div>
   );
 }
-========== ./frontend/src/scenes/modeSelectScene.tsx ==========
+========== ./src/scenes/modeSelectScene.tsx ==========
 import { useState } from 'react';
 import { MatchMode } from '@transcendence/types';
 import { theme } from '../configs/theme';
@@ -3896,7 +3831,7 @@ export default function ModeSelectScene({ onModeSelect, onBack }: ModeSelectScen
   );
 }
 
-========== ./frontend/src/scenes/queueScene.tsx ==========
+========== ./src/scenes/queueScene.tsx ==========
 import { useEffect, useState } from 'react';
 import { matchmakingSocket } from '../services/matchmakingSocket';
 import { theme } from '../configs/theme';
@@ -4070,143 +4005,143 @@ export default function QueueScene({ onCancel }: QueueSceneProps) {
     </div>
   );
 }
-========== ./frontend/src/scenes/welcomeScene.tsx ==========
-import { useState } from 'react';
-import { theme } from '../configs/theme';
-import welcomeScene from '../assets/welcomeScene.png';
+========== ./src/scenes/welcomeScene.tsx ==========
+// import { useState } from 'react';
+// import { theme } from '../configs/theme';
+// import welcomeScene from '../assets/welcomeScene.png';
 
-interface WelcomeSceneProps {
-  onStart: () => void;
-}
+// interface WelcomeSceneProps {
+//   onStart: () => void;
+// }
 
-export default function WelcomeScene({ onStart }: WelcomeSceneProps) {
-  const [hovered, setHovered] = useState(false);
+// export default function WelcomeScene({ onStart }: WelcomeSceneProps) {
+//   const [hovered, setHovered] = useState(false);
 
-  return (
-    <div
-      style={{
-        position: 'fixed',
-        inset: 0,
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'flex-start',
-        backgroundImage: `url(${welcomeScene})`,
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
-        backgroundRepeat: 'no-repeat',
-        overflow: 'hidden',
-        cursor: 'pointer',
-      }}
-      onClick={onStart}
-    >
-      {/* Titolo CLASH of OLYMPUS */}
-      <div style={{
-        marginTop: '75px',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        animation: 'titleFadeIn 2s ease-out',
-      }}>
-        <span style={{
-          fontSize: 'clamp(80px, 12vw, 164px)',
-          fontFamily: theme.fonts.heading,
-          fontWeight: 700,
-          color: theme.colors.gold,
-          letterSpacing: '8px',
-          textTransform: 'uppercase',
-          lineHeight: 1,
-          textShadow: `0 0 40px ${theme.colors.goldGlow}, 0 2px 4px rgba(0,0,0,0.8)`,
-        }}>
-          CLASH
-        </span>
+//   return (
+//     <div
+//       style={{
+//         position: 'fixed',
+//         inset: 0,
+//         display: 'flex',
+//         flexDirection: 'column',
+//         alignItems: 'center',
+//         justifyContent: 'flex-start',
+//         backgroundImage: `url(${welcomeScene})`,
+//         backgroundSize: 'cover',
+//         backgroundPosition: 'center',
+//         backgroundRepeat: 'no-repeat',
+//         overflow: 'hidden',
+//         cursor: 'pointer',
+//       }}
+//       onClick={onStart}
+//     >
+//       {/* Titolo CLASH of OLYMPUS */}
+//       <div style={{
+//         marginTop: '75px',
+//         display: 'flex',
+//         flexDirection: 'column',
+//         alignItems: 'center',
+//         animation: 'titleFadeIn 2s ease-out',
+//       }}>
+//         <span style={{
+//           fontSize: 'clamp(80px, 12vw, 164px)',
+//           fontFamily: theme.fonts.heading,
+//           fontWeight: 700,
+//           color: theme.colors.gold,
+//           letterSpacing: '8px',
+//           textTransform: 'uppercase',
+//           lineHeight: 1,
+//           textShadow: `0 0 40px ${theme.colors.goldGlow}, 0 2px 4px rgba(0,0,0,0.8)`,
+//         }}>
+//           CLASH
+//         </span>
 
-        <span style={{
-          fontSize: 'clamp(28px, 4vw, 52px)',
-          fontFamily: theme.fonts.heading,
-          fontWeight: 400,
-          color: theme.colors.goldDim,
-          letterSpacing: '20px',
-          textTransform: 'lowercase',
-          lineHeight: 1,
-          marginTop: '8px',
-          marginBottom: '8px',
-          textShadow: `0 0 30px ${theme.colors.goldGlow}, 0 2px 4px rgba(0,0,0,0.8)`,
-        }}>
-          of
-        </span>
+//         <span style={{
+//           fontSize: 'clamp(28px, 4vw, 52px)',
+//           fontFamily: theme.fonts.heading,
+//           fontWeight: 400,
+//           color: theme.colors.goldDim,
+//           letterSpacing: '20px',
+//           textTransform: 'lowercase',
+//           lineHeight: 1,
+//           marginTop: '8px',
+//           marginBottom: '8px',
+//           textShadow: `0 0 30px ${theme.colors.goldGlow}, 0 2px 4px rgba(0,0,0,0.8)`,
+//         }}>
+//           of
+//         </span>
 
-        <span style={{
-          fontSize: 'clamp(80px, 12vw, 164px)',
-          fontFamily: theme.fonts.heading,
-          fontWeight: 700,
-          color: theme.colors.gold,
-          letterSpacing: '8px',
-          textTransform: 'uppercase',
-          lineHeight: 1,
-          textShadow: `0 0 40px ${theme.colors.goldGlow}, 0 2px 4px rgba(0,0,0,0.8)`,
-        }}>
-          OLYMPUS
-        </span>
-      </div>
+//         <span style={{
+//           fontSize: 'clamp(80px, 12vw, 164px)',
+//           fontFamily: theme.fonts.heading,
+//           fontWeight: 700,
+//           color: theme.colors.gold,
+//           letterSpacing: '8px',
+//           textTransform: 'uppercase',
+//           lineHeight: 1,
+//           textShadow: `0 0 40px ${theme.colors.goldGlow}, 0 2px 4px rgba(0,0,0,0.8)`,
+//         }}>
+//           OLYMPUS
+//         </span>
+//       </div>
 
-      {/* Sottotitolo */}
-      <p style={{
-        marginTop: '24px',
-        fontFamily: theme.fonts.heading,
-        fontSize: 'clamp(16px, 2.5vw, 22px)',
-        letterSpacing: '10px',
-        color: theme.colors.goldDark,
-        textTransform: 'uppercase',
-        textShadow: `0 0 20px rgba(0,0,0,0.9), 0 2px 8px rgba(0,0,0,0.8)`,
-        animation: 'subtitleFadeIn 2s ease-out 0.5s both',
-      }}>
-        Hades against Zeus
-      </p>
+//       {/* Sottotitolo */}
+//       <p style={{
+//         marginTop: '24px',
+//         fontFamily: theme.fonts.heading,
+//         fontSize: 'clamp(16px, 2.5vw, 22px)',
+//         letterSpacing: '10px',
+//         color: theme.colors.goldDark,
+//         textTransform: 'uppercase',
+//         textShadow: `0 0 20px rgba(0,0,0,0.9), 0 2px 8px rgba(0,0,0,0.8)`,
+//         animation: 'subtitleFadeIn 2s ease-out 0.5s both',
+//       }}>
+//         Hades against Zeus
+//       </p>
 
-      {/* CTA */}
-      <div
-        onMouseEnter={() => setHovered(true)}
-        onMouseLeave={() => setHovered(false)}
-        style={{
-          marginTop: 'auto',
-          marginBottom: '80px',
-          fontFamily: theme.fonts.heading,
-          fontSize: 'clamp(48px, 2vw, 32px)',
-          fontWeight: 500,
-          letterSpacing: '6px',
-          color: theme.colors.gold,
-          textTransform: 'uppercase',
-          transition: 'all 0.4s ease',
-          boxShadow: `0 0 30px rgba(200, 170, 100, 0.15)`,
-          textShadow: `0 0 20px rgba(0,0,0,0.9), 0 2px 8px rgba(0,0,0,0.8)`,
-          animation: 'blinkFade 2s ease-in-out infinite',
-        }}
-      >
-        Click everywhere for starting
-      </div>
+//       {/* CTA */}
+//       <div
+//         onMouseEnter={() => setHovered(true)}
+//         onMouseLeave={() => setHovered(false)}
+//         style={{
+//           marginTop: 'auto',
+//           marginBottom: '80px',
+//           fontFamily: theme.fonts.heading,
+//           fontSize: 'clamp(48px, 2vw, 32px)',
+//           fontWeight: 500,
+//           letterSpacing: '6px',
+//           color: theme.colors.gold,
+//           textTransform: 'uppercase',
+//           transition: 'all 0.4s ease',
+//           boxShadow: `0 0 30px rgba(200, 170, 100, 0.15)`,
+//           textShadow: `0 0 20px rgba(0,0,0,0.9), 0 2px 8px rgba(0,0,0,0.8)`,
+//           animation: 'blinkFade 2s ease-in-out infinite',
+//         }}
+//       >
+//         Click everywhere for starting
+//       </div>
 
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&display=swap');
-        @keyframes titleFadeIn {
-          from { opacity: 0; transform: translateY(20px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-        @keyframes subtitleFadeIn { from { opacity: 0; } to { opacity: 1; } }
-        @keyframes enterFadeIn {
-          from { opacity: 0; transform: translateY(10px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-        @keyframes blinkFade {
-          0%, 100% { opacity: 1; }
-          50% { opacity: 0.3; }
-        }
-      `}</style>
-    </div>
-  );
-}
+//       <style>{`
+//         @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&display=swap');
+//         @keyframes titleFadeIn {
+//           from { opacity: 0; transform: translateY(20px); }
+//           to { opacity: 1; transform: translateY(0); }
+//         }
+//         @keyframes subtitleFadeIn { from { opacity: 0; } to { opacity: 1; } }
+//         @keyframes enterFadeIn {
+//           from { opacity: 0; transform: translateY(10px); }
+//           to { opacity: 1; transform: translateY(0); }
+//         }
+//         @keyframes blinkFade {
+//           0%, 100% { opacity: 1; }
+//           50% { opacity: 0.3; }
+//         }
+//       `}</style>
+//     </div>
+//   );
+// }
 
-========== ./frontend/src/services/matchmakingSocket.ts ==========
+========== ./src/services/matchmakingSocket.ts ==========
 import { io, Socket } from "socket.io-client";
 import { GameEvents } from '@transcendence/types';
 import { refreshToken } from "../site/services/authService";
@@ -4329,7 +4264,7 @@ class MatchmakingSocket {
 }
 
 export const matchmakingSocket = new MatchmakingSocket();
-========== ./frontend/src/services/socketServices.ts ==========
+========== ./src/services/socketServices.ts ==========
 import { io, Socket } from "socket.io-client";
 import * as msgpackParser from "socket.io-msgpack-parser";
 import { GameEvents } from '@transcendence/types';
@@ -4486,7 +4421,7 @@ export class SocketService {
 }
 
 export const socketService = new SocketService();
-========== ./frontend/src/site/components/Dropdown.tsx ==========
+========== ./src/site/components/Dropdown.tsx ==========
 import React, { useState, useEffect, useRef } from 'react';
 import { dropdownItemBase } from '../styles/shared';
 import { theme } from '../../configs/theme';
@@ -4546,7 +4481,693 @@ export function DropdownItem({ icon: Icon, label, onClick }: {
     </button>
   );
 }
-========== ./frontend/src/site/components/Icons.tsx ==========
+========== ./src/site/components/FriendSidebar.tsx ==========
+import { useState, useEffect, useCallback } from 'react';
+import * as api from '../services/apiService';
+import * as Icons from './Icons';
+import { theme } from '../../configs/theme';
+
+const SIDEBAR_WIDTH = 300;
+const FRIENDS_POLL = 30000;
+const INVITES_POLL = 5000;
+
+type Tab = 'friends' | 'requests' | 'add';
+
+const statusColor = (s: string) =>
+  s === 'ONLINE' ? theme.colors.hpHigh
+  : s === 'IN_GAME' ? theme.colors.zeus
+  : s === 'IN_QUEUE' ? theme.colors.hpMid
+  : theme.colors.textMuted;
+
+const statusLabel = (s: string) =>
+  s === 'ONLINE' ? 'Online'
+  : s === 'IN_GAME' ? 'In Game'
+  : s === 'IN_QUEUE' ? 'In Queue'
+  : 'Offline';
+
+interface FriendsSidebarProps {
+  onGameInviteAccepted: (sessionId: string) => void;
+}
+
+export default function FriendsSidebar({ onGameInviteAccepted }: FriendsSidebarProps) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [tab, setTab] = useState<Tab>('friends');
+  const [friends, setFriends] = useState<api.FriendEntry[]>([]);
+  const [requests, setRequests] = useState<api.FriendRequestsResponse | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  // Game invites
+  const [gameInvites, setGameInvites] = useState<api.GameInvite[]>([]);
+  const [now, setNow] = useState(Date.now());
+
+  // Add friend
+  const [addId, setAddId] = useState('');
+  const [addMsg, setAddMsg] = useState('');
+  const [addError, setAddError] = useState('');
+
+  // Invite feedback
+  const [inviteMsg, setInviteMsg] = useState<Record<number, string>>({});
+
+  const fetchFriends = useCallback(async () => {
+    const [friendsData, reqData] = await Promise.all([
+      api.getFriends(),
+      api.getFriendRequests(),
+    ]);
+    if (friendsData) setFriends(friendsData.friends);
+    if (reqData) setRequests(reqData);
+    setLoading(false);
+  }, []);
+
+  const fetchInvites = useCallback(async () => {
+    const data = await api.getGameInvites();
+    if (data) setGameInvites(data.invites);
+  }, []);
+
+  // Polling amici (30s) + inviti (5s)
+  useEffect(() => {
+    fetchFriends();
+    fetchInvites();
+    const friendsInterval = setInterval(fetchFriends, FRIENDS_POLL);
+    const invitesInterval = setInterval(fetchInvites, INVITES_POLL);
+    return () => { clearInterval(friendsInterval); clearInterval(invitesInterval); };
+  }, [fetchFriends, fetchInvites]);
+
+  // Countdown timer
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  // Contatori
+  const receivedCount = requests?.received?.length || 0;
+  const activeInvites = gameInvites.filter(inv => new Date(inv.expiresAt).getTime() > now);
+  const badgeCount = receivedCount + activeInvites.length;
+  const onlineCount = friends.filter(f => f.friend.status === 'ONLINE').length;
+
+  // Ordina: online first
+  const sortedFriends = [...friends].sort((a, b) => {
+    const order: Record<string, number> = { 'ONLINE': 0, 'IN_QUEUE': 1, 'IN_GAME': 2, 'OFFLINE': 3 };
+    return (order[a.friend.status] ?? 4) - (order[b.friend.status] ?? 4);
+  });
+
+  const handleAddFriend = async () => {
+    setAddMsg('');
+    setAddError('');
+    const id = parseInt(addId.trim(), 10);
+    if (isNaN(id) || id <= 0) return setAddError('Inserisci un ID valido.');
+    const result = await api.sendFriendRequest(id);
+    if (result.ok) {
+      setAddMsg('Richiesta inviata!');
+      setAddId('');
+      fetchFriends();
+    } else {
+      setAddError(result.message || 'Errore');
+    }
+  };
+
+  const handleAcceptFriend = async (targetId: number) => {
+    if (await api.respondFriendRequest(targetId, 'ACCEPTED')) fetchFriends();
+  };
+
+  const handleRejectFriend = async (targetId: number) => {
+    if (await api.respondFriendRequest(targetId, 'REJECTED')) fetchFriends();
+  };
+
+  const handleRemove = async (targetId: number) => {
+    if (await api.removeFriend(targetId)) fetchFriends();
+  };
+
+  const handleSendInvite = async (targetId: number) => {
+    const result = await api.sendGameInvite(targetId);
+    setInviteMsg(prev => ({
+      ...prev,
+      [targetId]: result.ok ? 'Invited!' : (result.message || 'Error'),
+    }));
+    setTimeout(() => {
+      setInviteMsg(prev => { const n = { ...prev }; delete n[targetId]; return n; });
+    }, 3000);
+  };
+
+  const handleAcceptInvite = async (invite: api.GameInvite) => {
+    const result = await api.respondGameInvite(invite.id, 'ACCEPTED');
+    if (result.ok && result.sessionId) {
+      setGameInvites(prev => prev.filter(i => i.id !== invite.id));
+      onGameInviteAccepted(result.sessionId);
+    }
+  };
+
+  const handleRejectInvite = async (invite: api.GameInvite) => {
+    const result = await api.respondGameInvite(invite.id, 'REJECTED');
+    if (result.ok) {
+      setGameInvites(prev => prev.filter(i => i.id !== invite.id));
+    }
+  };
+
+  // ─── Tab button ───
+  const TabBtn = ({ id, label, badge }: { id: Tab; label: string; badge?: number }) => (
+    <button onClick={() => setTab(id)} style={{
+      flex: 1, padding: '8px 4px', border: 'none',
+      background: tab === id ? 'rgba(200,170,100,0.12)' : 'transparent',
+      color: tab === id ? theme.colors.gold : theme.colors.textMuted,
+      fontFamily: theme.fonts.heading, fontSize: '10px', fontWeight: 600,
+      letterSpacing: '1px', textTransform: 'uppercase', cursor: 'pointer',
+      borderBottom: tab === id ? `2px solid ${theme.colors.gold}` : '2px solid transparent',
+      position: 'relative', transition: 'all 0.2s',
+    }}>
+      {label}
+      {badge && badge > 0 ? (
+        <span style={{
+          position: 'absolute', top: 2, right: 6,
+          background: theme.colors.dead, color: '#fff',
+          fontSize: '9px', fontWeight: 'bold',
+          width: 14, height: 14, borderRadius: '50%',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}>{badge > 9 ? '9+' : badge}</span>
+      ) : null}
+    </button>
+  );
+
+  // ─── Toggle button ───
+  const toggleBtn = (
+    <button onClick={() => setIsOpen(!isOpen)} style={{
+      position: 'fixed', right: isOpen ? SIDEBAR_WIDTH : 0,
+      top: '50%', transform: 'translateY(-50%)',
+      width: 36, height: 72, border: `1px solid ${theme.colors.border}`,
+      borderRight: isOpen ? 'none' : `1px solid ${theme.colors.border}`,
+      borderLeft: isOpen ? `1px solid ${theme.colors.border}` : 'none',
+      borderRadius: '8px 0 0 8px',
+      background: theme.colors.bgPanel, color: theme.colors.goldDim,
+      cursor: 'pointer', display: 'flex', flexDirection: 'column',
+      alignItems: 'center', justifyContent: 'center', gap: '4px',
+      zIndex: 2001, transition: 'right 0.3s ease',
+      backdropFilter: 'blur(8px)',
+    }}>
+      <Icons.Users size={16} />
+      {(badgeCount > 0 || onlineCount > 0) && (
+        <span style={{
+          fontSize: '9px', fontWeight: 'bold',
+          color: badgeCount > 0 ? theme.colors.dead : theme.colors.hpHigh,
+        }}>
+          {badgeCount > 0 ? badgeCount : onlineCount}
+        </span>
+      )}
+    </button>
+  );
+
+  return (
+    <>
+      {toggleBtn}
+
+      <div style={{
+        position: 'fixed', top: 0, right: 0, bottom: 0,
+        width: SIDEBAR_WIDTH,
+        background: `linear-gradient(180deg, ${theme.colors.bgPanel} 0%, ${theme.colors.bgDark} 100%)`,
+        borderLeft: `1px solid ${theme.colors.border}`,
+        zIndex: 2001,
+        transform: isOpen ? 'translateX(0)' : `translateX(${SIDEBAR_WIDTH}px)`,
+        transition: 'transform 0.3s ease',
+        display: 'flex', flexDirection: 'column',
+        fontFamily: theme.fonts.mono,
+      }}>
+        {/* Header */}
+        <div style={{
+          padding: '16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          borderBottom: `1px solid ${theme.colors.border}`,
+        }}>
+          <span style={{ fontFamily: theme.fonts.heading, fontSize: '14px', fontWeight: 700, color: theme.colors.goldBright, letterSpacing: '2px', textTransform: 'uppercase' }}>
+            Friends
+          </span>
+          <span style={{ fontFamily: theme.fonts.mono, fontSize: '11px', color: theme.colors.hpHigh }}>
+            {onlineCount} online
+          </span>
+        </div>
+
+        {/* Tabs */}
+        <div style={{ display: 'flex', borderBottom: `1px solid ${theme.colors.border}` }}>
+          <TabBtn id="friends" label="List" />
+          <TabBtn id="requests" label="Requests" badge={badgeCount} />
+          <TabBtn id="add" label="Add" />
+        </div>
+
+        {/* Content */}
+        <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden' }}>
+
+          {loading && (
+            <div style={{ padding: '32px', textAlign: 'center', color: theme.colors.textMuted, fontSize: '12px' }}>
+              Loading...
+            </div>
+          )}
+
+          {/* ═══ FRIENDS LIST ═══ */}
+          {!loading && tab === 'friends' && (
+            sortedFriends.length === 0 ? (
+              <div style={{ padding: '32px 16px', textAlign: 'center' }}>
+                <p style={{ color: theme.colors.textMuted, fontSize: '12px', lineHeight: 1.6 }}>
+                  No friends yet.<br />Use the Add tab to send a request!
+                </p>
+              </div>
+            ) : (
+              sortedFriends.map((f) => {
+                const isOnline = f.friend.status === 'ONLINE';
+                const isInGame = f.friend.status === 'IN_GAME' || f.friend.status === 'IN_QUEUE';
+                return (
+                  <div key={f.id} style={{
+                    display: 'flex', alignItems: 'center', gap: '10px',
+                    padding: '10px 16px', borderBottom: `1px solid rgba(200,170,100,0.06)`,
+                    transition: 'background 0.15s',
+                    opacity: isOnline || isInGame ? 1 : 0.5,
+                  }}
+                    onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(200,170,100,0.05)'}
+                    onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                  >
+                    <div style={{ position: 'relative', flexShrink: 0 }}>
+                      <img
+                        src={f.friend.avatarUrl || `https://api.dicebear.com/9.x/pixel-art/svg?seed=${f.friend.username}`}
+                        alt="" style={{ width: 32, height: 32, borderRadius: '50%', border: `2px solid ${theme.colors.border}` }}
+                      />
+                      <div style={{
+                        position: 'absolute', bottom: -1, right: -1,
+                        width: 10, height: 10, borderRadius: '50%',
+                        background: statusColor(f.friend.status),
+                        border: `2px solid ${theme.colors.bgPanel}`,
+                      }} />
+                    </div>
+
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{
+                        fontFamily: theme.fonts.heading, fontWeight: 600, fontSize: '12px',
+                        color: theme.colors.textPrimary, whiteSpace: 'nowrap',
+                        overflow: 'hidden', textOverflow: 'ellipsis',
+                      }}>{f.friend.username}</div>
+                      <div style={{ fontSize: '10px', color: statusColor(f.friend.status) }}>
+                        {statusLabel(f.friend.status)}
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'flex', gap: '4px', alignItems: 'center', flexShrink: 0 }}>
+                      {isOnline && (
+                        inviteMsg[f.friend.id] ? (
+                          <span style={{
+                            fontSize: '9px', color: inviteMsg[f.friend.id] === 'Invited!' ? theme.colors.hpHigh : theme.colors.dead,
+                          }}>{inviteMsg[f.friend.id]}</span>
+                        ) : (
+                          <button onClick={() => handleSendInvite(f.friend.id)} title="Invite to game" style={{
+                            background: 'none', border: `1px solid ${theme.colors.goldSubtle}`,
+                            borderRadius: '4px', color: theme.colors.goldDim, cursor: 'pointer',
+                            padding: '3px 6px', display: 'flex', alignItems: 'center',
+                            transition: 'all 0.2s', fontSize: '10px', fontFamily: theme.fonts.heading,
+                          }}
+                            onMouseEnter={(e) => { e.currentTarget.style.borderColor = theme.colors.gold; e.currentTarget.style.color = theme.colors.gold; }}
+                            onMouseLeave={(e) => { e.currentTarget.style.borderColor = theme.colors.goldSubtle; e.currentTarget.style.color = theme.colors.goldDim; }}
+                          >
+                            <Icons.Zap size={12} />
+                          </button>
+                        )
+                      )}
+
+                      <button onClick={() => handleRemove(f.friend.id)} title="Remove friend" style={{
+                        background: 'none', border: 'none', color: theme.colors.textMuted,
+                        cursor: 'pointer', padding: '3px', display: 'flex', opacity: 0.4,
+                        transition: 'all 0.2s',
+                      }}
+                        onMouseEnter={(e) => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.color = theme.colors.dead; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.opacity = '0.4'; e.currentTarget.style.color = theme.colors.textMuted; }}
+                      >
+                        <Icons.X size={12} />
+                      </button>
+                    </div>
+                  </div>
+                );
+              })
+            )
+          )}
+
+          {/* ═══ REQUESTS TAB (Friend Requests + Game Invites) ═══ */}
+          {!loading && tab === 'requests' && (
+            <div style={{ padding: '8px 0' }}>
+
+              {/* ── GAME INVITES ── */}
+              {activeInvites.length > 0 && (
+                <>
+                  <div style={{ padding: '8px 16px 4px' }}>
+                    <span style={{ fontFamily: theme.fonts.heading, fontSize: '10px', color: theme.colors.gold, letterSpacing: '1.5px', textTransform: 'uppercase' }}>
+                      Game Invites ({activeInvites.length})
+                    </span>
+                  </div>
+                  {activeInvites.map((inv) => {
+                    const expiresAt = new Date(inv.expiresAt).getTime();
+                    const remaining = Math.max(0, Math.ceil((expiresAt - now) / 1000));
+                    const ttlTotal = Math.max(1, Math.ceil((expiresAt - new Date(inv.createdAt).getTime()) / 1000));
+                    const progressPct = (remaining / ttlTotal) * 100;
+
+                    return (
+                      <div key={`invite-${inv.id}`} style={{
+                        padding: '10px 16px', borderBottom: `1px solid rgba(200,170,100,0.06)`,
+                        background: 'rgba(200,170,100,0.04)',
+                      }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
+                          <img
+                            src={inv.sender.avatarUrl || `https://api.dicebear.com/9.x/pixel-art/svg?seed=${inv.sender.username}`}
+                            alt="" style={{ width: 28, height: 28, borderRadius: '50%', border: `2px solid ${theme.colors.gold}`, flexShrink: 0 }}
+                          />
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{
+                              fontFamily: theme.fonts.heading, fontSize: '12px', fontWeight: 600,
+                              color: theme.colors.textPrimary,
+                            }}>{inv.sender.username}</div>
+                            <div style={{ fontFamily: theme.fonts.mono, fontSize: '10px', color: theme.colors.goldDim }}>
+                              wants to fight!
+                            </div>
+                          </div>
+                          <span style={{
+                            fontFamily: theme.fonts.mono, fontSize: '16px', fontWeight: 700,
+                            color: remaining <= 10 ? theme.colors.dead : theme.colors.gold,
+                            transition: 'color 0.3s', minWidth: '32px', textAlign: 'right',
+                          }}>{remaining}s</span>
+                        </div>
+
+                        {/* Progress bar */}
+                        <div style={{
+                          width: '100%', height: '2px', background: theme.colors.bgDark,
+                          borderRadius: '1px', overflow: 'hidden', marginBottom: '8px',
+                        }}>
+                          <div style={{
+                            height: '100%', width: `${progressPct}%`,
+                            background: remaining <= 10 ? theme.colors.dead : theme.colors.gold,
+                            transition: 'width 1s linear, background 0.3s',
+                          }} />
+                        </div>
+
+                        {/* Buttons */}
+                        <div style={{ display: 'flex', gap: '6px' }}>
+                          <button onClick={() => handleAcceptInvite(inv)} style={{
+                            flex: 1, padding: '6px', border: 'none', borderRadius: '3px',
+                            background: `linear-gradient(180deg, ${theme.colors.gold}, ${theme.colors.goldDark})`,
+                            color: theme.colors.bgDark, fontFamily: theme.fonts.heading,
+                            fontSize: '10px', fontWeight: 700, letterSpacing: '1px', cursor: 'pointer',
+                          }}>ACCEPT</button>
+                          <button onClick={() => handleRejectInvite(inv)} style={{
+                            flex: 1, padding: '6px', border: `1px solid ${theme.colors.border}`,
+                            borderRadius: '3px', background: 'transparent',
+                            color: theme.colors.textMuted, fontFamily: theme.fonts.heading,
+                            fontSize: '10px', fontWeight: 600, letterSpacing: '1px', cursor: 'pointer',
+                          }}>DECLINE</button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                  <div style={{ height: 1, background: theme.colors.border, margin: '4px 16px' }} />
+                </>
+              )}
+
+              {/* ── FRIEND REQUESTS: Received ── */}
+              <div style={{ padding: '8px 16px 4px' }}>
+                <span style={{ fontFamily: theme.fonts.heading, fontSize: '10px', color: theme.colors.textMuted, letterSpacing: '1.5px', textTransform: 'uppercase' }}>
+                  Friend Requests — Received ({receivedCount})
+                </span>
+              </div>
+              {(!requests?.received || requests.received.length === 0) ? (
+                <div style={{ padding: '12px 16px', fontSize: '11px', color: theme.colors.textMuted }}>None</div>
+              ) : (
+                requests.received.map((r) => (
+                  <div key={`freq-${r.id}`} style={{
+                    display: 'flex', alignItems: 'center', gap: '10px',
+                    padding: '8px 16px', borderBottom: `1px solid rgba(200,170,100,0.06)`,
+                  }}>
+                    <img src={r.friend.avatarUrl || `https://api.dicebear.com/9.x/pixel-art/svg?seed=${r.friend.username}`}
+                      alt="" style={{ width: 28, height: 28, borderRadius: '50%', border: `1px solid ${theme.colors.border}`, flexShrink: 0 }} />
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <span style={{ fontFamily: theme.fonts.heading, fontSize: '12px', color: theme.colors.textPrimary }}>{r.friend.username}</span>
+                    </div>
+                    <button onClick={() => handleAcceptFriend(r.friend.id)} style={{
+                      padding: '4px 10px', background: theme.colors.hpHigh, border: 'none',
+                      borderRadius: '2px', color: theme.colors.bgDark, fontFamily: theme.fonts.heading,
+                      fontSize: '9px', fontWeight: 700, cursor: 'pointer',
+                    }}>OK</button>
+                    <button onClick={() => handleRejectFriend(r.friend.id)} style={{
+                      padding: '4px 8px', background: 'none', border: `1px solid ${theme.colors.dead}`,
+                      borderRadius: '2px', color: theme.colors.dead, fontFamily: theme.fonts.heading,
+                      fontSize: '9px', fontWeight: 700, cursor: 'pointer',
+                    }}>
+                      <Icons.X size={10} />
+                    </button>
+                  </div>
+                ))
+              )}
+
+              {/* Divider */}
+              <div style={{ height: 1, background: theme.colors.border, margin: '8px 16px' }} />
+
+              {/* ── FRIEND REQUESTS: Sent ── */}
+              <div style={{ padding: '8px 16px 4px' }}>
+                <span style={{ fontFamily: theme.fonts.heading, fontSize: '10px', color: theme.colors.textMuted, letterSpacing: '1.5px', textTransform: 'uppercase' }}>
+                  Friend Requests — Sent ({requests?.sent?.length || 0})
+                </span>
+              </div>
+              {(!requests?.sent || requests.sent.length === 0) ? (
+                <div style={{ padding: '12px 16px', fontSize: '11px', color: theme.colors.textMuted }}>None</div>
+              ) : (
+                requests.sent.map((r) => (
+                  <div key={`fsent-${r.id}`} style={{
+                    display: 'flex', alignItems: 'center', gap: '10px',
+                    padding: '8px 16px', borderBottom: `1px solid rgba(200,170,100,0.06)`,
+                  }}>
+                    <img src={r.friend.avatarUrl || `https://api.dicebear.com/9.x/pixel-art/svg?seed=${r.friend.username}`}
+                      alt="" style={{ width: 28, height: 28, borderRadius: '50%', border: `1px solid ${theme.colors.border}`, flexShrink: 0 }} />
+                    <span style={{ flex: 1, fontFamily: theme.fonts.heading, fontSize: '12px', color: theme.colors.textPrimary }}>{r.friend.username}</span>
+                    <span style={{ fontSize: '9px', color: theme.colors.hpMid, fontFamily: theme.fonts.heading, letterSpacing: '0.5px' }}>PENDING</span>
+                    <button onClick={() => handleRemove(r.friend.id)} style={{
+                      background: 'none', border: 'none', color: theme.colors.textMuted,
+                      cursor: 'pointer', padding: '2px', display: 'flex',
+                    }}>
+                      <Icons.X size={12} />
+                    </button>
+                  </div>
+                ))
+              )}
+            </div>
+          )}
+
+          {/* ═══ ADD TAB ═══ */}
+          {!loading && tab === 'add' && (
+            <div style={{ padding: '16px' }}>
+              <p style={{ fontSize: '11px', color: theme.colors.textSecondary, marginBottom: '12px', lineHeight: 1.6 }}>
+                Enter a player's numeric ID to send a friend request. You can find IDs on the leaderboard or after a match.
+              </p>
+              <div style={{ display: 'flex', gap: '6px', marginBottom: '12px' }}>
+                <input
+                  type="text"
+                  placeholder="Player ID"
+                  value={addId}
+                  onChange={(e) => setAddId(e.target.value.replace(/\D/g, ''))}
+                  onKeyDown={(e) => e.key === 'Enter' && handleAddFriend()}
+                  style={{
+                    flex: 1, padding: '8px 12px', background: theme.colors.bgDark,
+                    border: `1px solid ${theme.colors.border}`, borderRadius: '2px',
+                    color: theme.colors.textPrimary, fontFamily: theme.fonts.mono,
+                    fontSize: '13px', outline: 'none',
+                  }}
+                />
+                <button onClick={handleAddFriend} style={{
+                  padding: '0 16px', background: `linear-gradient(180deg, ${theme.colors.gold}, ${theme.colors.goldDark})`,
+                  border: 'none', borderRadius: '2px', color: theme.colors.bgDark,
+                  fontFamily: theme.fonts.heading, fontSize: '10px', fontWeight: 700,
+                  letterSpacing: '1px', cursor: 'pointer',
+                }}>SEND</button>
+              </div>
+              {addMsg && <div style={{ color: theme.colors.hpHigh, fontSize: '11px', textAlign: 'center', marginBottom: '8px' }}>{addMsg}</div>}
+              {addError && <div style={{ color: theme.colors.dead, fontSize: '11px', textAlign: 'center', marginBottom: '8px' }}>{addError}</div>}
+
+              <div style={{ marginTop: '16px', padding: '12px', background: 'rgba(200,170,100,0.04)', borderRadius: '4px', border: `1px solid ${theme.colors.border}` }}>
+                <p style={{ fontSize: '10px', color: theme.colors.textMuted, lineHeight: 1.5 }}>
+                  Your ID is visible on your profile page. Share it with friends so they can add you too!
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </>
+  );
+}
+========== ./src/site/components/GameInviteToast.tsx ==========
+import { useState, useEffect, useCallback } from 'react';
+import * as api from '../services/apiService';
+import * as Icons from './Icons';
+import { theme } from '../../configs/theme';
+
+const POLL_INTERVAL = 5000;
+
+interface GameInviteToastProps {
+  onAccepted: (sessionId: string) => void;
+}
+
+export default function GameInviteToast({ onAccepted }: GameInviteToastProps) {
+  const [invites, setInvites] = useState<api.GameInvite[]>([]);
+  const [dismissed, setDismissed] = useState<Set<number>>(new Set());
+  const [now, setNow] = useState(Date.now());
+
+  // Polling inviti pendenti
+  const fetchInvites = useCallback(async () => {
+    const data = await api.getGameInvites();
+    if (data) {
+      setInvites(data.invites);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchInvites();
+    const interval = setInterval(fetchInvites, POLL_INTERVAL);
+    return () => clearInterval(interval);
+  }, [fetchInvites]);
+
+  // Countdown timer — aggiorna ogni secondo
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const handleAccept = async (invite: api.GameInvite) => {
+    const result = await api.respondGameInvite(invite.id, 'ACCEPTED');
+    if (result.ok && result.sessionId) {
+      // Rimuovi l'invito dalla lista
+      setInvites(prev => prev.filter(i => i.id !== invite.id));
+      // Notifica App.tsx per avviare il gioco
+      onAccepted(result.sessionId);
+    }
+  };
+
+  const handleReject = async (invite: api.GameInvite) => {
+    const result = await api.respondGameInvite(invite.id, 'REJECTED');
+    if (result.ok) {
+      setInvites(prev => prev.filter(i => i.id !== invite.id));
+    }
+  };
+
+  const handleDismiss = (inviteId: number) => {
+    setDismissed(prev => new Set(prev).add(inviteId));
+  };
+
+  // Filtra: solo inviti non dismissed e non scaduti
+  const visible = invites.filter(inv => {
+    if (dismissed.has(inv.id)) return false;
+    const expiresAt = new Date(inv.expiresAt).getTime();
+    if (now >= expiresAt) return false;
+    return true;
+  });
+
+  if (visible.length === 0) return null;
+
+  return (
+    <div style={{
+      position: 'fixed',
+      top: 80, // sotto la navbar
+      left: '50%',
+      transform: 'translateX(-50%)',
+      zIndex: 10000, // sopra tutto, anche i modali
+      display: 'flex',
+      flexDirection: 'column',
+      gap: '8px',
+      pointerEvents: 'none',
+    }}>
+      {visible.map((inv) => {
+        const expiresAt = new Date(inv.expiresAt).getTime();
+        const remaining = Math.max(0, Math.ceil((expiresAt - now) / 1000));
+
+        return (
+          <div key={inv.id} className="animate-slideUp" style={{
+            pointerEvents: 'auto',
+            width: '380px',
+            background: theme.colors.bgPanel,
+            border: `1px solid ${theme.colors.gold}`,
+            borderRadius: '8px',
+            padding: '16px 20px',
+            boxShadow: `0 0 40px ${theme.colors.goldGlow}, 0 8px 32px rgba(0,0,0,0.6)`,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '12px',
+          }}>
+            {/* Header */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <div style={{ color: theme.colors.gold }}><Icons.Zap size={18} /></div>
+                <span style={{
+                  fontFamily: theme.fonts.heading, fontSize: '13px', fontWeight: 700,
+                  color: theme.colors.goldBright, letterSpacing: '2px', textTransform: 'uppercase',
+                }}>Game Invite</span>
+              </div>
+              <button onClick={() => handleDismiss(inv.id)} style={{
+                background: 'none', border: 'none', color: theme.colors.textMuted,
+                cursor: 'pointer', padding: '2px', display: 'flex',
+              }}>
+                <Icons.X size={14} />
+              </button>
+            </div>
+
+            {/* Sender info */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <img
+                src={inv.sender.avatarUrl || `https://api.dicebear.com/9.x/pixel-art/svg?seed=${inv.sender.username}`}
+                alt="" style={{ width: 40, height: 40, borderRadius: '50%', border: `2px solid ${theme.colors.gold}` }}
+              />
+              <div>
+                <div style={{ fontFamily: theme.fonts.heading, fontSize: '15px', fontWeight: 700, color: theme.colors.textPrimary }}>
+                  {inv.sender.username}
+                </div>
+                <div style={{ fontFamily: theme.fonts.mono, fontSize: '11px', color: theme.colors.textSecondary }}>
+                  wants to fight you!
+                </div>
+              </div>
+              <div style={{
+                marginLeft: 'auto', fontFamily: theme.fonts.mono, fontSize: '20px', fontWeight: 700,
+                color: remaining <= 10 ? theme.colors.dead : theme.colors.gold,
+                transition: 'color 0.3s',
+              }}>
+                {remaining}s
+              </div>
+            </div>
+
+            {/* Progress bar scadenza */}
+            <div style={{
+              width: '100%', height: '3px', background: theme.colors.bgDark,
+              borderRadius: '2px', overflow: 'hidden',
+            }}>
+              <div style={{
+                height: '100%',
+                width: `${(remaining / 60) * 100}%`, // assume 60s default TTL
+                background: remaining <= 10
+                  ? theme.colors.dead
+                  : `linear-gradient(90deg, ${theme.colors.goldDark}, ${theme.colors.gold})`,
+                transition: 'width 1s linear, background 0.3s',
+              }} />
+            </div>
+
+            {/* Buttons */}
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <button onClick={() => handleAccept(inv)} style={{
+                flex: 1, padding: '10px', border: 'none', borderRadius: '4px',
+                background: `linear-gradient(180deg, ${theme.colors.gold}, ${theme.colors.goldDark})`,
+                color: theme.colors.bgDark, fontFamily: theme.fonts.heading,
+                fontSize: '12px', fontWeight: 700, letterSpacing: '2px',
+                textTransform: 'uppercase', cursor: 'pointer',
+                transition: 'all 0.2s',
+              }}>Accept</button>
+              <button onClick={() => handleReject(inv)} style={{
+                flex: 1, padding: '10px', border: `1px solid ${theme.colors.border}`,
+                borderRadius: '4px', background: 'transparent',
+                color: theme.colors.textMuted, fontFamily: theme.fonts.heading,
+                fontSize: '12px', fontWeight: 600, letterSpacing: '2px',
+                textTransform: 'uppercase', cursor: 'pointer',
+                transition: 'all 0.2s',
+              }}>Decline</button>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+========== ./src/site/components/Icons.tsx ==========
 import React from 'react';
 
 interface IconProps {
@@ -4694,7 +5315,7 @@ export const Menu = ({ size = 24 }: IconProps) => (
     <line x1="3" y1="18" x2="21" y2="18" />
   </svg>
 );
-========== ./frontend/src/site/components/Navbar.tsx ==========
+========== ./src/site/components/Navbar.tsx ==========
 import { useState, useEffect } from 'react';
 import { navLinkBase } from '../styles/shared';
 import { useDropdown, DropdownPanel, DropdownItem } from './Dropdown';
@@ -4758,7 +5379,7 @@ export default function Navbar({ currentPage, onNavigate, onLogout, username, av
 
     // 2. Apri il canale SSE per ricevere le nuove in tempo reale
     // ASSICURATI CHE L'URL SIA QUELLO DEL BACKEND
-    const SSE_URL = '/api/users/me/notifications/stream'; 
+    const SSE_URL = '/api/users/me/notification/stream'; 
     
     const eventSource = new EventSource(SSE_URL, {
       withCredentials: true // FONDAMENTALE per far leggere i cookie di sessione a NestJS
@@ -4937,7 +5558,7 @@ export default function Navbar({ currentPage, onNavigate, onLogout, username, av
           </div>
         </div>
 
-        {/* ⚡ LOGICA RESPONSIVE */}
+        {/* LOGICA RESPONSIVE */}
         {isMobile ? (
           /* ================= LAYOUT MOBILE ================= */
           <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginLeft: 'auto' }}>
@@ -5009,6 +5630,8 @@ export default function Navbar({ currentPage, onNavigate, onLogout, username, av
                   <DropdownPanel isOpen={profile.open}>
                     <DropdownItem icon={Icons.Settings} label="Settings" onClick={() => scrollTo('profile', 'profile-settings')} />
                     <DropdownItem icon={Icons.BarChart} label="Statistics" onClick={() => scrollTo('profile', 'profile-stats')} />
+                    <DropdownItem icon={Icons.BarChart} label="Match History" onClick={() => scrollTo('profile', 'profile-matches')} />
+                    <DropdownItem icon={Icons.Trophy} label="Achievements" onClick={() => scrollTo('profile', 'profile-achievements')} />
                     <DropdownItem icon={Icons.Users} label="Friends" onClick={() => scrollTo('profile', 'profile-friends')} />
                     <div style={{ height: '1px', background: theme.colors.border, margin: '4px 12px' }} />
                     <DropdownItem icon={Icons.Shield} label="Security & 2FA" onClick={() => scrollTo('profile', 'profile-security')} />
@@ -5128,7 +5751,7 @@ export default function Navbar({ currentPage, onNavigate, onLogout, username, av
     </>
   );
 }
-========== ./frontend/src/site/components/desktopOnlyGuard.tsx ==========
+========== ./src/site/components/desktopOnlyGuard.tsx ==========
 import { useState, useEffect } from 'react';
 import { theme } from '../../configs/theme';
 import welcomeScene from '../../assets/welcomeScene.png';
@@ -5216,7 +5839,7 @@ export default function DesktopOnlyGuard({ children }: { children: React.ReactNo
   // Se passa tutti i controlli, carica il gioco!
   return <>{children}</>;
 }
-========== ./frontend/src/site/pages/DashboardPage.tsx ==========
+========== ./src/site/pages/DashboardPage.tsx ==========
 import { sectionTitleStyle } from '../styles/shared';
 import { theme } from '../../configs/theme';
 import { NAVBAR_HEIGHT } from '../components/Navbar';
@@ -5296,6 +5919,10 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
         {/* Overlay Scuro */}
         <div style={{
           position: "absolute",
+          top: 0,
+          left: 0,
+          width: "100%",
+          height: "100%",
           inset: 0,
           background: `linear-gradient(180deg, rgba(6, 14, 20, 0.4) 0%, rgba(6, 14, 20, 0.7) 70%, ${theme.colors.bgDark} 100%)`,
           zIndex: 1,
@@ -5500,7 +6127,7 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
     </div>
   );
 }
-========== ./frontend/src/site/pages/GameFlow.tsx ==========
+========== ./src/site/pages/GameFlow.tsx ==========
 import { useState, useEffect } from 'react';
 import ModeSelectScene from '../../scenes/modeSelectScene';
 import CharacterSelectScene from '../../scenes/characterSelectScene';
@@ -5708,7 +6335,7 @@ export default function GameFlow({ userId, username, onExit }: GameFlowProps) {
     </div>
   );
 }
-========== ./frontend/src/site/pages/LeaderboardPage.tsx ==========
+========== ./src/site/pages/LeaderboardPage.tsx ==========
 import { useState, useEffect } from 'react';
 import { inputStyle } from '../styles/shared';
 import * as Icons from '../components/Icons';
@@ -5856,7 +6483,7 @@ export default function LeaderboardPage() {
     </div>
   );
 }
-========== ./frontend/src/site/pages/LoginPage.tsx ==========
+========== ./src/site/pages/LoginPage.tsx ==========
 import React, { useState, useCallback, useEffect } from 'react';
 import { inputStyle } from '../styles/shared';
 import * as Icons from '../components/Icons';
@@ -6189,13 +6816,13 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
     </div>
   );
 }
-========== ./frontend/src/site/pages/ProfilePage.tsx ==========
+========== ./src/site/pages/ProfilePage.tsx ==========
 import { useState, useEffect, useRef } from 'react';
 import { inputStyle, sectionTitleStyle } from '../styles/shared';
 import * as Icons from '../components/Icons';
 import * as api from '../services/apiService';
 import * as authService from '../services/authService';
-import { UserProfile, UserStats, UserSettings, generate2fa, turnOn2fa, turnOff2fa } from '../services/apiService';
+import { UserProfile, UserStats, UserSettings, UserAchievementsResponse, MatchHistoryResponse, generate2fa, turnOn2fa, turnOff2fa } from '../services/apiService';
 import { theme } from '../../configs/theme';
 import { NAVBAR_HEIGHT } from '../components/Navbar';
 import { CharacterName } from '@transcendence/types';
@@ -6263,28 +6890,27 @@ export default function ProfilePage() {
   const [settings, setSettings] = useState<UserSettings | null>(null);
   const [loading, setLoading] = useState(true);
   
-  // Stati 2FA
   const [isSettingUp2fa, setIsSettingUp2fa] = useState(false);
   const [qrCodeUrl, setQrCodeUrl] = useState<string | null>(null);
   const [setupCode, setSetupCode] = useState('');
   const [error2fa, setError2fa] = useState('');
 
-  // Stati Edit Profilo
   const [editingUsername, setEditingUsername] = useState(false);
   const [editingEmail, setEditingEmail] = useState(false);
   const [tempVal, setTempVal] = useState('');
   
-  // Stati Password e Notifiche
   const [isChangingPwd, setIsChangingPwd] = useState(false);
   const [pwdData, setPwdData] = useState({ old: '', new: '', confirm: '' });
   const [pwdError, setPwdError] = useState('');
   const [msg, setMsg] = useState(''); 
 
-  // Password di conferma per cambio email (ref per evitare stale closure)
   const confirmPwdRef = useRef('');
   const [confirmPwdDisplay, setConfirmPwdDisplay] = useState('');
 
-  // STATO DEL MODAL DI WARNING
+  const [achievements, setAchievements] = useState<UserAchievementsResponse | null>(null);
+
+  const [matches, setMatches] = useState<MatchHistoryResponse | null>(null);
+
   const [dialog, setDialog] = useState<{ 
     isOpen: boolean; 
     title: string; 
@@ -6294,16 +6920,16 @@ export default function ProfilePage() {
   } | null>(null);
 
   useEffect(() => {
-    Promise.all([api.getMyProfile(), api.getMyStats(), api.getMySettings()])
-      .then(([p, s, set]) => { 
+    Promise.all([api.getMyProfile(), api.getMyStats(), api.getMySettings(), api.getMyAchievements(), api.getMyMatches()])
+      .then(([p, s, set, ach, mat]) => { 
         if (p) setProfile(p); 
         if (s) setStats(s); 
-        if (set) setSettings(set); 
+        if (set) setSettings(set);
+        if (ach) setAchievements(ach);
+        if (mat) setMatches(mat);
       })
       .finally(() => setLoading(false));
   }, []);
-
-  // --- FUNZIONI DI SALVATAGGIO CON WARNING ---
 
   const handleSaveUsername = () => { 
     setDialog({
@@ -6374,8 +7000,6 @@ export default function ProfilePage() {
       }
     });
   };
-
-  // --- FUNZIONI 2FA ---
 
   const handleEnable2faClick = async () => {
     setError2fa('');
@@ -6523,17 +7147,171 @@ export default function ProfilePage() {
         )}
       </div>
 
+{/* Match History */}
+      <div id="profile-matches" style={{ paddingTop: '80px', scrollMarginTop: `${NAVBAR_HEIGHT}px` }}>
+        <h2 style={{ ...sectionTitleStyle, fontSize: '22px', marginBottom: '24px' }}>Match History</h2>
+
+        {(!matches?.entries || matches.entries.length === 0) ? (
+          <div style={{ textAlign: 'center', padding: '32px', background: theme.colors.bgPanel, border: `1px solid ${theme.colors.border}`, borderRadius: '4px' }}>
+            <p style={{ fontFamily: theme.fonts.heading, color: theme.colors.textMuted, fontSize: '13px', letterSpacing: '1px' }}>
+              No matches played yet. Start fighting!
+            </p>
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            {matches.entries.map((m) => {
+              const resultColor = m.result === 'WIN' ? theme.colors.hpHigh
+                : m.result === 'LOSS' ? theme.colors.dead
+                : theme.colors.hpMid;
+              const mins = Math.floor(m.durationSeconds / 60);
+              const secs = m.durationSeconds % 60;
+              const me = m.participants.find(p => p.userId === profile?.id);
+              const opponent = m.participants.find(p => p.userId !== profile?.id);
+
+              return (
+                <div key={m.matchId} style={{
+                  display: 'flex', alignItems: 'center', gap: '16px',
+                  padding: '14px 20px', background: theme.colors.bgPanel,
+                  border: `1px solid ${theme.colors.border}`, borderRadius: '4px',
+                  borderLeft: `3px solid ${resultColor}`,
+                }}>
+                  {/* Result */}
+                  <div style={{
+                    fontFamily: theme.fonts.heading, fontSize: '13px', fontWeight: 700,
+                    color: resultColor, letterSpacing: '1px', width: '40px', textAlign: 'center',
+                  }}>{m.result}</div>
+
+                  {/* Character + Mode */}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span style={{ fontSize: '16px' }}>{me?.characterName === 'ZEUS' ? '⚡' : '🔥'}</span>
+                      <span style={{ fontFamily: theme.fonts.heading, fontSize: '13px', fontWeight: 600, color: theme.colors.textPrimary }}>
+                        {me?.characterName || '?'}
+                      </span>
+                      <span style={{ fontFamily: theme.fonts.mono, fontSize: '10px', color: theme.colors.textMuted }}>vs</span>
+                      <span style={{ fontFamily: theme.fonts.heading, fontSize: '13px', color: theme.colors.textSecondary }}>
+                        {opponent?.username || 'Deleted User'}
+                      </span>
+                      <span style={{ fontSize: '14px' }}>{opponent?.characterName === 'ZEUS' ? '⚡' : '🔥'}</span>
+                    </div>
+                    <div style={{ display: 'flex', gap: '12px', marginTop: '4px' }}>
+                      <span style={{ fontFamily: theme.fonts.mono, fontSize: '10px', color: theme.colors.textMuted }}>
+                        {m.mode}
+                      </span>
+                      <span style={{ fontFamily: theme.fonts.mono, fontSize: '10px', color: theme.colors.textMuted }}>
+                        {mins}:{secs.toString().padStart(2, '0')}
+                      </span>
+                      <span style={{ fontFamily: theme.fonts.mono, fontSize: '10px', color: theme.colors.textMuted }}>
+                        {new Date(m.playedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* K/D */}
+                  <div style={{ textAlign: 'center' }}>
+                    <div style={{ fontFamily: theme.fonts.mono, fontSize: '14px', fontWeight: 700, color: theme.colors.textPrimary }}>
+                      {me?.kills || 0}/{me?.deaths || 0}
+                    </div>
+                    <div style={{ fontFamily: theme.fonts.heading, fontSize: '9px', color: theme.colors.textMuted }}>K/D</div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+
+      {/* Achievements */}
+      <div id="profile-achievements" style={{ paddingTop: '80px', scrollMarginTop: `${NAVBAR_HEIGHT}px` }}>
+        <h2 style={{ ...sectionTitleStyle, fontSize: '22px', marginBottom: '24px' }}>Achievements</h2>
+        
+        {/* Progress bar */}
+        <div style={{ marginBottom: '24px', padding: '16px 20px', background: theme.colors.bgPanel, border: `1px solid ${theme.colors.border}`, borderRadius: '4px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+            <span style={{ fontFamily: theme.fonts.heading, fontSize: '12px', color: theme.colors.textSecondary, letterSpacing: '1px' }}>PROGRESS</span>
+            <span style={{ fontFamily: theme.fonts.mono, fontSize: '14px', color: theme.colors.gold, fontWeight: 700 }}>
+              {achievements?.unlockedCount || 0} / {achievements?.totalCount || 0}
+            </span>
+          </div>
+          <div style={{ width: '100%', height: '6px', background: theme.colors.bgDark, borderRadius: '3px', overflow: 'hidden' }}>
+            <div style={{
+              height: '100%', borderRadius: '3px',
+              width: achievements && achievements.totalCount > 0 ? `${(achievements.unlockedCount / achievements.totalCount) * 100}%` : '0%',
+              background: `linear-gradient(90deg, ${theme.colors.goldDark}, ${theme.colors.gold})`,
+              transition: 'width 0.5s ease',
+            }} />
+          </div>
+        </div>
+
+        {/* Achievement cards */}
+        {(!achievements?.unlocked || achievements.unlocked.length === 0) ? (
+          <div style={{ textAlign: 'center', padding: '32px', background: theme.colors.bgPanel, border: `1px solid ${theme.colors.border}`, borderRadius: '4px' }}>
+            <p style={{ fontFamily: theme.fonts.heading, color: theme.colors.textMuted, fontSize: '13px', letterSpacing: '1px' }}>
+              No achievements unlocked yet. Keep playing!
+            </p>
+          </div>
+        ) : (
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+            {achievements.unlocked.map((ach, i) => {
+              const tierColor = ach.tier === 'PLATINUM' ? '#a8e6cf'
+                : ach.tier === 'GOLD' ? theme.colors.gold
+                : ach.tier === 'SILVER' ? '#c0c0c0'
+                : '#cd7f32';
+              return (
+                <div key={i} style={{
+                  padding: '16px', background: theme.colors.bgPanel,
+                  border: `1px solid ${tierColor}33`, borderRadius: '4px',
+                  display: 'flex', gap: '12px', alignItems: 'flex-start',
+                  transition: 'border-color 0.2s',
+                }}
+                  onMouseEnter={(e) => e.currentTarget.style.borderColor = tierColor}
+                  onMouseLeave={(e) => e.currentTarget.style.borderColor = `${tierColor}33`}
+                >
+                  <div style={{
+                    width: 40, height: 40, borderRadius: '8px', flexShrink: 0,
+                    background: `${tierColor}15`, border: `1px solid ${tierColor}40`,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: '20px',
+                  }}>
+                    {ach.tier === 'PLATINUM' ? '💎' : ach.tier === 'GOLD' ? '🏆' : ach.tier === 'SILVER' ? '🥈' : '🥉'}
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontFamily: theme.fonts.heading, fontSize: '13px', fontWeight: 700, color: tierColor, letterSpacing: '0.5px', marginBottom: '2px' }}>
+                      {ach.name}
+                    </div>
+                    <div style={{ fontFamily: theme.fonts.mono, fontSize: '11px', color: theme.colors.textSecondary, lineHeight: 1.4, marginBottom: '4px' }}>
+                      {ach.description}
+                    </div>
+                    <div style={{ fontFamily: theme.fonts.mono, fontSize: '9px', color: theme.colors.textMuted }}>
+                      {new Date(ach.unlockedAt).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
       {/* Friends */}
       <div id="profile-friends" style={{ paddingTop: '80px', scrollMarginTop: `${NAVBAR_HEIGHT}px` }}>
         <h2 style={{ ...sectionTitleStyle, fontSize: '22px', marginBottom: '24px' }}>Friends</h2>
-        <p style={{ fontFamily: theme.fonts.heading, color: theme.colors.textMuted, textAlign: 'center', letterSpacing: '2px', fontSize: '13px' }}>Coming soon</p>
+        <div style={{ textAlign: 'center', padding: '24px', background: theme.colors.bgPanel, border: `1px solid ${theme.colors.border}`, borderRadius: '4px' }}>
+          <div style={{ color: theme.colors.goldDim, marginBottom: '12px' }}><Icons.Users size={32} /></div>
+          <p style={{ fontFamily: theme.fonts.heading, color: theme.colors.textSecondary, fontSize: '13px', letterSpacing: '1px' }}>
+            Use the Friends panel on the right side of the screen to manage your friends, send requests, and invite players to a game.
+          </p>
+          <p style={{ fontFamily: theme.fonts.mono, color: theme.colors.textMuted, fontSize: '11px', marginTop: '12px' }}>
+            Your ID: <span style={{ color: theme.colors.gold, fontWeight: 700, fontSize: '14px' }}>{profile?.id}</span> — share it with friends!
+          </p>
+        </div>
       </div>
 
       {/* Security */}
       <div id="profile-security" style={{ paddingTop: '80px', paddingBottom: '40px', scrollMarginTop: `${NAVBAR_HEIGHT}px` }}>
         <h2 style={{ ...sectionTitleStyle, fontSize: '22px', marginBottom: '24px' }}>Security & 2FA</h2>
         
-        {/* Blocco 2FA */}
         <div style={{ padding: '24px', background: theme.colors.bgPanel, border: `1px solid ${theme.colors.border}`, borderRadius: '4px', marginBottom: '12px' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div>
@@ -6590,7 +7368,7 @@ export default function ProfilePage() {
           )}
         </div>
 
-        {/* Email Verification con bottone Resend */}
+        {/* Email Verification */}
         <div style={{ padding: '24px', background: theme.colors.bgPanel, border: `1px solid ${theme.colors.border}`, borderRadius: '4px', marginBottom: '12px' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div>
@@ -6632,7 +7410,7 @@ export default function ProfilePage() {
         </div>
       </div>
 
-      {/* POPUP MODAL PER I WARNING */}
+      {/* POPUP MODAL */}
       {dialog && dialog.isOpen && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }}>
           <div className="animate-scaleIn" style={{ background: theme.colors.bgPanel, border: `1px solid ${theme.colors.gold}`, borderRadius: '4px', padding: '32px', maxWidth: '420px', textAlign: 'center', boxShadow: `0 0 40px ${theme.colors.goldGlow}` }}>
@@ -6664,7 +7442,7 @@ export default function ProfilePage() {
     </div>
   );
 }
-========== ./frontend/src/site/services/apiService.ts ==========
+========== ./src/site/services/apiService.ts ==========
 
 import { fetchWithAuthRetry } from "./authService";
 
@@ -6735,6 +7513,89 @@ export interface NotificationListResponse {
     page: number;
     limit: number;
 }
+
+export interface FriendUser {
+    id: number;
+    username: string;
+    avatarUrl: string;
+    status: string;
+}
+
+export interface FriendEntry {
+    id: number;
+    friend: FriendUser;
+    status: 'PENDING' | 'ACCEPTED' | 'REJECTED';
+    direction: 'SENT' | 'RECEIVED';
+    createdAt: string;
+    updatedAt: string;
+}
+
+export interface FriendListResponse {
+    friends: FriendEntry[];
+    total: number;
+}
+
+export interface FriendRequestsResponse {
+    sent: FriendEntry[];
+    received: FriendEntry[];
+}
+
+export interface GameInvite {
+    id: number;
+    sender: FriendUser;
+    receiver: FriendUser;
+    status: string;
+    createdAt: string;
+    expiresAt: string;
+}
+
+export interface GameInviteListResponse {
+    invites: GameInvite[];
+    total: number;
+}
+
+export interface Achievement {
+    name: string;
+    description: string;
+    iconPath: string;
+    tier: 'BRONZE' | 'SILVER' | 'GOLD' | 'PLATINUM';
+    unlockedAt: string;
+}
+
+export interface UserAchievementsResponse {
+    unlocked: Achievement[];
+    unlockedCount: number;
+    totalCount: number;
+}
+
+export interface MatchPartecipant {
+    userId: number | null;
+    username: string | null;
+    avatarUrl: string | null;
+    teamId: number;
+    characterName: string;
+    kills: number;
+    deaths: number;
+}
+
+export interface MatchHistoryEntry {
+    matchId: number;
+    playedAt: string;
+    mode: 'RANKED' | 'UNRANKED' | 'LOCAL' | 'AI';
+    type: string;
+    durationSeconds: number;
+    endReason: string | null;
+    result: 'WIN' | 'LOSS' | 'DRAW';
+    participants: MatchPartecipant[];
+}
+
+export interface MatchHistoryResponse {
+    entries: MatchHistoryEntry[];
+    total: number;
+    page: number;
+    limit: number;
+}
+
 
 // ==========================================
 // 📡 CHIAMATE API GENERALI
@@ -6989,7 +7850,145 @@ export async function deleteNotification(id: number): Promise<boolean> {
         return false;
     }
 }
-========== ./frontend/src/site/services/authService.ts ==========
+
+// ==========================================
+// FRIENDS
+// ==========================================
+
+export async function getFriends(): Promise<FriendListResponse | null> {
+    try {
+        const res = await fetchWithAuthRetry("/api/users/me/friends");
+        if (!res || !res.ok) return null;
+        return (await res.json()) as FriendListResponse;
+    } catch (error) {
+        console.error("[API] Error fetching friends:", error);
+        return null;
+    }
+}
+
+export async function getFriendRequests(): Promise<FriendRequestsResponse | null> {
+    try {
+        const res = await fetchWithAuthRetry("/api/users/me/friends/requests");
+        if (!res || !res.ok) return null;
+        return (await res.json()) as FriendRequestsResponse;
+    } catch (error) {
+        console.error("[API] Error fetching friend requests:", error);
+        return null;
+    }
+}
+
+export async function sendFriendRequest(targetId: number): Promise<{ ok: boolean; message?: string }> {
+    try {
+        const res = await fetchWithAuthRetry(`/api/users/me/friends/${targetId}`, { method: "POST" });
+        if (!res) return { ok: false, message: "Connessione fallita" };
+        if (res.ok) return { ok: true };
+        const data = await res.json().catch(() => ({}));
+        const msg = res.status === 400 ? "Non puoi aggiungerti da solo"
+            : res.status === 404 ? "Utente non trovato"
+            : res.status === 409 ? "Richiesta già inviata o già amici"
+            : data.message || "Errore";
+        return { ok: false, message: msg };
+    } catch (error) {
+        return { ok: false, message: "Network error" };
+    }
+}
+
+export async function respondFriendRequest(targetId: number, action: 'ACCEPTED' | 'REJECTED'): Promise<boolean> {
+    try {
+        const res = await fetchWithAuthRetry(`/api/users/me/friends/${targetId}/respond`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ action }),
+        });
+        return !!res && res.ok;
+    } catch (error) {
+        console.error("[API] Error responding to friend request:", error);
+        return false;
+    }
+}
+
+export async function removeFriend(targetId: number): Promise<boolean> {
+    try {
+        const res = await fetchWithAuthRetry(`/api/users/me/friends/${targetId}`, { method: "DELETE" });
+        return !!res && (res.ok || res.status === 204);
+    } catch (error) {
+        console.error("[API] Error removing friend:", error);
+        return false;
+    }
+}
+
+export async function sendGameInvite(targetId: number, expiresInSeconds = 60): Promise<{ ok: boolean; message?: string }> {
+    try {
+        const res = await fetchWithAuthRetry(`/api/users/me/invites/${targetId}`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ expiresInSeconds }),
+        });
+        if (!res) return { ok: false, message: "Connessione fallita" };
+        if (res.ok) return { ok: true };
+        const data = await res.json().catch(() => ({}));
+        const msg = res.status === 409 ? "Invito già inviato" : data.message || "Errore";
+        return { ok: false, message: msg };
+    } catch (error) {
+        return { ok: false, message: "Network error" };
+    }
+}
+
+export async function getGameInvites(): Promise<GameInviteListResponse | null> {
+    try {
+        const res = await fetchWithAuthRetry("/api/users/me/invites");
+        if (!res || !res.ok) return null;
+        return (await res.json()) as GameInviteListResponse;
+    } catch (error) {
+        console.error("[API] Error fetching game invites:", error);
+        return null;
+    }
+}
+
+export async function respondGameInvite(inviteId: number, action: 'ACCEPTED' | 'REJECTED'): Promise<{ ok: boolean; sessionId?: string }> {
+    try {
+        const res = await fetchWithAuthRetry(`/api/users/me/invites/${inviteId}/respond`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ action }),
+        });
+        if (!res) return { ok: false };
+        const data = await res.json().catch(() => ({}));
+        return { ok: res.ok, sessionId: data.sessionId };
+    } catch (error) {
+        return { ok: false };
+    }
+}
+
+export async function getMyAchievements(): Promise<UserAchievementsResponse | null> {
+    try {
+        const res = await fetchWithAuthRetry("/api/users/me/achievements");
+        if (!res || !res.ok) return null;
+        return (await res.json()) as UserAchievementsResponse;
+    } catch (error) {
+        console.error("[API] Error fetching achievements:", error);
+        return null;
+    }
+}
+
+// ==========================================
+// MATCH HISTORY
+// ==========================================
+
+export async function getMyMatches(page = 1, limit = 10, mode?: string): Promise<MatchHistoryResponse | null> {
+    try {
+        let url = `/api/users/me/matches?page=${page}&limit=${limit}`;
+        if (mode) url += `&mode=${mode}`;
+        const res = await fetchWithAuthRetry(url);
+        if (!res || !res.ok) return null;
+        return (await res.json()) as MatchHistoryResponse; 
+    }
+    catch (error) {
+        console.error("[API] Error fetching matches:", error);
+        return null;
+    }
+}
+========== ./src/site/services/authService.ts ==========
 /**
  * Auth service — basato sui prototipi di Ale (authFetch.js, socketAuth.js)
  * Gestisce: login, register, logout, refresh, forgot/reset password, 2FA, OAuth
@@ -7016,31 +8015,6 @@ export function toErrorString(val: unknown): string {
   return String(val);
 }
 
-// export async function fetchWithAuthRetry(
-//   url: string,
-//   options: RequestInit = {},
-// ): Promise<Response | null> {
-//   try {
-//     let res = await fetch(url, { ...options, credentials: "include" });
-
-//     if (res.status === 401) {
-//       const refreshed = await fetch("/api/auth/refresh", {
-//         method: "POST",
-//         credentials: "include",
-//       });
-
-//       if (!refreshed.ok) {
-//         return null;
-//       }
-//       res = await fetch(url, { ...options, credentials: "include" });
-//     }
-
-//     return res;
-//   } catch (error) {
-//     console.error("[Auth] Fetch error:", error);
-//     return null;
-//   }
-// }
 export async function fetchWithAuthRetry(
   url: string,
   options: RequestInit = {},
@@ -7196,7 +8170,7 @@ export async function resetPassword(token: string, newPassword: string): Promise
     return { ok: false, message: "Network error" };
   }
 }
-========== ./frontend/src/site/styles/shared.ts ==========
+========== ./src/site/styles/shared.ts ==========
 import React from 'react';
 import { theme } from '../../configs/theme';
 
@@ -7257,7 +8231,7 @@ export const sectionTitleStyle: React.CSSProperties = {
   textAlign: "center",
   fontFamily: theme.fonts.heading,
 };
-========== ./frontend/src/site/styles/site.css ==========
+========== ./src/site/styles/site.css ==========
 /* ─── Clash of Olympus — Global Site CSS ─── */
 @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;700&display=swap');
 
@@ -7299,7 +8273,7 @@ body {
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes badgePop { 0% { transform: scale(0); } 50% { transform: scale(1.3); } 100% { transform: scale(1); } }
-========== ./frontend/src/storage/gameStore.ts ==========
+========== ./src/storage/gameStore.ts ==========
 import { create } from 'zustand';
 import { GameStatePayload, GameOverPayload, MapEmitPayload } from '../types/game.types';
 
@@ -7328,7 +8302,7 @@ export const useGameStore = create<GameStore>((set) => ({
   setGameOver: (gameOver) => set({ gameOver }),
   resetGame: () => set({ world: null, gameState: null, gameOver: null }),
 }));
-========== ./frontend/src/types/game.types.ts ==========
+========== ./src/types/game.types.ts ==========
 import { CharacterName, EndReason, MatchMode, MatchType, Pillar, PlayerSnapshot, BulletSnapshot, WinnerData } from '@transcendence/types';
 export { CharacterName, EndReason, MatchMode, MatchType };
 
@@ -7370,7 +8344,7 @@ export interface MapEmitPayload {
     playerSpeed: number;
   };
 }
-========== ./frontend/src/types/socket.types.ts ==========
+========== ./src/types/socket.types.ts ==========
 import { PlayerSnapshot, BulletSnapshot, WinnerData, CharacterName } from '@transcendence/types';
 
 export interface JoinLobbyPayload {
@@ -7395,6 +8369,51 @@ export interface GameOverPayload {
   winnerData: WinnerData;
   time: number;
 }
-========== ./frontend/src/vite-env.d.ts ==========
+========== ./src/vite-env.d.ts ==========
 // src/vite-env.d.ts
 /// <reference types="vite/client" />
+========== ./tailwind.config.js ==========
+/** @type {import('tailwindcss').Config} */
+export default {
+  content: [
+    "./index.html",
+    "./src/**/*.{js,ts,jsx,tsx}",
+  ],
+  theme: {
+    extend: {},
+  },
+  plugins: [],
+}
+
+========== ./vite.config.ts ==========
+import { defineConfig } from "vite";
+import react from "@vitejs/plugin-react";
+
+export default defineConfig({
+	plugins: [react()],
+	server: {
+		port: 5173,
+		host: true,
+		hmr: {
+			clientPort: 2443,
+		},
+		watch: {
+			usePolling: process.env.CHOKIDAR_USEPOLLING === "true",
+		},
+		allowedHosts: [
+			"frontend",
+			...(process.env.NGROK_DOMAIN ? [process.env.NGROK_DOMAIN] : []),
+		],
+		proxy: {
+			"/api": {
+				target: "http://localhost:3001",
+				changeOrigin: true,
+			},
+			"/auth": {
+				target: "http://localhost:3002",
+				changeOrigin: true,
+			},
+		},
+	},
+});
+

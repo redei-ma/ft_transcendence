@@ -1,4 +1,3 @@
-import { useState, useEffect } from 'react';
 import ModeSelectScene from '../../scenes/modeSelectScene';
 import CharacterSelectScene from '../../scenes/characterSelectScene';
 import QueueScene from '../../scenes/queueScene';
@@ -7,6 +6,7 @@ import { socketService } from '../../services/socketServices';
 import { matchmakingSocket } from '../../services/matchmakingSocket';
 import { CharacterName, MatchMode, GameEvents } from '@transcendence/types';
 import { theme } from '../../configs/theme';
+import { useState, useEffect, useRef } from 'react';
 
 type GameScene = 'mode-select' | 'character-select' | 'queue' | 'game';
 
@@ -35,12 +35,13 @@ export default function GameFlow({ userId, username, onExit }: GameFlowProps) {
   
   // Stato per la schermata di riconnessione
   const [isReconnecting, setIsReconnecting] = useState(false);
-
+  const hasResignedRef = useRef(false);
   useEffect(() => {
     matchmakingSocket.connect();
 
     // Ascolto GLOBALE dell'evento MATCH_FOUND
     const handleMatchFound = () => {
+      if (hasResignedRef.current) return;
       setScene((prevScene) => {
         // 1. Se siamo già in gioco, ignoriamo l'evento per non interrompere la partita!
         if (prevScene === 'game') {
@@ -117,6 +118,8 @@ export default function GameFlow({ userId, username, onExit }: GameFlowProps) {
   };
 
   const handleQuit = () => {
+    hasResignedRef.current = true;
+    matchmakingSocket.emit(GameEvents.LEAVE_GAME, {userId: String(userId) });
     socketService.disconnect();
     matchmakingSocket.disconnect();
     onExit();
