@@ -151,6 +151,28 @@ export class GameService implements OnModuleInit, OnModuleDestroy{
 		return {status: SuccessCode.OK}
 	}
 
+	handleLeaveGame(socketId: string): ExitStatus{
+        const session: GameSession | undefined = this.getGameBySocket(socketId);
+        if (!session) return {status: ErrorCode.SESSION_NOT_FOUND, message: 'session not found, game is already over'};
+
+        const entityIds: string[] | undefined = session.socketToEntities.get(socketId);
+        if (!entityIds) return {status: ErrorCode.INTERNAL_ERROR, message: 'entity id not found'};
+
+        for (const entityId of entityIds.values()){
+            const player = session.players.get(entityId);
+            if (player && player.userDbId !== null) {
+                this.userToGameData.delete(player.userDbId);
+                this.logger.log(`Player ${player.userDbId} left voluntarily. Cleared for new matchmaking.`);
+            }
+
+            session.removePlayer(entityId, true);
+        }
+
+        this.socketToGame.delete(socketId);
+
+        return {status: SuccessCode.OK};
+    }
+
 	/* Triggered by OnGatewayDisconnect. Removes the game from memory. */
 	async removeSession(game: GameSession): Promise< void > {
 		//sending the end_game event for the matchmaking

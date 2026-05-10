@@ -177,13 +177,14 @@ export class GameSession {
 	}
 
 	/* method to remove a player from the players map */
-	removePlayer(entityId: string): void {
+	removePlayer(entityId: string, forceDrop: boolean = false): void {
 		const player: Player | undefined = this.players.get(entityId);
 		if (!player) return;
 
 		if (
 			player.disconnectionTimer <
 			GameConfig.SERVER.MAX_DISCONNECTION_TIMER
+			&& !forceDrop
 		)
 			return;
 

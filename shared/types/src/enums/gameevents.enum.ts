@@ -17,4 +17,5 @@ export enum GameEvents {
 	GAME_OVER = "game-over",
 	INPUT = "game-input",
 	GAME_MESSAGE = "game-message",
+	LEAVE_GAME = "leave-game"
 }
