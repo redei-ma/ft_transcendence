@@ -163,6 +163,7 @@ export class GameService implements OnModuleInit, OnModuleDestroy{
             if (player && player.userDbId !== null) {
                 this.userToGameData.delete(player.userDbId);
                 this.logger.log(`Player ${player.userDbId} left voluntarily. Cleared for new matchmaking.`);
+				this.notifyMatchmakingPlayerLeft(player.userDbId, session.gameId);
             }
 
             session.removePlayer(entityId, true);
@@ -352,6 +353,13 @@ export class GameService implements OnModuleInit, OnModuleDestroy{
 
 	public	removeOldSocket(socketId: string){
 		this.socketToGame.delete(socketId);
+	}
+
+	public notifyMatchmakingPlayerLeft(userDbId: number, gameId: string){
+		this.redis.emit(NetworkConfig.MATCHMAKING.MATCH_EVENTS.PLAYER_LEFT_MATCH, { userDbId, gameId }).subscribe({
+			next: () => this.logger.log(`event PLAYER_LEFT_MATCH sent for user ${userDbId}`),
+			error: (err) => this.logger.error(`error in sending PLAYER_LEFT_MATCH with Redis: ${err.message}`)
+        });
 	}
 
 	public	notifyMatchmakingEndGame(gameId: string){

@@ -7,6 +7,7 @@ export const NetworkConfig = {
 		MATCH_EVENTS: {
 			CREATE_MATCH: "create-match",
 			END_GAME: "end-game",
+			PLAYER_LEFT_MATCH: "player-left-match",
 		},
 		SERVICE: {
 			REDIS: "redis",
