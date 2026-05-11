@@ -9,19 +9,13 @@ import {
 	OnGatewayDisconnect,
 } from "@nestjs/websockets";
 import { Server, Socket } from "socket.io";
-import { OnEvent } from "@nestjs/event-emitter"; // <--- IMPORTANTE: serve per ascoltare il Service
+import { OnEvent } from "@nestjs/event-emitter";
 import { MatchmakingService } from "./matchmaking.service";
-import { JoinQueueDto } from "./dto/join-queue.dto"; // struttura del dato che ricevo
-import {
-	parseCookieHeader,
-	verifyJwtToken,
-	AUTH_COOKIE_NAME,
-} from "@transcendence/auth";
-// CurrentUser decorator removed: not usable in WebSocket context without guard setup
+import { JoinQueueDto } from "./dto/join-queue.dto";
+import { parseCookieHeader, verifyJwtToken, AUTH_COOKIE_NAME } from "@transcendence/auth";
 import { Logger } from "@nestjs/common";
-import { GameEvents } from "@transcendence/types";	
-// join_ranked, join_unranked, join_ai, join_local
-// matchmaking.gateway.ts
+import { ErrorCode, ExitStatus, GameEvents } from "@transcendence/types";
+
 @WebSocketGateway({ cors: true })
 export class MatchmakingGateway
 	implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect
@@ -38,24 +32,58 @@ export class MatchmakingGateway
 		this.logger.log("Matchmaking Gateway Initialized");
 	}
 
-	handleConnection(client: Socket) {
+	private sendErrorAndDisconnectClient(
+        client: Socket,
+        exitStatus: ExitStatus,
+    ): void {
+        client.emit("exception", {
+            status: "error",
+            errorCode: exitStatus.status,
+            message: exitStatus.message || "undefined error",
+        });
+        client.disconnect();
+    }
+
+	private emitMatchmakingResponse(client: Socket, action: string, payload: any) {
+		const responseEvent = `${action}_RESPONSE`;
+
+		if (payload.status && payload.status.startsWith("ERROR_")) {
+			this.logger.warn(`[Matchmaking Error -> ${client.id}] ${responseEvent}: ${payload.status} - ${payload.message || ''}`);
+		} else {
+			this.logger.log(`[Matchmaking Success -> ${client.id}] ${responseEvent}: ${payload.status}`);
+		}
+
+		client.emit(responseEvent, payload);
+	}
+
+	async handleConnection(client: Socket) {
 		try {
 			const token = parseCookieHeader(
 				client.handshake.headers.cookie,
 				AUTH_COOKIE_NAME,
 			);
+			
 			if (!token) {
+				this.sendErrorAndDisconnectClient(client, {status: ErrorCode.UNAUTHORIZED_TOKEN, message: 'Invalid token'});
 				client.disconnect();
 				return;
 			}
+			
 			client.data.user = verifyJwtToken(token);
+			const userId = client.data.user.sub;
+
 			this.logger.log(
-				`Client connected: ${client.id}, userId: ${client.data.user.sub}`,
+				`Client connected: ${client.id}, userId: ${userId}`,
 			);
+
+			// Il service si occuperà di aggiornare Redis e notificare il client se necessario
+			await this.matchmakingService.checkAndReconnectUser(userId, client.id);
+
 		} catch {
 			this.logger.warn(
 				`Client connected without valid JWT: ${client.id}`,
 			);
+			this.sendErrorAndDisconnectClient(client, {status: ErrorCode.UNAUTHORIZED_TOKEN, message: 'Invalid token'});
 			client.disconnect();
 		}
 	}
@@ -98,7 +126,9 @@ export class MatchmakingGateway
 		const userId: number = client.data.user.sub;
 		data.socketId = client.id;
 		this.registerUserSocket(client.id, userId);
-		return await this.matchmakingService.processQueue(userId, data);
+		
+		const result = await this.matchmakingService.processQueue(userId, data);
+		this.emitMatchmakingResponse(client, GameEvents.JOIN_RANKED, result);
 	}
 
 	@SubscribeMessage(GameEvents.JOIN_UNRANKED)
@@ -110,7 +140,9 @@ export class MatchmakingGateway
 		data.socketId = client.id;
 		this.registerUserSocket(client.id, userId);
 		this.logger.log(`User ${userId} joining unranked queue (Socket: ${client.id})`);
-		return await this.matchmakingService.processUnrankedQueue(userId, data);
+		
+		const result = await this.matchmakingService.processUnrankedQueue(userId, data);
+		this.emitMatchmakingResponse(client, GameEvents.JOIN_UNRANKED, result);
 	}
 
 	@SubscribeMessage(GameEvents.JOIN_AI)
@@ -121,7 +153,9 @@ export class MatchmakingGateway
 		const userId: number = client.data.user.sub;
 		data.socketId = client.id;
 		this.registerUserSocket(client.id, userId);
-		return await this.matchmakingService.startAiMatch(userId, data);
+		
+		const result = await this.matchmakingService.startAiMatch(userId, data);
+		this.emitMatchmakingResponse(client, GameEvents.JOIN_AI, result);
 	}
 
 	@SubscribeMessage(GameEvents.JOIN_LOCAL)
@@ -132,7 +166,9 @@ export class MatchmakingGateway
 		const userId: number = client.data.user.sub;
 		data.socketId = client.id;
 		this.registerUserSocket(client.id, userId);
-		return await this.matchmakingService.startLocalMatch(userId, data);
+		
+		const result = await this.matchmakingService.startLocalMatch(userId, data);
+		this.emitMatchmakingResponse(client, GameEvents.JOIN_LOCAL, result);
 	}
 
 	@SubscribeMessage(GameEvents.LEAVE_QUEUE)
@@ -142,7 +178,9 @@ export class MatchmakingGateway
 	) {
 		const userId: number = client.data.user.sub;
 		data.socketId = client.id;
-		return await this.matchmakingService.leaveQueue(userId, data);
+		
+		const result = await this.matchmakingService.leaveQueue(userId, data);
+		this.emitMatchmakingResponse(client, GameEvents.LEAVE_QUEUE, result);
 	}
 
 	private registerUserSocket(socketId: string, userId: number) {

@@ -4,144 +4,178 @@
  */
 
 export interface AuthResponseData {
-	requires2fa?: boolean;
-	message?: string;
-	error?: string;
-	[key: string]: any; // Permette qualsiasi altra chiave che il backend potrebbe inviare
+  requires2fa?: boolean;
+  message?: string;
+  error?: string;
+  [key: string]: any;
 }
 
 export interface AuthResult {
-	ok: boolean;
-	data: AuthResponseData;
+  ok: boolean;
+  data: AuthResponseData;
+}
+
+/** Converte qualsiasi errore del backend in una stringa leggibile */
+export function toErrorString(val: unknown): string {
+  if (!val) return '';
+  if (typeof val === 'string') return val;
+  if (Array.isArray(val)) return val.join(', ');
+  if (typeof val === 'object' && val !== null && 'message' in val) return toErrorString((val as any).message);
+  return String(val);
 }
 
 export async function fetchWithAuthRetry(
-	url: string,
-	options: RequestInit = {},
+  url: string,
+  options: RequestInit = {},
 ): Promise<Response | null> {
-	try {
-		let res = await fetch(url, { ...options, credentials: "include" });
+  try {
+    const fetchOptions: RequestInit = {  // Pparametri anti-cache: evitano che utenti diversi sullo stesso PC vedano i dati dell'altro.
+      ...options,
+      credentials: "include",
+      cache: "no-store", // Dice al browser di bypassare la cache locale
+      headers: {
+        "Cache-Control": "no-cache, no-store, must-revalidate",
+        "Pragma": "no-cache",
+        "Expires": "0",
+        ...options.headers,
+      }
+    };
 
-		if (res.status === 401) {
-			const refreshed = await fetch("/api/auth/refresh", {
-				method: "POST",
-				credentials: "include",
-			});
+    let res = await fetch(url, fetchOptions);
 
-			if (!refreshed.ok) {
-				return null; // caller should redirect to login
-			}
-			res = await fetch(url, { ...options, credentials: "include" });
-		}
+    if (res.status === 401) {
+      const refreshed = await fetch("/api/auth/refresh", {
+        method: "POST",
+        credentials: "include",
+      });
 
-		return res;
-	} catch (error) {
-		console.error("[Auth] Fetch error:", error);
-		return null;
-	}
-	}
-	
-	export async function login(
-		username: string,
-		password: string,
-		totp?: string,
-	): Promise<AuthResult> {
-		const payload: Record<string, string> = { username, password };
-		if (totp) payload.totp = totp;
-	
-		try {
-			const res = await fetch("/api/auth/login", {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				credentials: "include",
-				body: JSON.stringify(payload),
-			});
-		
-			return { ok: res.ok, data: await res.json() };
-		} catch (error) {
-			console.error("[Auth] Login error:", error);
-			return { ok: false, data: { error: "Network error" } };
-		}
-	}
+      if (!refreshed.ok) {
+        return null;
+      }
+      res = await fetch(url, fetchOptions);
+    }
+
+    return res;
+  } catch (error) {
+    console.error("[Auth] Fetch error:", error);
+    return null;
+  }
+}
+
+export async function login(
+  identifier: string,
+  password: string,
+  totp?: string,
+): Promise<AuthResult> {
+  const payload: Record<string, string> = { identifier, password };
+  if (totp) payload.totp = totp;
+
+  try {
+    const res = await fetch("/api/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify(payload),
+    });
+
+    return { ok: res.ok, data: await res.json() };
+  } catch (error) {
+    console.error("[Auth] Login error:", error);
+    return { ok: false, data: { error: "Network error" } };
+  }
+}
 
 export async function register(
-	username: string,
-	email: string,
-	password: string,
+  username: string,
+  email: string,
+  password: string,
 ): Promise<AuthResult> {
-	try {
-		const res = await fetch("/api/auth/register", {
-			method: "POST",
-			headers: { "Content-Type": "application/json" },
-			credentials: "include",
-			body: JSON.stringify({ username, email, password }),
-		});
+  try {
+    const res = await fetch("/api/auth/register", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ username, email, password }),
+    });
 
-		return { ok: res.ok, data: await res.json() };
-	} catch (error) {1
-		console.error("[Auth] Register error:", error);
-		return { ok: false, data: { error: "Network error" } };
-	}
+    return { ok: res.ok, data: await res.json() };
+  } catch (error) {
+    console.error("[Auth] Register error:", error);
+    return { ok: false, data: { error: "Network error" } };
+  }
 }
 
 export async function logout(): Promise<void> {
-	try {
-		await fetch("/api/auth/logout", {
-			method: "POST",
-			credentials: "include",
-		});
-	} catch (error) {
-		console.error("[Auth] Logout error:", error);
-	}
+  try {
+    await fetch("/api/auth/logout", {
+      method: "POST",
+      credentials: "include",
+    });
+  } catch (error) {
+    console.error("[Auth] Logout error:", error);
+  }
 }
 
 export async function forgotPassword(email: string): Promise<boolean> {
-	try {
-		const res = await fetch("/api/auth/forgot-password", {
-			method: "POST",
-			headers: { "Content-Type": "application/json" },
-			body: JSON.stringify({ email }),
-		});
-		return res.ok;
-	} catch (error) {
-		console.error("[Auth] Forgot password error:", error);
-		return false;
-	}
+  try {
+    const res = await fetch("/api/auth/forgot-password", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email }),
+    });
+    return res.ok;
+  } catch (error) {
+    console.error("[Auth] Forgot password error:", error);
+    return false;
+  }
 }
 
 export function redirectToGoogle(): void {
-	window.location.href = "/api/auth/google";
+  window.location.href = "/api/auth/google";
 }
 
 export async function refreshToken(): Promise<boolean> {
-	try {
-		const res = await fetch("/api/auth/refresh", {
-			method: "POST",
-			credentials: "include",
-		});
-		if (!res.ok) {
-			console.warn("❌ Refresh failed");
-			return false;
-		}
-		console.log("🔄 Token refreshed");
-		return true;
-	} catch (error) {
-		console.error("Refresh error:", error);
-		return false;
-	}
+  try {
+    const res = await fetch("/api/auth/refresh", {
+      method: "POST",
+      credentials: "include",
+    });
+    if (!res.ok) {
+      console.warn("❌ Refresh failed");
+      return false;
+    }
+    console.log("🔄 Token refreshed");
+    return true;
+  } catch (error) {
+    console.error("Refresh error:", error);
+    return false;
+  }
 }
 
-export async function verify2fa(code: string): Promise<AuthResult> {
+export async function resendVerification(email: string): Promise<{ ok: boolean; message?: string }> {
   try {
-    const res = await fetch("/api/auth/2fa/verify", {
+    const res = await fetch("/api/auth/resend-verification", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      credentials: "include", // Vitale per farsi riconoscere dal backend!
-      body: JSON.stringify({ code }),
+      body: JSON.stringify({ email }),
     });
-    return { ok: res.ok, data: await res.json().catch(() => ({})) };
+    const data = await res.json().catch(() => ({}));
+    return { ok: res.ok, message: toErrorString(data.message || data.error) };
   } catch (error) {
-    console.error('[Auth] Verify 2FA error:', error);
-    return { ok: false, data: { error: "Network error" } };
+    return { ok: false, message: "Network error" };
+  }
+}
+
+export async function resetPassword(token: string, newPassword: string): Promise<{ ok: boolean; message?: string }> {
+  try {
+    const res = await fetch("/api/auth/reset-password", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token, newPassword }),
+    });
+    const data = await res.json().catch(() => ({}));
+    return { ok: res.ok, message: toErrorString(data.message || data.error) };
+  } catch (error) {
+    return { ok: false, message: "Network error" };
   }
 }

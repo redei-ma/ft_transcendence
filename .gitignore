@@ -77,4 +77,10 @@ report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
 
 # Personal notes (not for repo)
 docs/post.md
+
+# Frontend Assets
+*.zip
+
+
+
 to_do.txt

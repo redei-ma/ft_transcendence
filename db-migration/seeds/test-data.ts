@@ -29,7 +29,7 @@ export async function seedTestData(prisma: PrismaClient): Promise<void> {
 			username: "alice",
 			isEmailVerified: true,
 			avatarUrl: "https://api.dicebear.com/9.x/shapes/svg?seed=alice",
-			status: UserStatus.ONLINE,
+			status: UserStatus.OFFLINE,
 			accounts: {
 				create: [
 					{
@@ -55,7 +55,7 @@ export async function seedTestData(prisma: PrismaClient): Promise<void> {
 			},
 		},
 	});
-	console.log("  ✓ alice (LOCAL + GOOGLE, verified, online)");
+	console.log("  ✓ alice    (LOCAL + GOOGLE, verified, offline)");
 
 	const bob = await prisma.user.upsert({
 		where: { email: "bob@test.com" },
@@ -88,7 +88,7 @@ export async function seedTestData(prisma: PrismaClient): Promise<void> {
 			},
 		},
 	});
-	console.log("  ✓ bob (LOCAL, verified, offline)");
+	console.log("  ✓ bob      (LOCAL, verified, offline)");
 
 	const charlie = await prisma.user.upsert({
 		where: { email: "charlie@test.com" },
@@ -110,7 +110,7 @@ export async function seedTestData(prisma: PrismaClient): Promise<void> {
 			},
 		},
 	});
-	console.log("  ✓ charlie (LOCAL only, verified, no matches)");
+	console.log("  ✓ charlie  (LOCAL, verified, offline)");
 
 	const diana = await prisma.user.upsert({
 		where: { email: "diana@test.com" },
@@ -120,7 +120,7 @@ export async function seedTestData(prisma: PrismaClient): Promise<void> {
 			username: "diana",
 			isEmailVerified: true,
 			avatarUrl: "https://api.dicebear.com/9.x/shapes/svg?seed=diana",
-			status: UserStatus.IN_GAME,
+			status: UserStatus.OFFLINE,
 			accounts: {
 				create: [
 					{
@@ -146,7 +146,7 @@ export async function seedTestData(prisma: PrismaClient): Promise<void> {
 			},
 		},
 	});
-	console.log("  ✓ diana (LOCAL + GOOGLE, verified, in_game)");
+	console.log("  ✓ diana    (LOCAL + GOOGLE, verified, offline)");
 
 	const eve = await prisma.user.upsert({
 		where: { email: "eve@test.com" },
@@ -156,7 +156,7 @@ export async function seedTestData(prisma: PrismaClient): Promise<void> {
 			username: "eve",
 			isEmailVerified: true,
 			avatarUrl: "https://api.dicebear.com/9.x/shapes/svg?seed=eve",
-			status: UserStatus.ONLINE,
+			status: UserStatus.OFFLINE,
 			accounts: {
 				create: {
 					provider: Provider.LOCAL,
@@ -179,7 +179,7 @@ export async function seedTestData(prisma: PrismaClient): Promise<void> {
 			},
 		},
 	});
-	console.log("  ✓ eve (LOCAL only, verified, online, elo 1100)");
+	console.log("  ✓ eve      (LOCAL, verified, offline)");
 
 	const frank = await prisma.user.upsert({
 		where: { email: "frank@test.com" },
@@ -189,7 +189,7 @@ export async function seedTestData(prisma: PrismaClient): Promise<void> {
 			username: "frank",
 			isEmailVerified: true,
 			avatarUrl: "https://api.dicebear.com/9.x/shapes/svg?seed=frank",
-			status: UserStatus.IN_QUEUE,
+			status: UserStatus.OFFLINE,
 			accounts: {
 				create: {
 					provider: Provider.LOCAL,
@@ -212,7 +212,7 @@ export async function seedTestData(prisma: PrismaClient): Promise<void> {
 			},
 		},
 	});
-	console.log("  ✓ frank (LOCAL only, verified, in_queue, elo 1100)");
+	console.log("  ✓ frank    (LOCAL, verified, offline)");
 
 	// ─── Character Stats ──────────────────────────────────────────
 
@@ -266,7 +266,7 @@ export async function seedTestData(prisma: PrismaClient): Promise<void> {
 			},
 		],
 	});
-	console.log("  ✓ Character stats");
+	console.log("  ✓ Character stats (alice: ZEUS/ADE, bob: ADE, diana: ZEUS/ADE)");
 
 	// ─── Matches ──────────────────────────────────────────────────
 
@@ -444,7 +444,7 @@ export async function seedTestData(prisma: PrismaClient): Promise<void> {
 		},
 	});
 
-	console.log("  ✓ 6 matches (ranked, ai, local, draw, resignation)");
+	console.log("  ✓ 6 matches (2 ranked, 1 draw, 1 AI, 1 local, 1 resignation)");
 
 	// ─── Friendships ──────────────────────────────────────────────
 
@@ -532,9 +532,7 @@ export async function seedTestData(prisma: PrismaClient): Promise<void> {
 			{ userId: diana.id, achievementId: flawless.id },
 		],
 	});
-	console.log(
-		"  ✓ Achievements unlocked (alice: 3, bob: 1, diana: 2, charlie: 0)",
-	);
+	console.log("  ✓ Achievements (alice: 3, bob: 1, diana: 2, charlie: 0)");
 
 	// ─── Notifications ────────────────────────────────────────────
 
@@ -568,20 +566,7 @@ export async function seedTestData(prisma: PrismaClient): Promise<void> {
 				message: 'Congratulations! You\'ve earned the "Kill Machine" achievement.',
 				isRead: false,
 			},
-			// Diana sent alice a game invite → alice receives GAME_INVITE
-			{
-				userId: alice.id,
-				type: NotificationType.GAME_INVITE,
-				message: "diana invited you to play a match.",
-				isRead: true,
-			},
-			// Bob: game invite from alice (unread), achievement (read)
-			{
-				userId: bob.id,
-				type: NotificationType.GAME_INVITE,
-				message: "alice invited you to play a match.",
-				isRead: false,
-			},
+			// Bob: achievement (read)
 			{
 				userId: bob.id,
 				type: NotificationType.ACHV_UNLOCKED,
@@ -597,7 +582,7 @@ export async function seedTestData(prisma: PrismaClient): Promise<void> {
 			},
 		],
 	});
-	console.log("  ✓ Notifications (read and unread, logically consistent with friendships)");
+	console.log("  ✓ Notifications (alice: 4, bob: 1, diana: 1)");
 
 	console.log("Test data seeding complete!");
 }

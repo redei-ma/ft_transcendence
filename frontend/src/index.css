@@ -32,3 +32,13 @@ body {
   color: #ffffff;
   overflow-x: hidden;
 }
+
+body {
+  cursor: url('/src/assets/Cursor.png') 2 2, auto;
+}
+
+a, button, [onclick], input, select, textarea,
+input[type="submit"], [role="button"], .btn-press,
+[style*="cursor: pointer"], [style*="cursor:pointer"] {
+  cursor: url('/src/assets/SelectCursor.png') 16 16, pointer !important;
+}

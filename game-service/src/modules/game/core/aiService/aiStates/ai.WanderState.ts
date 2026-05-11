@@ -3,6 +3,9 @@ import { Logger } from "@nestjs/common";
 import { GameWorld } from '../../../game-interfaces';
 import { Player, Vector,GameConfig } from '@transcendence/types'
 import { ChaseState } from "./ai.ChaseState";
+import { World } from "../../game.world";
+import { PathFinder } from "../pathFinder/ai.PathFinder";
+import { checkVisualForAttack } from "../ai.tactics.helper";
 
 export class WanderState implements IAiStates{
     logger: Logger = new Logger(WanderState.name);
@@ -11,78 +14,96 @@ export class WanderState implements IAiStates{
     private targetPosition: Vector = new Vector(0, 0);
     private moveInput: Vector = new Vector(0, 0);
 
-    private stuckTimer: number = 0.0;
     private hasTarget: boolean = false;
 
-    onEnter(bot: Player): void {
+    private path: Vector[] = [];
+    private pathTimer: number = 0.0;
+
+	constructor() {}
+
+	onEnter(bot: Player): void {
         this.logger.debug('ai in wander mode');
-        this.hasTarget = false;
     }
 
-    private checkVisualForAttack(bot: Player, allPlayers: Readonly<Map<string, Player>>): Player | undefined{
-        let distanceSqRecord: number = Infinity;
-        let victim: Player | undefined = undefined;
-        for (const targetPlayer of allPlayers.values()){
-            if (targetPlayer.entityId !== bot.entityId && targetPlayer.teamId !== bot.teamId){
+    update(bot: Player, gameWorld: World, allPlayers: Readonly<Map<string, Player>>, dt: number): IAiStates | undefined {
 
-                if (!targetPlayer.isDead && !targetPlayer.isGhost){
-                    const dx: number = targetPlayer.position.x - bot.position.x;
-                    const dz: number = targetPlayer.position.z - bot.position.z;
+		this.pathTimer += dt;
+		if (this.pathTimer >= GameConfig.BOT.MAX_PATH_TIME){
+			this.findTargetPosition(gameWorld);
+			this.path = PathFinder.findPath(bot.position, this.targetPosition, gameWorld);
+			this.pathTimer = 0.0;
+		}
 
-                    const distanceSq: number = (dx * dx) + (dz * dz);
-                    if (distanceSq < GameConfig.BOT.VISUAL_RADIUS_SQ){
-                        if (distanceSq < distanceSqRecord){
-                            distanceSqRecord = distanceSq;
-                            victim = targetPlayer;
-                        }
-                    }
-                }
-            }
-        }
-        return (victim);
-    }
-
-    update(bot: Player, gameWorld: GameWorld, allPlayers: Readonly<Map<string, Player>>, dt: number): IAiStates | undefined {
-
-        let victim: Player | undefined = this.checkVisualForAttack(bot, allPlayers);
+		let victim: Player | undefined = checkVisualForAttack(bot, allPlayers);
 
         if (victim){
-            return (new ChaseState(victim));
+			return (new ChaseState(victim));
         }
-
-        this.stuckTimer += dt;
 
         if (!this.hasTarget){
-            this.hasTarget = true;
-            const margin: number = 5;
-
-            this.targetPosition.set(margin + (Math.random() * (gameWorld.width - margin * 2)),
-                margin + Math.random() * (gameWorld.depth - margin * 2))
+			this.findTargetPosition(gameWorld);
+			this.path = PathFinder.findPath(bot.position, this.targetPosition, gameWorld);
         }
-        const dirX = this.targetPosition.x - bot.position.x;
-        const dirZ = this.targetPosition.z - bot.position.z;
 
-        this.moveInput.set(dirX, dirZ);
+		this.moveToPath(bot);
+        return undefined;
+    }
 
-        if (this.moveInput.lengthSq() < GameConfig.BOT.WAYPOINT_TOLERANCE_SQ || this.stuckTimer >= GameConfig.BOT.WANDER_STUCK_TIMER){
-            this.hasTarget = false;
-            this.stuckTimer = 0.0;
-            return undefined;
+    private moveToPath(bot: Player){
+        if (this.path.length === 0){
+            this.moveInput.set(0, 0);
+        }
+        else{
+            let targetPoint: Vector = this.path[0];
+            let dx: number = targetPoint.x - bot.position.x;
+            let dz: number = targetPoint.z - bot.position.z;
+
+            const distanceSq: number = (dx * dx) + (dz * dz);
+            if (distanceSq <= GameConfig.BOT.WAYPOINT_TOLERANCE_SQ){
+                this.path.shift();
+                if (this.path.length === 0) {
+                    bot.inputQueue.length = 0;
+					this.hasTarget = false;
+                    return;
+                }
+                targetPoint = this.path[0];
+                dx = targetPoint.x - bot.position.x;
+                dz = targetPoint.z - bot.position.z;
+            }
+            this.moveInput.set(dx, dz);
         }
 
         this.moveInput.normalize();
         bot.inputQueue.length = 0;
         bot.inputQueue.push({
             attackType: undefined,
-            input: this.moveInput,
+            input: new Vector(this.moveInput.x, this.moveInput.z),
         })
-
-        return undefined;
     }
 
-    onExit(bot: Player): void {
-        this.hasTarget = false;
-        this.stuckTimer = 0.0;
-    }
+	private findTargetPosition(gameWorld: World){
+		this.hasTarget = true;
+        const margin: number = 5;
+		let isAGoodStreet: boolean = false;
+		let targetX: number = 0;
+		let targetZ: number = 0;
+
+		while (!isAGoodStreet){
+			targetX = margin + (Math.random() * (gameWorld.width - margin * 2));
+			targetZ = margin + Math.random() * (gameWorld.depth - margin * 2);
+
+			let gridX = Math.floor(targetX / GameConfig.MAP.CELL_SIZE);
+			let gridZ = Math.floor(targetZ / GameConfig.MAP.CELL_SIZE);
+
+			if (gridX < 0 || gridX >= gameWorld.gridWidth || gridZ < 0 || gridZ >= gameWorld.gridDepth) continue;
+			const index = gridX + (gridZ * gameWorld.gridWidth);
+			if (gameWorld.grid[index] === 0)
+				isAGoodStreet = true;
+		}
+        this.targetPosition.set(targetX, targetZ);
+	}
     
+    onExit(bot: Player): void {
+    }
+
 }

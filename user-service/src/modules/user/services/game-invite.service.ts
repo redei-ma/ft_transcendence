@@ -6,11 +6,10 @@ import {
 	BadRequestException,
 } from "@nestjs/common";
 import { PrismaService } from "../../prisma/prisma.service";
-import { NotificationService } from "./notification.service";
+import { SseService } from "./sse.service";
 import {
 	InviteStatus,
-	NotificationType,
-	NotificationTemplates,
+	UserStatus,
 } from "@transcendence/types";
 import {
 	SendGameInviteDto,
@@ -40,7 +39,7 @@ const INVITE_SELECT = {
 export class GameInviteService {
 	constructor(
 		private readonly prisma: PrismaService,
-		private readonly notificationService: NotificationService,
+		private readonly sseService: SseService,
 	) {}
 
 	// ─── Public API ────────────────────────────────────────────────────────────
@@ -54,7 +53,7 @@ export class GameInviteService {
 	 * @param dto - Optional expiration duration in seconds (default: 60).
 	 * @returns GameInviteResponseDto — the created invite record.
 	 * @throws BadRequestException (400) — if senderId and receiverId are the same.
-	 * @throws NotFoundException (404) — if the receiver does not exist.
+	 * @throws NotFoundException (404) — if sender or receiver does not exist.
 	 * @throws ConflictException (409) — if a non-expired pending invite already exists.
 	 */
 	async sendInvite(
@@ -66,11 +65,18 @@ export class GameInviteService {
 			throw new BadRequestException("Cannot invite yourself");
 		}
 
-		const receiver = await this.prisma.user.findUnique({
-			where: { id: receiverId },
-			select: { id: true },
-		});
-		if (!receiver) throw new NotFoundException("User not found");
+		const [sender, receiver] = await Promise.all([
+			this.prisma.user.findUnique({
+				where: { id: senderId },
+				select: { username: true },
+			}),
+			this.prisma.user.findUnique({
+				where: { id: receiverId },
+				select: INVITE_USER_SELECT,
+			}),
+		]);
+
+		if (!sender || !receiver) throw new NotFoundException("User not found");
 
 		const existing = await this.prisma.gameInvite.findFirst({
 			where: {
@@ -100,12 +106,10 @@ export class GameInviteService {
 			select: INVITE_SELECT,
 		});
 
-		const { message } = NotificationTemplates.GAME_INVITE(
-			invite.sender.username,
-		);
-		await this.notificationService.createNotification(receiverId, {
-			type: NotificationType.GAME_INVITE,
-			message,
+		this.sseService.pushGameInvite(receiverId, {
+			id: invite.id,
+			expiresAt: invite.expiresAt,
+			sender: invite.sender,
 		});
 
 		return invite;
@@ -135,16 +139,23 @@ export class GameInviteService {
 
 	/**
 	 * Accepts or rejects a received game invite.
-	 * When ACCEPTED, creates a direct lobby via matchmaking-service and notifies the sender.
+	 *
+	 * On ACCEPTED:
+	 *   - Checks that the sender is still ONLINE (fast fail before calling matchmaking).
+	 *   - Calls matchmaking-service to create a direct session for character selection.
+	 *   - Returns { sessionId } for the receiver to join the matchmaking WS.
+	 *
+	 * On REJECTED:
+	 *   - Marks the invite as REJECTED. No further action.
 	 *
 	 * @param userId - ID of the receiver responding to the invite (from JWT).
 	 * @param inviteId - ID of the invite to respond to.
 	 * @param dto - Action to take: ACCEPTED or REJECTED.
-	 * @returns lobbyId when ACCEPTED (for character selection), null when REJECTED.
+	 * @returns RespondGameInviteResponseDto — sessionId when ACCEPTED, null when REJECTED.
 	 * @throws NotFoundException (404) — if the invite does not exist.
 	 * @throws ForbiddenException (403) — if the invite belongs to another user.
 	 * @throws BadRequestException (400) — if the invite is no longer pending or has expired.
-	 * @throws ConflictException (409) — if either player is no longer available (in game or queue).
+	 * @throws ConflictException (409) — if the sender is no longer available.
 	 */
 	async respondInvite(
 		userId: number,
@@ -180,28 +191,37 @@ export class GameInviteService {
 				where: { id: inviteId },
 				data: { status: InviteStatus.REJECTED },
 			});
-			return { lobbyId: null };
+			return { sessionId: null };
 		}
 
-		// ACCEPTED flow
+		// ─── ACCEPTED ──────────────────────────────────────────────────────────
 
-		// TODO: check that both sender and receiver are ONLINE (not IN_GAME or IN_QUEUE)
-		// Query User.status for invite.senderId and userId, throw ConflictException if either is busy.
+		// Fast fail: check sender is still ONLINE before calling matchmaking.
+		// Matchmaking will perform the definitive atomic check against Redis.
+		const sender = await this.prisma.user.findUnique({
+			where: { id: invite.senderId },
+			select: { status: true },
+		});
 
-		// TODO: call matchmaking-service POST /internal/matchmaking/direct-match/lobby
-		// Body: { senderId: invite.senderId, receiverId: userId }
-		// Returns: { lobbyId: string }
-		// Throw ConflictException if matchmaking returns 409 (race condition, player became busy).
-		const lobbyId = "TODO_MATCHMAKING_NOT_YET_IMPLEMENTED";
+		if (!sender || sender.status !== UserStatus.ONLINE) {
+			throw new ConflictException(
+				"The challenger is no longer available",
+			);
+		}
+
+		// TODO: call matchmaking-service to create a direct session
+		// POST http://matchmaking-service:3500/internal/matchmaking/direct-session
+		// Body:     { player1Id: invite.senderId, player2Id: userId }
+		// Response: { sessionId: string }
+		// On 409:   throw ConflictException — player entered game/queue (race condition)
+		// On error: propagate as InternalServerErrorException
+		const sessionId = "TODO_MATCHMAKING_NOT_YET_IMPLEMENTED";
 
 		await this.prisma.gameInvite.update({
 			where: { id: inviteId },
 			data: { status: InviteStatus.ACCEPTED },
 		});
 
-		// TODO: notify sender via notification WS: { event: "lobby_ready", lobbyId }
-		// Call user notification WS gateway to push event to invite.senderId.
-
-		return { lobbyId };
+		return { sessionId };
 	}
 }

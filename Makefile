@@ -121,9 +121,9 @@ clean: ##@Cleanup — Stop services and remove containers (volumes and images pr
 	@$(COMPOSE) down --remove-orphans
 	@printf "$(GREEN)>>> Containers removed.$(RESET)\n"
 
-fclean: ##@Cleanup — Remove containers, volumes, locally-built images, and dangling layers
+fclean: ##@Cleanup — Remove containers, volumes, project images, and dangling layers
 	@printf "$(RED)>>> Full cleanup: containers, volumes, images...$(RESET)\n"
-	@$(COMPOSE) down -v --rmi local --remove-orphans
+	@$(COMPOSE) down -v --rmi all --remove-orphans
 	@docker image prune -f
 	@printf "$(GREEN)>>> Cleanup complete.$(RESET)\n"
 

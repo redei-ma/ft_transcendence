@@ -1,57 +1,80 @@
-
 import { useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
+import { Html } from '@react-three/drei'; 
 import * as THREE from 'three';
-import { CharacterName, PlayerSnapshot } from '@transcendence/types';
+import { useGameStore } from '../../storage/gameStore';
+import { PlayerModel } from './PlayerModel';
+import HPBar from '../UI/components/HPBar'; 
+import { CharacterName } from '@transcendence/types'; // ⚡ Serve per controllare il nome
+
+// ⚡ RE-IMPORTIAMO LE TUE AURE
 import { ZeusAura } from './ZeusAura';
 import { AdeAura } from './AdeAura';
 
 interface PlayerEntityProps {
-  snapshot: PlayerSnapshot;
+  playerId: string;
 }
 
-export function PlayerEntity({ snapshot }: PlayerEntityProps) {
+export function PlayerEntity({ playerId }: PlayerEntityProps) {
   const groupRef = useRef<THREE.Group>(null);
-
-  const bodyColor = snapshot.characterName === CharacterName.ZEUS ? 0x00008b : 0x8b0000;
+  
+  const initialPlayer = useGameStore(state => state.gameState?.players.find(p => p.id === playerId));
+  const reactivePlayer = useGameStore(state => state.gameState?.players.find(p => p.id === playerId));
 
   useFrame((_, delta) => {
     if (!groupRef.current) return;
 
-    const target = new THREE.Vector3(snapshot.position.x, 0, snapshot.position.z);
-    groupRef.current.position.lerp(target, 1 - Math.pow(0.001, delta));
+    const currentPlayer = useGameStore.getState().gameState?.players.find(p => p.id === playerId);
+    if (!currentPlayer) return;
+
+    const targetPos = new THREE.Vector3(currentPlayer.position.x, 0, currentPlayer.position.z);
+    groupRef.current.position.lerp(targetPos, 1 - Math.pow(0.001, delta));
+
+    if (currentPlayer.rotation !== undefined) {
+      groupRef.current.rotation.y = -currentPlayer.rotation;
+    }
   });
 
-  const opacity = snapshot.isDead ? 0.2 : 1.0;
+  if (!initialPlayer || !reactivePlayer) return null;
+
+  // Lettura delle variabili (Forzata per bypassare TS)
+  const currentHP = (reactivePlayer as any).health ?? (reactivePlayer as any).hp ?? 100;
+  const maxHP = (reactivePlayer as any).maxHealth ?? (reactivePlayer as any).maxHp ?? 100;
+  const isDisconnected = (reactivePlayer as any).isDisconnected;
 
   return (
     <group ref={groupRef}>
-      {/* Body — raggio 2.4 (backend radius 1.6 × 1.5 visual) */}
-      <mesh position={[0, 2.4, 0]} rotation={[0, snapshot.rotation, 0]}>
-        <sphereGeometry args={[2.4, 32, 32]} />
-        <meshStandardMaterial
-          color={bodyColor}
-          transparent={snapshot.isDead}
-          opacity={opacity}
-        />
-      </mesh>
+      
+      {/* 1. LA HP BAR FLUTTUANTE */}
+      <Html 
+        position={[0, 20, 0]} 
+        center 
+        zIndexRange={[100, 0]} 
+      >
+        <div style={{ transform: 'scale(0.8)' }}>
+          <HPBar 
+            characterName={initialPlayer.characterName}
+            currentHP={currentHP}
+            maxHP={maxHP}
+            isDisconnected={isDisconnected}
+            isFloating={true} 
+          />
+        </div>
+      </Html>
 
-      {/* Aura specifica per personaggio */}
-      {snapshot.characterName === CharacterName.ZEUS ? (
-        <ZeusAura
-          isAttacking={snapshot.isAttacking}
-          attackType={snapshot.attackType}
-          isDefending={snapshot.isDefending}
-          isDead={snapshot.isDead}
-        />
+      {/* 2. IL MODELLO ANIMATO */}
+      <PlayerModel 
+        characterName={initialPlayer.characterName} 
+        playerId={playerId} 
+      />
+
+      {/* 3. ⚡ LE AURE RIPRISTINATE */}
+      {initialPlayer.characterName === CharacterName.ZEUS ? (
+        <ZeusAura playerId={playerId} />
       ) : (
-        <AdeAura
-          isAttacking={snapshot.isAttacking}
-          attackType={snapshot.attackType}
-          isDefending={snapshot.isDefending}
-          isDead={snapshot.isDead}
-        />
+        <AdeAura playerId={playerId} />
       )}
+
     </group>
   );
 }

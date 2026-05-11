@@ -1,6 +1,6 @@
 import { Vector } from '../../../types/game.types';
 import { theme } from '../../../configs/theme';
-import {CharacterName} from '@transcendence/types';
+import { CharacterName } from '@transcendence/types';
 
 interface HPBarProps {
   characterName: string;
@@ -8,7 +8,8 @@ interface HPBarProps {
   currentHP: number;
   isDisconnected?: boolean;
   disconnectionTimer?: number;
-  playerPosition: Vector | null;
+  playerPosition?: Vector | null; // Reso opzionale per evitare errori
+  isFloating?: boolean; // ⚡ NUOVA PROP: Se true, non si attacca agli angoli
 }
 
 export default function HPBar({
@@ -17,6 +18,7 @@ export default function HPBar({
   currentHP,
   isDisconnected = false,
   disconnectionTimer = 0,
+  isFloating = false, // Di base è false così non rompiamo nulla
 }: HPBarProps) {
   const clampedHP = Math.max(0, currentHP);
   const hpPercent = (clampedHP / maxHP) * 100;
@@ -29,10 +31,11 @@ export default function HPBar({
 
   return (
     <div style={{
-      position: 'absolute',
-      top: characterName === CharacterName.ZEUS ? '20px' : 'auto',
-      bottom: characterName === CharacterName.ADE ? '20px' : 'auto',
-      left: '20px',
+      // ⚡ MODIFICA: Se fluttua usa position 'relative', altrimenti 'absolute' con i suoi angoli
+      position: isFloating ? 'relative' : 'absolute',
+      top: isFloating ? 'auto' : (characterName === CharacterName.ZEUS ? '20px' : 'auto'),
+      bottom: isFloating ? 'auto' : (characterName === CharacterName.ADE ? '20px' : 'auto'),
+      left: isFloating ? 'auto' : '20px',
       width: '120px',
       fontFamily: theme.fonts.mono,
       pointerEvents: 'none',
@@ -40,53 +43,33 @@ export default function HPBar({
     }}>
       {/* Name */}
       <div style={{
-        color: theme.colors.goldDim,
-        fontSize: '13px',
-        fontWeight: 'bold',
-        marginBottom: '4px',
-        textAlign: 'center',
-        textShadow: `0 0 8px ${theme.colors.goldDim}`,
+        color: theme.colors.goldDim, fontSize: '13px', fontWeight: 'bold',
+        marginBottom: '4px', textAlign: 'center', textShadow: `0 0 8px ${theme.colors.goldDim}`,
       }}>
         {characterName}
       </div>
 
       {/* Bar container */}
       <div style={{
-        width: '100%',
-        height: '8px',
-        backgroundColor: theme.colors.bgDark,
-        border: `1px solid ${theme.colors.border}`,
-        borderRadius: '4px',
-        overflow: 'hidden',
+        width: '100%', height: '8px', backgroundColor: theme.colors.bgDark,
+        border: `1px solid ${theme.colors.border}`, borderRadius: '4px', overflow: 'hidden',
       }}>
         <div style={{
-          width: `${hpPercent}%`,
-          height: '100%',
-          backgroundColor: barColor,
-          transition: 'width 0.3s ease, background-color 0.3s ease',
-          boxShadow: `0 0 8px ${barColor}`,
+          width: `${hpPercent}%`, height: '100%', backgroundColor: barColor,
+          transition: 'width 0.3s ease, background-color 0.3s ease', boxShadow: `0 0 8px ${barColor}`,
         }} />
       </div>
 
       {/* HP text */}
-      <div style={{
-        color: theme.colors.textSecondary,
-        fontSize: '10px',
-        marginTop: '3px',
-        textAlign: 'center',
-      }}>
+      <div style={{ color: theme.colors.textSecondary, fontSize: '10px', marginTop: '3px', textAlign: 'center' }}>
         {clampedHP}/{maxHP}
       </div>
 
       {/* AFK indicator */}
       {isDisconnected && (
         <div style={{
-          color: theme.colors.afk,
-          fontSize: '11px',
-          fontWeight: 'bold',
-          marginTop: '4px',
-          textAlign: 'center',
-          animation: 'pulse 1s infinite',
+          color: theme.colors.afk, fontSize: '11px', fontWeight: 'bold',
+          marginTop: '4px', textAlign: 'center', animation: 'pulse 1s infinite',
         }}>
           ⚠️ AFK {Math.ceil(disconnectionTimer)}s
         </div>

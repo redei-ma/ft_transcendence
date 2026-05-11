@@ -17,9 +17,8 @@ export const GameConfig = {
 	},
 	PLAYER: {
 		DEFAULT_HP: 100,
-		//Modificata da 40.0 a 10.0 perche' erano troppo veloci
-		SPEED: 10.0,
-		RADIUS: 1.6,
+		SPEED: 20.0,
+		RADIUS: 2.7,
 		RESPAWN_TIMER: 5.0,
 	},
 	MATCH: {
@@ -37,9 +36,12 @@ export const GameConfig = {
 	BOT: {
 		MELEE_DANGER_ZONE: 25,
 		BULLET_DANGER_ZONE: 400,
-    	VISUAL_RADIUS_SQ: 2500.0,
+    	VISUAL_RADIUS_SQ: 2000.0,
 		WAYPOINT_TOLERANCE_SQ: 9.0,
-		WANDER_STUCK_TIMER: 4.0
+		WANDER_STUCK_TIMER: 4.0,
+		MAX_PATH_TIME: 2.5,
+		SECURITY_RANGE: 10.0,
+		SPELL_AIM_SPREAD_DEG: 20,
 	},
 	ACHIEVEMENT: {
 		CLUTCHMASTER: 0.05,

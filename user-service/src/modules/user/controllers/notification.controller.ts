@@ -12,6 +12,7 @@ import {
 	HttpStatus,
 	UseGuards,
 	MessageEvent,
+	Logger,
 } from "@nestjs/common";
 import {
 	ApiTags,
@@ -35,6 +36,8 @@ import {
 @UseGuards(JwtAuthGuard)
 @ApiBearerAuth()
 export class NotificationController {
+	private readonly logger = new Logger(NotificationController.name);
+
 	constructor(
 		private readonly notificationService: NotificationService,
 		private readonly sseService: SseService,
@@ -53,6 +56,7 @@ export class NotificationController {
 		@CurrentUser("sub") userId: number,
 		@Req() req: Request,
 	): Observable<MessageEvent> {
+		this.logger.log(`SSE stream opened for userId=${userId}`);
 		const { stream, key } = this.sseService.register(userId);
 		req.on("close", () => this.sseService.unregister(key));
 		return stream;

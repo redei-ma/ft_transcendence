@@ -1,6 +1,81 @@
-ORDINE PRIORITARIO
 
-- 2FA
-- Revisione React State
-- Navbar non responsive
-- Lagcompensations
+TO DO:
+
+  Ale
+  X - Dopo cambio password, i cookies vengono eliminati, bisogna sloggare l'utente
+  X - Richiedi password per conferma identita' al cambio email dal profilo
+  X - Crea pagina forgot password( da mandare tramite URL via e-mail )
+    - Register new User ( inserisci password due volte per conferma )
+  X - Resend email verification ( Schermo diventa nero quando clicchi - Dopo resend link mostra form da riempire )
+
+  Gio:
+    - Gestione errori
+    - Fixare doppio messaggio su chat di gioco
+    - Interpolation a 30 fps
+
+  Renato:
+    - Mostra ELO vicino alla chat o comunque ad un certo punto ( magari vicino chat Win = ELO Lose = ELO Drau = ELO )
+    - Possibilita' eliminare account ( con warning di conferma )
+    - History 
+  X - Live Notify (evoluzione HTTP guarda SSE) - Nota: Arrivano due eventi separati: Uno notifiche e l'altro status amici. (quando una va online)
+  X - Mostra current streak in statistics
+
+  Ace:
+  X - Ascolta match found su selectModeScene
+
+  - Sistema socket exception. togli unauthorized e usa exception
+  - Guarda immagini chat di gio
+  - Validazione dati in entrata frontend ( tutti i dati )
+  - Trovare modo di refreshare subito email dopo modifica, o comunque gestirlo
+
+=====================================================================================================================================================================================================================================================================
+
+
+
+DA COMMITTARE
+
+
+
+
+DUMP:
+
+
+  Frontend:
+  
+    find . -type f \( -name "*.html" -o -name "*.js" -o -name "*.ts" -o -name "*.tsx" -o -name "*.css" -o -name "*.conf" -o -name "*.yml" -o -name "*.yaml" -o -name "Dockerfile" -o -name "Makefile" -o -name ".env*" -o -name "*.prisma" \) \
+      ! -path "*/node_modules/*" \
+      ! -path "*/.git/*" \
+      ! -path "*/dist/*" \
+      ! -path "*/.next/*" \
+      | sort | while read f; do echo "========== $f =========="; cat "$f"; echo ""; done > frontend_dump.txt
+  
+
+=====================================================================================================================================================================================================================================================================
+
+
+  Full Repo:
+
+    find . -type f \( \
+      -name "*.ts" -o -name "*.tsx" -o -name "*.js" -o -name "*.jsx" -o \
+      -name "*.html" -o -name "*.css" -o -name "*.scss" -o \
+      -name "*.json" -o -name "*.yaml" -o -name "*.yml" -o \
+      -name "*.conf" -o -name "*.nginx" -o \
+      -name "*.prisma" -o -name "*.sql" -o \
+      -name "*.env" -o -name "*.env.*" -o -name ".env*" -o \
+      -name "Dockerfile" -o -name "Makefile" -o -name "docker-compose*" -o \
+      -name "*.toml" -o -name "*.cfg" -o -name "*.ini" -o \
+      -name "*.sh" -o -name "*.md" \
+    \) \
+      ! -path "*/node_modules/*" \
+      ! -path "*/.git/*" \
+      ! -path "*/dist/*" \
+      ! -path "*/build/*" \
+      ! -path "*/.next/*" \
+      ! -path "*/public/models/*" \
+      ! -path "*/package-lock.json" \
+      ! -path "*/.env" \
+      | sort | while read f; do echo "========== $f =========="; cat "$f"; echo ""; done > repo_dump.txt
+
+
+wc -l repo_dump.txt
+du -sh repo_dump.txt

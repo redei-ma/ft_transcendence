@@ -5,17 +5,17 @@ export class World implements GameWorld{
 	id: string;
 	walls: StaticEntity[];
 	pillars: Pillar[];
-	grid: Array<number>;
 	gridWidth: number;
 	gridDepth: number;
 	position: Vector;
 	width: number;
 	depth: number;
-	public bullets: Bullet[];
 	spawnPoints: Vector[];
-	private bulletIndex: number = 0;
+	public	grid: Array<number>;
+	public	bullets: Bullet[];
 	public readonly maxPlayers: number;
 	public readonly MAX_BULLETS: number = 100;
+	private bulletIndex: number = 0;
 
 	constructor(private readonly mapData: MapData){
 		this.id = mapData.meta.name;
@@ -112,6 +112,27 @@ export class World implements GameWorld{
 					if (x >= 0 && x < this.gridWidth && z >= 0 && z < this.gridDepth){
 						let index = x + (z * this.gridWidth);
 						this.grid[index] = 1;
+					}
+				}
+			}
+		}
+		for (const pillar of this.pillars.values()){
+			const startCellX: number = Math.floor((pillar.position.x - pillar.radius) / GameConfig.MAP.CELL_SIZE);
+			const endCellX: number = Math.floor((pillar.position.x + pillar.radius) / GameConfig.MAP.CELL_SIZE);
+			const startCellZ: number = Math.floor((pillar.position.z - pillar.radius) / GameConfig.MAP.CELL_SIZE);
+			const endCellZ: number = Math.floor((pillar.position.z + pillar.radius) / GameConfig.MAP.CELL_SIZE);
+
+			for (let z: number = startCellZ; z <= endCellZ; z++){
+				for (let x: number = startCellX; x <= endCellX; x++){
+					if (x >= 0 && x < this.gridWidth && z >= 0 && z < this.gridDepth){
+						const closest = this.getClosestPointOnCell(pillar.position, x, z);
+						const dx: number = pillar.position.x - closest.x;
+						const dz: number = pillar.position.z - closest.z;
+
+						if ((dx * dx + dz * dz) <= pillar.radius * pillar.radius){
+							let index = x + (z * this.gridWidth);
+							this.grid[index] = 1;
+						}
 					}
 				}
 			}

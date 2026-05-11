@@ -75,7 +75,7 @@ export class GameInviteController {
 		status: HttpStatus.OK,
 		type: RespondGameInviteResponseDto,
 		description:
-			"lobbyId is set when ACCEPTED (join for character selection), null when REJECTED",
+			"sessionId is set when ACCEPTED (join matchmaking WS for character selection), null when REJECTED",
 	})
 	@ApiResponse({
 		status: HttpStatus.BAD_REQUEST,

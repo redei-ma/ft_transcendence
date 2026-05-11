@@ -7,7 +7,7 @@ export interface IAiStates{
     
     name: string;
 
-    onEnter(bot: Player): void;
+    onEnter(bot: Player, gameWorld?: World): void;
 
     update(bot: Player, gameWorld: World, allPlayers: Readonly<Map<string, Player>>, dt: number): IAiStates | undefined;
 

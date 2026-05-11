@@ -1,8 +1,8 @@
 import { IAiStates } from "../aiInterfaces/IAiStates";
 import { Logger } from "@nestjs/common";
-import { GameWorld } from '../../../game-interfaces';
 import { Player, Vector, AttackType, GameConfig } from '@transcendence/types'
 import { tacticsHelper } from "../ai.tactics.helper";
+import { World } from "../../game.world";
 
 export class MeleeAttackState implements IAiStates{
     logger: Logger = new Logger(MeleeAttackState.name);
@@ -32,7 +32,7 @@ export class MeleeAttackState implements IAiStates{
         })
     }
 
-    update(bot: Player, gameWorld: GameWorld, allPlayers: Readonly<Map<string, Player>>, dt: number): IAiStates | undefined {
+    update(bot: Player, gameWorld: World, allPlayers: Readonly<Map<string, Player>>, dt: number): IAiStates | undefined {
 
         this.stuckTimer += dt;
 

@@ -22,6 +22,13 @@ interface FriendStatusSseData {
 	status: UserStatus;
 }
 
+/** Payload sent over SSE when a game invite is received. */
+export interface GameInviteSseData {
+	id: number;
+	expiresAt: Date;
+	sender: { id: number; username: string; avatarUrl: string | null };
+}
+
 /** Internal record for one active SSE connection. */
 interface SseConnection {
 	userId: number;
@@ -95,7 +102,17 @@ export class SseService {
 	 * No-op if the user is not connected.
 	 */
 	pushNotification(userId: number, data: NotificationSseData): void {
+		this.logger.log(`Pushing notification SSE to userId=${userId}`);
 		this.pushToUser(userId, { type: "notification", data });
+	}
+
+	/**
+	 * Pushes a `game_invite` SSE event to the invite receiver.
+	 * No-op if the receiver is not connected.
+	 */
+	pushGameInvite(receiverId: number, data: GameInviteSseData): void {
+		this.logger.log(`Pushing game_invite SSE to userId=${receiverId}`);
+		this.pushToUser(receiverId, { type: "game_invite", data });
 	}
 
 	/**
@@ -111,11 +128,14 @@ export class SseService {
 	// ─── Private helpers ───────────────────────────────────────────────────────
 
 	private pushToUser(userId: number, event: MessageEvent): void {
+		let sent = 0;
 		for (const conn of this.connections.values()) {
 			if (conn.userId === userId) {
 				conn.subject.next(event);
+				sent++;
 			}
 		}
+		this.logger.log(`pushToUser userId=${userId} type=${event.type} connections=${sent}`);
 	}
 
 	private hasConnections(userId: number): boolean {

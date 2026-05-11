@@ -87,6 +87,9 @@ services:
     auth-service:
         container_name: transcendence-auth
         image: transcendence-auth:latest
+        dns:
+            - 8.8.8.8
+            - 1.1.1.1
         build:
             context: .
             dockerfile: ./auth-service/Dockerfile

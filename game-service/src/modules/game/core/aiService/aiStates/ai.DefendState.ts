@@ -82,7 +82,7 @@ export class DefendState implements IAiStates{
 
         bot.inputQueue.push({
             attackType: undefined,
-            input: this.moveInput,
+            input: new Vector(this.moveInput.x, this.moveInput.z),
         })
         return (undefined);
     }

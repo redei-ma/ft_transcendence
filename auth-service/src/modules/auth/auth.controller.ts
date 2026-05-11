@@ -29,11 +29,11 @@ export class AuthController {
   async register(
     @Body() body: CreateLocalUserNoHashDto,
   ) {
-    return await this.authService.registerAndSendVerification( body );
+    return await this.authService.registerAndSendVerification(body);
   }
 
   @Post('resend-verification')
-  async resendVerification(@Body('email') body: EmailDto) {
+  async resendVerification(@Body() body: EmailDto) {
     return this.authService.resendVerificationEmail(body);
   }
 
