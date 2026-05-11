@@ -11,6 +11,7 @@ import GameChat from './UI/components/GameChat';
 import { EffectComposer, Bloom } from '@react-three/postprocessing';
 import mapTexture from '../assets/mapTexture1.png';
 import { useGameStore } from '../storage/gameStore';
+import { useThree } from '@react-three/fiber';
 
 interface GameProps {
   selectedCharacter: CharacterName;
@@ -20,6 +21,29 @@ interface GameProps {
   onPlayAgain: () => void;
   onQuit: () => void;
   myUserId: string;
+}
+
+function CameraController({ mapWidth, mapDepth }: { mapWidth: number; mapDepth: number }) {
+  const { camera, size } = useThree();
+
+  useEffect(() => {
+    const aspect = size.width / size.height;
+    const mapSize = Math.max(mapWidth, mapDepth);
+    
+    // La mappa in isometrica occupa circa mapSize * 1.5 in larghezza visiva
+    // Calcoliamo lo zoom per far entrare tutto
+    if (aspect > 1) {
+      // Schermo orizzontale: l'altezza è il vincolo
+      camera.zoom = size.height / (mapSize * 0.82);
+    } else {
+      // Schermo verticale: la larghezza è il vincolo
+      camera.zoom = size.width / (mapSize * 0.82);
+    }
+    
+    camera.updateProjectionMatrix();
+  }, [size, camera, mapWidth, mapDepth]);
+
+  return null;
 }
 
 export default function Game({ selectedCharacter, selectedMode, onPlayAgain, onQuit, myUserId }: GameProps) {
@@ -82,7 +106,7 @@ export default function Game({ selectedCharacter, selectedMode, onPlayAgain, onQ
         orthographic
         camera={{
           position: [centerX + 80, 100, centerZ + 80],
-          zoom: 5, near: 0.1, far: 1000,
+          near: 0.1, far: 1000,
         }}
         onCreated={({ camera }) => {
           camera.lookAt(centerX, 0, centerZ);
@@ -92,7 +116,7 @@ export default function Game({ selectedCharacter, selectedMode, onPlayAgain, onQ
       >
         <ambientLight intensity={0.6} />
         <directionalLight position={[50, 100, 50]} intensity={0.8} />
-
+        <CameraController mapWidth={mapWidth} mapDepth={mapDepth} />
         <gridHelper args={[mapWidth, 20, 0xffffff, 0x444444]} position={[centerX, 0, centerZ]} />
 
         {/* I componenti 3D estraggono i loro dati live da Zustand usando questi ID */}

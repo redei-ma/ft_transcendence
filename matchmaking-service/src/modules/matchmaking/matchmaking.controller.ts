@@ -36,15 +36,4 @@ export class MatchmakingController {
 		if (!matchId) return;
 		this.matchmakingService.finalizeMatch(matchId);
 	}
-
-	@MessagePattern("player-left-match")
-    async handlePlayerLeftMatch(@Payload() data: { userDbId?: number; gameId?: string }) {
-        const matchId = data?.gameId;
-        if (!matchId) {
-            console.log([Signal] Errore: Ricevuto player-left-match senza gameId valido. Payload:, data);
-            return;
-        }
-        console.log([Signal] Ricevuto player-left-match dall'utente ${data.userDbId} per il match: ${matchId});
-        this.matchmakingService.finalizeMatch(matchId);
-    }
 }
