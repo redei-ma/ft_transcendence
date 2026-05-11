@@ -53,10 +53,16 @@ export class SseService {
 	 * Returns the stream Observable and an opaque key used to unregister later.
 	 */
 	register(userId: number): { stream: Observable<MessageEvent>; key: symbol } {
+		const isFirst = !this.hasConnections(userId);
 		const key = Symbol(`sse:${userId}`);
 		const subject = new Subject<MessageEvent>();
 		this.connections.set(key, { userId, subject });
 		this.logger.log(`SSE connected: userId=${userId}`);
+
+		if (isFirst) {
+			void this.handleOnline(userId);
+		}
+
 		return { stream: subject.asObservable(), key };
 	}
 
@@ -94,7 +100,6 @@ export class SseService {
 
 	/**
 	 * Pushes a `friend_status` SSE event to all online friends of the given user.
-	 * Called after any status change (login, logout, in-game, etc.).
 	 */
 	async notifyStatusChange(
 		userId: number,
@@ -120,11 +125,23 @@ export class SseService {
 		return false;
 	}
 
-	/**
-	 * Grace-period handler: sets the user OFFLINE only if they are still
-	 * disconnected and their DB status is ONLINE.
-	 * Skipped for IN_GAME / IN_QUEUE — those services handle their own transitions.
-	 */
+	private async handleOnline(userId: number): Promise<void> {
+		const user = await this.prisma.user.findUnique({
+			where: { id: userId },
+			select: { status: true },
+		});
+
+		if (user?.status !== UserStatus.OFFLINE) return;
+
+		await this.prisma.user.update({
+			where: { id: userId },
+			data: { status: UserStatus.ONLINE },
+		});
+
+		this.logger.log(`userId=${userId} marked ONLINE on SSE connect`);
+		await this.pushStatusToFriends(userId, UserStatus.ONLINE);
+	}
+
 	private async handleOffline(userId: number): Promise<void> {
 		if (this.hasConnections(userId)) return;
 

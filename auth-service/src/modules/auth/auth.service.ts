@@ -129,6 +129,10 @@ export class AuthService {
       }
     }
 
+    if (user.status === UserStatus.ONLINE) {
+      throw new ForbiddenException('This account is already logged in');
+    }
+
     const accessPayload: JwtAccessPayloadDto = {
       sub: user.id,
       username: user.username,
