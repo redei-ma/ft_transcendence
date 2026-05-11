@@ -162,9 +162,12 @@ export class GameService implements OnModuleInit, OnModuleDestroy{
             const player = session.players.get(entityId);
             if (player && player.userDbId !== null) {
                 this.userToGameData.delete(player.userDbId);
-                this.logger.log(`Player ${player.userDbId} left voluntarily. Cleared for new matchmaking.`);
+                this.logger.log(`Player ${player.userDbId} left voluntarily. Cleared for new matchmaking. =====================================`);
 				this.notifyMatchmakingPlayerLeft(player.userDbId, session.gameId);
             }
+			else{
+				this.logger.error("player not found");
+			}
 
             session.removePlayer(entityId, true);
         }

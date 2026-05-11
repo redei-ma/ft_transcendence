@@ -1133,4 +1133,26 @@ export class MatchmakingService {
 		this.logger.log(`[Cleanup] Match ${matchId} rimosso con successo.`);
 		return { status: "MATCH_FINALIZED", matchId };
 	}
+
+	async setPlayerToLobby(userId: number) {
+		const USER_STATUS_KEY = `status:${userId}`;
+		const dataRaw = await this.redis.get(USER_STATUS_KEY);
+
+		if (dataRaw) {
+			const userData = JSON.parse(dataRaw);
+
+			await this.setUserStatus(String(userId), {
+				state: LOBBY,
+				userDbId: Number(userId),
+				characterName: userData.characterName,
+				isAiPlayer: false,
+				rank: userData.rank,
+				socketId: userData.socketId || undefined,
+			}, 3600);
+
+			this.logger.log(
+				`[Abbandono] Utente ${userId} sbloccato dal match e riportato in lobby.`,
+			);
+		}
+	}
 }

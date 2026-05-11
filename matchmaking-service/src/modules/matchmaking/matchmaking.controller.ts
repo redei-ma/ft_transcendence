@@ -1,10 +1,10 @@
 
 import { Controller, Post, Body, UseGuards } from "@nestjs/common";
-import { MessagePattern, Payload } from "@nestjs/microservices";
+import { EventPattern, Payload } from "@nestjs/microservices";
 import { MatchmakingService } from "./matchmaking.service";
 import { JoinQueueDto } from "./dto/join-queue.dto";
 import { JwtAuthGuard, CurrentUser } from "@transcendence/auth";
-import { GameEvents } from "@transcendence/types";
+import { NetworkConfig } from "@transcendence/types";
 
 @Controller()
 export class MatchmakingController {
@@ -30,10 +30,21 @@ export class MatchmakingController {
 		return await this.matchmakingService.processUnrankedQueue(userId, data);
 	}
 
-	@MessagePattern(GameEvents.END_GAME)
+	@EventPattern(NetworkConfig.MATCHMAKING.MATCH_EVENTS.END_GAME)
 	async handleMatchFinished(@Payload() data: string | { matchId?: string; gameId?: string }) {
 		const matchId = typeof data === "string" ? data : (data?.matchId ?? data?.gameId);
 		if (!matchId) return;
 		this.matchmakingService.finalizeMatch(matchId);
 	}
+
+	@EventPattern(NetworkConfig.MATCHMAKING.MATCH_EVENTS.PLAYER_LEFT_MATCH)
+    async handlePlayerLeftMatch(@Payload() data: { userDbId?: number; gameId?: string }) {
+        const userId = data?.userDbId;
+
+        if (!userId) {
+            return;
+        }
+
+        this.matchmakingService.setPlayerToLobby(userId);
+    }
 }

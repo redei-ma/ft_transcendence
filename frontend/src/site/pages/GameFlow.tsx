@@ -119,10 +119,17 @@ export default function GameFlow({ userId, username, onExit }: GameFlowProps) {
 
   const handleQuit = () => {
     hasResignedRef.current = true;
-    matchmakingSocket.emit(GameEvents.LEAVE_GAME, {userId: String(userId) });
-    socketService.disconnect();
-    matchmakingSocket.disconnect();
-    onExit();
+    
+    const gameSocket = socketService.getSocket();
+    if (gameSocket) {
+      gameSocket.emit(GameEvents.LEAVE_GAME, { userId: String(userId) });
+    }
+
+    setTimeout(() => {
+      socketService.disconnect();
+      matchmakingSocket.disconnect();
+      onExit();
+    }, 500);
   };
 
   return (
