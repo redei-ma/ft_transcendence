@@ -177,6 +177,25 @@ export class GameGateway
 		);
 	}
 
+	@SubscribeMessage(GameEvents.LEAVE_GAME)
+	handleLeaveGame(
+		@ConnectedSocket() client: Socket,
+	): void {
+		const socketId = client.id;
+		if (!socketId) {
+			this.logger.error("invalid socket reached, ignoring");
+			return;
+		}
+
+		const result = 	this.gameService.handleLeaveGame(socketId);
+		if (result.status !== SuccessCode.OK) {
+			this.sendErrorAndDisconnectClient(client, result);
+			this.logger.warn(
+				`error in removing the player from the game, message: ${result.message}`,
+			);
+		} else this.logger.log(`client with socket-id ${socketId} is exit`);
+	}
+
 	@Throttle({ default: { limit: 20, ttl: 10000 } })
 	@SubscribeMessage(GameEvents.GAME_MESSAGE)
 	handleGameMessage(

@@ -85,12 +85,14 @@ export default function ProfilePage() {
   const [pwdError, setPwdError] = useState('');
   const [msg, setMsg] = useState(''); 
 
-  const confirmPwdRef = useRef('');
+  const confirmPwdRef = useRef(''); // Per la password
   const [confirmPwdDisplay, setConfirmPwdDisplay] = useState('');
 
   const [achievements, setAchievements] = useState<UserAchievementsResponse | null>(null);
 
   const [matches, setMatches] = useState<MatchHistoryResponse | null>(null);
+
+  const fileInputRef = useRef<HTMLInputElement>(null);// per file nascosto di uploadAvatar
 
   const [dialog, setDialog] = useState<{ 
     isOpen: boolean; 
@@ -234,17 +236,94 @@ export default function ProfilePage() {
   return (
     <div className="animate-fadeIn" style={{ paddingTop: `${NAVBAR_HEIGHT}px`, maxWidth: '800px', margin: '0 auto', paddingBottom: '60px', paddingLeft: '24px', paddingRight: '24px' }}>
       
-      {/* Settings & Personalization */}
+    {/* Settings & Personalization */}
       <div id="profile-settings" style={{ paddingTop: '40px', scrollMarginTop: `${NAVBAR_HEIGHT}px` }}>
         <div style={{ textAlign: 'center', marginBottom: '40px' }}>
           <div style={{ position: 'relative', display: 'inline-block', marginBottom: '16px' }}>
-            <img src={avatarUrl} alt="avatar" style={{ width: '120px', height: '120px', borderRadius: '50%', border: `3px solid ${theme.colors.gold}`, boxShadow: `0 0 30px ${theme.colors.goldGlow}` }} />
-            <div style={{ position: 'absolute', bottom: '4px', right: '4px', width: '20px', height: '20px', borderRadius: '50%', background: statusColor(userStatus), border: `3px solid ${theme.colors.bgDark}` }} />
+            <img
+              src={avatarUrl} alt="avatar"
+              style={{ width: '120px', height: '120px', borderRadius: '50%', border: `3px solid ${theme.colors.gold}`, boxShadow: `0 0 30px ${theme.colors.goldGlow}`, cursor: 'pointer' }}
+              onClick={() => {
+                setDialog({
+                  isOpen: true,
+                  title: "Modifica Avatar",
+                  msg: "Vuoi caricare una nuova immagine per il tuo avatar? Formati accettati: JPEG, PNG, WebP (max 5MB).",
+                  action: () => {
+                    setDialog(null);
+                    fileInputRef.current?.click();
+                  }
+                });
+              }}
+            />
+            <div style={{
+              position: 'absolute', bottom: '4px', right: '4px', width: '20px', height: '20px',
+              borderRadius: '50%', background: statusColor(userStatus), border: `3px solid ${theme.colors.bgDark}`,
+            }} />
+            <div
+              onClick={() => {
+                setDialog({
+                  isOpen: true,
+                  title: "Modifica Avatar",
+                  msg: "Vuoi caricare una nuova immagine per il tuo avatar? Formati accettati: JPEG, PNG, WebP (max 5MB).",
+                  action: () => {
+                    setDialog(null);
+                    fileInputRef.current?.click();
+                  }
+                });
+              }}
+              style={{
+                position: 'absolute', inset: 0, borderRadius: '50%', background: 'rgba(0,0,0,0.5)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                opacity: 0, transition: 'opacity 0.2s', cursor: 'pointer',
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.opacity = '1'}
+              onMouseLeave={(e) => e.currentTarget.style.opacity = '0'}
+            >
+              <Icons.Edit size={24} />
+            </div>
+            <input
+              ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp"
+              style={{ display: 'none' }}
+              onChange={async (e) => {
+                const file = e.target.files?.[0];
+                if (!file) return;
+                if (file.size > 5 * 1024 * 1024) { alert("Max 5MB"); return; }
+                const result = await api.uploadAvatar(file);
+                if (result) {
+                  setProfile(prev => prev ? { ...prev, avatarUrl: result.avatarUrl } : null);
+                  setMsg("Avatar aggiornato con successo!");
+                  setTimeout(() => setMsg(''), 3000);
+                } else {
+                  alert("Upload fallito.");
+                }
+                e.target.value = '';
+              }}
+            />
           </div>
           <h1 style={{ fontFamily: theme.fonts.heading, fontSize: '28px', fontWeight: 700, color: theme.colors.goldBright, letterSpacing: '2px' }}>{username}</h1>
           <p style={{ fontFamily: theme.fonts.heading, color: theme.colors.textMuted, fontSize: '12px', letterSpacing: '1px', marginTop: '4px' }}>
             Member since {new Date(createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long' })}
           </p>
+          <button onClick={() => {
+            setDialog({
+              isOpen: true,
+              title: "Reset Avatar",
+              msg: "Vuoi ripristinare l'avatar predefinito?",
+              action: async () => {
+                setDialog(null);
+                const result = await api.resetAvatar();
+                if (result) {
+                  setProfile(prev => prev ? { ...prev, avatarUrl: result.avatarUrl } : null);
+                  setMsg("Avatar ripristinato!");
+                  setTimeout(() => setMsg(''), 3000);
+                }
+              }
+            });
+          }} style={{
+            background: 'none', border: 'none', color: theme.colors.textMuted,
+            fontFamily: theme.fonts.mono, fontSize: '11px', cursor: 'pointer',
+            textDecoration: 'underline', marginTop: '8px',
+          }}>Reset avatar to default</button>
         </div>
         
         <h2 style={{ ...sectionTitleStyle, fontSize: '22px', marginBottom: '24px' }}>Settings & Personalization</h2>
@@ -253,7 +332,7 @@ export default function ProfilePage() {
 
         <EditableField label="USERNAME" value={username} isEditing={editingUsername} tempVal={tempVal} setTempVal={setTempVal} onEdit={() => setEditingUsername(true)} onSave={handleSaveUsername} onCancel={() => setEditingUsername(false)} />
         <EditableField label="EMAIL" value={email} isEditing={editingEmail} tempVal={tempVal} setTempVal={setTempVal} onEdit={() => setEditingEmail(true)} onSave={handleSaveEmail} onCancel={() => setEditingEmail(false)} />
-
+        
         {/* Blocco Cambio Password */}
         <div style={{ padding: '16px 20px', background: theme.colors.bgPanel, border: `1px solid ${theme.colors.border}`, borderRadius: '4px', marginTop: '16px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -588,6 +667,38 @@ export default function ProfilePage() {
               </div>
             </div>
           </div>
+        </div>
+      </div>
+
+      {/* Delete Account */}
+      <div style={{ padding: '24px', background: 'rgba(232,64,87,0.05)', border: `1px solid ${theme.colors.dead}`, borderRadius: '4px', marginTop: '24px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div>
+            <div style={{ fontFamily: theme.fonts.heading, fontSize: '14px', fontWeight: 600, color: theme.colors.dead, marginBottom: '4px' }}>Delete Account</div>
+            <div style={{ fontFamily: theme.fonts.mono, fontSize: '12px', color: theme.colors.textMuted }}>
+              Permanently delete your account and all associated data.
+            </div>
+          </div>
+          <button className="btn-press" onClick={() => {
+            setDialog({
+              isOpen: true,
+              title: "Elimina Account",
+              msg: "Sei sicuro? Questa azione è irreversibile. Il tuo account di gioco e tutti i tuoi dati, statistiche e amicizie verranno eliminati permanentemente.",
+              action: async () => {
+                setDialog(null);
+                const ok = await api.deleteAccount();
+                if (ok) {
+                  window.location.reload();
+                } else {
+                  alert("Errore durante l'eliminazione dell'account.");
+                }
+              }
+            });
+          }} style={{
+            padding: '8px 20px', background: 'none', border: `1px solid ${theme.colors.dead}`,
+            borderRadius: '2px', color: theme.colors.dead, fontFamily: theme.fonts.heading,
+            fontSize: '11px', fontWeight: 700, letterSpacing: '1px', cursor: 'pointer',
+          }}>DELETE</button>
         </div>
       </div>
 

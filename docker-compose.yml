@@ -87,6 +87,9 @@ services:
     auth-service:
         container_name: transcendence-auth
         image: transcendence-auth:latest
+        dns:
+            - 8.8.8.8
+            - 1.1.1.1
         build:
             context: .
             dockerfile: ./auth-service/Dockerfile
@@ -242,13 +245,27 @@ services:
             frontend:
                 condition: service_healthy
         networks:
-            - nginx_network
             - backend-network
         ports:
+            - "2443:2443"
             - "2080:2080"
         volumes:
             - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+            - ./certs:/etc/nginx/certs
             - uploads_data:/uploads
+
+    ngrok:
+        container_name: transcendence-ngrok
+        image: ngrok/ngrok:3
+        command: http https://gateway:2443
+        restart: unless-stopped
+        depends_on:
+            gateway:
+                condition: service_started
+        networks:
+            - backend-network
+        env_file:
+            - .env.shared
 
 volumes:
     postgres_data:
@@ -257,5 +274,3 @@ volumes:
 networks:
     backend-network:
         driver: bridge
-    nginx_network:
-        external: true

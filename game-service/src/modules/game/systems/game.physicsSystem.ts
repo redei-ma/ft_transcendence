@@ -69,19 +69,6 @@ export class PhysicsSystem{
 		}
 	}
 
-	isPillarCollision(entityPosition: Vector, entityRadius: number, gameWorld: World): boolean{
-		for (const pillar of gameWorld.pillars.values()){
-			let dx: number = entityPosition.x - pillar.position.x;
-			let dz: number = entityPosition.z - pillar.position.z;
-			let distanceSquared: number = dx * dx + dz * dz;
-			let radiiSum: number = entityRadius + pillar.radius;
-			if (distanceSquared <= radiiSum * radiiSum){
-				return true;
-			}
-		}
-		return false;
-	}
-
 	isPlayerCollision(moverId: string, moverPosition: Vector, moverRadius: number, players: Iterable<Player>): Player | undefined{
 		for (const player of players){
 			if (moverId !== player.entityId && !player.isDead){
@@ -101,6 +88,6 @@ export class PhysicsSystem{
 	}
 
 	private isEnvironmentCollision(pos: Vector, radius: number, world: World): boolean {
-		return world.isWallCollision(pos, radius) || this.isPillarCollision(pos, radius, world);
+		return world.isWallCollision(pos, radius);
 	}
 }

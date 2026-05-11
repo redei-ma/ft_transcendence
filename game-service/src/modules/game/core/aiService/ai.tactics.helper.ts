@@ -10,7 +10,15 @@ export function tacticsHelper(bot: Player, victim: Player): IAiStates{
         return new WanderState();
     }
 
-    if (bot.hp <= GameConfig.PLAYER.DEFAULT_HP / 3){
+    //AGGIUNTO PER NON FARSI INSEGUIRE TROPPO DAL BOT
+    const dx: number = victim.position.x - bot.position.x;
+    const dz: number = victim.position.z - bot.position.z;
+    const distanceSq: number = (dx * dx) + (dz * dz);
+    if (distanceSq > GameConfig.BOT.VISUAL_RADIUS_SQ * 1.5) {
+        return new WanderState();
+    }
+
+    if (bot.hp <= GameConfig.PLAYER.DEFAULT_HP / 2){
         return new KiteState(victim);
     }
 

@@ -10,9 +10,19 @@ import { World } from '../game.world';
 export class AiService{
     private logger: Logger = new Logger(AiService.name);
     private botToState: Map<string, IAiStates> = new Map();
+    private reactionTimers: Map<string, number> = new Map();
     constructor(){}
 
     public updateInput(bot: Player, gameWorld: World, allPlayers: Readonly<Map<string, Player>>, dt: number){
+
+        //AGGIUNTO PER RENDERE BOT PIU SCARSO
+        let timer = this.reactionTimers.get(bot.entityId) || 0;
+        timer += dt;
+        if (timer < 0.25){
+            this.reactionTimers.set(bot.entityId, timer);
+            return;
+        }
+        this.reactionTimers.set(bot.entityId, 0);
 
         if (!this.botToState.has(bot.entityId)){
             const initialState: IAiStates = new WanderState();
@@ -45,6 +55,7 @@ export class AiService{
     removeBot(botId: string){
         if (this.botToState.has(botId)){
             this.botToState.delete(botId);
+            this.reactionTimers.delete(botId);
         }
     }
 }

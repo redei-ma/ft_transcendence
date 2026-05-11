@@ -97,7 +97,7 @@ export class WanderState implements IAiStates{
 
 			if (gridX < 0 || gridX >= gameWorld.gridWidth || gridZ < 0 || gridZ >= gameWorld.gridDepth) continue;
 			const index = gridX + (gridZ * gameWorld.gridWidth);
-			if (gameWorld.pathFindingGrid[index] === 0)
+			if (gameWorld.grid[index] === 0)
 				isAGoodStreet = true;
 		}
         this.targetPosition.set(targetX, targetZ);

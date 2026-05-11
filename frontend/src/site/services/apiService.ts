@@ -217,17 +217,31 @@ export async function updateEmail(email: string): Promise<boolean> {
     }
 }
 
-export async function updateAvatar(avatarUrl: string | null): Promise<boolean> {
+export async function uploadAvatar(file: File): Promise<UserProfile | null> {
     try {
+        const formData = new FormData();
+        formData.append('avatar', file);
         const res = await fetchWithAuthRetry("/api/users/me/avatar", {
-            method: "PATCH",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ avatarUrl }),
+            method: "POST",
+            body: formData,
+            // NON impostare Content-Type — il browser lo setta con il boundary corretto
         });
-        return !!res && res.ok;
+        if (!res || !res.ok) return null;
+        return (await res.json()) as UserProfile;
     } catch (error) {
-        console.error("[API] Error updating avatar:", error);
-        return false;
+        console.error("[API] Error uploading avatar:", error);
+        return null;
+    }
+}
+
+export async function resetAvatar(): Promise<UserProfile | null> {
+    try {
+        const res = await fetchWithAuthRetry("/api/users/me/avatar", { method: "DELETE" });
+        if (!res || !res.ok) return null;
+        return (await res.json()) as UserProfile;
+    } catch (error) {
+        console.error("[API] Error resetting avatar:", error);
+        return null;
     }
 }
 
@@ -541,5 +555,19 @@ export async function getMyMatches(page = 1, limit = 10, mode?: string): Promise
     catch (error) {
         console.error("[API] Error fetching matches:", error);
         return null;
+    }
+}
+
+// ==========================================
+// DELETE ACCOUNT
+// ==========================================
+
+export async function deleteAccount(): Promise<boolean> {
+    try {
+        const res = await fetchWithAuthRetry("/api/users/me", { method: "DELETE" });
+        return !!res && (res.ok || res.status === 204);
+    } catch (error) {
+        console.error("[API] Error deleting account:", error);
+        return false;
     }
 }

@@ -96,7 +96,7 @@ export class KiteState implements IAiStates{
         const gridZ: number = Math.floor(targetZ / GameConfig.MAP.CELL_SIZE);
         if (this.isInGrid(gridX, gridZ, gameWorld)){
             const index = gridX + (gridZ * gameWorld.gridWidth);
-            if (gameWorld.pathFindingGrid[index] === 0){
+            if (gameWorld.grid[index] === 0){
                 this.recicleVector.set(targetX, targetZ);
                 this.path = PathFinder.findPath(bot.position, this.recicleVector, gameWorld);
                 return ;
@@ -162,7 +162,7 @@ export class KiteState implements IAiStates{
 
     private isAValidDirection(isGridValid: boolean, index: number, gameWorld: World): boolean{
         if(isGridValid){
-            if (gameWorld.pathFindingGrid[index] === 0)
+            if (gameWorld.grid[index] === 0)
                 return true;
         }
         return false;

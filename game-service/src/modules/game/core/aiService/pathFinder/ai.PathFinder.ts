@@ -1,7 +1,7 @@
 import { World } from "../../game.world";
 import { Vector, GameConfig } from '@transcendence/types'
 
-export class PathNode{
+export interface PathNode{
     gridX: number;
     gridZ: number;
 
@@ -85,7 +85,7 @@ export class PathFinder{
                 neighborZ < 0 || neighborZ >= gameWorld.gridDepth) continue;
 
             let index = neighborX + (neighborZ * gameWorld.gridWidth);
-            if (gameWorld.pathFindingGrid[index] === 1) continue;
+            if (gameWorld.grid[index] === 1) continue;
 
             let neighborKey: string = String(neighborX + ',' + neighborZ);
             if (closedList.has(neighborKey)) continue;

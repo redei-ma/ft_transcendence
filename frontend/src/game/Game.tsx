@@ -1,7 +1,7 @@
 import { Canvas } from '@react-three/fiber';
 import { useGameSocket } from '../hooks/useGameSocket';
 import { InputManager } from './input/inputManager';
-import { useEffect, useRef, useMemo } from 'react';
+import { useEffect, useRef, useMemo, useState} from 'react';
 import { CharacterName, MatchMode, GameConfig } from '@transcendence/types';
 import GameUI from './UI/gameUI';
 import { PlayerEntity } from './entities/PlayerEntity';
@@ -9,7 +9,7 @@ import { BulletEntity } from './entities/BulletEntity';
 import { GameOverOverlay } from './UI/components/GameOverOverlay';
 import GameChat from './UI/components/GameChat';
 import { EffectComposer, Bloom } from '@react-three/postprocessing';
-import mapTexture from '../assets/mapTexture.png';
+import mapTexture from '../assets/mapTexture1.png';
 import { useGameStore } from '../storage/gameStore';
 
 interface GameProps {
@@ -25,22 +25,24 @@ interface GameProps {
 export default function Game({ selectedCharacter, selectedMode, onPlayAgain, onQuit, myUserId }: GameProps) {
   const inputManagerRef = useRef<InputManager | null>(null);
   
-  // ⚡ Il Socket Hook ora non restituisce nulla, aggiorna solo lo store
+  // Il Socket Hook ora non restituisce nulla, aggiorna solo lo store
   useGameSocket();
 
-  // ⚡ Estraiamo i dati "lenti" dallo store per l'interfaccia 2D
+  // Estraiamo i dati "lenti" dallo store per l'interfaccia 2D
   const isConnected = useGameStore((state) => state.isConnected);
   const world = useGameStore((state) => state.world);
   const gameOver = useGameStore((state) => state.gameOver);
   const resetGame = useGameStore((state) => state.resetGame);
 
-  // ⚡ FIX ZUSTAND v5: Estraiamo gli ID come stringa (es. "id1,id2") così non serve la funzione di comparazione!
+  // FIX ZUSTAND v5: Estraiamo gli ID come stringa (es. "id1,id2") così non serve la funzione di comparazione!
   const playerIdsStr = useGameStore((state) => state.gameState?.players.map(p => p.id).join(',') || '');
   const bulletIdsStr = useGameStore((state) => state.gameState?.bullets.map(b => b.id).join(',') || '');
 
-  // ⚡ Ritrasformiamo la stringa in array solo se cambia
+  // Ritrasformiamo la stringa in array solo se cambia
   const playerIds = useMemo(() => playerIdsStr ? playerIdsStr.split(',') : [], [playerIdsStr]);
   const bulletIds = useMemo(() => bulletIdsStr ? bulletIdsStr.split(',') : [], [bulletIdsStr]);
+
+  const [showLeaveDialog, setShowLeaveDialog] = useState(false);
 
   useEffect(() => {
     const isLocal = selectedMode === MatchMode.LOCAL;
@@ -98,6 +100,40 @@ export default function Game({ selectedCharacter, selectedMode, onPlayAgain, onQ
           <PlayerEntity key={id} playerId={id} />
         ))}
 
+        {world?.map?.pillars?.map((p: any, i: number) => {
+        const px = p.position?.x ?? p.x ?? 0;
+        const pz = p.position?.z ?? p.z ?? 0;
+        return (
+          <mesh 
+            key={`pillar-${i}`} 
+            position={[px, 2.5, pz]}
+          >
+            <cylinderGeometry args={[p.radius, p.radius, 5, 16]} />
+            <meshStandardMaterial 
+              color="#1a1a2e" 
+              emissive="#d4af37" 
+              emissiveIntensity={0.1}
+              transparent 
+              opacity={0.7} 
+            />
+          </mesh>
+        );
+        })}
+
+        {world?.map?.walls?.map((w: any, i: number) => {
+          const wx = w.position?.x ?? 0;
+          const wz = w.position?.z ?? 0;
+          return (
+            <mesh 
+              key={`wall-${i}`} 
+              position={[wx + w.width/2, 2.5, wz + w.depth/2]}
+            >
+              <boxGeometry args={[w.width, 5, w.depth]} />
+              <meshStandardMaterial color="#1a1a2e" transparent opacity={0.6} />
+            </mesh>
+          );
+        })}
+        
         {bulletIds.map((id) => (
           <BulletEntity key={id} bulletId={id} />
         ))}
@@ -106,6 +142,57 @@ export default function Game({ selectedCharacter, selectedMode, onPlayAgain, onQ
           <Bloom luminanceThreshold={1} luminanceSmoothing={0.9} mipmapBlur intensity={1.5} />
         </EffectComposer>
       </Canvas>
+      
+        {!gameOver && (
+        <button onClick={() => setShowLeaveDialog(true)} style={{
+          position: 'absolute', top: 16, left: 16, zIndex: 1000,
+          padding: '8px 16px', background: 'rgba(0,0,0,0.6)',
+          border: '1px solid #d44', borderRadius: '4px',
+          color: '#d44', fontFamily: '"Cinzel", serif',
+          fontSize: '11px', fontWeight: 700, letterSpacing: '1px',
+          cursor: 'pointer', backdropFilter: 'blur(4px)',
+          transition: 'all 0.2s',
+        }}
+          onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(221,68,68,0.2)'}
+          onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(0,0,0,0.6)'}
+        >LEAVE</button>
+      )}
+
+      {showLeaveDialog && (
+        <div style={{
+          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999,
+        }}>
+          <div style={{
+            background: '#0d1a25', border: '1px solid #e8d5a3', borderRadius: '4px',
+            padding: '32px', maxWidth: '420px', textAlign: 'center',
+            boxShadow: '0 0 40px rgba(200,170,100,0.3)',
+          }}>
+            <h3 style={{
+              fontFamily: '"Cinzel", serif', color: '#f0e0b0', fontSize: '18px',
+              marginBottom: '16px', letterSpacing: '1px',
+            }}>Abandon Match</h3>
+            <p style={{
+              fontFamily: '"JetBrains Mono", monospace', fontSize: '13px',
+              color: '#e8d5a3', marginBottom: '32px', lineHeight: 1.6,
+            }}>
+              Are you sure you want to leave? This will count as a loss.
+            </p>
+            <div style={{ display: 'flex', gap: '16px', justifyContent: 'center' }}>
+              <button onClick={() => setShowLeaveDialog(false)} style={{
+                padding: '10px 24px', background: 'none',
+                border: '1px solid rgba(200,170,100,0.15)', color: 'rgba(200,170,100,0.35)',
+                cursor: 'pointer', fontFamily: '"Cinzel", serif', letterSpacing: '1px',
+              }}>CANCEL</button>
+              <button onClick={() => { setShowLeaveDialog(false); handleQuitInternal(); }} style={{
+                padding: '10px 24px', background: '#d44', border: 'none',
+                color: 'white', fontWeight: 'bold', cursor: 'pointer',
+                borderRadius: '2px', fontFamily: '"Cinzel", serif', letterSpacing: '1px',
+              }}>LEAVE</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {!gameOver && (
         <GameUI

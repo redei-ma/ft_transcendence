@@ -53,41 +53,51 @@ export default function Navbar({ currentPage, onNavigate, onLogout, username, av
   }, []);
 
   // Integrazione SSE (Server-Sent Events) per le Notifiche Live
-  useEffect(() => {
+useEffect(() => {
     if (!username) return;
 
     // 1. Carica lo storico iniziale
     fetchNotifications();
 
-    // 2. Apri il canale SSE per ricevere le nuove in tempo reale
-    // ASSICURATI CHE L'URL SIA QUELLO DEL BACKEND
+    // 2. Apri il canale SSE per ricevere eventi in tempo reale
     const SSE_URL = '/api/users/me/notification/stream'; 
     
     const eventSource = new EventSource(SSE_URL, {
       withCredentials: true // FONDAMENTALE per far leggere i cookie di sessione a NestJS
     });
 
-    // Quando il backend "spinge" un nuovo dato (messaggio generico)
-    eventSource.onmessage = (event) => {
+    // 3. Evento "notification" — una nuova notifica (friend request, achievement, ecc.)
+    //    Renato manda: { id, type, message }
+    //    Lo aggiungiamo in cima alla lista e incrementiamo il contatore non-letti.
+    eventSource.addEventListener('notification', (event: any) => {
       try {
         const newNotif: NotificationItem = JSON.parse(event.data);
-        
-        // Aggiungiamo la nuova notifica in cima alla lista
         setNotifications(prev => [newNotif, ...prev]);
-        
-        // Aumentiamo il contatore dei non letti se necessario
         if (!newNotif.isRead) {
           setUnreadCount(prev => prev + 1);
         }
       } catch (err) {
         console.error("[SSE] Errore nel parsing della notifica:", err);
       }
-    };
+    });
 
-    eventSource.onerror = (err) => {
-      console.error("[SSE] Errore di connessione al flusso notifiche. Tentativo di riconnessione automatico...", err);
+    // 4. Evento "friend_status" — un amico ha cambiato stato (ONLINE, OFFLINE, IN_GAME, IN_QUEUE)
+    //    Renato manda: { userId, status }
+    //    Lo ri-emettiamo come CustomEvent sul window, così la FriendsSidebar
+    //    può ascoltarlo e aggiornare lo status in tempo reale senza polling.
+    eventSource.addEventListener('friend_status', (event: any) => {
+      try {
+        const data = JSON.parse(event.data);
+        window.dispatchEvent(new CustomEvent('friend-status-update', { detail: data }));
+      } catch (err) {
+        console.error("[SSE] Errore nel parsing del friend_status:", err);
+      }
+    });
+
+    eventSource.onerror = () => {
+      console.error("[SSE] Errore di connessione al flusso. Tentativo di riconnessione automatico...");
       // L'EventSource del browser proverà a riconnettersi automaticamente, 
-      // non c'è bisogno di logiche astruse di reconnect.
+      // non c'è bisogno di logiche di reconnect.
     };
 
     // Cleanup: chiudiamo il "tubo" se cambiamo utente o il componente viene smontato
