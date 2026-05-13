@@ -1,4 +1,5 @@
 import { Module } from "@nestjs/common";
+import { EventEmitterModule } from "@nestjs/event-emitter";
 import { JwtAuthGuard } from "@transcendence/auth";
 import { PrismaModule } from "../prisma/prisma.module";
 
@@ -22,7 +23,7 @@ import { NotificationController } from "./controllers/notification.controller";
 import { GameInviteController } from "./controllers/game-invite.controller";
 
 @Module({
-	imports: [PrismaModule],
+	imports: [PrismaModule, EventEmitterModule.forRoot()],
 	controllers: [
 		ProfileController,
 		AvatarController,

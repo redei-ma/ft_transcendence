@@ -1,4 +1,5 @@
 import { Injectable, Logger, MessageEvent } from "@nestjs/common";
+import { EventEmitter2 } from "@nestjs/event-emitter";
 import { Observable, Subject } from "rxjs";
 import { PrismaService } from "../../prisma/prisma.service";
 import {
@@ -38,26 +39,28 @@ interface SseConnection {
 /**
  * Manages all active SSE connections and pushes real-time events to clients.
  *
- * Two event types are sent over the stream:
- * - `notification` — a new persistent notification was created for this user.
- * - `friend_status` — a friend came online, went offline, or changed presence state.
+ * Status transitions (ONLINE/OFFLINE) are delegated via events:
+ * - `user.connected`    — emitted when the first SSE connection for a user opens.
+ * - `user.disconnected` — emitted after an 8-second grace period when no connections remain.
  *
- * Supports multiple concurrent connections per user (multiple browser tabs).
- * A grace period of 8 seconds applies on disconnect before marking the user OFFLINE,
- * so brief navigation or reconnects do not cause false offline flashes.
+ * InternalUserService listens to these events and is the single source of truth
+ * for DB status writes + SSE friend notifications.
  */
 @Injectable()
 export class SseService {
 	private readonly logger = new Logger(SseService.name);
 	private readonly connections = new Map<symbol, SseConnection>();
 
-	constructor(private readonly prisma: PrismaService) {}
+	constructor(
+		private readonly prisma: PrismaService,
+		private readonly eventEmitter: EventEmitter2,
+	) {}
 
 	// ─── Connection lifecycle ──────────────────────────────────────────────────
 
 	/**
 	 * Registers a new SSE connection for the given user.
-	 * Returns the stream Observable and an opaque key used to unregister later.
+	 * Emits `user.connected` on the first connection.
 	 */
 	register(userId: number): { stream: Observable<MessageEvent>; key: symbol } {
 		const isFirst = !this.hasConnections(userId);
@@ -67,7 +70,7 @@ export class SseService {
 		this.logger.log(`SSE connected: userId=${userId}`);
 
 		if (isFirst) {
-			void this.handleOnline(userId);
+			this.eventEmitter.emit("user.connected", userId);
 		}
 
 		return { stream: subject.asObservable(), key };
@@ -75,9 +78,7 @@ export class SseService {
 
 	/**
 	 * Unregisters an SSE connection identified by its key.
-	 * Starts an 8-second grace period: if the user has no remaining connections
-	 * after the period and their status is still ONLINE, marks them OFFLINE
-	 * and notifies their friends.
+	 * After an 8-second grace period, emits `user.disconnected` if no connections remain.
 	 */
 	unregister(key: symbol): void {
 		const conn = this.connections.get(key);
@@ -88,10 +89,11 @@ export class SseService {
 		this.logger.log(`SSE disconnected: userId=${conn.userId}`);
 
 		if (!this.hasConnections(conn.userId)) {
-			setTimeout(
-				() => void this.handleOffline(conn.userId),
-				8_000,
-			);
+			setTimeout(() => {
+				if (!this.hasConnections(conn.userId)) {
+					this.eventEmitter.emit("user.disconnected", conn.userId);
+				}
+			}, 8_000);
 		}
 	}
 
@@ -99,7 +101,6 @@ export class SseService {
 
 	/**
 	 * Pushes a `notification` SSE event to all active connections of the given user.
-	 * No-op if the user is not connected.
 	 */
 	pushNotification(userId: number, data: NotificationSseData): void {
 		this.logger.log(`Pushing notification SSE to userId=${userId}`);
@@ -108,7 +109,6 @@ export class SseService {
 
 	/**
 	 * Pushes a `game_invite` SSE event to the invite receiver.
-	 * No-op if the receiver is not connected.
 	 */
 	pushGameInvite(receiverId: number, data: GameInviteSseData): void {
 		this.logger.log(`Pushing game_invite SSE to userId=${receiverId}`);
@@ -117,6 +117,7 @@ export class SseService {
 
 	/**
 	 * Pushes a `friend_status` SSE event to all online friends of the given user.
+	 * Called by InternalUserService after every status change.
 	 */
 	async notifyStatusChange(
 		userId: number,
@@ -143,42 +144,6 @@ export class SseService {
 			if (conn.userId === userId) return true;
 		}
 		return false;
-	}
-
-	private async handleOnline(userId: number): Promise<void> {
-		const user = await this.prisma.user.findUnique({
-			where: { id: userId },
-			select: { status: true },
-		});
-
-		if (user?.status !== UserStatus.OFFLINE) return;
-
-		await this.prisma.user.update({
-			where: { id: userId },
-			data: { status: UserStatus.ONLINE },
-		});
-
-		this.logger.log(`userId=${userId} marked ONLINE on SSE connect`);
-		await this.pushStatusToFriends(userId, UserStatus.ONLINE);
-	}
-
-	private async handleOffline(userId: number): Promise<void> {
-		if (this.hasConnections(userId)) return;
-
-		const user = await this.prisma.user.findUnique({
-			where: { id: userId },
-			select: { status: true },
-		});
-
-		if (user?.status !== UserStatus.ONLINE) return;
-
-		await this.prisma.user.update({
-			where: { id: userId },
-			data: { status: UserStatus.OFFLINE },
-		});
-
-		this.logger.log(`userId=${userId} marked OFFLINE after grace period`);
-		await this.pushStatusToFriends(userId, UserStatus.OFFLINE);
 	}
 
 	private async pushStatusToFriends(

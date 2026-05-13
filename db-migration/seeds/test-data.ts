@@ -487,8 +487,8 @@ export async function seedTestData(prisma: PrismaClient): Promise<void> {
 			{
 				senderId: alice.id,
 				receiverId: bob.id,
-				status: InviteStatus.PENDING,
-				expiresAt: oneHourFromNow,
+				status: InviteStatus.EXPIRED,
+				expiresAt: oneHourAgo,
 			},
 			{
 				senderId: diana.id,
