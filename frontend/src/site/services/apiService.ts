@@ -265,11 +265,24 @@ export async function getPublicProfile(
     userId: number,
 ): Promise<UserProfile | null> {
     try {
-        const res = await fetchWithAuthRetry(`/api/users/${userId}`);
+        const res = await fetchWithAuthRetry(`/api/users/profile?id=${userId}`);
         if (!res || !res.ok) return null;
         return (await res.json()) as UserProfile;
     } catch (error) {
         console.error("[API] Error fetching public profile:", error);
+        return null;
+    }
+}
+
+export async function searchUserByUsername(
+    username: string,
+): Promise<{ id: number; username: string; avatarUrl: string; status: string } | null> {
+    try {
+        const res = await fetchWithAuthRetry(`/api/users/search/${encodeURIComponent(username)}`);
+        if (!res || !res.ok) return null;
+        return await res.json();
+    } catch (error) {
+        console.error("[API] Error searching user by username:", error);
         return null;
     }
 }

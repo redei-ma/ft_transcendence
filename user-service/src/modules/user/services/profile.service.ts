@@ -2,6 +2,7 @@ import {
 	Injectable,
 	NotFoundException,
 	ConflictException,
+	BadRequestException,
 } from "@nestjs/common";
 import { PrismaService } from "../../prisma/prisma.service";
 import { Provider, calculateEloDelta, ELO_DEFAULT } from "@transcendence/types";
@@ -16,6 +17,8 @@ import {
 	CheckAvailabilityResponseDto,
 	EloPreviewQueryDto,
 	EloPreviewResponseDto,
+	ProfileQueryDto,
+	FriendUserDto,
 } from "../dto";
 import {
 	USER_PROFILE_SELECT,
@@ -252,16 +255,23 @@ export class ProfileService {
 	// ─── Public data ───────────────────────────────────────────────────────────────────────────────
 
 	/**
-	 * Retrieves the public profile of a player.
+	 * Retrieves the public profile of a player by ID or username.
 	 * Character stats are loaded in a separate query only if the stats record exists.
 	 *
-	 * @param id - ID of the player to look up.
+	 * @param query - Either id or username must be provided (not both required).
 	 * @returns PublicProfileResponseDto — profile and stats (null if the player has never played).
+	 * @throws BadRequestException (400) — if neither id nor username is provided.
 	 * @throws NotFoundException (404) — if the player does not exist.
 	 */
-	async getPublicProfile(id: number): Promise<PublicProfileResponseDto> {
+	async getPublicProfile(query: ProfileQueryDto): Promise<PublicProfileResponseDto> {
+		if (query.id === undefined && query.username === undefined) {
+			throw new BadRequestException("Either id or username must be provided");
+		}
+
+		const where = query.id !== undefined ? { id: query.id } : { username: query.username };
+
 		const user = await this.prisma.user.findUnique({
-			where: { id },
+			where,
 			select: {
 				id: true,
 				username: true,
@@ -292,7 +302,7 @@ export class ProfileService {
 		let characterStats: UserStatsResponseDto["characterStats"] = [];
 		if (user.stats) {
 			characterStats = await this.prisma.characterStats.findMany({
-				where: { userId: id },
+				where: { userId: user.id },
 				select: {
 					characterName: true,
 					wins: true,
@@ -312,6 +322,32 @@ export class ProfileService {
 			createdAt: user.createdAt,
 			stats: user.stats ? { ...user.stats, characterStats } : null,
 		};
+	}
+
+	/**
+	 * Searches for a player by exact username match.
+	 * Returns only the minimal public data needed for friend search.
+	 *
+	 * @param username - Exact username to look up.
+	 * @returns FriendUserDto — id, username, avatarUrl, status.
+	 * @throws NotFoundException (404) — if no player with that username exists.
+	 */
+	async searchByUsername(username: string): Promise<FriendUserDto> {
+		const user = await this.prisma.user.findUnique({
+			where: { username },
+			select: {
+				id: true,
+				username: true,
+				avatarUrl: true,
+				status: true,
+			},
+		});
+
+		if (!user) {
+			throw new NotFoundException("Player not found");
+		}
+
+		return user;
 	}
 
 	/**

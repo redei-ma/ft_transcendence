@@ -6,7 +6,6 @@ import {
 	Body,
 	Param,
 	Query,
-	ParseIntPipe,
 	HttpCode,
 	HttpStatus,
 	UseGuards,
@@ -16,6 +15,7 @@ import {
 	ApiOperation,
 	ApiResponse,
 	ApiParam,
+	ApiQuery,
 	ApiBearerAuth,
 } from "@nestjs/swagger";
 import { JwtAuthGuard, CurrentUser } from "@transcendence/auth";
@@ -33,6 +33,8 @@ import {
 	CheckAvailabilityResponseDto,
 	EloPreviewQueryDto,
 	EloPreviewResponseDto,
+	ProfileQueryDto,
+	FriendUserDto,
 } from "../dto";
 
 /**
@@ -259,21 +261,23 @@ export class ProfileController {
 	// ─── Public data ───────────────────────────────────────────────────────────────────────────────
 
 	/**
-	 * View a specific player's public profile and stats.
+	 * View a specific player's full public profile and stats.
+	 * Exactly one of id or username must be provided as a query parameter.
 	 */
-	@Get(":id")
+	@Get("profile")
 	@UseGuards(JwtAuthGuard)
 	@ApiBearerAuth()
-	@ApiOperation({ summary: "Get public profile of a player" })
-	@ApiParam({
-		name: "id",
-		type: Number,
-		description: "The player's unique ID",
-	})
+	@ApiOperation({ summary: "Get full public profile of a player by ID or username" })
+	@ApiQuery({ name: "id", required: false, type: Number, description: "Player ID" })
+	@ApiQuery({ name: "username", required: false, type: String, description: "Player username" })
 	@ApiResponse({
 		status: HttpStatus.OK,
 		description: "Public profile and statistics retrieved successfully",
 		type: PublicProfileResponseDto,
+	})
+	@ApiResponse({
+		status: HttpStatus.BAD_REQUEST,
+		description: "Neither id nor username provided",
 	})
 	@ApiResponse({
 		status: HttpStatus.UNAUTHORIZED,
@@ -284,8 +288,36 @@ export class ProfileController {
 		description: "Player not found",
 	})
 	async getPublicProfile(
-		@Param("id", ParseIntPipe) id: number,
+		@Query() query: ProfileQueryDto,
 	): Promise<PublicProfileResponseDto> {
-		return this.profileService.getPublicProfile(id);
+		return this.profileService.getPublicProfile(query);
+	}
+
+	/**
+	 * Search for a player by exact username.
+	 * Returns only the minimal public data needed for friend operations.
+	 */
+	@Get("search/:username")
+	@UseGuards(JwtAuthGuard)
+	@ApiBearerAuth()
+	@ApiOperation({ summary: "Search a player by exact username" })
+	@ApiParam({ name: "username", type: String, description: "Exact username to look up" })
+	@ApiResponse({
+		status: HttpStatus.OK,
+		description: "Player found",
+		type: FriendUserDto,
+	})
+	@ApiResponse({
+		status: HttpStatus.UNAUTHORIZED,
+		description: "Missing or invalid JWT",
+	})
+	@ApiResponse({
+		status: HttpStatus.NOT_FOUND,
+		description: "Player not found",
+	})
+	async searchByUsername(
+		@Param("username") username: string,
+	): Promise<FriendUserDto> {
+		return this.profileService.searchByUsername(username);
 	}
 }
