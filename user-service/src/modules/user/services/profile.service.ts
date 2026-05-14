@@ -5,7 +5,8 @@ import {
 	BadRequestException,
 } from "@nestjs/common";
 import { PrismaService } from "../../prisma/prisma.service";
-import { Provider, calculateEloDelta, ELO_DEFAULT } from "@transcendence/types";
+import { SseService } from "./sse.service";
+import { Provider, UserStatus, calculateEloDelta, ELO_DEFAULT } from "@transcendence/types";
 import {
 	UpdateUsernameDto,
 	LeaderboardQueryDto,
@@ -31,7 +32,10 @@ import { join } from "path";
 
 @Injectable()
 export class ProfileService {
-	constructor(private readonly prisma: PrismaService) {}
+	constructor(
+		private readonly prisma: PrismaService,
+		private readonly sseService: SseService,
+	) {}
 
 	// ─── Get user ──────────────────────────────────────────────────────────────────────────────────
 
@@ -216,6 +220,10 @@ export class ProfileService {
 		if (isUploadedAvatar(user.avatarUrl)) {
 			await unlink(join("/", user.avatarUrl)).catch(() => undefined);
 		}
+
+		// Notify friends while friendships still exist in DB, then close the user's SSE stream.
+		await this.sseService.notifyStatusChange(id, UserStatus.OFFLINE);
+		this.sseService.closeUserConnections(id);
 
 		await this.prisma.user.delete({ where: { id } });
 	}

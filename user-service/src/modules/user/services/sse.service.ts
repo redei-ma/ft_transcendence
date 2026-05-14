@@ -97,6 +97,20 @@ export class SseService {
 		}
 	}
 
+	/**
+	 * Closes all active SSE connections for the given user and removes them.
+	 * Used when an account is deleted to immediately terminate the stream.
+	 */
+	closeUserConnections(userId: number): void {
+		for (const [key, conn] of this.connections.entries()) {
+			if (conn.userId === userId) {
+				conn.subject.complete();
+				this.connections.delete(key);
+			}
+		}
+		this.logger.log(`Closed all SSE connections for userId=${userId}`);
+	}
+
 	// ─── Push helpers ──────────────────────────────────────────────────────────
 
 	/**
