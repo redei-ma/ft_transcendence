@@ -75,7 +75,8 @@ export class InputManager {
       ' ', 'shift', 'control',
       0
     );
-    if (p0.attackType) console.log('P0 attack:', p0.attackType);
+    // if (p0.attackType) console.log('P0 attack:', p0.attackType);
+    if (p0.attackType) console.log('P0 attack payload:', JSON.stringify(p0));
     socketService.emit(GameEvents.INPUT, p0);
 
     // P2: Frecce + 1(melee) / 2(spell) / 3(defence)

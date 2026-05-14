@@ -67,7 +67,7 @@ function ResizeWarning({ onLeave }: { onLeave: () => void }) {
         fontFamily: '"JetBrains Mono", monospace', fontSize: '13px',
         color: 'rgba(200,170,100,0.6)', textAlign: 'center', lineHeight: 1.6,
       }}>
-        Restore the original window size or you will be removed from the match.
+        Restore the original window size or you will be kicked from the match.
       </p>
       <div style={{
         fontFamily: '"Cinzel", serif', fontSize: '48px', fontWeight: 700,

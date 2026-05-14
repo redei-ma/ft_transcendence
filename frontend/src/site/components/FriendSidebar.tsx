@@ -225,6 +225,7 @@ export default function FriendsSidebar({ onGameInviteAccepted }: FriendsSidebarP
         }}>
           <span style={{ fontFamily: theme.fonts.heading, fontSize: '14px', fontWeight: 700, color: theme.colors.goldBright, letterSpacing: '2px', textTransform: 'uppercase' }}>
             Friends
+            Your ID: 
           </span>
           <span style={{ fontFamily: theme.fonts.mono, fontSize: '11px', color: theme.colors.hpHigh }}>
             {onlineCount} online
