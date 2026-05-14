@@ -25,25 +25,62 @@ interface GameProps {
 
 function CameraController({ mapWidth, mapDepth }: { mapWidth: number; mapDepth: number }) {
   const { camera, size } = useThree();
+  const initialized = useRef(false);
 
   useEffect(() => {
-    const aspect = size.width / size.height;
+    if (initialized.current) return;
+    initialized.current = true;
+
     const mapSize = Math.max(mapWidth, mapDepth);
-    
-    // La mappa in isometrica occupa circa mapSize * 1.5 in larghezza visiva
-    // Calcoliamo lo zoom per far entrare tutto
-    if (aspect > 1) {
-      // Schermo orizzontale: l'altezza è il vincolo
+    if (size.height < size.width) {
       camera.zoom = size.height / (mapSize * 0.82);
     } else {
-      // Schermo verticale: la larghezza è il vincolo
       camera.zoom = size.width / (mapSize * 0.82);
     }
-    
     camera.updateProjectionMatrix();
   }, [size, camera, mapWidth, mapDepth]);
 
   return null;
+}
+
+function ResizeWarning({ onLeave }: { onLeave: () => void }) {
+  const [countdown, setCountdown] = useState(5);
+
+  useEffect(() => {
+    if (countdown <= 0) return;
+    const timer = setTimeout(() => setCountdown(countdown - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [countdown]);
+
+  return (
+    <div style={{
+      position: 'fixed', inset: 0, zIndex: 9999,
+      background: 'rgba(0,0,0,0.95)',
+      display: 'flex', flexDirection: 'column',
+      alignItems: 'center', justifyContent: 'center', gap: '24px',
+    }}>
+      <h2 style={{
+        fontFamily: '"Cinzel", serif', color: '#d44',
+        fontSize: '22px', letterSpacing: '2px', textTransform: 'uppercase',
+      }}>BACK TO FULL-SCREEN MODE</h2>
+      <p style={{
+        fontFamily: '"JetBrains Mono", monospace', fontSize: '13px',
+        color: 'rgba(200,170,100,0.6)', textAlign: 'center', lineHeight: 1.6,
+      }}>
+        Restore the original window size or you will be kicked from the match.
+      </p>
+      <div style={{
+        fontFamily: '"Cinzel", serif', fontSize: '48px', fontWeight: 700,
+        color: countdown <= 2 ? '#d44' : '#e8d5a3',
+        transition: 'color 0.3s',
+      }}>{countdown}</div>
+      <button onClick={onLeave} style={{
+        padding: '10px 24px', background: '#d44', border: 'none',
+        borderRadius: '4px', color: 'white', fontFamily: '"Cinzel", serif',
+        fontSize: '12px', fontWeight: 700, letterSpacing: '1px', cursor: 'pointer',
+      }}>LEAVE NOW</button>
+    </div>
+  );
 }
 
 export default function Game({ selectedCharacter, selectedMode, onPlayAgain, onQuit, myUserId }: GameProps) {
@@ -92,6 +129,41 @@ export default function Game({ selectedCharacter, selectedMode, onPlayAgain, onQ
     resetGame();
     onQuit();
   };
+
+  const [initialSize] = useState({ w: window.innerWidth, h: window.innerHeight });
+  const [resized, setResized] = useState(false);
+  const handleQuitRef = useRef(handleQuitInternal);
+  handleQuitRef.current = handleQuitInternal;
+
+  useEffect(() => {
+    let kickTimeout: ReturnType<typeof setTimeout> | null = null;
+
+    const handleResize = () => {
+      const diffW = Math.abs(window.innerWidth - initialSize.w);
+      const diffH = Math.abs(window.innerHeight - initialSize.h);
+
+      if (diffW > 50 || diffH > 50) {
+        setResized(true);
+        if (!kickTimeout) {
+          kickTimeout = setTimeout(() => {
+            handleQuitRef.current();
+          }, 5000);
+        }
+      } else {
+        setResized(false);
+        if (kickTimeout) {
+          clearTimeout(kickTimeout);
+          kickTimeout = null;
+        }
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      if (kickTimeout) clearTimeout(kickTimeout);
+    };
+  }, [initialSize]);
 
   return (
     <div style={{
@@ -167,6 +239,10 @@ export default function Game({ selectedCharacter, selectedMode, onPlayAgain, onQ
         </EffectComposer>
       </Canvas>
       
+        {resized && (
+          <ResizeWarning onLeave={handleQuitInternal} />
+        )}
+
         {!gameOver && (
         <button onClick={() => setShowLeaveDialog(true)} style={{
           position: 'absolute', top: 16, left: 16, zIndex: 1000,

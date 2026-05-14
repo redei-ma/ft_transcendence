@@ -554,7 +554,7 @@ export default function ProfilePage() {
         )}
       </div>
 
-      {/* Friends */}
+    {/* Friends
       <div id="profile-friends" style={{ paddingTop: '80px', scrollMarginTop: `${NAVBAR_HEIGHT}px` }}>
         <h2 style={{ ...sectionTitleStyle, fontSize: '22px', marginBottom: '24px' }}>Friends</h2>
         <div style={{ textAlign: 'center', padding: '24px', background: theme.colors.bgPanel, border: `1px solid ${theme.colors.border}`, borderRadius: '4px' }}>
@@ -566,7 +566,7 @@ export default function ProfilePage() {
             Your ID: <span style={{ color: theme.colors.gold, fontWeight: 700, fontSize: '14px' }}>{profile?.id}</span> — share it with friends!
           </p>
         </div>
-      </div>
+      </div> */}
 
       {/* Security */}
       <div id="profile-security" style={{ paddingTop: '80px', paddingBottom: '40px', scrollMarginTop: `${NAVBAR_HEIGHT}px` }}>
@@ -614,8 +614,8 @@ export default function ProfilePage() {
                 maxLength={6} 
                 value={setupCode}
                 onChange={(e) => setSetupCode(e.target.value.replace(/\D/g, ''))}
-                placeholder="— — — — — —"
-                style={{ ...inputStyle, width: '140px', textAlign: 'center', letterSpacing: '8px', fontSize: '18px', fontWeight: 'bold' }} 
+                placeholder="- - - - - -"
+                style={{ ...inputStyle, width: '140px', textAlign: 'center', letterSpacing: '1px', fontSize: '15px', fontWeight: 'bold' }} 
               />
               
               {error2fa && <div style={{ color: theme.colors.dead, fontFamily: theme.fonts.mono, fontSize: '12px' }}>{error2fa}</div>}
