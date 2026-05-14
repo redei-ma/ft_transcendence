@@ -1,4 +1,4 @@
-import { Player, GameConfig, Bullet } from '@transcendence/types'
+import { Player, GameConfig, Bullet, Vector} from '@transcendence/types'
 import { IAiStates } from './aiInterfaces';
 import { ChaseState, KiteState, WanderState } from './aiStates';
 import { World } from '../game.world';
@@ -84,4 +84,39 @@ export function threatDetector(bot: Player, allPlayers: Map<string, Player>, gam
     if (murderer) return murderer;
 
     return undefined;
+}
+
+export function executePathMovement(bot: Player, path: Vector[], gameWorld: World): void {
+    let moveInput = new Vector(0, 0);
+
+    if (path.length === 0) {
+        let dx = (gameWorld.width / 2) - bot.position.x;
+        let dz = (gameWorld.depth / 2) - bot.position.z;
+        moveInput.set(dx, dz);
+    } 
+    else {
+        let targetPoint: Vector = path[0];
+        let dx: number = targetPoint.x - bot.position.x;
+        let dz: number = targetPoint.z - bot.position.z;
+
+        const distanceSq: number = (dx * dx) + (dz * dz);
+        if (distanceSq <= GameConfig.BOT.WAYPOINT_TOLERANCE_SQ) {
+            path.shift();
+            if (path.length === 0) {
+                bot.inputQueue.length = 0;
+                return;
+            }
+            targetPoint = path[0];
+            dx = targetPoint.x - bot.position.x;
+            dz = targetPoint.z - bot.position.z;
+        }
+        moveInput.set(dx, dz);
+    }
+
+    moveInput.normalize();
+    bot.inputQueue.length = 0;
+    bot.inputQueue.push({
+        attackType: undefined,
+        input: new Vector(moveInput.x, moveInput.z),
+    });
 }

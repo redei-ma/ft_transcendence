@@ -1,7 +1,7 @@
 import { IAiStates } from "../aiInterfaces/IAiStates";
 import { Logger } from "@nestjs/common";
 import { Player, Vector, GameConfig } from '@transcendence/types'
-import { tacticsHelper } from "../ai.tactics.helper";
+import { executePathMovement, tacticsHelper } from "../ai.tactics.helper";
 import { CHARACTER_DATA } from "src/modules/game/factories";
 import { SpellAttackState } from "./ai.SpellAttackState";
 import { World } from "../../game.world";
@@ -47,39 +47,9 @@ export class KiteState implements IAiStates{
             this.findEscapePosition(bot, gameWorld);
             this.pathTimer = 0;
         }
-        this.moveToPath(bot);
+        executePathMovement(bot, this.path, gameWorld);
+        
         return (undefined);
-    }
-
-    private moveToPath(bot: Player): void{
-        if (this.path.length === 0){
-            this.moveInput.set(0, 0);
-        }
-        else{
-            let targetPoint: Vector = this.path[0];
-            let dx: number = targetPoint.x - bot.position.x;
-            let dz: number = targetPoint.z - bot.position.z;
-
-            const distanceSq: number = (dx * dx) + (dz * dz);
-            if (distanceSq <= GameConfig.BOT.WAYPOINT_TOLERANCE_SQ){
-                this.path.shift();
-                if (this.path.length === 0) {
-                    bot.inputQueue.length = 0;
-                    return;
-                }
-                targetPoint = this.path[0];
-                dx = targetPoint.x - bot.position.x;
-                dz = targetPoint.z - bot.position.z;
-            }
-            this.moveInput.set(dx, dz);
-        }
-
-        this.moveInput.normalize();
-        bot.inputQueue.length = 0;
-        bot.inputQueue.push({
-            attackType: undefined,
-            input: new Vector(this.moveInput.x, this.moveInput.z),
-        })
     }
 
     private findEscapePosition(bot: Player, gameWorld: World): void{

@@ -5,7 +5,7 @@ import { Player, Vector,GameConfig } from '@transcendence/types'
 import { ChaseState } from "./ai.ChaseState";
 import { World } from "../../game.world";
 import { PathFinder } from "../pathFinder/ai.PathFinder";
-import { checkVisualForAttack } from "../ai.tactics.helper";
+import { checkVisualForAttack, executePathMovement } from "../ai.tactics.helper";
 
 export class WanderState implements IAiStates{
     logger: Logger = new Logger(WanderState.name);
@@ -45,40 +45,11 @@ export class WanderState implements IAiStates{
 			this.path = PathFinder.findPath(bot.position, this.targetPosition, gameWorld);
         }
 
-		this.moveToPath(bot);
+		executePathMovement(bot, this.path, gameWorld);
+        if (this.path.length === 0) {
+            this.hasTarget = false;
+        }
         return undefined;
-    }
-
-    private moveToPath(bot: Player){
-        if (this.path.length === 0){
-            this.moveInput.set(0, 0);
-        }
-        else{
-            let targetPoint: Vector = this.path[0];
-            let dx: number = targetPoint.x - bot.position.x;
-            let dz: number = targetPoint.z - bot.position.z;
-
-            const distanceSq: number = (dx * dx) + (dz * dz);
-            if (distanceSq <= GameConfig.BOT.WAYPOINT_TOLERANCE_SQ){
-                this.path.shift();
-                if (this.path.length === 0) {
-                    bot.inputQueue.length = 0;
-					this.hasTarget = false;
-                    return;
-                }
-                targetPoint = this.path[0];
-                dx = targetPoint.x - bot.position.x;
-                dz = targetPoint.z - bot.position.z;
-            }
-            this.moveInput.set(dx, dz);
-        }
-
-        this.moveInput.normalize();
-        bot.inputQueue.length = 0;
-        bot.inputQueue.push({
-            attackType: undefined,
-            input: new Vector(this.moveInput.x, this.moveInput.z),
-        })
     }
 
 	private findTargetPosition(gameWorld: World, bot: Player){
