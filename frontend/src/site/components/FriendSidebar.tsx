@@ -35,7 +35,7 @@ export default function FriendsSidebar({ onGameInviteAccepted }: FriendsSidebarP
   const [now, setNow] = useState(Date.now());
 
   // Add friend
-  const [addId, setAddId] = useState('');
+  const [addUser, setAddUser] = useState('');
   const [addMsg, setAddMsg] = useState('');
   const [addError, setAddError] = useState('');
 
@@ -115,19 +115,23 @@ export default function FriendsSidebar({ onGameInviteAccepted }: FriendsSidebarP
   });
 
   const handleAddFriend = async () => {
-    setAddMsg('');
-    setAddError('');
-    const id = parseInt(addId.trim(), 10);
-    if (isNaN(id) || id <= 0) return setAddError('Inserisci un ID valido.');
-    const result = await api.sendFriendRequest(id);
-    if (result.ok) {
-      setAddMsg('Richiesta inviata!');
-      setAddId('');
-      fetchFriends();
-    } else {
-      setAddError(result.message || 'Errore');
-    }
-  };
+  setAddMsg('');
+  setAddError('');
+  const input = addUser.trim();
+  if (!input) return setAddError('Enter a username.');
+
+  const found = await api.searchUserByUsername(input);
+  if (!found) return setAddError(`User "${input}" not found.`);
+
+  const result = await api.sendFriendRequest(found.id);
+  if (result.ok) {
+    setAddMsg('Request sent!');
+    setAddUser('');
+    fetchFriends();
+  } else {
+    setAddError(result.message || 'Error');
+  }
+};
 
   const handleAcceptFriend = async (targetId: number) => {
     if (await api.respondFriendRequest(targetId, 'ACCEPTED')) fetchFriends();
@@ -502,9 +506,9 @@ export default function FriendsSidebar({ onGameInviteAccepted }: FriendsSidebarP
               <div style={{ display: 'flex', gap: '6px', marginBottom: '12px' }}>
                 <input
                   type="text"
-                  placeholder="Player ID"
-                  value={addId}
-                  onChange={(e) => setAddId(e.target.value.replace(/\D/g, ''))}
+                  placeholder="Type an Username"
+                  value={addUser}
+                  onChange={(e) => setAddUser(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleAddFriend()}
                   style={{
                     flex: 1, padding: '8px 12px', background: theme.colors.bgDark,
@@ -525,7 +529,7 @@ export default function FriendsSidebar({ onGameInviteAccepted }: FriendsSidebarP
 
               <div style={{ marginTop: '16px', padding: '12px', background: 'rgba(200,170,100,0.04)', borderRadius: '4px', border: `1px solid ${theme.colors.border}` }}>
                 <p style={{ fontSize: '10px', color: theme.colors.textMuted, lineHeight: 1.5 }}>
-                  Your ID is visible on your profile page. Share it with friends so they can add you too!
+                  Your Username is visible on your profile page. Share it with friends so they can add you too!
                 </p>
               </div>
             </div>
