@@ -4,6 +4,7 @@ import {
 	NotFoundException,
 } from "@nestjs/common";
 import { PrismaService } from "../../prisma/prisma.service";
+import { SseService } from "./sse.service";
 import {
 	NotificationsQueryDto,
 	NotificationListResponseDto,
@@ -12,7 +13,10 @@ import {
 
 @Injectable()
 export class NotificationService {
-	constructor(private readonly prisma: PrismaService) {}
+	constructor(
+		private readonly prisma: PrismaService,
+		private readonly sseService: SseService,
+	) {}
 
 	// ─── Public API ────────────────────────────────────────────────────────────
 
@@ -137,8 +141,11 @@ export class NotificationService {
 		userId: number,
 		dto: CreateNotificationDto,
 	): Promise<void> {
-		await this.prisma.notification.create({
+		const notification = await this.prisma.notification.create({
 			data: { userId, type: dto.type, message: dto.message },
+			select: { id: true, type: true, message: true, isRead: true, createdAt: true },
 		});
+
+		this.sseService.pushNotification(userId, notification);
 	}
 }

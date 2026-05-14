@@ -60,7 +60,7 @@ useEffect(() => {
     fetchNotifications();
 
     // 2. Apri il canale SSE per ricevere eventi in tempo reale
-    const SSE_URL = '/api/users/me/notification/stream'; 
+    const SSE_URL = '/api/users/me/notifications/stream';
     
     const eventSource = new EventSource(SSE_URL, {
       withCredentials: true // FONDAMENTALE per far leggere i cookie di sessione a NestJS
@@ -76,21 +76,31 @@ useEffect(() => {
         if (!newNotif.isRead) {
           setUnreadCount(prev => prev + 1);
         }
+        if (newNotif.type === 'FRIEND_ACCEPTED' || newNotif.type === 'FRIEND_REQ') {
+          window.dispatchEvent(new CustomEvent('friend-list-changed'));
+        }
       } catch (err) {
         console.error("[SSE] Errore nel parsing della notifica:", err);
       }
     });
 
     // 4. Evento "friend_status" — un amico ha cambiato stato (ONLINE, OFFLINE, IN_GAME, IN_QUEUE)
-    //    Renato manda: { userId, status }
-    //    Lo ri-emettiamo come CustomEvent sul window, così la FriendsSidebar
-    //    può ascoltarlo e aggiornare lo status in tempo reale senza polling.
     eventSource.addEventListener('friend_status', (event: any) => {
       try {
         const data = JSON.parse(event.data);
         window.dispatchEvent(new CustomEvent('friend-status-update', { detail: data }));
       } catch (err) {
         console.error("[SSE] Errore nel parsing del friend_status:", err);
+      }
+    });
+
+    // 5. Evento "game_invite" — qualcuno ha mandato un invite di gioco
+    eventSource.addEventListener('game_invite', (event: any) => {
+      try {
+        const data = JSON.parse(event.data);
+        window.dispatchEvent(new CustomEvent('game-invite-received', { detail: data }));
+      } catch (err) {
+        console.error("[SSE] Errore nel parsing del game_invite:", err);
       }
     });
 

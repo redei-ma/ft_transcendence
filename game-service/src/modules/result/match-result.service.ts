@@ -7,6 +7,7 @@ import {
 	calculateEloMulti,
 	ELO_DEFAULT,
 	NotificationType,
+	NotificationTemplates,
 } from "@transcendence/types";
 import { Prisma } from "@prisma/client";
 import { MatchResult, PlayerResult } from "../../types/match-result.interface";
@@ -23,7 +24,7 @@ export class MatchResultService {
 	constructor(
 		private readonly prisma: PrismaService,
 		private readonly achievementService: AchievementService,
-		private readonly userNotificationClient: UserNotificationClient,
+		private readonly notificationClient: UserNotificationClient,
 	) {}
 
 	/**
@@ -108,20 +109,18 @@ export class MatchResultService {
 			playersStats,
 		);
 
-		// // Step 3: send notifications for unlocked achievements
-		// for (const { userId, achievementName } of unlocked) {
-		// 	await this.userNotificationClient
-		// 		.createNotification(
-		// 			userId,
-		// 			NotificationType.ACHV_UNLOCKED,
-		// 			`Congratulations! You've earned the "${achievementName}" achievement.`,
-		// 		)
-		// 		.catch((err: unknown) => {
-		// 			this.logger.error(
-		// 				`Failed to notify user ${userId} for achievement "${achievementName}": ${err}`,
-		// 			);
-		// 		});
-		// }
+		// Step 3: send notifications for unlocked achievements (fire-and-forget)
+		await Promise.allSettled(
+			unlocked.map(({ userId, achievementName }) => {
+				const { message } =
+					NotificationTemplates.ACHV_UNLOCKED(achievementName);
+				return this.notificationClient.sendNotification(
+					userId,
+					NotificationType.ACHV_UNLOCKED,
+					message,
+				);
+			}),
+		);
 
 		return unlocked;
 	}

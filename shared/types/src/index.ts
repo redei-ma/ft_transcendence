@@ -4,3 +4,4 @@ export * from "./game-interfaces";
 export * from "./achievement.config";
 export * from "./game.vector";
 export * from "./elo";
+export * from "./notification.templates";

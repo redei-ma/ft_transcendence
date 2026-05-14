@@ -16,6 +16,29 @@ import { Type, Transform, TransformFnParams } from "class-transformer";
 import { MatchMode } from "@transcendence/types";
 
 /**
+ * Query parameters for retrieving a player's public profile.
+ * Exactly one of id or username must be provided.
+ */
+export class ProfileQueryDto {
+	@ApiPropertyOptional({ description: "Player ID", example: 5 })
+	@IsOptional()
+	@Type(() => Number)
+	@IsInt()
+	@Min(1)
+	id?: number;
+
+	@ApiPropertyOptional({ description: "Player username", example: "mario" })
+	@IsOptional()
+	@IsString()
+	@MinLength(3, { message: "Username must be at least 3 characters" })
+	@MaxLength(20, { message: "Username must be at most 20 characters" })
+	@Matches(/^[a-z0-9_]+$/, {
+		message: "Username can only contain lowercase letters, numbers, and underscores",
+	})
+	username?: string;
+}
+
+/**
  * Query parameter for checking if an email is already in use.
  */
 export class CheckEmailQueryDto {

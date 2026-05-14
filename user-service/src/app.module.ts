@@ -1,5 +1,6 @@
 import { Module } from "@nestjs/common";
 import { ConfigModule } from "@nestjs/config";
+import { EventEmitterModule } from "@nestjs/event-emitter";
 import { envValidationSchema } from "./env.validation";
 import { ScheduleModule } from "@nestjs/schedule";
 import { ThrottlerModule, ThrottlerGuard } from "@nestjs/throttler";
@@ -16,6 +17,7 @@ import { CleanupModule } from "./modules/cleanup/cleanup.module";
 			validationSchema: envValidationSchema,
 		}),
 		ScheduleModule.forRoot(),
+		EventEmitterModule.forRoot(),
 		ThrottlerModule.forRoot([
 			{
 				name: "global",

@@ -4,8 +4,6 @@ import * as Icons from './Icons';
 import { theme } from '../../configs/theme';
 
 const SIDEBAR_WIDTH = 300;
-const FRIENDS_POLL = 30000;
-const INVITES_POLL = 5000;
 
 type Tab = 'friends' | 'requests' | 'add';
 
@@ -59,14 +57,31 @@ export default function FriendsSidebar({ onGameInviteAccepted }: FriendsSidebarP
     if (data) setGameInvites(data.invites);
   }, []);
 
-  // Polling amici (30s) + inviti (5s)
+  // Caricamento iniziale
   useEffect(() => {
     fetchFriends();
     fetchInvites();
-    const friendsInterval = setInterval(fetchFriends, FRIENDS_POLL);
-    const invitesInterval = setInterval(fetchInvites, INVITES_POLL);
-    return () => { clearInterval(friendsInterval); clearInterval(invitesInterval); };
   }, [fetchFriends, fetchInvites]);
+
+  // Aggiornamento lista amici via SSE quando cambia una friendship
+  useEffect(() => {
+    const handler = () => fetchFriends();
+    window.addEventListener('friend-list-changed', handler);
+    return () => window.removeEventListener('friend-list-changed', handler);
+  }, [fetchFriends]);
+
+  // Ricezione live degli invite via SSE (propagato dalla Navbar tramite CustomEvent)
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const invite = (e as CustomEvent<api.GameInvite>).detail;
+      setGameInvites(prev => {
+        if (prev.some(i => i.id === invite.id)) return prev;
+        return [invite, ...prev];
+      });
+    };
+    window.addEventListener('game-invite-received', handler);
+    return () => window.removeEventListener('game-invite-received', handler);
+  }, []);
 
   // 5. Ricezione live degli status amici via SSE (propagato dalla Navbar tramite CustomEvent)
   //    Aggiorna lo status dell'amico nella lista locale senza rifare il fetch.

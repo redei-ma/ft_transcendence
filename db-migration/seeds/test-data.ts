@@ -29,7 +29,7 @@ export async function seedTestData(prisma: PrismaClient): Promise<void> {
 			username: "alice",
 			isEmailVerified: true,
 			avatarUrl: "https://api.dicebear.com/9.x/shapes/svg?seed=alice",
-			status: UserStatus.ONLINE,
+			status: UserStatus.OFFLINE,
 			accounts: {
 				create: [
 					{
@@ -55,7 +55,7 @@ export async function seedTestData(prisma: PrismaClient): Promise<void> {
 			},
 		},
 	});
-	console.log("  ✓ alice (LOCAL + GOOGLE, verified, online)");
+	console.log("  ✓ alice    (LOCAL + GOOGLE, verified, offline)");
 
 	const bob = await prisma.user.upsert({
 		where: { email: "bob@test.com" },
@@ -68,8 +68,8 @@ export async function seedTestData(prisma: PrismaClient): Promise<void> {
 			status: UserStatus.OFFLINE,
 			accounts: {
 				create: {
-					provider: Provider.GOOGLE,
-					oauthId: "google_bob_456",
+					provider: Provider.LOCAL,
+					passwordHash: TEST_PASSWORD_HASH,
 				},
 			},
 			stats: {
@@ -88,7 +88,7 @@ export async function seedTestData(prisma: PrismaClient): Promise<void> {
 			},
 		},
 	});
-	console.log("  ✓ bob (GOOGLE only, verified, offline)");
+	console.log("  ✓ bob      (LOCAL, verified, offline)");
 
 	const charlie = await prisma.user.upsert({
 		where: { email: "charlie@test.com" },
@@ -110,7 +110,7 @@ export async function seedTestData(prisma: PrismaClient): Promise<void> {
 			},
 		},
 	});
-	console.log("  ✓ charlie (LOCAL only, verified, no matches)");
+	console.log("  ✓ charlie  (LOCAL, verified, offline)");
 
 	const diana = await prisma.user.upsert({
 		where: { email: "diana@test.com" },
@@ -120,7 +120,7 @@ export async function seedTestData(prisma: PrismaClient): Promise<void> {
 			username: "diana",
 			isEmailVerified: true,
 			avatarUrl: "https://api.dicebear.com/9.x/shapes/svg?seed=diana",
-			status: UserStatus.IN_GAME,
+			status: UserStatus.OFFLINE,
 			accounts: {
 				create: [
 					{
@@ -146,7 +146,7 @@ export async function seedTestData(prisma: PrismaClient): Promise<void> {
 			},
 		},
 	});
-	console.log("  ✓ diana (LOCAL + GOOGLE, verified, in_game)");
+	console.log("  ✓ diana    (LOCAL + GOOGLE, verified, offline)");
 
 	const eve = await prisma.user.upsert({
 		where: { email: "eve@test.com" },
@@ -156,7 +156,7 @@ export async function seedTestData(prisma: PrismaClient): Promise<void> {
 			username: "eve",
 			isEmailVerified: true,
 			avatarUrl: "https://api.dicebear.com/9.x/shapes/svg?seed=eve",
-			status: UserStatus.ONLINE,
+			status: UserStatus.OFFLINE,
 			accounts: {
 				create: {
 					provider: Provider.LOCAL,
@@ -179,7 +179,7 @@ export async function seedTestData(prisma: PrismaClient): Promise<void> {
 			},
 		},
 	});
-	console.log("  ✓ eve (LOCAL only, verified, online, elo 1100)");
+	console.log("  ✓ eve      (LOCAL, verified, offline)");
 
 	const frank = await prisma.user.upsert({
 		where: { email: "frank@test.com" },
@@ -212,7 +212,7 @@ export async function seedTestData(prisma: PrismaClient): Promise<void> {
 			},
 		},
 	});
-	console.log("  ✓ frank (LOCAL only, verified, offline, elo 1100)");
+	console.log("  ✓ frank    (LOCAL, verified, offline)");
 
 	// ─── Character Stats ──────────────────────────────────────────
 
@@ -266,7 +266,7 @@ export async function seedTestData(prisma: PrismaClient): Promise<void> {
 			},
 		],
 	});
-	console.log("  ✓ Character stats");
+	console.log("  ✓ Character stats (alice: ZEUS/ADE, bob: ADE, diana: ZEUS/ADE)");
 
 	// ─── Matches ──────────────────────────────────────────────────
 
@@ -444,7 +444,7 @@ export async function seedTestData(prisma: PrismaClient): Promise<void> {
 		},
 	});
 
-	console.log("  ✓ 6 matches (ranked, ai, local, draw, resignation)");
+	console.log("  ✓ 6 matches (2 ranked, 1 draw, 1 AI, 1 local, 1 resignation)");
 
 	// ─── Friendships ──────────────────────────────────────────────
 
@@ -487,8 +487,8 @@ export async function seedTestData(prisma: PrismaClient): Promise<void> {
 			{
 				senderId: alice.id,
 				receiverId: bob.id,
-				status: InviteStatus.PENDING,
-				expiresAt: oneHourFromNow,
+				status: InviteStatus.EXPIRED,
+				expiresAt: oneHourAgo,
 			},
 			{
 				senderId: diana.id,
@@ -532,45 +532,57 @@ export async function seedTestData(prisma: PrismaClient): Promise<void> {
 			{ userId: diana.id, achievementId: flawless.id },
 		],
 	});
-	console.log(
-		"  ✓ Achievements unlocked (alice: 3, bob: 1, diana: 2, charlie: 0)",
-	);
+	console.log("  ✓ Achievements (alice: 3, bob: 1, diana: 2, charlie: 0)");
 
 	// ─── Notifications ────────────────────────────────────────────
 
 	await prisma.notification.createMany({
 		data: [
-			// Alice: mix of read and unread
+			// Alice sent friend requests to bob and diana — both accepted
+			// → alice receives FRIEND_ACCEPTED from both
+			{
+				userId: alice.id,
+				type: NotificationType.FRIEND_ACCEPTED,
+				message: "bob accepted your friend request.",
+				isRead: true,
+			},
+			{
+				userId: alice.id,
+				type: NotificationType.FRIEND_ACCEPTED,
+				message: "diana accepted your friend request.",
+				isRead: true,
+			},
+			// charlie sent alice a friend request → alice receives FRIEND_REQ
 			{
 				userId: alice.id,
 				type: NotificationType.FRIEND_REQ,
 				message: "charlie sent you a friend request.",
 				isRead: false,
 			},
+			// Alice unlocked an achievement
 			{
 				userId: alice.id,
 				type: NotificationType.ACHV_UNLOCKED,
-				message:
-					'Congratulations! You\'ve earned the "Kill Machine" achievement.',
+				message: 'Congratulations! You\'ve earned the "Kill Machine" achievement.',
 				isRead: false,
 			},
-			// Bob: unread notifications
+			// Bob: achievement (read)
 			{
 				userId: bob.id,
-				type: NotificationType.FRIEND_ACCEPTED,
-				message: "alice accepted your friend request.",
+				type: NotificationType.ACHV_UNLOCKED,
+				message: 'Congratulations! You\'ve earned the "First Blood" achievement.',
 				isRead: true,
 			},
-			// Diana: all read
+			// Diana: achievement unlocked (read)
 			{
 				userId: diana.id,
-				type: NotificationType.FRIEND_ACCEPTED,
-				message: "alice accepted your friend request.",
+				type: NotificationType.ACHV_UNLOCKED,
+				message: 'Congratulations! You\'ve earned the "Flawless Victory" achievement.',
 				isRead: true,
 			},
 		],
 	});
-	console.log("  ✓ Notifications (read and unread)");
+	console.log("  ✓ Notifications (alice: 4, bob: 1, diana: 1)");
 
 	console.log("Test data seeding complete!");
 }

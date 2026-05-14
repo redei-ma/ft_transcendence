@@ -5,10 +5,14 @@ import {
 	Delete,
 	Param,
 	Query,
+	Req,
+	Sse,
 	ParseIntPipe,
 	HttpCode,
 	HttpStatus,
 	UseGuards,
+	MessageEvent,
+	Logger,
 } from "@nestjs/common";
 import {
 	ApiTags,
@@ -17,8 +21,11 @@ import {
 	ApiParam,
 	ApiBearerAuth,
 } from "@nestjs/swagger";
+import { Request } from "express";
+import { Observable } from "rxjs";
 import { JwtAuthGuard, CurrentUser } from "@transcendence/auth";
 import { NotificationService } from "../services/notification.service";
+import { SseService } from "../services/sse.service";
 import {
 	NotificationsQueryDto,
 	NotificationListResponseDto,
@@ -29,7 +36,31 @@ import {
 @UseGuards(JwtAuthGuard)
 @ApiBearerAuth()
 export class NotificationController {
-	constructor(private readonly notificationService: NotificationService) {}
+	private readonly logger = new Logger(NotificationController.name);
+
+	constructor(
+		private readonly notificationService: NotificationService,
+		private readonly sseService: SseService,
+	) {}
+
+	@Sse("stream")
+	@ApiOperation({
+		summary: "SSE stream for real-time notifications and friend presence",
+	})
+	@ApiResponse({
+		status: HttpStatus.OK,
+		description:
+			"text/event-stream — emits `notification` and `friend_status` events",
+	})
+	stream(
+		@CurrentUser("sub") userId: number,
+		@Req() req: Request,
+	): Observable<MessageEvent> {
+		this.logger.log(`SSE stream opened for userId=${userId}`);
+		const { stream, key } = this.sseService.register(userId);
+		req.on("close", () => this.sseService.unregister(key));
+		return stream;
+	}
 
 	@Get()
 	@ApiOperation({ summary: "Get paginated notifications (unread first)" })

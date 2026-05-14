@@ -9,6 +9,7 @@ import { AchievementService } from "./services/achievement.service";
 import { InternalUserService } from "./services/internal-user.service";
 import { FriendshipService } from "./services/friendship.service";
 import { NotificationService } from "./services/notification.service";
+import { SseService } from "./services/sse.service";
 import { GameInviteService } from "./services/game-invite.service";
 
 import { ProfileController } from "./controllers/profile.controller";
@@ -40,6 +41,7 @@ import { GameInviteController } from "./controllers/game-invite.controller";
 		InternalUserService,
 		FriendshipService,
 		NotificationService,
+		SseService,
 		GameInviteService,
 		JwtAuthGuard,
 	],

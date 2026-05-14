@@ -6,7 +6,12 @@ import {
 	ForbiddenException,
 } from "@nestjs/common";
 import { PrismaService } from "../../prisma/prisma.service";
-import { FriendshipStatus, NotificationType } from "@transcendence/types";
+import { NotificationService } from "./notification.service";
+import {
+	FriendshipStatus,
+	NotificationType,
+	NotificationTemplates,
+} from "@transcendence/types";
 import {
 	FriendResponseDto,
 	FriendListResponseDto,
@@ -14,8 +19,6 @@ import {
 	FriendshipStatusResponseDto,
 	RespondFriendRequestDto,
 } from "../dto";
-import { NotificationService } from "./notification.service";
-import { NotificationTemplates } from "../../notification/notification.templates";
 
 const FRIEND_USER_SELECT = {
 	id: true,
@@ -116,13 +119,15 @@ export class FriendshipService {
 	}
 
 	/**
-	 * Returns the friendship status between userId and targetId.
+	 * Returns the friendship status between the current user and targetId.
+	 * Useful for the frontend to decide which button to show (Add Friend / Pending / etc.).
 	 * All fields are null when no relationship exists.
 	 *
 	 * @param userId - ID of the requesting user (from JWT).
 	 * @param targetId - ID of the other user to check against.
 	 * @returns FriendshipStatusResponseDto — status, direction, and record ID (or nulls).
 	 * @throws BadRequestException (400) — if userId and targetId are the same.
+	 * @throws NotFoundException (404) — if targetId does not exist.
 	 */
 	async getFriendshipStatus(
 		userId: number,
@@ -206,6 +211,8 @@ export class FriendshipService {
 			},
 		});
 
+		let result: FriendResponseDto;
+
 		if (existing) {
 			if (existing.status === FriendshipStatus.ACCEPTED) {
 				throw new ConflictException("Already friends");
@@ -230,14 +237,7 @@ export class FriendshipService {
 				},
 				select: FRIENDSHIP_SELECT,
 			});
-			const { message } = NotificationTemplates.FRIEND_REQ(
-				sender.username,
-			);
-			await this.notificationService.createNotification(targetId, {
-				type: NotificationType.FRIEND_REQ,
-				message,
-			});
-			return {
+			result = {
 				id: updated.id,
 				friend: updated.receiver,
 				status: updated.status,
@@ -245,33 +245,32 @@ export class FriendshipService {
 				createdAt: updated.createdAt,
 				updatedAt: updated.updatedAt,
 			};
+		} else {
+			const created = await this.prisma.friendship.create({
+				data: {
+					senderId: userId,
+					receiverId: targetId,
+					status: FriendshipStatus.PENDING,
+				},
+				select: FRIENDSHIP_SELECT,
+			});
+			result = {
+				id: created.id,
+				friend: created.receiver,
+				status: created.status,
+				direction: "SENT",
+				createdAt: created.createdAt,
+				updatedAt: created.updatedAt,
+			};
 		}
 
-		const created = await this.prisma.friendship.create({
-			data: {
-				senderId: userId,
-				receiverId: targetId,
-				status: FriendshipStatus.PENDING,
-			},
-			select: FRIENDSHIP_SELECT,
-		});
-
-		const { message } = NotificationTemplates.FRIEND_REQ(
-			sender.username,
-		);
+		const { message } = NotificationTemplates.FRIEND_REQ(sender.username);
 		await this.notificationService.createNotification(targetId, {
 			type: NotificationType.FRIEND_REQ,
 			message,
 		});
 
-		return {
-			id: created.id,
-			friend: created.receiver,
-			status: created.status,
-			direction: "SENT",
-			createdAt: created.createdAt,
-			updatedAt: created.updatedAt,
-		};
+		return result;
 	}
 
 	/**

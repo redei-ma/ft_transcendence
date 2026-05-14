@@ -89,21 +89,20 @@ export class MatchmakingService {
 				return;
 			}
 			let dbStatus: UserStatus;
-			
+
 			if (statusData.state === INGAME) {
 				dbStatus = UserStatus.IN_GAME;
 			} else if (statusData.state === INQUEUE) {
 				dbStatus = UserStatus.IN_QUEUE;
 			} else {
-				dbStatus = UserStatus.ONLINE; 
+				dbStatus = UserStatus.ONLINE;
 			}
 
-			const url = `http://user-service:3001/internal/users/${userId}/status`; 
-			
+			const url = `http://user-service:3001/internal/users/${userId}/status`;
+
 			await firstValueFrom(
 				this.httpService.patch(url, { status: dbStatus })
 			);
-			
 		} catch (error) {
 			this.logger.error(
 				`[Sync DB] Impossibile aggiornare lo stato DB per l'utente ${userId}: ${error.message}`

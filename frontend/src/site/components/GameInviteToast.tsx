@@ -1,9 +1,7 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import * as api from '../services/apiService';
 import * as Icons from './Icons';
 import { theme } from '../../configs/theme';
-
-const POLL_INTERVAL = 5000;
 
 interface GameInviteToastProps {
   onAccepted: (sessionId: string) => void;
@@ -14,19 +12,25 @@ export default function GameInviteToast({ onAccepted }: GameInviteToastProps) {
   const [dismissed, setDismissed] = useState<Set<number>>(new Set());
   const [now, setNow] = useState(Date.now());
 
-  // Polling inviti pendenti
-  const fetchInvites = useCallback(async () => {
-    const data = await api.getGameInvites();
-    if (data) {
-      setInvites(data.invites);
-    }
+  // Carica inviti pendenti all'avvio (in caso SSE non fosse connessa al momento dell'invite)
+  useEffect(() => {
+    api.getGameInvites().then(data => {
+      if (data) setInvites(data.invites);
+    });
   }, []);
 
+  // Ricezione live degli invite via SSE (propagato dalla Navbar tramite CustomEvent)
   useEffect(() => {
-    fetchInvites();
-    const interval = setInterval(fetchInvites, POLL_INTERVAL);
-    return () => clearInterval(interval);
-  }, [fetchInvites]);
+    const handler = (e: Event) => {
+      const invite = (e as CustomEvent<api.GameInvite>).detail;
+      setInvites(prev => {
+        if (prev.some(i => i.id === invite.id)) return prev;
+        return [invite, ...prev];
+      });
+    };
+    window.addEventListener('game-invite-received', handler);
+    return () => window.removeEventListener('game-invite-received', handler);
+  }, []);
 
   // Countdown timer — aggiorna ogni secondo
   useEffect(() => {
