@@ -42,7 +42,7 @@ export default function GameFlow({ userId, username, onExit, sessionId: initialS
     const socket = matchmakingSocket.connect();
     // RECEIVER
     if (initialSessionId && inviterId) {
-      if (socket.connect()) {
+      if (socket.id) {
         matchmakingSocket.emit(GameEvents.ACCEPT_DIRECT_INVITE, {inviterId});
       } else {
         socket.once('connect', () => {
@@ -79,11 +79,11 @@ export default function GameFlow({ userId, username, onExit, sessionId: initialS
     };
 
     matchmakingSocket.on(GameEvents.MATCH_FOUND, handleMatchFound);
-    matchmakingSocket.on('DIRECT_SESSION_READY', handleDirectSessionReady);
+    matchmakingSocket.on(GameEvents.DIRECT_SESSION_READY, handleDirectSessionReady);
 
     return () => {
       matchmakingSocket.off(GameEvents.MATCH_FOUND, handleMatchFound);
-      matchmakingSocket.off('DIRECT_SESSION_READY', handleDirectSessionReady);
+      matchmakingSocket.off(GameEvents.DIRECT_SESSION_READY, handleDirectSessionReady);
       matchmakingSocket.disconnect();
     };
   }, [userId]);
