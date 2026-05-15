@@ -1,10 +1,10 @@
 
 import { Controller, Post, Body, UseGuards } from "@nestjs/common";
-import { EventPattern, Payload } from "@nestjs/microservices";
+import { MessagePattern, Payload } from "@nestjs/microservices";
 import { MatchmakingService } from "./matchmaking.service";
 import { JoinQueueDto } from "./dto/join-queue.dto";
 import { JwtAuthGuard, CurrentUser } from "@transcendence/auth";
-import { NetworkConfig } from "@transcendence/types";
+import { GameEvents } from "@transcendence/types";
 
 @Controller()
 export class MatchmakingController {
@@ -30,21 +30,22 @@ export class MatchmakingController {
 		return await this.matchmakingService.processUnrankedQueue(userId, data);
 	}
 
-	@EventPattern(NetworkConfig.MATCHMAKING.MATCH_EVENTS.END_GAME)
+	@MessagePattern(GameEvents.END_GAME)
 	async handleMatchFinished(@Payload() data: string | { matchId?: string; gameId?: string }) {
 		const matchId = typeof data === "string" ? data : (data?.matchId ?? data?.gameId);
 		if (!matchId) return;
 		this.matchmakingService.finalizeMatch(matchId);
 	}
 
-	@EventPattern(NetworkConfig.MATCHMAKING.MATCH_EVENTS.PLAYER_LEFT_MATCH)
+	@MessagePattern("player-left-match")
     async handlePlayerLeftMatch(@Payload() data: { userDbId?: number; gameId?: string }) {
-        const userId = data?.userDbId;
-
-        if (!userId) {
+        const matchId = data?.gameId;
+        if (!matchId) {
+            console.log(`[Signal] Errore: Ricevuto player-left-match senza gameId valido. Payload:`, data);
             return;
         }
-
-        this.matchmakingService.setPlayerToLobby(userId);
+        console.log(`[Signal] Ricevuto player-left-match dall'utente ${data.userDbId} per il match: ${matchId}`);
+        this.matchmakingService.finalizeMatch(matchId);
     }
+
 }

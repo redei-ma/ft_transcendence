@@ -827,21 +827,40 @@ export class MatchmakingService {
 	 * Crea una sessione temporanea su Redis per due giocatori che hanno accettato un invito.
 	 * Nessun personaggio è ancora stato scelto.
 	 */
-	async createDirectSession(player1Id: number, player2Id: number) {
+	async createDirectSession(inviterId: number, acceptorId: number) {
 		const sessionId = `direct_${Math.random().toString(36).substring(7)}`;
 
 		const sessionData = {
 			sessionId,
-			p1: { id: player1Id, ready: false, characterName: null, socketId: null },
-			p2: { id: player2Id, ready: false, characterName: null, socketId: null },
+			p1: { id: inviterId, ready: false, characterName: null, socketId: null },
+			p2: { id: acceptorId, ready: false, characterName: null, socketId: null },
 			createdAt: Date.now()
 		};
 
+		// Salviamo la stanza su Redis per 5 minuti (300 secondi)
 		await this.redis.set(`direct_session:${sessionId}`, JSON.stringify(sessionData), "EX", 300);
 
 		this.logger.log(
-			`[DirectSession] Creata pre-lobby ${sessionId} per p1:${player1Id} e p2:${player2Id}`
+			`[DirectSession] Creata pre-lobby ${sessionId} per inviter:${inviterId} e acceptor:${acceptorId}`
 		);
+
+		// RECUPERIAMO IL SOCKET DI CHI HA INVIATO L'INVITO (P1) PER AVVISARLO
+		const inviterStatusRaw = await this.redis.get(`status:${inviterId}`);
+		if (inviterStatusRaw) {
+			const inviterStatus = JSON.parse(inviterStatusRaw);
+			
+			if (inviterStatus.socketId) {
+				// Spariamo un evento interno. Il Gateway (lo stesso che gestisce INTERNAL_MATCH_FOUND) 
+				// lo intercetterà e lo manderà al frontend di P1.
+				this.eventEmitter.emit("INTERNAL_DIRECT_SESSION_READY", {
+					socketId: inviterStatus.socketId,
+					data: { status: "SESSION_CREATED", sessionId: sessionId }
+				});
+				this.logger.log(`[DirectSession] Notifica inviata all'invitante (${inviterId}) per entrare nella lobby.`);
+			} else {
+				this.logger.warn(`[DirectSession] Socket per l'invitante ${inviterId} non trovato. Impossibile avvisarlo.`);
+			}
+		}
 
 		return { sessionId };
 	}
@@ -949,12 +968,33 @@ export class MatchmakingService {
 	/* ---------------------------------------------------------------------------------------------------------------- */
 
 	async leaveQueue(userId: number, player: JoinQueueDto) {
+		this.logger.log(`[LeaveQueue] Richiesta di uscita dalla coda per utente: ${userId}`);
 
+		const USER_STATUS_KEY = `status:${userId}`;
+		const currentStatusRaw = await this.redis.get(USER_STATUS_KEY);
+
+		if (currentStatusRaw) {
+			const statusData = JSON.parse(currentStatusRaw);
+
+			// BLOCCO DI SICUREZZA: Evita di rompere un match appena creato
+			if (statusData.state === INGAME) {
+				this.logger.warn(
+					`[LeaveQueue] L'utente ${userId} ha provato ad uscire dalla coda, ma la partita è già iniziata (INGAME).`
+				);
+				return { 
+					status: "ERROR_ALREADY_IN_GAME", 
+					message: "Partita già trovata, impossibile annullare la ricerca." 
+				};
+			}
+		}
+
+		// Procediamo con la rimozione sicura dalle code pubbliche
 		const resultRanked = await this.redis.zrem("matchmaking_queue", String(userId));
 		const resultUnranked = await this.redis.zrem("matchmaking_queue_unranked", String(userId));
 
 		const wasInQueue = resultRanked === 1 || resultUnranked === 1;
 
+		// Riportiamo l'utente in LOBBY in modo pulito
 		await this.setUserStatus(userId, {
 			state: LOBBY,
 			characterName: player.characterName,
@@ -963,10 +1003,10 @@ export class MatchmakingService {
 		}, 3600);
 
 		if (wasInQueue) {
-			this.logger.log(`[Logic] Utente ${userId} rimosso dalla coda (Ranked o Unranked) e riportato in lobby.`);
+			this.logger.log(`[LeaveQueue] Utente ${userId} rimosso in sicurezza dalla coda (Ranked o Unranked) e riportato in lobby.`);
 			return { status: "LEFT_QUEUE_SUCCESS", userId };
 		} else {
-			this.logger.log(`[Logic] Tentativo di rimozione: ${userId} non era in nessuna coda, ma lo stato è stato resettato a lobby.`);
+			this.logger.log(`[LeaveQueue] Tentativo di rimozione: ${userId} non era in nessuna coda, ma lo stato è stato resettato a lobby.`);
 			return { status: "NOT_IN_QUEUE", userId };
 		}
 	}
