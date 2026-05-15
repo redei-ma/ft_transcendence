@@ -2,6 +2,9 @@ import { useState, useEffect, useCallback } from 'react';
 import * as api from '../services/apiService';
 import * as Icons from './Icons';
 import { theme } from '../../configs/theme';
+import { matchmakingSocket } from '../../services/matchmakingSocket';
+import { GameEvents } from '@transcendence/types';
+
 
 const SIDEBAR_WIDTH = 300;
 
@@ -20,7 +23,7 @@ const statusLabel = (s: string) =>
   : 'Offline';
 
 interface FriendsSidebarProps {
-  onGameInviteAccepted: (sessionId: string) => void;
+  onGameInviteAccepted: (sessionId: string, inviterId?: number) => void;
 }
 
 export default function FriendsSidebar({ onGameInviteAccepted }: FriendsSidebarProps) {
@@ -146,30 +149,59 @@ export default function FriendsSidebar({ onGameInviteAccepted }: FriendsSidebarP
   };
 
   const handleSendInvite = async (targetId: number) => {
-    const result = await api.sendGameInvite(targetId);
-    setInviteMsg(prev => ({
-      ...prev,
-      [targetId]: result.ok ? 'Invited!' : (result.message || 'Error'),
-    }));
-    setTimeout(() => {
-      setInviteMsg(prev => { const n = { ...prev }; delete n[targetId]; return n; });
-    }, 3000);
-  };
+  const socket = matchmakingSocket.connect();
+  
+    socket.onAny((event: string, data: any) => {
+  console.log("[Sidebar] ANY EVENT:", event, data);
+});
 
-  const handleAcceptInvite = async (invite: api.GameInvite) => {
-    const result = await api.respondGameInvite(invite.id, 'ACCEPTED');
-    if (result.ok && result.sessionId) {
-      setGameInvites(prev => prev.filter(i => i.id !== invite.id));
-      onGameInviteAccepted(result.sessionId);
+  // Ascolta la risposta di Leonardo quando il receiver accetta
+  const handleDirectSession = (data: any) => {
+    console.log("[Sidebar] DIRECT_SESSION_READY:", data);
+    if (data?.sessionId) {
+      socket.off('DIRECT_SESSION_READY', handleDirectSession);
+      onGameInviteAccepted(data.sessionId);
     }
   };
+  socket.on('DIRECT_SESSION_READY', handleDirectSession);
 
+  const result = await api.sendGameInvite(targetId);
+  setInviteMsg(prev => ({
+    ...prev,
+    [targetId]: result.ok ? 'Invited!' : (result.message || 'Error'),
+  }));
+  setTimeout(() => {
+    setInviteMsg(prev => { const n = { ...prev }; delete n[targetId]; return n; });
+  }, 3000);
+};
+
+const handleAcceptInvite = async (invite: api.GameInvite) => {
+  const result = await api.respondGameInvite(invite.id, 'ACCEPTED');
+  if (result.ok && result.sessionId) {
+    setGameInvites(prev => prev.filter(i => i.id !== invite.id));
+    onGameInviteAccepted(result.sessionId, invite.sender.id);
+  }
+};
+  
   const handleRejectInvite = async (invite: api.GameInvite) => {
     const result = await api.respondGameInvite(invite.id, 'REJECTED');
     if (result.ok) {
       setGameInvites(prev => prev.filter(i => i.id !== invite.id));
     }
   };
+
+  useEffect(() => {
+  const handleDirectSession = (data: any) => {
+    console.log("[Sidebar] DIRECT_SESSION_READY:", data);
+    if (data?.sessionId) {
+      onGameInviteAccepted(data.sessionId);
+    }
+  };
+  matchmakingSocket.on('DIRECT_SESSION_READY', handleDirectSession);
+  return () => {
+    matchmakingSocket.off('DIRECT_SESSION_READY', handleDirectSession);
+  };
+}, [onGameInviteAccepted]);
 
   // ─── Tab button ───
   const TabBtn = ({ id, label, badge }: { id: Tab; label: string; badge?: number }) => (

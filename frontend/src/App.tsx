@@ -17,6 +17,8 @@ export default function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(true);
   const [user, setUser] = useState<UserProfile | null>(null);
   const [currentPage, setCurrentPage] = useState("dashboard");
+  const [pendingSessionId, setPendingSessionId] = useState<string | null>(null);
+  const [pendingInviterId, setPendingInviterId] = useState<number | null>(null)
 
   useEffect(() => {
     const initAuth = async () => {
@@ -52,9 +54,10 @@ export default function App() {
     setCurrentPage("dashboard");
   };
 
-  const handleGameInviteAccepted = (sessionId: string) => {
+  const handleGameInviteAccepted = (sessionId: string, inviterId?: number) => {
+    setPendingSessionId(sessionId);
+    if (inviterId) setPendingInviterId(inviterId);
     setCurrentPage("play");
-    console.log("[App] Game invite accepted, sessionId:", sessionId);
   };
 
   const renderPage = () => {
@@ -88,6 +91,8 @@ export default function App() {
             userId={user.id}
             username={user.username}
             onExit={() => setCurrentPage("dashboard")}
+            sessionId={pendingSessionId}
+            inviterId={pendingInviterId}
           />
         </DesktopOnlyGuard>
         <FriendsSidebar onGameInviteAccepted={handleGameInviteAccepted} />

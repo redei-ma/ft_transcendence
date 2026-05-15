@@ -2,9 +2,11 @@ import { useState, useEffect } from 'react';
 import * as api from '../services/apiService';
 import * as Icons from './Icons';
 import { theme } from '../../configs/theme';
+import { matchmakingSocket } from '../../services/matchmakingSocket';
+import { GameEvents } from '@transcendence/types';
 
 interface GameInviteToastProps {
-  onAccepted: (sessionId: string) => void;
+  onAccepted: (sessionId: string, inviterId?: number) => void;
 }
 
 export default function GameInviteToast({ onAccepted }: GameInviteToastProps) {
@@ -41,10 +43,8 @@ export default function GameInviteToast({ onAccepted }: GameInviteToastProps) {
   const handleAccept = async (invite: api.GameInvite) => {
     const result = await api.respondGameInvite(invite.id, 'ACCEPTED');
     if (result.ok && result.sessionId) {
-      // Rimuovi l'invito dalla lista
       setInvites(prev => prev.filter(i => i.id !== invite.id));
-      // Notifica App.tsx per avviare il gioco
-      onAccepted(result.sessionId);
+      onAccepted(result.sessionId, invite.sender.id);
     }
   };
 
