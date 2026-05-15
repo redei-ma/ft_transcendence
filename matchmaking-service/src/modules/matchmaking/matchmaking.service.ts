@@ -823,46 +823,55 @@ export class MatchmakingService {
 
 	/* ---------------------------------------------------------------------------------------------------------------- */
 
-	/**
-	 * Crea una sessione temporanea su Redis per due giocatori che hanno accettato un invito.
-	 * Nessun personaggio è ancora stato scelto.
-	 */
 	async createDirectSession(inviterId: number, acceptorId: number) {
-		const sessionId = `direct_${Math.random().toString(36).substring(7)}`;
+		const [rawP1, rawP2] = await Promise.all([
+			this.redis.get(`status:${inviterId}`),
+			this.redis.get(`status:${acceptorId}`)
+		]);
 
+		const statusP1 = rawP1 ? JSON.parse(rawP1) : null;
+		const statusP2 = rawP2 ? JSON.parse(rawP2) : null;
+
+		// 1. Controllo Online/Socket
+		if (!statusP1 || !statusP2 || !statusP1.socketId || !statusP2.socketId) {
+			this.logger.warn(`[DirectSession] Impossibile creare: uno dei player è offline.`);
+			return { 
+				status: "ERROR_PLAYERS_OFFLINE", 
+				message: "Uno dei giocatori si è disconnesso." 
+			};
+		}
+
+		// 2. Controllo Occupato
+		if (statusP1.state === INGAME || statusP2.state === INGAME) {
+			return { status: "ERROR_PLAYERS_BUSY", message: "Qualcuno è già in partita." };
+		}
+
+		// 3. Creazione Sessione su Redis
+		const sessionId = `direct_${Math.random().toString(36).substring(7)}`;
 		const sessionData = {
 			sessionId,
 			p1: { id: inviterId, ready: false, characterName: null, socketId: null },
 			p2: { id: acceptorId, ready: false, characterName: null, socketId: null },
 			createdAt: Date.now()
 		};
-
-		// Salviamo la stanza su Redis per 5 minuti (300 secondi)
 		await this.redis.set(`direct_session:${sessionId}`, JSON.stringify(sessionData), "EX", 300);
 
-		this.logger.log(
-			`[DirectSession] Creata pre-lobby ${sessionId} per inviter:${inviterId} e acceptor:${acceptorId}`
-		);
+		// 4. NOTIFICA ENTRAMBI I GIOCATORI
+		// Inviamo l'evento interno per il Giocatore 1 (Invitante)
+		this.eventEmitter.emit("INTERNAL_DIRECT_SESSION_READY", {
+			socketId: statusP1.socketId,
+			data: { status: "SESSION_CREATED", sessionId: sessionId }
+		});
 
-		// RECUPERIAMO IL SOCKET DI CHI HA INVIATO L'INVITO (P1) PER AVVISARLO
-		const inviterStatusRaw = await this.redis.get(`status:${inviterId}`);
-		if (inviterStatusRaw) {
-			const inviterStatus = JSON.parse(inviterStatusRaw);
-			
-			if (inviterStatus.socketId) {
-				// Spariamo un evento interno. Il Gateway (lo stesso che gestisce INTERNAL_MATCH_FOUND) 
-				// lo intercetterà e lo manderà al frontend di P1.
-				this.eventEmitter.emit("INTERNAL_DIRECT_SESSION_READY", {
-					socketId: inviterStatus.socketId,
-					data: { status: "SESSION_CREATED", sessionId: sessionId }
-				});
-				this.logger.log(`[DirectSession] Notifica inviata all'invitante (${inviterId}) per entrare nella lobby.`);
-			} else {
-				this.logger.warn(`[DirectSession] Socket per l'invitante ${inviterId} non trovato. Impossibile avvisarlo.`);
-			}
-		}
+		// Inviamo l'evento interno per il Giocatore 2 (Accettante)
+		this.eventEmitter.emit("INTERNAL_DIRECT_SESSION_READY", {
+			socketId: statusP2.socketId,
+			data: { status: "SESSION_CREATED", sessionId: sessionId }
+		});
 
-		return { sessionId };
+		this.logger.log(`[DirectSession] Notifiche inviate a ${inviterId} e ${acceptorId} per la sessione ${sessionId}`);
+
+		return { sessionId, status: "SUCCESS" };
 	}
 
 	/* ---------------------------------------------------------------------------------------------------------------- */

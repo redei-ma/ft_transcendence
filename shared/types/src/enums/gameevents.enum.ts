@@ -10,6 +10,8 @@ export enum GameEvents {
 	LEAVE_QUEUE = "leave_queue",
 	GET_QUEUE_COUNT = "get_queue_count",
 	END_GAME = "end-game",
+	ACCEPT_DIRECT_INVITE = "accept_direct_invite",
+	INTERNAL_DIRECT_SESSION_READY = "internal_direct_session_ready",
 
 	// Game
 	MAP_EMIT = "map-emit",

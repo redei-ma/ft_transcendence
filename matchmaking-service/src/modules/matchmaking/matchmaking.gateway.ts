@@ -117,16 +117,7 @@ export class MatchmakingGateway
 		}
 	}
 
-	@OnEvent("INTERNAL_DIRECT_SESSION_READY")
-	handleDirectSessionReadyInternal(payload: { socketId: string; data: { status: string; sessionId: string } }) {
-		const clientSocket = this.server.sockets.sockets.get(payload.socketId);
-		if (clientSocket) {
-			// Invia l'evento finale al frontend di chi ha inviato la sfida
-			clientSocket.emit("DIRECT_SESSION_READY", payload.data);
-			console.log(`[Socket] Notifica PRE-LOBBY inviata al socket: ${payload.socketId}`);
-		}
-	}
-
+	
 	@SubscribeMessage(GameEvents.JOIN_RANKED)
 	async handleJoinRanked(
 		@MessageBody() data: JoinQueueDto,
@@ -180,26 +171,35 @@ export class MatchmakingGateway
 		this.emitMatchmakingResponse(client, GameEvents.JOIN_LOCAL, result);
 	}
 
-	@SubscribeMessage("ACCEPT_DIRECT_INVITE")
+	@SubscribeMessage(GameEvents.ACCEPT_DIRECT_INVITE)
 	async handleAcceptDirectInvite(
-		@MessageBody() data: { inviterId: number }, // Il frontend DEVE passare l'ID di chi ha mandato la sfida
+		@MessageBody() data: { inviterId: number },
 		@ConnectedSocket() client: Socket,
 	) {
-		const acceptorId: number = client.data.user.sub; // Questo è l'utente attuale (che sta accettando)
+		const acceptorId: number = client.data.user.sub;
 		this.registerUserSocket(client.id, acceptorId);
 		
-		this.logger.log(`[WS] L'utente ${acceptorId} ha accettato la sfida di ${data.inviterId}`);
-
-		// Creiamo la sessione passando entrambi gli ID (P1 = inviter, P2 = acceptor)
+		this.logger.log(`[WS] L'utente ${acceptorId} accetta sfida da ${data.inviterId}`);
+		
 		const result = await this.matchmakingService.createDirectSession(data.inviterId, acceptorId);
 		
-		// Rispondiamo al Giocatore 2 (chi ha appena cliccato "Accetta") dandogli il sessionId
-		this.emitMatchmakingResponse(client, "ACCEPT_DIRECT_INVITE", { 
-			status: "SESSION_CREATED", 
-			sessionId: result.sessionId 
-		});
+		if (result.status && result.status.startsWith("ERROR_")) {
+			this.emitMatchmakingResponse(client, GameEvents.ACCEPT_DIRECT_INVITE, result);
+		} else {
+			this.emitMatchmakingResponse(client, GameEvents.ACCEPT_DIRECT_INVITE, { status: "PROCESSING" });
+		}
 	}
 
+	@OnEvent(GameEvents.INTERNAL_DIRECT_SESSION_READY)
+	handleDirectSessionReadyInternal(payload: { socketId: string; data: { status: string; sessionId: string } }) {
+		const clientSocket = this.server.sockets.sockets.get(payload.socketId);
+		if (clientSocket) {
+			// Questo è l'evento unico per entrambi i giocatori
+			clientSocket.emit(GameEvents.JOIN_DIRECT_SESSION, payload.data);
+			this.logger.log(`[Socket] JOIN_DIRECT_SESSION inviato al socket: ${payload.socketId}`);
+		}
+	}
+	
 	@SubscribeMessage(GameEvents.LEAVE_QUEUE)
 	async handleLeaveQueue(
 		@MessageBody() data: JoinQueueDto,
@@ -211,7 +211,7 @@ export class MatchmakingGateway
 		const result = await this.matchmakingService.leaveQueue(userId, data);
 		this.emitMatchmakingResponse(client, GameEvents.LEAVE_QUEUE, result);
 	}
-
+	
 	private registerUserSocket(socketId: string, userId: number) {
 		this.socketToUser.set(socketId, userId);
 	}
