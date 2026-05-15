@@ -200,6 +200,32 @@ export class MatchmakingGateway
 		}
 	}
 	
+	@SubscribeMessage(GameEvents.JOIN_DIRECT_SESSION)
+	async handleJoinDirectSession(
+		@MessageBody() data: { sessionId: string; characterName: string; matchMode?: MatchMode },
+		@ConnectedSocket() client: Socket,
+	) {
+		const userId: number = client.data.user.sub;
+		const socketId = client.id;
+		
+		// Aggiorniamo la mappa interna dei socket
+		this.registerUserSocket(socketId, userId);
+		
+		this.logger.log(`[WS] L'utente ${userId} è pronto per la sessione privata ${data.sessionId} con ${data.characterName}`);
+
+		// Chiamiamo il service passando tutti i dati, incluso il socketId attuale
+		const result = await this.matchmakingService.joinDirectSession(
+			userId,
+			data.sessionId,
+			data.characterName,
+			socketId,
+			data.matchMode // Opzionale, se non passato il service userà UNRANKED di default
+		);
+
+		// Rispondiamo al client con l'esito (es. WAITING_FOR_OPPONENT, MATCH_STARTING, o ERROR)
+		this.emitMatchmakingResponse(client, GameEvents.JOIN_DIRECT_SESSION, result);
+	}
+
 	@SubscribeMessage(GameEvents.LEAVE_QUEUE)
 	async handleLeaveQueue(
 		@MessageBody() data: JoinQueueDto,
