@@ -14,7 +14,7 @@ import { MatchmakingService } from "./matchmaking.service";
 import { JoinQueueDto } from "./dto/join-queue.dto";
 import { parseCookieHeader, verifyJwtToken, AUTH_COOKIE_NAME } from "@transcendence/auth";
 import { Logger } from "@nestjs/common";
-import { ErrorCode, ExitStatus, GameEvents } from "@transcendence/types";
+import { ErrorCode, ExitStatus, GameEvents, MatchMode } from "@transcendence/types";
 
 @WebSocketGateway({ cors: true })
 export class MatchmakingGateway

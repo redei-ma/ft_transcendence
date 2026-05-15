@@ -181,7 +181,7 @@ export default function GameFlow({ userId, username, onExit, sessionId: initialS
           userDbId={String(userId)}
           onConfirm={handleCharConfirm}
           onBack={() => sessionId ? onExit() : setScene('mode-select')}
-          // sessionId={sessionId}
+          sessionId={sessionId}
         />
       )}
 
