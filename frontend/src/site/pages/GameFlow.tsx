@@ -193,9 +193,7 @@ export default function GameFlow({ userId, username, onExit }: GameFlowProps) {
       {scene === 'queue' && (
         <QueueScene
           onCancel={() => {
-            matchmakingSocket.disconnect();
-            matchmakingSocket.connect();
-            setScene('character-select');
+            setScene('mode-select');
           }}
         />
       )}
