@@ -151,19 +151,19 @@ export default function FriendsSidebar({ onGameInviteAccepted }: FriendsSidebarP
   const handleSendInvite = async (targetId: number) => {
   const socket = matchmakingSocket.connect();
   
-    socket.onAny((event: string, data: any) => {
-  console.log("[Sidebar] ANY EVENT:", event, data);
-});
+  socket.onAny((event: string, data: any) => {
+    console.log("[Sidebar] ANY EVENT:", event, data);
+  });
 
   // Ascolta la risposta di Leonardo quando il receiver accetta
   const handleDirectSession = (data: any) => {
     console.log("[Sidebar] DIRECT_SESSION_READY:", data);
     if (data?.sessionId) {
-      socket.off('DIRECT_SESSION_READY', handleDirectSession);
+      socket.off(GameEvents.DIRECT_SESSION_READY, handleDirectSession);
       onGameInviteAccepted(data.sessionId);
     }
   };
-  socket.on('DIRECT_SESSION_READY', handleDirectSession);
+  socket.on(GameEvents.DIRECT_SESSION_READY, handleDirectSession);
 
   const result = await api.sendGameInvite(targetId);
   setInviteMsg(prev => ({

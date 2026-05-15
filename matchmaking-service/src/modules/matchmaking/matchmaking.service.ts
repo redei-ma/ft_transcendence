@@ -1022,13 +1022,21 @@ export class MatchmakingService {
 	 * per forzare il frontend a ricollegarsi alla schermata di gioco.
 	 */
 	async checkAndReconnectUser(userId: number, socketId: string) {
-		const USER_STATUS_KEY = `status:${userId}`;
-		const currentStatusRaw = await this.redis.get(USER_STATUS_KEY);
-		
-		if (!currentStatusRaw) return null;
+    	const USER_STATUS_KEY = `status:${userId}`;
+    	const currentStatusRaw = await this.redis.get(USER_STATUS_KEY);
+    
+    	// Salva sempre il socketId, anche se l'utente è in lobby o senza stato
+    	if (!currentStatusRaw) {
+    	    await this.setUserStatus(String(userId), { state: LOBBY, socketId }, 3600);
+    	    return null;
+    	}
 
-		const statusData = JSON.parse(currentStatusRaw);
-
+    	const statusData = JSON.parse(currentStatusRaw);
+    	// Se è in lobby, aggiorna il socketId
+    	if (statusData.state === LOBBY) {
+    	    await this.setUserStatus(String(userId), { ...statusData, socketId }, 3600);
+    	    return null;
+    	}
 		if (statusData && statusData.state === "pre_match" && statusData.sessionId) {
 			this.logger.log(`[Auto-Reconnect] Utente ${userId} disconnesso/ricaricato in pre_match. Annullamento sessione ${statusData.sessionId}.`);
 
