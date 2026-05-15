@@ -12,6 +12,7 @@ export enum GameEvents {
 	END_GAME = "end-game",
 	ACCEPT_DIRECT_INVITE = "accept_direct_invite",
 	INTERNAL_DIRECT_SESSION_READY = "internal_direct_session_ready",
+	DIRECT_SESSION_READY = "direct_session_ready",
 
 	// Game
 	MAP_EMIT = "map-emit",

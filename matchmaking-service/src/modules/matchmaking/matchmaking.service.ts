@@ -832,7 +832,6 @@ export class MatchmakingService {
 		const statusP1 = rawP1 ? JSON.parse(rawP1) : null;
 		const statusP2 = rawP2 ? JSON.parse(rawP2) : null;
 
-		// 1. Controllo Online/Socket
 		if (!statusP1 || !statusP2 || !statusP1.socketId || !statusP2.socketId) {
 			this.logger.warn(`[DirectSession] Impossibile creare: uno dei player è offline.`);
 			return { 
@@ -841,12 +840,10 @@ export class MatchmakingService {
 			};
 		}
 
-		// 2. Controllo Occupato
 		if (statusP1.state === INGAME || statusP2.state === INGAME) {
 			return { status: "ERROR_PLAYERS_BUSY", message: "Qualcuno è già in partita." };
 		}
 
-		// 3. Creazione Sessione su Redis
 		const sessionId = `direct_${Math.random().toString(36).substring(7)}`;
 		const sessionData = {
 			sessionId,
@@ -856,15 +853,12 @@ export class MatchmakingService {
 		};
 		await this.redis.set(`direct_session:${sessionId}`, JSON.stringify(sessionData), "EX", 300);
 
-		// 4. NOTIFICA ENTRAMBI I GIOCATORI
-		// Inviamo l'evento interno per il Giocatore 1 (Invitante)
-		this.eventEmitter.emit("INTERNAL_DIRECT_SESSION_READY", {
+		this.eventEmitter.emit(GameEvents.INTERNAL_DIRECT_SESSION_READY, {
 			socketId: statusP1.socketId,
 			data: { status: "SESSION_CREATED", sessionId: sessionId }
 		});
 
-		// Inviamo l'evento interno per il Giocatore 2 (Accettante)
-		this.eventEmitter.emit("INTERNAL_DIRECT_SESSION_READY", {
+		this.eventEmitter.emit(GameEvents.INTERNAL_DIRECT_SESSION_READY, {
 			socketId: statusP2.socketId,
 			data: { status: "SESSION_CREATED", sessionId: sessionId }
 		});

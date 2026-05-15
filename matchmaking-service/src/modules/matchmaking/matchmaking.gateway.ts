@@ -194,8 +194,8 @@ export class MatchmakingGateway
 	handleDirectSessionReadyInternal(payload: { socketId: string; data: { status: string; sessionId: string } }) {
 		const clientSocket = this.server.sockets.sockets.get(payload.socketId);
 		if (clientSocket) {
-			// Questo è l'evento unico per entrambi i giocatori
-			clientSocket.emit(GameEvents.JOIN_DIRECT_SESSION, payload.data);
+
+			clientSocket.emit(GameEvents.DIRECT_SESSION_READY, payload.data);
 			this.logger.log(`[Socket] JOIN_DIRECT_SESSION inviato al socket: ${payload.socketId}`);
 		}
 	}
