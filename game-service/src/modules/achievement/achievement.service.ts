@@ -1,6 +1,6 @@
 import { Injectable, OnModuleInit, Logger } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
-import { CharacterName, AchievementConfig } from "@transcendence/types";
+import { CharacterName, AchievementConfig, EndReason } from "@transcendence/types";
 import { MatchResult } from "../../types/match-result.interface";
 
 /** Stats snapshot after the match transaction has been committed */
@@ -103,9 +103,9 @@ export class AchievementService implements OnModuleInit {
 				earned.push("Perfectly Balanced");
 			}
 
-			// Total Defeat: lose with 0 kills
-			if (isLoser && player.kills === 0) {
-				earned.push("Total Defeat");
+			// Tactical Retreat: you surrendered
+			if (isLoser && matchResult.endReason === EndReason.RESIGNATION) {
+				earned.push("Tactical Retreat");
 			}
 
 			// Losing Streak
@@ -115,9 +115,9 @@ export class AchievementService implements OnModuleInit {
 
 			// ─── Silver ──────────────────────────────────────
 
-			// Flawless Victory: win with 0 deaths
-			if (isWinner && player.deaths === 0) {
-				earned.push("Flawless Victory");
+			// Conqueror: force opponent to surrender
+			if (isWinner && matchResult.endReason === EndReason.RESIGNATION) {
+				earned.push("Conqueror");
 			}
 
 			// Speed Demon: win fast

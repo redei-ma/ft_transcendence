@@ -104,6 +104,21 @@ useEffect(() => {
       }
     });
 
+    // 6. Evento "friend_removed" — un amico ci ha rimosso o ha eliminato l'account
+    eventSource.addEventListener('friend_removed', () => {
+      window.dispatchEvent(new CustomEvent('friend-list-changed'));
+    });
+
+    // 7. Evento "game_invite_declined" — qualcuno ha rifiutato il nostro invite
+    eventSource.addEventListener('game_invite_declined', (event: any) => {
+      try {
+        const data = JSON.parse(event.data);
+        window.dispatchEvent(new CustomEvent('game-invite-declined', { detail: data }));
+      } catch (err) {
+        console.error("[SSE] Errore nel parsing di game_invite_declined:", err);
+      }
+    });
+
     eventSource.onerror = () => {
       console.error("[SSE] Errore di connessione al flusso. Tentativo di riconnessione automatico...");
       // L'EventSource del browser proverà a riconnettersi automaticamente, 

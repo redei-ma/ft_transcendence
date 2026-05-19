@@ -14,7 +14,8 @@ import FriendsSidebar from "./site/components/FriendSidebar";
 import GameInviteToast from "./site/components/GameInviteToast";
 
 export default function App() {
-  const [isLoggedIn, setIsLoggedIn] = useState(true);
+  const [isAuthLoading, setIsAuthLoading] = useState(true);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [user, setUser] = useState<UserProfile | null>(null);
   const [currentPage, setCurrentPage] = useState("dashboard");
   const [pendingSessionId, setPendingSessionId] = useState<string | null>(null);
@@ -30,6 +31,7 @@ export default function App() {
         setIsLoggedIn(false);
         setUser(null);
       }
+      setIsAuthLoading(false);
     };
     initAuth();
   }, []);
@@ -72,6 +74,8 @@ export default function App() {
         return <DashboardPage onNavigate={setCurrentPage} />;
     }
   };
+
+  if (isAuthLoading) return null;
 
   if (!isLoggedIn) {
     return <LoginPage onLogin={handleLogin} />;

@@ -7,6 +7,7 @@ import {
 } from "@nestjs/common";
 import { PrismaService } from "../../prisma/prisma.service";
 import { NotificationService } from "./notification.service";
+import { SseService } from "./sse.service";
 import {
 	FriendshipStatus,
 	NotificationType,
@@ -43,6 +44,7 @@ export class FriendshipService {
 	constructor(
 		private readonly prisma: PrismaService,
 		private readonly notificationService: NotificationService,
+		private readonly sseService: SseService,
 	) {}
 
 	// ─── Read ──────────────────────────────────────────────────────────────────
@@ -370,6 +372,11 @@ export class FriendshipService {
 			);
 		}
 
+		const otherUserId =
+			friendship.senderId === userId ? friendship.receiverId : friendship.senderId;
+
 		await this.prisma.friendship.delete({ where: { id: friendship.id } });
+
+		this.sseService.pushFriendRemoved(otherUserId, userId);
 	}
 }
