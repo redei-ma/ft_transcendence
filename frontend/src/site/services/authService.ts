@@ -24,12 +24,12 @@ export function toErrorString(val: unknown): string {
   return String(val);
 }
 
-export async function fetchWithAuthRetry(
+ export async function fetchWithAuthRetry(
   url: string,
   options: RequestInit = {},
 ): Promise<Response | null> {
   try {
-    const fetchOptions: RequestInit = {  // Pparametri anti-cache: evitano che utenti diversi sullo stesso PC vedano i dati dell'altro.
+    const fetchOptions: RequestInit = {  // Parametri anti-cache: evitano che utenti diversi sullo stesso PC vedano i dati dell'altro.
       ...options,
       credentials: "include",
       cache: "no-store", // Dice al browser di bypassare la cache locale
@@ -61,6 +61,40 @@ export async function fetchWithAuthRetry(
     return null;
   }
 }
+
+// export async function fetchWithAuthRetry(
+//   url: string,
+//   options: RequestInit = {},
+// ): Promise<Response | null> {
+//   try {
+//     const fetchOptions: RequestInit = { // Parametri anti-cache: evitano che utenti diversi sullo stesso PC vedano i dati dell'altro.
+//       ...options,
+//       ...options,
+//       credentials: "include",
+//       cache: "no-store",  // Dice al browser di bypassare la cache locale
+//       headers: {
+//         "Cache-Control": "no-cache, no-store, must-revalidate",
+//         "Pragma": "no-cache",
+//         "Expires": "0",
+//         ...options.headers,
+//       }
+//     };
+
+//     let res = await fetch(url, fetchOptions);
+
+//     // If we get a 401, we try to refresh ONLY if we think we have a session
+//     if (res.status === 401) {
+//       const success = await refreshToken(); // This now uses our safe check
+//       if (!success) return null;
+
+//       res = await fetch(url, fetchOptions);
+//     }
+
+//     return res;
+//   } catch (error) {
+//     return null;
+//   }
+// }
 
 export async function login(
   identifier: string,
@@ -134,20 +168,49 @@ export function redirectToGoogle(): void {
   window.location.href = "/api/auth/google";
 }
 
+// export async function refreshToken(): Promise<boolean> {
+//   try {
+//     const res = await fetch("/api/auth/refresh", {
+//       method: "POST",
+//       credentials: "include",
+//     });
+//     if (!res.ok) {
+//       console.warn("❌ Refresh failed");
+//       return false;
+//     }
+//     console.log("🔄 Token refreshed");
+//     return true;
+//   } catch (error) {
+//     console.error("Refresh error:", error);
+//     return false;
+//   }
+// }
+
 export async function refreshToken(): Promise<boolean> {
   try {
+    // 1. First, check if a session likely exists without triggering a 401
+    const checkRes = await fetch("/api/auth/session-check");
+    const { hasSession } = await checkRes.json();
+
+    if (!hasSession) {
+      return false; // Exit silently. No red error in console!
+    }
+
+    // 2. Only if the cookie exists, try the actual refresh
     const res = await fetch("/api/auth/refresh", {
       method: "POST",
       credentials: "include",
     });
+
     if (!res.ok) {
       console.warn("❌ Refresh failed");
       return false;
     }
+
     console.log("🔄 Token refreshed");
     return true;
   } catch (error) {
-    console.error("Refresh error:", error);
+    // We don't console.error here to keep the console clean
     return false;
   }
 }
