@@ -24,54 +24,15 @@ export function toErrorString(val: unknown): string {
   return String(val);
 }
 
- export async function fetchWithAuthRetry(
-  url: string,
-  options: RequestInit = {},
-): Promise<Response | null> {
-  try {
-    const fetchOptions: RequestInit = {  // Parametri anti-cache: evitano che utenti diversi sullo stesso PC vedano i dati dell'altro.
-      ...options,
-      credentials: "include",
-      cache: "no-store", // Dice al browser di bypassare la cache locale
-      headers: {
-        "Cache-Control": "no-cache, no-store, must-revalidate",
-        "Pragma": "no-cache",
-        "Expires": "0",
-        ...options.headers,
-      }
-    };
-
-    let res = await fetch(url, fetchOptions);
-
-    if (res.status === 401) {
-      const refreshed = await fetch("/api/auth/refresh", {
-        method: "POST",
-        credentials: "include",
-      });
-
-      if (!refreshed.ok) {
-        return null;
-      }
-      res = await fetch(url, fetchOptions);
-    }
-
-    return res;
-  } catch (error) {
-    console.error("[Auth] Fetch error:", error);
-    return null;
-  }
-}
-
-// export async function fetchWithAuthRetry(
+//  export async function fetchWithAuthRetry(
 //   url: string,
 //   options: RequestInit = {},
 // ): Promise<Response | null> {
 //   try {
-//     const fetchOptions: RequestInit = { // Parametri anti-cache: evitano che utenti diversi sullo stesso PC vedano i dati dell'altro.
-//       ...options,
+//     const fetchOptions: RequestInit = {  // Parametri anti-cache: evitano che utenti diversi sullo stesso PC vedano i dati dell'altro.
 //       ...options,
 //       credentials: "include",
-//       cache: "no-store",  // Dice al browser di bypassare la cache locale
+//       cache: "no-store", // Dice al browser di bypassare la cache locale
 //       headers: {
 //         "Cache-Control": "no-cache, no-store, must-revalidate",
 //         "Pragma": "no-cache",
@@ -82,19 +43,58 @@ export function toErrorString(val: unknown): string {
 
 //     let res = await fetch(url, fetchOptions);
 
-//     // If we get a 401, we try to refresh ONLY if we think we have a session
 //     if (res.status === 401) {
-//       const success = await refreshToken(); // This now uses our safe check
-//       if (!success) return null;
+//       const refreshed = await fetch("/api/auth/refresh", {
+//         method: "POST",
+//         credentials: "include",
+//       });
 
+//       if (!refreshed.ok) {
+//         return null;
+//       }
 //       res = await fetch(url, fetchOptions);
 //     }
 
 //     return res;
 //   } catch (error) {
+//     console.error("[Auth] Fetch error:", error);
 //     return null;
 //   }
 // }
+
+export async function fetchWithAuthRetry(
+  url: string,
+  options: RequestInit = {},
+): Promise<Response | null> {
+  try {
+    const fetchOptions: RequestInit = { // Parametri anti-cache: evitano che utenti diversi sullo stesso PC vedano i dati dell'altro.
+      ...options,
+      ...options,
+      credentials: "include",
+      cache: "no-store",  // Dice al browser di bypassare la cache locale
+      headers: {
+        "Cache-Control": "no-cache, no-store, must-revalidate",
+        "Pragma": "no-cache",
+        "Expires": "0",
+        ...options.headers,
+      }
+    };
+
+    let res = await fetch(url, fetchOptions);
+
+    // If we get a 401, we try to refresh ONLY if we think we have a session
+    if (res.status === 401) {
+      const success = await refreshToken(); // This now uses our safe check
+      if (!success) return null;
+
+      res = await fetch(url, fetchOptions);
+    }
+
+    return res;
+  } catch (error) {
+    return null;
+  }
+}
 
 export async function login(
   identifier: string,
