@@ -32,7 +32,7 @@ WORKDIR /app/game-service
 COPY --from=build /app/game-service/node_modules ./node_modules
 COPY --from=build /app/game-service/package*.json ./
 COPY --from=build /app/game-service/dist ./dist
-COPY --from=build /app/prisma ./shared/prisma
+COPY --from=build /app/shared/prisma ./shared/prisma
 
 USER appuser
 EXPOSE 3000

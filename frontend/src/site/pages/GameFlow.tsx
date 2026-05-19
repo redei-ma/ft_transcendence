@@ -98,7 +98,11 @@ export default function GameFlow({ userId, username, onExit, sessionId: initialS
       alert(display);
       socketService.disconnect();
       matchmakingSocket.disconnect();
-      onExit();
+      if (code === 'UNAUTHORIZED' || code === 'UNAUTHORIZED_TOKEN') {
+        window.location.reload();
+      } else {
+        onExit();
+      }
     };
 
     socketService.setOnGameError(handleError);

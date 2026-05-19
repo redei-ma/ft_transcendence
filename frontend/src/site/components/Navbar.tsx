@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { navLinkBase } from '../styles/shared';
 import { useDropdown, DropdownPanel, DropdownItem } from './Dropdown';
 import * as Icons from './Icons';
@@ -53,81 +53,79 @@ export default function Navbar({ currentPage, onNavigate, onLogout, username, av
   }, []);
 
   // Integrazione SSE (Server-Sent Events) per le Notifiche Live
-useEffect(() => {
+  const sseRetryDelayRef = useRef(3000);
+  const sseRetryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
     if (!username) return;
 
-    // 1. Carica lo storico iniziale
     fetchNotifications();
 
-    // 2. Apri il canale SSE per ricevere eventi in tempo reale
     const SSE_URL = '/api/users/me/notifications/stream';
-    
-    const eventSource = new EventSource(SSE_URL, {
-      withCredentials: true // FONDAMENTALE per far leggere i cookie di sessione a NestJS
-    });
+    let es: EventSource | null = null;
+    let destroyed = false;
 
-    // 3. Evento "notification" — una nuova notifica (friend request, achievement, ecc.)
-    //    Renato manda: { id, type, message }
-    //    Lo aggiungiamo in cima alla lista e incrementiamo il contatore non-letti.
-    eventSource.addEventListener('notification', (event: any) => {
-      try {
-        const newNotif: NotificationItem = JSON.parse(event.data);
-        setNotifications(prev => [newNotif, ...prev]);
-        if (!newNotif.isRead) {
-          setUnreadCount(prev => prev + 1);
-        }
-        if (newNotif.type === 'FRIEND_ACCEPTED' || newNotif.type === 'FRIEND_REQ') {
-          window.dispatchEvent(new CustomEvent('friend-list-changed'));
-        }
-      } catch (err) {
-        console.error("[SSE] Errore nel parsing della notifica:", err);
-      }
-    });
+    const connect = () => {
+      if (destroyed) return;
 
-    // 4. Evento "friend_status" — un amico ha cambiato stato (ONLINE, OFFLINE, IN_GAME, IN_QUEUE)
-    eventSource.addEventListener('friend_status', (event: any) => {
-      try {
-        const data = JSON.parse(event.data);
-        window.dispatchEvent(new CustomEvent('friend-status-update', { detail: data }));
-      } catch (err) {
-        console.error("[SSE] Errore nel parsing del friend_status:", err);
-      }
-    });
+      es = new EventSource(SSE_URL, { withCredentials: true });
 
-    // 5. Evento "game_invite" — qualcuno ha mandato un invite di gioco
-    eventSource.addEventListener('game_invite', (event: any) => {
-      try {
-        const data = JSON.parse(event.data);
-        window.dispatchEvent(new CustomEvent('game-invite-received', { detail: data }));
-      } catch (err) {
-        console.error("[SSE] Errore nel parsing del game_invite:", err);
-      }
-    });
+      es.addEventListener('notification', (event: any) => {
+        try {
+          const newNotif: NotificationItem = JSON.parse(event.data);
+          setNotifications(prev => [newNotif, ...prev]);
+          if (!newNotif.isRead) setUnreadCount(prev => prev + 1);
+          if (newNotif.type === 'FRIEND_ACCEPTED' || newNotif.type === 'FRIEND_REQ') {
+            window.dispatchEvent(new CustomEvent('friend-list-changed'));
+          }
+        } catch {}
+      });
 
-    // 6. Evento "friend_removed" — un amico ci ha rimosso o ha eliminato l'account
-    eventSource.addEventListener('friend_removed', () => {
-      window.dispatchEvent(new CustomEvent('friend-list-changed'));
-    });
+      es.addEventListener('friend_status', (event: any) => {
+        try {
+          const data = JSON.parse(event.data);
+          window.dispatchEvent(new CustomEvent('friend-status-update', { detail: data }));
+        } catch {}
+      });
 
-    // 7. Evento "game_invite_declined" — qualcuno ha rifiutato il nostro invite
-    eventSource.addEventListener('game_invite_declined', (event: any) => {
-      try {
-        const data = JSON.parse(event.data);
-        window.dispatchEvent(new CustomEvent('game-invite-declined', { detail: data }));
-      } catch (err) {
-        console.error("[SSE] Errore nel parsing di game_invite_declined:", err);
-      }
-    });
+      es.addEventListener('game_invite', (event: any) => {
+        try {
+          const data = JSON.parse(event.data);
+          window.dispatchEvent(new CustomEvent('game-invite-received', { detail: data }));
+        } catch {}
+      });
 
-    eventSource.onerror = () => {
-      console.error("[SSE] Errore di connessione al flusso. Tentativo di riconnessione automatico...");
-      // L'EventSource del browser proverà a riconnettersi automaticamente, 
-      // non c'è bisogno di logiche di reconnect.
+      es.addEventListener('friend_removed', () => {
+        window.dispatchEvent(new CustomEvent('friend-list-changed'));
+      });
+
+      es.addEventListener('game_invite_declined', (event: any) => {
+        try {
+          const data = JSON.parse(event.data);
+          window.dispatchEvent(new CustomEvent('game-invite-declined', { detail: data }));
+        } catch {}
+      });
+
+      es.onerror = () => {
+        es?.close();
+        es = null;
+        if (destroyed) return;
+        const delay = sseRetryDelayRef.current;
+        sseRetryDelayRef.current = Math.min(delay * 2, 30000);
+        sseRetryTimerRef.current = setTimeout(connect, delay);
+      };
+
+      es.onopen = () => {
+        sseRetryDelayRef.current = 3000;
+      };
     };
 
-    // Cleanup: chiudiamo il "tubo" se cambiamo utente o il componente viene smontato
+    connect();
+
     return () => {
-      eventSource.close();
+      destroyed = true;
+      if (sseRetryTimerRef.current) clearTimeout(sseRetryTimerRef.current);
+      es?.close();
     };
   }, [username]);
 

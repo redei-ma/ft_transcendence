@@ -36,7 +36,7 @@ WORKDIR /app/user-service
 COPY --from=build /app/user-service/node_modules ./node_modules
 COPY --from=build /app/user-service/package*.json ./
 COPY --from=build /app/user-service/dist ./dist
-COPY --from=build /app/prisma ./shared/prisma
+COPY --from=build /app/shared/prisma ./shared/prisma
 
 USER appuser
 EXPOSE 3001
