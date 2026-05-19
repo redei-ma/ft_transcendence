@@ -69,13 +69,14 @@ export class InputManager {
   };
 
   private sendInputs(): void {
+    if (!socketService.isConnected()) return;
+
     // P1: WASD + Space(melee) / Shift(spell) / Ctrl(defence)
     const p0 = this.buildPayload(
       'w', 's', 'a', 'd',
       ' ', 'shift', 'control',
       0
     );
-    // if (p0.attackType) console.log('P0 attack:', p0.attackType);
     if (p0.attackType) console.log('P0 attack payload:', JSON.stringify(p0));
     socketService.emit(GameEvents.INPUT, p0);
 
