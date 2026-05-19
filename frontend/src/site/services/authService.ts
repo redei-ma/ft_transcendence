@@ -29,10 +29,10 @@ export async function fetchWithAuthRetry(
   options: RequestInit = {},
 ): Promise<Response | null> {
   try {
-    const fetchOptions: RequestInit = {  // Pparametri anti-cache: evitano che utenti diversi sullo stesso PC vedano i dati dell'altro.
+    const fetchOptions: RequestInit = { // Parametri anti-cache: evitano che utenti diversi sullo stesso PC vedano i dati dell'altro.
       ...options,
       credentials: "include",
-      cache: "no-store", // Dice al browser di bypassare la cache locale
+      cache: "no-store",  // Dice al browser di bypassare la cache locale
       headers: {
         "Cache-Control": "no-cache, no-store, must-revalidate",
         "Pragma": "no-cache",
@@ -43,21 +43,16 @@ export async function fetchWithAuthRetry(
 
     let res = await fetch(url, fetchOptions);
 
+    // If we get a 401, we try to refresh ONLY if we think we have a session
     if (res.status === 401) {
-      const refreshed = await fetch("/api/auth/refresh", {
-        method: "POST",
-        credentials: "include",
-      });
+      const success = await refreshToken(); // This now uses our safe check
+      if (!success) return null;
 
-      if (!refreshed.ok) {
-        return null;
-      }
       res = await fetch(url, fetchOptions);
     }
 
     return res;
   } catch (error) {
-    console.error("[Auth] Fetch error:", error);
     return null;
   }
 }
@@ -136,18 +131,16 @@ export function redirectToGoogle(): void {
 
 export async function refreshToken(): Promise<boolean> {
   try {
+    const checkRes = await fetch("/api/auth/session-check");
+    const { hasSession } = await checkRes.json();
+    if (!hasSession) return false;
+
     const res = await fetch("/api/auth/refresh", {
       method: "POST",
       credentials: "include",
     });
-    if (!res.ok) {
-      console.warn("❌ Refresh failed");
-      return false;
-    }
-    console.log("🔄 Token refreshed");
-    return true;
-  } catch (error) {
-    console.error("Refresh error:", error);
+    return res.ok;
+  } catch {
     return false;
   }
 }

@@ -150,34 +150,35 @@ export default function FriendsSidebar({ onGameInviteAccepted }: FriendsSidebarP
   }
 };
 
-  const handleAcceptFriend = async (targetId: number) => {
-    if (await api.respondFriendRequest(targetId, 'ACCEPTED')) fetchFriends();
-  };
+const handleAcceptFriend = async (targetId: number) => {
+  if (await api.respondFriendRequest(targetId, 'ACCEPTED')) fetchFriends();
+};
+const handleRejectFriend = async (targetId: number) => {
+  if (await api.respondFriendRequest(targetId, 'REJECTED')) fetchFriends();
+};
+const handleRemove = async (targetId: number) => {
+  if (await api.removeFriend(targetId)) fetchFriends();
+};
 
-  const handleRejectFriend = async (targetId: number) => {
-    if (await api.respondFriendRequest(targetId, 'REJECTED')) fetchFriends();
-  };
-
-  const handleRemove = async (targetId: number) => {
-    if (await api.removeFriend(targetId)) fetchFriends();
-  };
-
-  const handleSendInvite = async (targetId: number) => {
+const handleSendInvite = async (targetId: number) => {
   const socket = matchmakingSocket.connect();
   
-  socket.onAny((event: string, data: any) => {
-    console.log("[Sidebar] ANY EVENT:", event, data);
-  });
-
-  // Ascolta la risposta di Leonardo quando il receiver accetta
-  const handleDirectSession = (data: any) => {
-    console.log("[Sidebar] DIRECT_SESSION_READY:", data);
-    if (data?.sessionId) {
-      socket.off(GameEvents.DIRECT_SESSION_READY, handleDirectSession);
-      onGameInviteAccepted(data.sessionId);
-    }
+  const registerAndSend = () => {
+    const handleDirectSession = (data: any) => {
+      console.log("[Sidebar] DIRECT_SESSION_READY:", data);
+      if (data?.sessionId) {
+        socket.off('direct_session_ready', handleDirectSession);
+        onGameInviteAccepted(data.sessionId);
+      }
+    };
+    socket.on('direct_session_ready', handleDirectSession);
   };
-  socket.on(GameEvents.DIRECT_SESSION_READY, handleDirectSession);
+
+  if (socket.connected) {
+    registerAndSend();
+  } else {
+    socket.once('connect', registerAndSend);
+  }
 
   const result = await api.sendGameInvite(targetId);
   setInviteMsg(prev => ({
