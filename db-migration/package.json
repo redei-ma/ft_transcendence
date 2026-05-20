@@ -11,7 +11,7 @@
     "prisma:seed": "prisma db seed"
   },
   "dependencies": {
-    "@prisma/client": "6.19.2",
+    "@prisma/client": "6.19.3",
     "@transcendence/types": "file:../shared/types",
     "prisma": "6.19.3",
     "tsx": "^4.7.1",
