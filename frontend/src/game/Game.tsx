@@ -104,9 +104,9 @@ export default function Game({ selectedCharacter, selectedMode, onPlayAgain, onQ
   const bulletIds = useMemo(() => bulletIdsStr ? bulletIdsStr.split(',') : [], [bulletIdsStr]);
 
   const [showLeaveDialog, setShowLeaveDialog] = useState(false);
+  const isLocal = selectedMode === MatchMode.LOCAL || selectedMode === MatchMode.AI;
 
   useEffect(() => {
-    const isLocal = selectedMode === MatchMode.LOCAL;
     const inputManager = new InputManager(isLocal);
     inputManagerRef.current = inputManager;
     return () => {
@@ -276,7 +276,7 @@ export default function Game({ selectedCharacter, selectedMode, onPlayAgain, onQ
               fontFamily: '"JetBrains Mono", monospace', fontSize: '13px',
               color: '#e8d5a3', marginBottom: '32px', lineHeight: 1.6,
             }}>
-              Are you sure you want to leave? This will count as a loss.
+              Are you sure you want to leave?{!isLocal && ' This will count as a loss.'}
             </p>
             <div style={{ display: 'flex', gap: '16px', justifyContent: 'center' }}>
               <button onClick={() => setShowLeaveDialog(false)} style={{

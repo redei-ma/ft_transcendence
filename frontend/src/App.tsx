@@ -1,27 +1,34 @@
-import { useState, useEffect } from "react";
-import "./site/styles/site.css";
-import LoginPage from "./site/pages/LoginPage";
-import DashboardPage from "./site/pages/DashboardPage";
-import LeaderboardPage from "./site/pages/LeaderboardPage";
-import ProfilePage from "./site/pages/ProfilePage";
-import GameFlow from "./site/pages/GameFlow";
-import Navbar from "./site/components/Navbar";
-import { logout } from "./site/services/authService";
-import { getMyProfile, UserProfile } from "./site/services/apiService";
-import { theme } from "./configs/theme";
-import DesktopOnlyGuard from "./site/components/desktopOnlyGuard";
-import FriendsSidebar from "./site/components/FriendSidebar";
-import GameInviteToast from "./site/components/GameInviteToast";
+import { useState, useEffect } from 'react';
+import './site/styles/site.css';
+import LoginPage from './site/pages/LoginPage';
+import DashboardPage from './site/pages/DashboardPage';
+import LeaderboardPage from './site/pages/LeaderboardPage';
+import ProfilePage from './site/pages/ProfilePage';
+import GameFlow from './site/pages/GameFlow';
+import Navbar from './site/components/Navbar';
+import { logout, refreshToken } from './site/services/authService';
+import { getMyProfile, UserProfile } from './site/services/apiService';
+import { theme } from './configs/theme';
+import DesktopOnlyGuard from './site/components/desktopOnlyGuard';
+import FriendsSidebar from './site/components/FriendSidebar';
+import GameInviteToast from './site/components/GameInviteToast';
 
 export default function App() {
-  const [isLoggedIn, setIsLoggedIn] = useState(true);
+  const [isAuthLoading, setIsAuthLoading] = useState(true);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [user, setUser] = useState<UserProfile | null>(null);
-  const [currentPage, setCurrentPage] = useState("dashboard");
+  const [currentPage, setCurrentPage] = useState('dashboard');
   const [pendingSessionId, setPendingSessionId] = useState<string | null>(null);
-  const [pendingInviterId, setPendingInviterId] = useState<number | null>(null)
+  const [pendingInviterId, setPendingInviterId] = useState<number | null>(null);
 
   useEffect(() => {
     const initAuth = async () => {
+      const hasSession = await refreshToken();
+      if (!hasSession) {
+        setIsLoggedIn(false);
+        setIsAuthLoading(false);
+        return;
+      }
       const profile = await getMyProfile();
       if (profile) {
         setUser(profile);
@@ -30,6 +37,7 @@ export default function App() {
         setIsLoggedIn(false);
         setUser(null);
       }
+      setIsAuthLoading(false);
     };
     initAuth();
   }, []);
@@ -39,9 +47,9 @@ export default function App() {
     if (profile) {
       setUser(profile);
       setIsLoggedIn(true);
-      setCurrentPage("dashboard");
+      setCurrentPage('dashboard');
     } else {
-      console.error("Login riuscito, ma impossibile recuperare il profilo.");
+      console.error('Login riuscito, ma impossibile recuperare il profilo.');
       await logout();
       setIsLoggedIn(false);
     }
@@ -51,46 +59,50 @@ export default function App() {
     await logout();
     setIsLoggedIn(false);
     setUser(null);
-    setCurrentPage("dashboard");
+    setCurrentPage('dashboard');
   };
 
   const handleGameInviteAccepted = (sessionId: string, inviterId?: number) => {
     setPendingSessionId(sessionId);
     if (inviterId) setPendingInviterId(inviterId);
-    setCurrentPage("play");
+    setCurrentPage('play');
   };
 
   const renderPage = () => {
     switch (currentPage) {
-      case "dashboard":
+      case 'dashboard':
         return <DashboardPage onNavigate={setCurrentPage} />;
-      case "leaderboard":
+      case 'leaderboard':
         return <LeaderboardPage />;
-      case "profile":
+      case 'profile':
         return <ProfilePage />;
       default:
         return <DashboardPage onNavigate={setCurrentPage} />;
     }
   };
 
+  if (isAuthLoading) return null;
+
   if (!isLoggedIn) {
     return <LoginPage onLogin={handleLogin} />;
   }
 
-  if (currentPage === "play") {
+  if (currentPage === 'play') {
     if (!user) {
-      alert("Errore di sessione: Dati utente mancanti. Effettua nuovamente il login.");
+      alert(
+        'Errore di sessione: Dati utente mancanti. Effettua nuovamente il login.',
+      );
       handleLogout();
       return null;
     }
-    
+
     return (
       <>
         <DesktopOnlyGuard>
           <GameFlow
             userId={user.id}
             username={user.username}
-            onExit={() => setCurrentPage("dashboard")}
+            onExit={async () => { await refreshToken(); setPendingSessionId(null); setPendingInviterId(null); setCurrentPage('dashboard'); }}
             sessionId={pendingSessionId}
             inviterId={pendingInviterId}
           />
@@ -102,13 +114,13 @@ export default function App() {
   }
 
   return (
-    <div style={{ minHeight: "100vh", backgroundColor: theme.colors.bgDark }}>
+    <div style={{ minHeight: '100vh', backgroundColor: theme.colors.bgDark }}>
       <Navbar
         currentPage={currentPage}
         onNavigate={setCurrentPage}
         onLogout={handleLogout}
-        username={user?.username || ""}
-        avatarUrl={user?.avatarUrl || ""}
+        username={user?.username || ''}
+        avatarUrl={user?.avatarUrl || ''}
       />
       {renderPage()}
       <FriendsSidebar onGameInviteAccepted={handleGameInviteAccepted} />

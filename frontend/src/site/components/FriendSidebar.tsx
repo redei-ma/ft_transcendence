@@ -99,6 +99,20 @@ export default function FriendsSidebar({ onGameInviteAccepted }: FriendsSidebarP
     return () => window.removeEventListener('friend-status-update', handler);
   }, []);
 
+  // 6. Il nostro invite è stato rifiutato — aggiorna il messaggio e rimuovi l'invite
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const { inviteId, receiverId } = (e as CustomEvent).detail;
+      setGameInvites(prev => prev.filter(i => i.id !== inviteId));
+      setInviteMsg(prev => ({ ...prev, [receiverId]: 'Declined' }));
+      setTimeout(() => {
+        setInviteMsg(prev => { const n = { ...prev }; delete n[receiverId]; return n; });
+      }, 3000);
+    };
+    window.addEventListener('game-invite-declined', handler);
+    return () => window.removeEventListener('game-invite-declined', handler);
+  }, []);
+
   // Countdown timer
   useEffect(() => {
     const timer = setInterval(() => setNow(Date.now()), 1000);

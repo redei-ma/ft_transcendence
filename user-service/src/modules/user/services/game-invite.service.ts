@@ -191,6 +191,7 @@ export class GameInviteService {
 				where: { id: inviteId },
 				data: { status: InviteStatus.REJECTED },
 			});
+			this.sseService.pushGameInviteDeclined(invite.senderId, inviteId, userId);
 			return { sessionId: null };
 		}
 

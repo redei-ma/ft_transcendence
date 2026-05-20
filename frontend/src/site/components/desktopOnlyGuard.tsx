@@ -13,16 +13,14 @@ export default function DesktopOnlyGuard({ children }: { children: React.ReactNo
       const isMobileUA = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/.test(ua);
       
       // 2. Il dispositivo usa principalmente il touch (es. smartphone/tablet)
+      // pointer: coarse = touch è il pointer primario (phone/tablet). I laptop con touchscreen
+      // hanno il mouse come primario → pointer: fine → non bloccati.
       const isCoarsePointer = window.matchMedia("(pointer: coarse)").matches;
-      
-      // 3. Controllo ibrido: ha il touch ed è uno schermo piccolo
-      const isSmallScreenTouch = navigator.maxTouchPoints > 0 && window.innerWidth < 1024;
-      
-      // 4. "Trappola iPad": l'iPad Pro si finge un Mac, ma ha il touch
+
+      // 3. "Trappola iPad": l'iPad Pro si finge un Mac, ma ha il touch
       const isMacTouch = ua.includes("mac") && navigator.maxTouchPoints > 2;
 
-      // Se uno di questi controlli risulta vero, blocchiamo l'accesso
-      if (isMobileUA || isCoarsePointer || isSmallScreenTouch || isMacTouch) {
+      if (isMobileUA || isCoarsePointer || isMacTouch) {
         setIsBlocked(true);
       } else {
         setIsBlocked(false);

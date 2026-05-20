@@ -114,8 +114,12 @@ export class SocketService {
 		}
 	}
 
+	isConnected(): boolean {
+		return !!this.socket?.connected;
+	}
+
 	emit(event: GameEvents, data?: any) {
-		if (!this.socket) {
+		if (!this.socket?.connected) {
 			console.error(`⚠️ [GameSocket] Cannot emit '${event}': not connected.`);
 			return;
 		}

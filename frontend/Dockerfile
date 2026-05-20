@@ -1,16 +1,16 @@
 # --- Stage 1: Build (dev mode uses this stage via target: build) ---
-FROM node:20-alpine AS build
+FROM node:20.20.2-alpine3.23 AS build
 
 WORKDIR /app/shared
 COPY shared/prisma/schema.prisma ./prisma/schema.prisma
 
 WORKDIR /app/shared/types
 COPY shared/types/ .
-RUN npm install && npm run build
+RUN --mount=type=cache,target=/root/.npm npm install && npm run build
 
 WORKDIR /app/frontend
 COPY frontend/package*.json ./
-RUN npm install
+RUN --mount=type=cache,target=/root/.npm npm install
 
 COPY frontend/ .
 RUN npm run build

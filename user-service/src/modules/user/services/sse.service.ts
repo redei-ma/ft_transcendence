@@ -140,6 +140,40 @@ export class SseService {
 		await this.pushStatusToFriends(userId, status);
 	}
 
+	/**
+	 * Pushes a `friend_removed` SSE event to userId, carrying the ID of who was removed.
+	 */
+	pushFriendRemoved(userId: number, removedUserId: number): void {
+		this.logger.log(`Pushing friend_removed SSE to userId=${userId}`);
+		this.pushToUser(userId, { type: "friend_removed", data: { userId: removedUserId } });
+	}
+
+	/**
+	 * Pushes `friend_removed` to every accepted friend of the deleted user.
+	 * Must be called before the DB delete so friendships still exist.
+	 */
+	async notifyFriendDeleted(userId: number): Promise<void> {
+		const friendships = await this.prisma.friendship.findMany({
+			where: {
+				status: FriendshipStatus.ACCEPTED,
+				OR: [{ senderId: userId }, { receiverId: userId }],
+			},
+			select: { senderId: true, receiverId: true },
+		});
+		for (const f of friendships) {
+			const friendId = f.senderId === userId ? f.receiverId : f.senderId;
+			this.pushFriendRemoved(friendId, userId);
+		}
+	}
+
+	/**
+	 * Pushes a `game_invite_declined` SSE event to the invite sender.
+	 */
+	pushGameInviteDeclined(senderId: number, inviteId: number, receiverId: number): void {
+		this.logger.log(`Pushing game_invite_declined SSE to userId=${senderId}`);
+		this.pushToUser(senderId, { type: "game_invite_declined", data: { inviteId, receiverId } });
+	}
+
 	// ─── Private helpers ───────────────────────────────────────────────────────
 
 	private pushToUser(userId: number, event: MessageEvent): void {

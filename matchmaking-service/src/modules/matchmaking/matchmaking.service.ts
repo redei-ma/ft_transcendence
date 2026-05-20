@@ -2,8 +2,6 @@ import { Injectable, Logger } from "@nestjs/common";
 import { JoinQueueDto } from "./dto/join-queue.dto";
 import Redis from "ioredis";
 import { InjectRedis } from "@nestjs-modules/ioredis";
-import { HttpService } from "@nestjs/axios";
-import { firstValueFrom } from "rxjs";
 import { EventEmitter2 } from "@nestjs/event-emitter";
 import { Cron } from "@nestjs/schedule";
 import { CharacterName, MatchType, MatchMode, GameEvents, UserStatus } from "@transcendence/types";
@@ -64,7 +62,6 @@ export class MatchmakingService {
 	constructor(
 		@InjectRedis() private readonly redis: Redis,
 		private readonly eventEmitter: EventEmitter2,
-		private readonly httpService: HttpService,
 	) {}
 
 	/* ---------------------------------------------------------------------------------------------------------------- */
@@ -100,9 +97,11 @@ export class MatchmakingService {
 
 			const url = `http://user-service:3001/internal/users/${userId}/status`;
 
-			await firstValueFrom(
-				this.httpService.patch(url, { status: dbStatus })
-			);
+			await fetch(url, {
+				method: 'PATCH',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ status: dbStatus }),
+			});
 		} catch (error) {
 			this.logger.error(
 				`[Sync DB] Impossibile aggiornare lo stato DB per l'utente ${userId}: ${error.message}`
@@ -117,18 +116,13 @@ export class MatchmakingService {
 	): Promise<number | null> {
 		try {
 			const url = `http://user-service:3001/internal/users/${userId}/elo`;
-			const response = await firstValueFrom(
-				this.httpService.get<{ eloCurrent: number }>(url),
-			);
-			this.logger.log(
-				`ELO fetched for player ${userId}: ${response.data.eloCurrent}`,
-			);
-			return response.data.eloCurrent;
+			const response = await fetch(url);
+			if (!response.ok) throw new Error(`HTTP ${response.status}`);
+			const data = await response.json() as { eloCurrent: number };
+			this.logger.log(`ELO fetched for player ${userId}: ${data.eloCurrent}`);
+			return data.eloCurrent;
 		} catch (error) {
-			this.logger.error(
-				`Error fetching ELO for player ${userId}:`,
-				error.response?.data,
-			);
+			this.logger.error(`Error fetching ELO for player ${userId}:`, error.message);
 			return null;
 		}
 	}
@@ -390,19 +384,15 @@ export class MatchmakingService {
 		};
 
 		try {
-			this.logger.log(
-				`[ExecuteMatch] Invio payload: ${JSON.stringify(payload)}`,
-			);
-			await firstValueFrom(
-				this.httpService.post(
-					"http://game-service:3000/matchmaking/create-match",
-					payload,
-				),
-			);
+			this.logger.log(`[ExecuteMatch] Invio payload: ${JSON.stringify(payload)}`);
+			const res = await fetch("http://game-service:3000/matchmaking/create-match", {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify(payload),
+			});
+			if (!res.ok) throw new Error(`HTTP ${res.status}`);
 		} catch (error) {
-			this.logger.error(
-				`[ExecuteMatch] Errore Game Server: ${error.message}`,
-			);
+			this.logger.error(`[ExecuteMatch] Errore Game Server: ${error.message}`);
 		}
 
 		// Notifica Socket
@@ -656,15 +646,19 @@ export class MatchmakingService {
 		};
 
 		try {
-			const url = "http://game-service:3000/matchmaking/create-match";
-			await firstValueFrom(this.httpService.post(url, payload));
+			const res = await fetch("http://game-service:3000/matchmaking/create-match", {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify(payload),
+			});
+			if (!res.ok) throw new Error(`HTTP ${res.status}`);
 			this.logger.log(
 				`[LocalMatch] Sessione locale inviata al Game Server per ${userId}`,
 			);
 		} catch (error) {
 			this.logger.error(
 				"Errore invio match locale al Game Server:",
-				error.response?.data || error.message,
+				error.message,
 			);
 		}
 
@@ -788,15 +782,19 @@ export class MatchmakingService {
 		};
 
 		try {
-			const url = "http://game-service:3000/matchmaking/create-match";
-			await firstValueFrom(this.httpService.post(url, payload));
+			const res = await fetch("http://game-service:3000/matchmaking/create-match", {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify(payload),
+			});
+			if (!res.ok) throw new Error(`HTTP ${res.status}`);
 			this.logger.log(
 				`[AiMatch] Match vs AI inviato al Game Server per ${userId}`,
 			);
 		} catch (error) {
 			this.logger.error(
 				"Errore invio match AI al Game Server:",
-				error.response?.data || error.message,
+				error.message,
 			);
 		}
 

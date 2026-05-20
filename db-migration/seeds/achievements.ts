@@ -25,10 +25,10 @@ const ACHIEVEMENTS: AchievementDefinition[] = [
 		iconPath: "/icons/balanced.png",
 	},
 	{
-		name: "Total Defeat",
-		description: "Lose without getting a single kill",
+		name: "Tactical Retreat",
+		description: "Surrender a match",
 		tier: AchievementType.BRONZE,
-		iconPath: "/icons/defeat.png",
+		iconPath: "/icons/retreat.png",
 	},
 	{
 		name: "Losing Streak",
@@ -39,10 +39,10 @@ const ACHIEVEMENTS: AchievementDefinition[] = [
 
 	// ─── Silver ──────────────────────────────────────────────────
 	{
-		name: "Flawless Victory",
-		description: "Win without dying",
+		name: "Conqueror",
+		description: "Force your opponent to surrender",
 		tier: AchievementType.SILVER,
-		iconPath: "/icons/flawless.png",
+		iconPath: "/icons/conqueror.png",
 	},
 	{
 		name: "Speed Demon",

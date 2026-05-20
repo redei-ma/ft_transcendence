@@ -14,7 +14,7 @@ export class MapManager implements OnModuleInit{
 		
 	private async preloadMap(): Promise<void>{
 		try {
-			const mapPath = path.join(process.cwd(), 'src/assets/maps/classic.json');
+			const mapPath = path.join(process.cwd(), 'dist/assets/maps/classic.json');
 
 			this.logger.log(`Loading map from: ${mapPath}`);
 

@@ -222,7 +222,7 @@ export class ProfileService {
 		}
 
 		// Notify friends while friendships still exist in DB, then close the user's SSE stream.
-		await this.sseService.notifyStatusChange(id, UserStatus.OFFLINE);
+		await this.sseService.notifyFriendDeleted(id);
 		this.sseService.closeUserConnections(id);
 
 		await this.prisma.user.delete({ where: { id } });
