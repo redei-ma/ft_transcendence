@@ -1,4 +1,4 @@
-FROM node:20-alpine
+FROM node:20.20.2-alpine3.23
 
 RUN addgroup -g 1001 -S appgroup && adduser -u 1001 -S appuser -G appgroup
 
@@ -11,11 +11,11 @@ COPY shared/prisma ./prisma
 
 WORKDIR /app/shared/types
 COPY shared/types/ .
-RUN npm install && npm run build
+RUN --mount=type=cache,target=/root/.npm npm install && npm run build
 
 WORKDIR /app/db-migration
 COPY db-migration/package*.json ./
-RUN npm ci --install-links
+RUN --mount=type=cache,target=/root/.npm npm ci --install-links
 
 RUN npx prisma generate --schema=../shared/prisma/schema.prisma
 

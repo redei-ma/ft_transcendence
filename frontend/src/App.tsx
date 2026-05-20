@@ -102,7 +102,7 @@ export default function App() {
           <GameFlow
             userId={user.id}
             username={user.username}
-            onExit={async () => { await refreshToken(); setCurrentPage('dashboard'); }}
+            onExit={async () => { await refreshToken(); setPendingSessionId(null); setPendingInviterId(null); setCurrentPage('dashboard'); }}
             sessionId={pendingSessionId}
             inviterId={pendingInviterId}
           />
