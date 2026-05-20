@@ -8,17 +8,17 @@ export function useGameSocket() {
   useEffect(() => {
     const socket = socketService.getSocket();
     if (!socket) {
-      log.error('Socket not initialized');
+      console.error('[useGameSocket] Socket is NULL — eventi di gioco non registrati. Schermo nero atteso.');
       return;
     }
 
-    log.net('Setting up socket listeners, socket id:', socket.id);
+    console.log(`[useGameSocket] Setup listeners. socket.id=${socket.id} connected=${socket.connected}`);
 
     const handleConnect = () => useGameStore.getState().setIsConnected(true);
     const handleDisconnect = () => useGameStore.getState().setIsConnected(false);
 
     const handleMapEmit = (data: any) => {
-      log.game('Map received:', data);
+      console.log('[useGameSocket] MAP_EMIT ricevuto — mappa caricata.');
       useGameStore.getState().setWorld(data);
     };
 
@@ -36,7 +36,7 @@ export function useGameSocket() {
     };
 
     const handleGameOver = (payload: any) => {
-      log.game('Game over:', payload);
+      console.log('[useGameSocket] GAME_OVER ricevuto.');
       const winnerData = payload.entities || payload.winnerData || undefined;
       useGameStore.getState().setGameOver({ winnerData, time: payload.time || 0 });
     };

@@ -50,19 +50,23 @@ export default function GameFlow({ userId, username, onExit, sessionId: initialS
         });
       }
     }
-    const handleMatchFound = () => {
+    const handleMatchFound = (data: any) => {
+      console.log('[GameFlow] MATCH_FOUND ricevuto. data:', data, 'selectedMode:', selectedMode);
       if (hasResignedRef.current) return;
       setScene((prevScene) => {
+        console.log('[GameFlow] Transizione scena da:', prevScene);
         if (prevScene === 'game') return prevScene;
         if (prevScene !== 'queue') {
           setIsReconnecting(true);
           setTimeout(() => {
+            console.log('[GameFlow] Connessione socket dopo 3s. selectedMode:', selectedMode);
             socketService.connect('/', String(userId));
             setIsReconnecting(false);
             setScene('game');
           }, 3000);
           return prevScene;
         }
+        console.log('[GameFlow] Connessione socket immediata. selectedMode:', selectedMode);
         socketService.connect('/', String(userId));
         return 'game';
       });

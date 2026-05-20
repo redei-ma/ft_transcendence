@@ -107,6 +107,7 @@ export default function Game({ selectedCharacter, selectedMode, onPlayAgain, onQ
   const isLocal = selectedMode === MatchMode.LOCAL || selectedMode === MatchMode.AI;
 
   useEffect(() => {
+    console.log(`[Game] Mount. selectedMode=${selectedMode} isLocal=${isLocal}`);
     const inputManager = new InputManager(isLocal);
     inputManagerRef.current = inputManager;
     return () => {
