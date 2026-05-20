@@ -1,8 +1,8 @@
 import { sectionTitleStyle } from '../styles/shared';
 import { theme } from '../../configs/theme';
 import { NAVBAR_HEIGHT } from '../components/Navbar';
+import { useState } from 'react';
 import * as Icons from '../components/Icons';
-
 import zeusDescImg from '../../assets/ZeusDescription.png';
 import adeDescImg from '../../assets/AdeDescription.png';
 
@@ -10,7 +10,7 @@ interface DashboardPageProps {
   onNavigate: (page: string) => void;
 }
 
-// ⚡ Componente di supporto per renderizzare i tasti in modo ordinato
+//  Componente di supporto per renderizzare i tasti in modo ordinato
 const ControlRow = ({ keys, action, stacked = false }: { keys: string[], action: string, stacked?: boolean }) => (
   <div style={{
     display: "flex", 
@@ -41,6 +41,7 @@ const ControlRow = ({ keys, action, stacked = false }: { keys: string[], action:
 
 
 export default function DashboardPage({ onNavigate }: DashboardPageProps) {
+  const [footerModal, setFooterModal] = useState<'privacy' | 'terms' | null>(null);
   return (
     <div className="animate-fadeIn" style={{ paddingTop: `${NAVBAR_HEIGHT}px` }}>
       
@@ -273,15 +274,185 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
       </div>
       {/* ========================================================================= */}
 
-      {/* Footer */}
+    {/* Footer */}
       <footer style={{
         padding: "24px 48px", borderTop: `1px solid ${theme.colors.border}`,
         display: "flex", justifyContent: "space-between", alignItems: "center",
       }}>
+        <div style={{ display: "flex", gap: "24px" }}>
+          <span onClick={() => setFooterModal('privacy')} style={{
+            fontFamily: theme.fonts.heading, color: theme.colors.textMuted, fontSize: "11px",
+            letterSpacing: "1px", cursor: "pointer", transition: "color 0.2s",
+          }}
+            onMouseEnter={(e) => e.currentTarget.style.color = theme.colors.gold}
+            onMouseLeave={(e) => e.currentTarget.style.color = theme.colors.textMuted}
+          >PRIVACY POLICY</span>
+          <span onClick={() => setFooterModal('terms')} style={{
+            fontFamily: theme.fonts.heading, color: theme.colors.textMuted, fontSize: "11px",
+            letterSpacing: "1px", cursor: "pointer", transition: "color 0.2s",
+          }}
+            onMouseEnter={(e) => e.currentTarget.style.color = theme.colors.gold}
+            onMouseLeave={(e) => e.currentTarget.style.color = theme.colors.textMuted}
+          >TERMS OF SERVICE</span>
+        </div>
         <span style={{ fontFamily: theme.fonts.heading, color: theme.colors.textMuted, fontSize: "11px", letterSpacing: "1px" }}>
           CLASH OF OLYMPUS © 2026
         </span>
       </footer>
+
+      {/* Footer Modal */}
+      {footerModal && (
+        <div style={{
+          position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)",
+          display: "flex", alignItems: "center", justifyContent: "center", zIndex: 9999,
+        }} onClick={() => setFooterModal(null)}>
+          <div onClick={(e) => e.stopPropagation()} style={{
+            background: theme.colors.bgPanel, border: `1px solid ${theme.colors.gold}`,
+            borderRadius: "4px", padding: "40px", maxWidth: "600px", width: "90%",
+            maxHeight: "80vh", overflowY: "auto",
+            boxShadow: `0 0 40px ${theme.colors.goldGlow}`,
+          }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "24px" }}>
+              <h2 style={{ fontFamily: theme.fonts.heading, color: theme.colors.goldBright, fontSize: "20px", letterSpacing: "2px" }}>
+                {footerModal === 'privacy' ? 'Privacy Policy' : 'Terms of Service'}
+              </h2>
+              <button onClick={() => setFooterModal(null)} style={{
+                background: "none", border: "none", color: theme.colors.textMuted, cursor: "pointer",
+              }}><Icons.X size={20} /></button>
+            </div>
+            <div style={{ fontFamily: theme.fonts.mono, fontSize: "12px", color: theme.colors.textSecondary, lineHeight: 1.8, whiteSpace: "pre-wrap" }}>
+              {footerModal === 'privacy' ? PRIVACY_TEXT : TERMS_TEXT}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
+
+// Costanti contenenti il testo per il Modal Footer
+
+const PRIVACY_TEXT = 
+
+`1. Introduction
+
+This application ("the Service") respects your privacy and is committed to protecting your personal data in accordance with applicable laws, including the General Data Protection Regulation (GDPR).
+
+2. Data We Collect
+
+We may collect the following personal data:
+  • Username
+  • Email address
+  • Password (stored securely as a hash)
+  • OAuth account data (e.g., Google account ID and email)
+  • Game-related data (scores, matches, statistics)
+  • Technical data such as IP address and login activity
+
+3. Purpose of Data Processing
+
+We process your data for the following purposes:
+  • To create and manage your account
+  • To authenticate users and maintain sessions
+  • To provide gameplay features and statistics
+  • To ensure security and prevent abuse
+
+4. Legal Basis
+
+Your data is processed on the basis of:
+  • Performance of a contract (providing the Service)
+  • Legitimate interest (security and fraud prevention)
+
+5. Data Storage and Security
+
+  • Passwords are securely hashed using industry-standard methods
+  • Authentication tokens are stored in HTTP-only cookies
+  • Reasonable technical measures are used to protect your data
+
+6. Data Retention
+
+  • We retain your data as long as your account is active.
+  • We may delete inactive accounts after an extended period of inactivity.
+  • You may request deletion of your account at any time.
+
+7. Your Rights
+
+Under GDPR, you have the right to:
+  • Access your personal data
+  • Correct inaccurate data
+  • Delete your data ("right to be forgotten")
+
+These rights can be exercised through your account settings or by contacting us.
+
+8. Cookies
+
+This Service uses strictly necessary cookies for authentication purposes.
+
+These include:
+  • Access token cookies
+  • Refresh token cookies
+
+These cookies are required for the proper functioning of the Service and do not require user consent.
+
+9. Third-Party Services
+
+We may use third-party services such as:
+  • Google OAuth for authentication
+
+These services may process your data according to their own privacy policies.
+
+10. Contact
+
+For any privacy-related requests, contact:
+your-email@example.com
+
+11. Changes
+
+We may update this Privacy Policy at any time. Continued use of the Service implies acceptance of the updated policy.`;
+
+const TERMS_TEXT = 
+
+`1. Acceptance of Terms
+
+By using this Service, you agree to these Terms of Service.
+
+2. User Accounts
+
+  • You are responsible for maintaining the confidentiality of your account credentials.
+  • You agree to provide accurate information when registering.
+
+3. Acceptable Use
+
+You agree not to:
+  • Use the Service for unlawful purposes
+  • Attempt to gain unauthorized access
+  • Exploit bugs or cheat in the game
+  • Harass or abuse other users
+
+4. Service Availability
+
+  • The Service is provided "as is" without guarantees of availability or performance.
+  • We may modify or discontinue the Service at any time.
+
+5. Account Termination
+
+  • We reserve the right to suspend or delete accounts that violate these terms.
+  • Users may delete their account at any time.
+
+6. Limitation of Liability
+
+We are not responsible for:
+  • Data loss
+  • Service interruptions
+  • Any damages arising from the use of the Service
+
+7. Intellectual Property
+
+All content and code of the Service remain the property of the developer unless otherwise stated.
+
+8. Governing Law
+
+These Terms are governed by the laws of Italy.
+
+9. Changes
+
+We may update these Terms at any time. Continued use of the Service implies acceptance of the updated Terms.`;
