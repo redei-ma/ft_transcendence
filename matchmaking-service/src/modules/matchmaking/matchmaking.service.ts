@@ -188,7 +188,7 @@ export class MatchmakingService {
 			}, 420);
 
 			const matchId = statusData.matchId;
-			const matchFoundData = { status: "MATCH_FOUND", matchId: matchId };
+			const matchFoundData = { status: "MATCH_FOUND", matchId: matchId, matchMode: statusData.matchMode };
 
 			if (player.socketId) {
 				this.eventEmitter.emit(GameEvents.INTERNAL_MATCH_FOUND, {
@@ -396,7 +396,7 @@ export class MatchmakingService {
 		}
 
 		// Notifica Socket
-		const matchFoundData = { status: "MATCH_FOUND", matchId };
+		const matchFoundData = { status: "MATCH_FOUND", matchId, matchMode: p1.matchMode };
 		if (part1.socketId)
 			this.eventEmitter.emit(GameEvents.INTERNAL_MATCH_FOUND, {
 				socketId: part1.socketId,
@@ -459,6 +459,7 @@ export class MatchmakingService {
 			const matchFoundData = {
 				status: "MATCH_FOUND",
 				matchId: statusData.matchId,
+				matchMode: statusData.matchMode,
 			};
 			if (player.socketId) {
 				this.eventEmitter.emit(GameEvents.INTERNAL_MATCH_FOUND, {
@@ -578,6 +579,7 @@ export class MatchmakingService {
 					data: {
 						status: "MATCH_FOUND",
 						matchId: statusData.matchId,
+						matchMode: statusData.matchMode,
 					},
 				});
 			}
@@ -672,7 +674,7 @@ export class MatchmakingService {
 		if (data.socketId) {
 			this.eventEmitter.emit(GameEvents.INTERNAL_MATCH_FOUND, {
 				socketId: data.socketId,
-				data: { status: "MATCH_FOUND", matchId: matchId },
+				data: { status: "MATCH_FOUND", matchId: matchId, matchMode: MatchMode.LOCAL },
 			});
 		}
 
@@ -709,6 +711,7 @@ export class MatchmakingService {
 			const matchFoundData = {
 				status: "MATCH_FOUND",
 				matchId: statusData.matchId,
+				matchMode: statusData.matchMode,
 			};
 			if (data.socketId) {
 				this.eventEmitter.emit(GameEvents.INTERNAL_MATCH_FOUND, {
@@ -805,7 +808,7 @@ export class MatchmakingService {
 			3600,
 		);
 
-		const matchFoundData = { status: "MATCH_FOUND", matchId: matchId };
+		const matchFoundData = { status: "MATCH_FOUND", matchId: matchId, matchMode: MatchMode.AI };
 		if (data.socketId) {
 			this.eventEmitter.emit(GameEvents.INTERNAL_MATCH_FOUND, {
 				socketId: data.socketId,
@@ -1074,7 +1077,7 @@ export class MatchmakingService {
 
 		if (statusData && statusData.state === INGAME && statusData.matchId) {
 			const matchId = statusData.matchId;
-			const matchFoundData = { status: "MATCH_FOUND", matchId };
+			const matchFoundData = { status: "MATCH_FOUND", matchId, matchMode: statusData.matchMode };
 
 			if (statusData.matchMode !== MatchMode.LOCAL && statusData.matchMode !== MatchMode.AI) {
 				const opponentStatusRaw = await this.redis.get(`status:${statusData.opponentId}`);
