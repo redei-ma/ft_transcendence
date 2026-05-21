@@ -50,8 +50,15 @@ export default function GameFlow({ userId, username, onExit, sessionId: initialS
         });
       }
     }
-    const handleMatchFound = () => {
+    const handleMatchFound = (data: any) => {
       if (hasResignedRef.current) return;
+        
+      if (data?.status === 'MATCH_CANCELLED') {
+        alert(data?.message || "L'avversario ha abbandonato. Partita annullata.");
+        onExit();
+        return;
+      }
+    
       setScene((prevScene) => {
         if (prevScene === 'game') return prevScene;
         if (prevScene !== 'queue') {
@@ -184,7 +191,14 @@ export default function GameFlow({ userId, username, onExit, sessionId: initialS
           mode={selectedMode}
           userDbId={String(userId)}
           onConfirm={handleCharConfirm}
-          onBack={() => sessionId ? onExit() : setScene('mode-select')}
+          onBack={() => {
+            if (sessionId) {
+              matchmakingSocket.emit('CANCEL_DIRECT_SESSION' as any, { sessionId });
+              onExit();
+            } else {
+              setScene('mode-select');
+            }
+          }}
           sessionId={sessionId}
         />
       )}

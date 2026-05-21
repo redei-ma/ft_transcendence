@@ -14,6 +14,7 @@ export enum GameEvents {
 	INTERNAL_DIRECT_SESSION_READY = "internal_direct_session_ready",
 	JOIN_DIRECT_SESSION = "join_direct_session",
 	DIRECT_SESSION_READY = "direct_session_ready",
+	CANCEL_DIRECT_SESSION = "cancel_direct_session",
 
 	// Game
 	MAP_EMIT = "map-emit",
