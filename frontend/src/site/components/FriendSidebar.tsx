@@ -3,7 +3,6 @@ import * as api from '../services/apiService';
 import * as Icons from './Icons';
 import { theme } from '../../configs/theme';
 import { matchmakingSocket } from '../../services/matchmakingSocket';
-import { GameEvents } from '@transcendence/types';
 
 
 const SIDEBAR_WIDTH = 300;
@@ -24,17 +23,18 @@ const statusLabel = (s: string) =>
 
 interface FriendsSidebarProps {
   onGameInviteAccepted: (sessionId: string, inviterId?: number) => void;
+  gameInvites: api.GameInvite[];
+  onAcceptInvite: (invite: api.GameInvite) => void;
+  onDeclineInvite: (invite: api.GameInvite) => void;
 }
 
-export default function FriendsSidebar({ onGameInviteAccepted }: FriendsSidebarProps) {
+export default function FriendsSidebar({ onGameInviteAccepted, gameInvites, onAcceptInvite, onDeclineInvite }: FriendsSidebarProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [tab, setTab] = useState<Tab>('friends');
   const [friends, setFriends] = useState<api.FriendEntry[]>([]);
   const [requests, setRequests] = useState<api.FriendRequestsResponse | null>(null);
   const [loading, setLoading] = useState(true);
-
-  // Game invites
-  const [gameInvites, setGameInvites] = useState<api.GameInvite[]>([]);
+  
   const [now, setNow] = useState(Date.now());
 
   // Add friend
@@ -55,16 +55,10 @@ export default function FriendsSidebar({ onGameInviteAccepted }: FriendsSidebarP
     setLoading(false);
   }, []);
 
-  const fetchInvites = useCallback(async () => {
-    const data = await api.getGameInvites();
-    if (data) setGameInvites(data.invites);
-  }, []);
-
   // Caricamento iniziale
   useEffect(() => {
     fetchFriends();
-    fetchInvites();
-  }, [fetchFriends, fetchInvites]);
+  }, [fetchFriends]);
 
   // Aggiornamento lista amici via SSE quando cambia una friendship
   useEffect(() => {
@@ -73,20 +67,7 @@ export default function FriendsSidebar({ onGameInviteAccepted }: FriendsSidebarP
     return () => window.removeEventListener('friend-list-changed', handler);
   }, [fetchFriends]);
 
-  // Ricezione live degli invite via SSE (propagato dalla Navbar tramite CustomEvent)
-  useEffect(() => {
-    const handler = (e: Event) => {
-      const invite = (e as CustomEvent<api.GameInvite>).detail;
-      setGameInvites(prev => {
-        if (prev.some(i => i.id === invite.id)) return prev;
-        return [invite, ...prev];
-      });
-    };
-    window.addEventListener('game-invite-received', handler);
-    return () => window.removeEventListener('game-invite-received', handler);
-  }, []);
-
-  // 5. Ricezione live degli status amici via SSE (propagato dalla Navbar tramite CustomEvent)
+  // Ricezione live degli status amici via SSE (propagato dalla Navbar tramite CustomEvent)
   //    Aggiorna lo status dell'amico nella lista locale senza rifare il fetch.
   useEffect(() => {
     const handler = (e: Event) => {
@@ -102,8 +83,7 @@ export default function FriendsSidebar({ onGameInviteAccepted }: FriendsSidebarP
   // 6. Il nostro invite è stato rifiutato — aggiorna il messaggio e rimuovi l'invite
   useEffect(() => {
     const handler = (e: Event) => {
-      const { inviteId, receiverId } = (e as CustomEvent).detail;
-      setGameInvites(prev => prev.filter(i => i.id !== inviteId));
+      const { receiverId } = (e as CustomEvent).detail;
       setInviteMsg(prev => ({ ...prev, [receiverId]: 'Declined' }));
       setTimeout(() => {
         setInviteMsg(prev => { const n = { ...prev }; delete n[receiverId]; return n; });
@@ -190,20 +170,8 @@ const handleSendInvite = async (targetId: number) => {
   }, 3000);
 };
 
-const handleAcceptInvite = async (invite: api.GameInvite) => {
-  const result = await api.respondGameInvite(invite.id, 'ACCEPTED');
-  if (result.ok && result.sessionId) {
-    setGameInvites(prev => prev.filter(i => i.id !== invite.id));
-    onGameInviteAccepted(result.sessionId, invite.sender.id);
-  }
-};
-  
-  const handleRejectInvite = async (invite: api.GameInvite) => {
-    const result = await api.respondGameInvite(invite.id, 'REJECTED');
-    if (result.ok) {
-      setGameInvites(prev => prev.filter(i => i.id !== invite.id));
-    }
-  };
+const handleAcceptInvite = (invite: api.GameInvite) => onAcceptInvite(invite);
+const handleRejectInvite = (invite: api.GameInvite) => onDeclineInvite(invite);
 
   useEffect(() => {
   const handleDirectSession = (data: any) => {

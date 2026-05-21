@@ -2,37 +2,16 @@ import { useState, useEffect } from 'react';
 import * as api from '../services/apiService';
 import * as Icons from './Icons';
 import { theme } from '../../configs/theme';
-import { matchmakingSocket } from '../../services/matchmakingSocket';
-import { GameEvents } from '@transcendence/types';
 
 interface GameInviteToastProps {
-  onAccepted: (sessionId: string, inviterId?: number) => void;
+  invites: api.GameInvite[];
+  onAccept: (invite: api.GameInvite) => void;
+  onDecline: (invite: api.GameInvite) => void;
 }
 
-export default function GameInviteToast({ onAccepted }: GameInviteToastProps) {
-  const [invites, setInvites] = useState<api.GameInvite[]>([]);
+export default function GameInviteToast({ invites, onAccept, onDecline }: GameInviteToastProps) {
   const [dismissed, setDismissed] = useState<Set<number>>(new Set());
   const [now, setNow] = useState(Date.now());
-
-  // Carica inviti pendenti all'avvio (in caso SSE non fosse connessa al momento dell'invite)
-  useEffect(() => {
-    api.getGameInvites().then(data => {
-      if (data) setInvites(data.invites);
-    });
-  }, []);
-
-  // Ricezione live degli invite via SSE (propagato dalla Navbar tramite CustomEvent)
-  useEffect(() => {
-    const handler = (e: Event) => {
-      const invite = (e as CustomEvent<api.GameInvite>).detail;
-      setInvites(prev => {
-        if (prev.some(i => i.id === invite.id)) return prev;
-        return [invite, ...prev];
-      });
-    };
-    window.addEventListener('game-invite-received', handler);
-    return () => window.removeEventListener('game-invite-received', handler);
-  }, []);
 
   // Countdown timer — aggiorna ogni secondo
   useEffect(() => {
@@ -40,20 +19,8 @@ export default function GameInviteToast({ onAccepted }: GameInviteToastProps) {
     return () => clearInterval(timer);
   }, []);
 
-  const handleAccept = async (invite: api.GameInvite) => {
-    const result = await api.respondGameInvite(invite.id, 'ACCEPTED');
-    if (result.ok && result.sessionId) {
-      setInvites(prev => prev.filter(i => i.id !== invite.id));
-      onAccepted(result.sessionId, invite.sender.id);
-    }
-  };
-
-  const handleReject = async (invite: api.GameInvite) => {
-    const result = await api.respondGameInvite(invite.id, 'REJECTED');
-    if (result.ok) {
-      setInvites(prev => prev.filter(i => i.id !== invite.id));
-    }
-  };
+  const handleAccept = (invite: api.GameInvite) => onAccept(invite);
+  const handleReject = (invite: api.GameInvite) => onDecline(invite);
 
   const handleDismiss = (inviteId: number) => {
     setDismissed(prev => new Set(prev).add(inviteId));

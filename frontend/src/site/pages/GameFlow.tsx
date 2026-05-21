@@ -51,12 +51,22 @@ export default function GameFlow({ userId, username, onExit, sessionId: initialS
       }
     }
     const handleMatchFound = (data: any) => {
+      console.log("[GameFlow] MATCH_FOUND data:", JSON.stringify(data));
       if (hasResignedRef.current) return;
         
       if (data?.status === 'MATCH_CANCELLED') {
         alert(data?.message || "L'avversario ha abbandonato. Partita annullata.");
         onExit();
         return;
+      }
+    
+      // Deduce il matchMode dal matchId per la riconnessione
+      if (data?.matchId) {
+        if (data.matchId.startsWith('local_')) {
+          setSelectedMode(MatchMode.LOCAL);
+        } else if (data.matchId.startsWith('ai_')) {
+          setSelectedMode(MatchMode.AI);
+        }
       }
     
       setScene((prevScene) => {
