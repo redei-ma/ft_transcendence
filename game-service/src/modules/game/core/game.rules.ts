@@ -9,23 +9,29 @@ function updateTeamKills(teamToKills: Map<number, number>, player: Player){
 
 export class GameRules{
 
-	checkWinner(players: Player[], overTime: boolean): number | null{
+	checkWinner(players: Player[], overTime: boolean): number | null {
 		let teamToKills: Map<number, number> = players.reduce(updateTeamKills, new Map());
 
-		if (overTime){
+		if (overTime) {
 			let winnerTeam: number | null = null;
 			let killRecord: number = -1;
-			for (const [team, kill] of teamToKills){
-				if (killRecord < kill){
+			let isDraw: boolean = false;
+
+			for (const [team, kill] of teamToKills) {
+				if (kill > killRecord) {
 					winnerTeam = team;
 					killRecord = kill;
+					isDraw = false;
+				} else if (kill === killRecord) {
+					isDraw = true; 
 				}
 			}
-			return winnerTeam;
+			
+			return isDraw ? null : winnerTeam;
 		}
-		else{
-			for (const [team, kill] of teamToKills){
-				if (kill >= GameConfig.SERVER.MAX_GAME_KILLS){
+		else {
+			for (const [team, kill] of teamToKills) {
+				if (kill >= GameConfig.SERVER.MAX_GAME_KILLS) {
 					return team;
 				}
 			}
@@ -41,7 +47,7 @@ export class GameRules{
 		}
 
 		if (activeTeams.size === 1){
-			return activeTeams.values().next().value;
+			return Array.from(activeTeams)[0];
 		}
 
 		return null;
