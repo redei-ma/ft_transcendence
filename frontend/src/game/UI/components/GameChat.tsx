@@ -60,7 +60,7 @@ export default function GameChat({ myUserId, isVisible }: GameChatProps) {
   const sendMessage = useCallback(() => {
     const text = inputText.trim();
     if (!text) return;
-
+    
     const newMsg: ChatMessage = {
       id: `${Date.now()}-me`,
       sender: 'me',
@@ -79,7 +79,8 @@ export default function GameChat({ myUserId, isVisible }: GameChatProps) {
     if (!isVisible) return;
 
   const handler = (data: { message: string; author: string }) => {
-    if (data.author === myUserId) return; // ignora i miei, già aggiunti localmente
+    console.log("[Chat] received:", data.author, "myUserId:", myUserId, "match:", data.author === myUserId);
+    if (String(data.author) === String(myUserId)) return; // ignora i miei, già aggiunti localmente
     
     const newMsg: ChatMessage = {
         id: `${Date.now()}-${data.author}`,
