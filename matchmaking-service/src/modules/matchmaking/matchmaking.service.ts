@@ -1014,6 +1014,29 @@ export class MatchmakingService {
 
 	/* ---------------------------------------------------------------------------------------------------------------- */
 
+	async handleUserDisconnect(userId: number) {
+		const USER_STATUS_KEY = `status:${userId}`;
+		const currentStatusRaw = await this.redis.get(USER_STATUS_KEY);
+		
+		if (currentStatusRaw) {
+			const statusData = JSON.parse(currentStatusRaw);
+			
+			// Se si è disconnesso proprio mentre era nella pre-lobby
+			if (statusData.state === "pre_match" && statusData.sessionId) {
+				this.logger.log(`[Disconnect] L'utente ${userId} si è disconnesso durante il pre_match. Annullamento sessione ${statusData.sessionId}.`);
+				
+				await this.cancelDirectSession(
+					userId, 
+					statusData.sessionId, 
+					"L'avversario si è disconnesso durante la selezione del personaggio."
+				);
+			}
+			// (Opzionale) Qui in futuro potresti aggiungere logiche per toglierlo anche dalla coda pubblica
+		}
+	}
+
+	/* ---------------------------------------------------------------------------------------------------------------- */
+
 	/**
 	 * Annulla esplicitamente una sessione diretta (es. l'utente preme "Back").
 	 */

@@ -88,11 +88,11 @@ export class MatchmakingGateway
 		}
 	}
 
-	async handleDisconnect(client: Socket) {
+	/*async handleDisconnect(client: Socket) {
 		console.log(`Client disconnected: ${client.id}`);
 	}
 
-	/*async handleDisconnect(client: Socket) {
+	async handleDisconnect(client: Socket) {
         const userId = this.socketToUser.get(client.id);
         if (userId) {
             console.log(`[Disconnect] Pulizia per utente ${userId} (Socket: ${client.id})`);
@@ -101,6 +101,21 @@ export class MatchmakingGateway
             this.socketToUser.delete(client.id);
         }
     }*/
+
+	async handleDisconnect(client: Socket) {
+		const userId = this.socketToUser.get(client.id);
+		if (userId) {
+			this.logger.log(`[Disconnect] Pulizia per utente ${userId} (Socket: ${client.id})`);
+			
+			// Avviamo la logica di pulizia nel service (se era in pre_match annullerà la partita)
+			await this.matchmakingService.handleUserDisconnect(userId);
+			
+			// Rimuoviamo il mapping
+			this.socketToUser.delete(client.id);
+		} else {
+			this.logger.log(`Client disconnected without active session mapping: ${client.id}`);
+		}
+	}
 
 	@OnEvent(GameEvents.INTERNAL_MATCH_FOUND)
 	handleMatchFoundInternal(payload: { socketId: string; data: { status: string; matchId: string } }) {
