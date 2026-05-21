@@ -193,7 +193,7 @@ export default function GameFlow({ userId, username, onExit, sessionId: initialS
           onConfirm={handleCharConfirm}
           onBack={() => {
             if (sessionId) {
-              matchmakingSocket.emit('CANCEL_DIRECT_SESSION' as any, { sessionId });
+              matchmakingSocket.emit(GameEvents.CANCEL_DIRECT_SESSION, { sessionId });
               onExit();
             } else {
               setScene('mode-select');
