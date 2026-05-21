@@ -54,6 +54,7 @@ export default function DesktopOnlyGuard({ children }: { children: React.ReactNo
         backgroundSize: 'cover', backgroundPosition: 'center', backgroundRepeat: 'no-repeat',
         zIndex: 9999
       }}>
+        {/* Filtro scuro per far risaltare il testo */}
         <div style={{
           position: "absolute", inset: 0, pointerEvents: "none",
           background: `radial-gradient(1px 1px at 20% 30%, ${theme.colors.goldGlow}, transparent), radial-gradient(1px 1px at 80% 70%, ${theme.colors.goldSubtle}, transparent)`,
@@ -62,6 +63,7 @@ export default function DesktopOnlyGuard({ children }: { children: React.ReactNo
         }} />
 
         <div style={{ position: "relative", zIndex: 1, textAlign: "center", padding: "0 24px" }}>
+          {/* Stesso stile esatto del titolo in LoginPage */}
           <h1 style={{
             fontSize: "clamp(32px, 6vw, 64px)",
             fontWeight: 700,
@@ -91,5 +93,6 @@ export default function DesktopOnlyGuard({ children }: { children: React.ReactNo
     );
   }
 
+  // Se passa tutti i controlli, carica il gioco!
   return <>{children}</>;
 }

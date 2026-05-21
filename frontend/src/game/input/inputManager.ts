@@ -69,8 +69,7 @@ export class InputManager {
   };
 
   private sendInputs(): void {
-    if (!socketService.isConnected()) return;
-
+    if (!socketService.getSocket()) return;
     // P1: WASD + Space(melee) / Shift(spell) / Ctrl(defence)
     const p0 = this.buildPayload(
       'w', 's', 'a', 'd',

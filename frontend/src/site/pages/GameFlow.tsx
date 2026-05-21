@@ -37,6 +37,8 @@ export default function GameFlow({ userId, username, onExit, sessionId: initialS
   const [sessionId, setSessionId] = useState<string | null>(initialSessionId || null);
   const [isReconnecting, setIsReconnecting] = useState(false);
   const hasResignedRef = useRef(false);
+  const selectedModeRef = useRef(selectedMode);
+  selectedModeRef.current = selectedMode;
 
   useEffect(() => {
     const socket = matchmakingSocket.connect();
@@ -51,7 +53,7 @@ export default function GameFlow({ userId, username, onExit, sessionId: initialS
       }
     }
     const handleMatchFound = (data: any) => {
-      console.log('[GameFlow] MATCH_FOUND ricevuto. data:', data, 'selectedMode:', selectedMode);
+      console.log('[GameFlow] MATCH_FOUND ricevuto. data:', data, 'selectedMode:', selectedModeRef.current);
       if (hasResignedRef.current) return;
       setScene((prevScene) => {
         console.log('[GameFlow] Transizione scena da:', prevScene);
@@ -59,14 +61,14 @@ export default function GameFlow({ userId, username, onExit, sessionId: initialS
         if (prevScene !== 'queue') {
           setIsReconnecting(true);
           setTimeout(() => {
-            console.log('[GameFlow] Connessione socket dopo 3s. selectedMode:', selectedMode);
+            console.log('[GameFlow] Connessione socket dopo 3s. selectedMode:', selectedModeRef.current);
             socketService.connect('/', String(userId));
             setIsReconnecting(false);
             setScene('game');
           }, 3000);
           return prevScene;
         }
-        console.log('[GameFlow] Connessione socket immediata. selectedMode:', selectedMode);
+        console.log('[GameFlow] Connessione socket immediata. selectedMode:', selectedModeRef.current);
         socketService.connect('/', String(userId));
         return 'game';
       });
