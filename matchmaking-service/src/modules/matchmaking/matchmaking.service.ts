@@ -1015,6 +1015,55 @@ export class MatchmakingService {
 	/* ---------------------------------------------------------------------------------------------------------------- */
 
 	/**
+	 * Annulla esplicitamente una sessione diretta (es. l'utente preme "Back").
+	 */
+	async cancelDirectSession(userId: number, sessionId: string, reason: string = "L'avversario ha annullato la partita.") {
+		const sessionKey = `direct_session:${sessionId}`;
+		const sessionRaw = await this.redis.get(sessionKey);
+
+		if (!sessionRaw) {
+			// La sessione potrebbe essere già stata annullata o scaduta
+			await this.setPlayerToLobby(userId);
+			return { status: "ERROR_SESSION_NOT_FOUND", message: "Sessione già annullata o inesistente." };
+		}
+
+		const session = JSON.parse(sessionRaw);
+		
+		// Identifica l'avversario
+		const opponentId = session.p1.id === userId ? session.p2.id : session.p1.id;
+
+		// Elimina la sessione pendente da Redis
+		await this.redis.del(sessionKey);
+
+		// Riporta l'utente che ha annullato in LOBBY
+		await this.setPlayerToLobby(userId);
+
+		// Avvisa e riporta in LOBBY l'avversario (se è ancora online)
+		const opponentStatusRaw = await this.redis.get(`status:${opponentId}`);
+		if (opponentStatusRaw) {
+			const opponentData = JSON.parse(opponentStatusRaw);
+			
+			if (opponentData.socketId) {
+				// Utilizziamo l'evento esistente per recapitare il messaggio di annullamento
+				this.eventEmitter.emit(GameEvents.INTERNAL_MATCH_FOUND, {
+					socketId: opponentData.socketId,
+					data: { status: "MATCH_CANCELLED", message: reason }
+				});
+			}
+			
+			await this.setUserStatus(opponentId, { 
+				state: LOBBY, 
+				socketId: opponentData.socketId 
+			}, 3600);
+		}
+
+		this.logger.log(`[DirectSession] Sessione ${sessionId} annullata da ${userId}`);
+		return { status: "SESSION_CANCELLED" };
+	}
+
+	/* ---------------------------------------------------------------------------------------------------------------- */
+
+	/**
 	 * Controlla se un utente appena connesso era già in partita (INGAME).
 	 * In caso affermativo, aggiorna il suo socketId su Redis e lo avvisa
 	 * per forzare il frontend a ricollegarsi alla schermata di gioco.
