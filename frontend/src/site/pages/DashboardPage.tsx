@@ -235,7 +235,7 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
               <ControlRow keys={["W A S D"]} action="Movement" />
               <ControlRow keys={["SPACE"]} action="Melee Attack" />
               <ControlRow keys={["SHIFT", "L-CLICK"]} action="Aim & Shoot Spell" />
-              <ControlRow keys={["CTRL"]} action="Defense Stance" />
+              <ControlRow keys={["C"]} action="Defense Stance" />
               <ControlRow keys={["ENTER"]} action="Open Game Chat" />
             </div>
           </div>
@@ -253,7 +253,7 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
                 <ControlRow keys={["W A S D"]} action="Move" stacked />
                 <ControlRow keys={["SPACE"]} action="Melee" stacked />
                 <ControlRow keys={["SHIFT"]} action="Spell" stacked />
-                <ControlRow keys={["CTRL"]} action="Defense" stacked />
+                <ControlRow keys={["C"]} action="Defense" stacked />
               </div>
               
               {/* Divisore */}
