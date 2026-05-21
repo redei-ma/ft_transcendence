@@ -851,6 +851,18 @@ export class MatchmakingService {
 		};
 		await this.redis.set(`direct_session:${sessionId}`, JSON.stringify(sessionData), "EX", 300);
 
+		await this.setUserStatus(inviterId, {
+			state: "character_selection",
+			sessionId: sessionId,
+			socketId: statusP1.socketId
+		}, 300);
+
+		await this.setUserStatus(acceptorId, {
+			state: "character_selection",
+			sessionId: sessionId,
+			socketId: statusP2.socketId
+		}, 300);
+
 		this.eventEmitter.emit(GameEvents.INTERNAL_DIRECT_SESSION_READY, {
 			socketId: statusP1.socketId,
 			data: { status: "SESSION_CREATED", sessionId: sessionId }
@@ -1022,7 +1034,7 @@ export class MatchmakingService {
 			const statusData = JSON.parse(currentStatusRaw);
 			
 			// Se si è disconnesso proprio mentre era nella pre-lobby
-			if (statusData.state === "pre_match" && statusData.sessionId) {
+			if ((statusData.state === "pre_match" || statusData.state === "character_selection") && statusData.sessionId) {
 				this.logger.log(`[Disconnect] L'utente ${userId} si è disconnesso durante il pre_match. Annullamento sessione ${statusData.sessionId}.`);
 				
 				await this.cancelDirectSession(
@@ -1107,7 +1119,7 @@ export class MatchmakingService {
     	    await this.setUserStatus(String(userId), { ...statusData, socketId }, 3600);
     	    return null;
     	}
-		if (statusData && statusData.state === "pre_match" && statusData.sessionId) {
+		if (statusData && (statusData.state === "pre_match" || statusData.state === "character_selection") && statusData.sessionId) {
 			this.logger.log(`[Auto-Reconnect] Utente ${userId} disconnesso/ricaricato in pre_match. Annullamento sessione ${statusData.sessionId}.`);
 
 			const sessionRaw = await this.redis.get(`direct_session:${statusData.sessionId}`);
