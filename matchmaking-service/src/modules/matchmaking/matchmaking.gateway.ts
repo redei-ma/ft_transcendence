@@ -238,7 +238,7 @@ export class MatchmakingGateway
 		this.emitMatchmakingResponse(client, GameEvents.LEAVE_QUEUE, result);
 	}
 
-	@SubscribeMessage('CANCEL_DIRECT_SESSION') 
+	@SubscribeMessage(GameEvents.CANCEL_DIRECT_SESSION) 
 	async handleCancelDirectSession(
 		@MessageBody() data: { sessionId: string },
 		@ConnectedSocket() client: Socket,
@@ -252,7 +252,7 @@ export class MatchmakingGateway
 		const result = await this.matchmakingService.cancelDirectSession(userId, data.sessionId);
 		
 		// Usiamo il tuo helper per emettere la risposta al client che ha annullato
-		this.emitMatchmakingResponse(client, 'CANCEL_DIRECT_SESSION', result);
+		this.emitMatchmakingResponse(client, GameEvents.CANCEL_DIRECT_SESSION, result);
 	}
 	
 	private registerUserSocket(socketId: string, userId: number) {
