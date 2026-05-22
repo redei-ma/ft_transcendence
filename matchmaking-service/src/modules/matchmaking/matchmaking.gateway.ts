@@ -76,6 +76,7 @@ export class MatchmakingGateway
 				`Client connected: ${client.id}, userId: ${userId}`,
 			);
 
+			this.registerUserSocket(client.id, userId);
 			// Il service si occuperà di aggiornare Redis e notificare il client se necessario
 			await this.matchmakingService.checkAndReconnectUser(userId, client.id);
 
