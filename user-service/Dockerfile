@@ -6,23 +6,23 @@ RUN apk add --no-cache openssl
 
 WORKDIR /app/shared/auth
 COPY shared/auth/ .
-RUN --mount=type=cache,target=/root/.npm npm install && npm run build
+RUN npm install && npm run build
 
 WORKDIR /app/shared
 COPY shared/prisma/schema.prisma ./prisma/schema.prisma
 
 WORKDIR /app/shared/types
 COPY shared/types/ .
-RUN --mount=type=cache,target=/root/.npm npm install && npm run build
+RUN npm install && npm run build
 
 WORKDIR /app/shared/dto
 COPY shared/dto/ .
-RUN --mount=type=cache,target=/root/.npm npm install && npm run build
+RUN npm install && npm run build
 
 
 WORKDIR /app/user-service
 COPY user-service/package*.json ./
-RUN --mount=type=cache,target=/root/.npm npm install --install-links
+RUN npm install --install-links
 COPY user-service/. .
 RUN npx prisma generate --schema=../shared/prisma/schema.prisma && npm run build
 

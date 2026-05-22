@@ -6,11 +6,11 @@ COPY shared/prisma/schema.prisma ./prisma/schema.prisma
 
 WORKDIR /app/shared/types
 COPY shared/types/ .
-RUN --mount=type=cache,target=/root/.npm npm install && npm run build
+RUN npm install && npm run build
 
 WORKDIR /app/frontend
 COPY frontend/package*.json ./
-RUN --mount=type=cache,target=/root/.npm npm install
+RUN npm install
 
 COPY frontend/ .
 RUN npm run build

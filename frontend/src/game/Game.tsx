@@ -165,6 +165,19 @@ export default function Game({ selectedCharacter, selectedMode, onPlayAgain, onQ
     };
   }, [initialSize]);
 
+  if (!world) {
+    return (
+      <div style={{
+        position: 'fixed', inset: 0,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        background: '#0a0a0f', color: '#d4af37',
+        fontFamily: '"Cinzel", serif', fontSize: '18px', letterSpacing: '2px',
+      }}>
+        Entering the Arena...
+      </div>
+    );
+  }
+
   return (
     <div style={{
       position: 'fixed', inset: 0,
