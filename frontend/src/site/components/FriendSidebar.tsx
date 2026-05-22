@@ -3,6 +3,7 @@ import * as api from '../services/apiService';
 import * as Icons from './Icons';
 import { theme } from '../../configs/theme';
 import { matchmakingSocket } from '../../services/matchmakingSocket';
+import { GameEvents } from '@transcendence/types';
 
 
 const SIDEBAR_WIDTH = 300;
@@ -183,9 +184,9 @@ const handleRejectInvite = (invite: api.GameInvite) => onDeclineInvite(invite);
       onGameInviteAccepted(data.sessionId);
     }
   };
-  matchmakingSocket.on('DIRECT_SESSION_READY', handleDirectSession);
+  matchmakingSocket.on(GameEvents.DIRECT_SESSION_READY, handleDirectSession);
   return () => {
-    matchmakingSocket.off('DIRECT_SESSION_READY', handleDirectSession);
+    matchmakingSocket.off(GameEvents.DIRECT_SESSION_READY, handleDirectSession);
   };
 }, [onGameInviteAccepted]);
 
