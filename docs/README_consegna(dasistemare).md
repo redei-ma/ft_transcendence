@@ -1,4 +1,4 @@
-_This project has been created as part of the 42 curriculum by redei-ma, gpirozzi, fzuccaro, ade-ross, lacerbi._
+\_This project has been created as part of the 42 curriculum by redei-ma, gpirozzi, fzuccaro, ade-ross, lacerbi.
 
 # ft_transcendence - Clash of Olympus
 
@@ -13,7 +13,7 @@ _This project has been created as part of the 42 curriculum by redei-ma, gpirozz
 **Key features:**
 
 - Real-time 1v1 multiplayer matches (online, local, and vs AI)
-- Two playable characters: Zeus (lightning) and Ade (fire), each with unique abilities
+- Two playable characters: Zeus (lightning) and Ade (fire)
 - ELO-based ranked matchmaking system
 - User profiles with avatar upload, friend system, and online status
 - 12 achievements across 4 tiers (Bronze, Silver, Gold, Platinum)
@@ -55,12 +55,6 @@ _This project has been created as part of the 42 curriculum by redei-ma, gpirozz
 ### Work distribution
 
 Each team member owns one or more microservices. The database schema (Prisma) is shared and maintained by Renato, with input from the whole team when new models are needed.
-
----
-
-## Screenshots
-
-> **TODO:** Add screenshots of the game arena, character select, dashboard, and profile pages once the project is finalized.
 
 ---
 
@@ -146,27 +140,30 @@ Redis is **not** a shared datastore across all services. Only `game-service` and
 
 ### Frontend
 
-| Technology                       | Version | Why                                                                 |
-| -------------------------------- | ------- | ------------------------------------------------------------------- |
-| **React**                        | 19      | Component-based UI, large ecosystem, team familiarity               |
-| **Vite**                         | 7       | Fast HMR for development, optimized production builds               |
-| **Three.js** + React Three Fiber | 0.182   | 3D isometric rendering in the browser with declarative React syntax |
-| **Tailwind CSS**                 | 3.4     | Utility-first styling, fast prototyping, consistent design system   |
-| **Zustand**                      | 5       | Lightweight state management without boilerplate                    |
-| **Socket.io-client**             | 4.8     | Real-time bidirectional communication with the game server          |
-| **Axios**                        | 1.13    | HTTP client for REST API calls with interceptor support             |
+| Technology                        | Version | Why                                                                       |
+| --------------------------------- | ------- | ------------------------------------------------------------------------- |
+| **React**                         | 19      | Component-based UI, large ecosystem, team familiarity                     |
+| **Vite**                          | 7       | Fast HMR for development, optimized production builds                     |
+| **Three.js** + React Three Fiber  | 0.182   | 3D isometric rendering in the browser with declarative React syntax       |
+| **@react-three/drei**             | 10      | Three.js helper components (camera rigs, controls, loaders)               |
+| **Tailwind CSS**                  | 3.4     | Utility-first styling, fast prototyping, consistent design system         |
+| **Zustand**                       | 5       | Lightweight state management without boilerplate                          |
+| **Socket.io-client**              | 4.8     | Real-time bidirectional communication with the game server (msgpack parser included) |
 
 ### Backend
 
-| Technology    | Version    | Why                                                                                                                               |
-| ------------- | ---------- | --------------------------------------------------------------------------------------------------------------------------------- |
-| **NestJS**    | 11         | Modular, TypeScript-native framework with built-in dependency injection, guards, pipes, and interceptors. Ideal for microservices |
-| **Socket.io** | 4.8        | Real-time game state broadcasting at 60fps with automatic reconnection and room management                                        |
-| **Prisma**    | 6.19       | Type-safe ORM with auto-generated client, migration system, and excellent PostgreSQL support                                      |
-| **Redis**     | 7 (Alpine) | In-memory store for matchmaking queues, player status tracking, and WebSocket adapter state                                       |
-| **Sharp**     | 0.34       | Server-side image processing for avatar uploads (resize, compress, format conversion)                                             |
-| **Passport**  | -          | Authentication middleware for JWT and Google OAuth strategies                                                                     |
-| **Speakeasy** | 2.0        | TOTP generation and verification for Two-Factor Authentication                                                                    |
+| Technology      | Version    | Why                                                                                                                               |
+| --------------- | ---------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| **NestJS**      | 11         | Modular, TypeScript-native framework with built-in dependency injection, guards, pipes, and interceptors. Ideal for microservices |
+| **Socket.io**   | 4.8        | Real-time game state broadcasting at 60fps with automatic reconnection and room management                                        |
+| **Prisma**      | 6.19       | Type-safe ORM with auto-generated client, migration system, and excellent PostgreSQL support                                      |
+| **ioredis**     | 5.9        | Redis client for matchmaking queues, player status tracking, and game/matchmaking inter-service communication                     |
+| **Sharp**       | 0.34       | Server-side image processing for avatar uploads (resize, compress, format conversion)                                             |
+| **Passport**    | 0.7        | Authentication middleware for JWT and Google OAuth strategies                                                                     |
+| **bcryptjs**    | 3.0        | Password hashing with salt rounds for secure local authentication                                                                 |
+| **Nodemailer**  | 8.0        | Transactional email sending for account verification and password reset                                                           |
+| **Speakeasy**   | 2.0        | TOTP generation and verification for Two-Factor Authentication                                                                    |
+| **qrcode**      | 1.5        | QR code generation for 2FA setup in the authenticator app flow                                                                   |
 
 ### Database
 
@@ -186,21 +183,38 @@ Redis is **not** a shared datastore across all services. Only `game-service` and
 
 ## Database Schema
 
-### Models
+The database uses PostgreSQL with Prisma ORM. All 11 models share a single schema.
 
-| Model                | Key Fields                                                                                                        | Purpose                         |
-| -------------------- | ----------------------------------------------------------------------------------------------------------------- | ------------------------------- |
-| **User**             | id, email, username, avatarUrl, status, is2faEnabled, tokenVersion                                                | Core user identity              |
-| **Account**          | provider (LOCAL/GOOGLE), passwordHash, oauthId                                                                    | Authentication methods per user |
-| **UserStats**        | eloCurrent, eloPeak, totalWins, totalLosses, totalDraws, totalKills, totalDeaths, currentWinStreak, bestWinStreak | Aggregate game statistics       |
-| **CharacterStats**   | characterName (ADE/ZEUS), wins, losses, draws, kills, deaths                                                      | Per-character performance       |
-| **Match**            | mode (RANKED/UNRANKED/LOCAL/AI), type (FFA/TEAM), durationSeconds, endReason, winningTeamId                       | Game record                     |
-| **MatchParticipant** | matchId, userId, teamId, characterName, kills, deaths                                                             | Player performance in a match   |
-| **Achievement**      | name, description, tier (BRONZE/SILVER/GOLD/PLATINUM), iconPath                                                   | Achievement catalog (12 total)  |
-| **UserAchievement**  | userId, achievementId, unlockedAt                                                                                 | Achievement unlocks             |
-| **Friendship**       | senderId, receiverId, status (PENDING/ACCEPTED/REJECTED)                                                          | Friend relationships            |
-| **GameInvite**       | senderId, receiverId, status, expiresAt                                                                           | Game challenge invitations      |
-| **Notification**     | userId, type, message, isRead                                                                                     | In-app notifications            |
+### Key Relationships
+
+```
+User ──< Account          (1 user → N login methods: LOCAL, GOOGLE)
+User ──  UserStats        (1 user → 1 stats row)
+User ──< CharacterStats   (1 user → 1 row per character: ZEUS, ADE)
+User ──< MatchParticipant >── Match   (many-to-many via join table)
+User ──< Friendship       (sender + receiver, status: PENDING/ACCEPTED/REJECTED)
+User ──< GameInvite       (sender + receiver, with expiry timestamp)
+User ──< UserAchievement >── Achievement   (many-to-many, unlocked per user)
+User ──< Notification     (persistent, typed: FRIEND_REQ / GAME_INVITE / ACHV_UNLOCKED)
+```
+
+### Models Summary
+
+| Model                | Key Fields                                                     | Purpose                         |
+| -------------------- | -------------------------------------------------------------- | ------------------------------- |
+| **User**             | email, username, avatarUrl, status, is2faEnabled, tokenVersion | Core user identity              |
+| **Account**          | provider (LOCAL/GOOGLE), passwordHash, oauthId                 | Authentication methods per user |
+| **UserStats**        | eloCurrent, eloPeak, totalWins, totalLosses, currentWinStreak  | Aggregate game statistics       |
+| **CharacterStats**   | characterName (ADE/ZEUS), wins, losses, kills, deaths          | Per-character performance       |
+| **Match**            | mode (RANKED/UNRANKED/LOCAL/AI), endReason, winningTeamId      | Game record                     |
+| **MatchParticipant** | matchId, userId, teamId, characterName, kills, deaths          | Player performance in a match   |
+| **Achievement**      | name, description, tier (BRONZE/SILVER/GOLD/PLATINUM)          | Achievement catalog (12 total)  |
+| **UserAchievement**  | userId, achievementId, unlockedAt                              | Achievement unlocks             |
+| **Friendship**       | senderId, receiverId, status                                   | Friend relationships            |
+| **GameInvite**       | senderId, receiverId, status, expiresAt                        | Game challenge invitations      |
+| **Notification**     | userId, type, message, isRead                                  | In-app notifications            |
+
+> Full ERD with all field types and relations: [docs/database-schema.md](docs/database-schema.md)
 
 ---
 
