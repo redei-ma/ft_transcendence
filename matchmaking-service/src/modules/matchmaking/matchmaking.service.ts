@@ -1065,7 +1065,7 @@ export class MatchmakingService {
 		const session = JSON.parse(sessionRaw);
 		
 		// Identifica l'avversario
-		const opponentId = String(session.p1.id) === String(userId) ? session.p2.id : session.p1.id;
+		const opponentId = session.p1.id === userId ? session.p2.id : session.p1.id;
 
 		// Elimina la sessione pendente da Redis
 		await this.redis.del(sessionKey);
@@ -1125,7 +1125,7 @@ export class MatchmakingService {
 			const sessionRaw = await this.redis.get(`direct_session:${statusData.sessionId}`);
 			if (sessionRaw) {
 				const session = JSON.parse(sessionRaw);
-				const opponentId = String(session.p1.id) === String(userId) ? session.p2.id : session.p1.id;
+				const opponentId = session.p1.id === userId ? session.p2.id : session.p1.id;
 				
 				const opponentStatusRaw = await this.redis.get(`status:${opponentId}`);
 				if (opponentStatusRaw) {

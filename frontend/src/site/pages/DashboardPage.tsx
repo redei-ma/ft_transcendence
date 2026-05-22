@@ -5,6 +5,8 @@ import { useState } from 'react';
 import * as Icons from '../components/Icons';
 import zeusDescImg from '../../assets/ZeusDescription.png';
 import adeDescImg from '../../assets/AdeDescription.png';
+import zeusDetailImg from '../../assets/ZeusDetail.png';
+import adeDetailImg from '../../assets/AdeDetail.png';
 
 interface DashboardPageProps {
   onNavigate: (page: string) => void;
@@ -42,6 +44,7 @@ const ControlRow = ({ keys, action, stacked = false }: { keys: string[], action:
 
 export default function DashboardPage({ onNavigate }: DashboardPageProps) {
   const [footerModal, setFooterModal] = useState<'privacy' | 'terms' | null>(null);
+  const [charModal, setCharModal] = useState<string | null>(null);
   return (
     <div className="animate-fadeIn" style={{ paddingTop: `${NAVBAR_HEIGHT}px` }}>
       
@@ -173,11 +176,11 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
           maxWidth: "1400px", 
           margin: "0 auto" 
         }}>
-          {[
+        {[
             { name: "HADES", img: adeDescImg },
             { name: "ZEUS", img: zeusDescImg },
           ].map((c) => (
-            <div key={c.name} style={{
+            <div key={c.name} onClick={() => setCharModal(c.name)} style={{
               background: theme.colors.bgPanel,
               border: `1px solid ${theme.colors.border}`, 
               borderRadius: "8px",
@@ -273,6 +276,36 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
         </div>
       </div>
       {/* ========================================================================= */}
+
+      {/* Character Detail Modal */}
+      {charModal && (
+        <div style={{
+          position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)",
+          display: "flex", alignItems: "center", justifyContent: "center", zIndex: 9999,
+        }} onClick={() => setCharModal(null)}>
+          <div onClick={(e) => e.stopPropagation()} style={{
+            background: theme.colors.bgPanel, border: `1px solid ${theme.colors.gold}`,
+            borderRadius: "4px", padding: "24px", maxWidth: "700px", width: "90%",
+            maxHeight: "85vh", overflowY: "auto",
+            boxShadow: `0 0 40px ${theme.colors.goldGlow}`,
+            textAlign: "center",
+          }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
+              <h2 style={{ fontFamily: theme.fonts.heading, color: theme.colors.goldBright, fontSize: "24px", letterSpacing: "4px" }}>
+                {charModal}
+              </h2>
+              <button onClick={() => setCharModal(null)} style={{
+                background: "none", border: "none", color: theme.colors.textMuted, cursor: "pointer",
+              }}><Icons.X size={20} /></button>
+            </div>
+            <img
+              src={charModal === "ZEUS" ? zeusDetailImg : adeDetailImg}
+              alt={charModal}
+              style={{ width: "100%", borderRadius: "4px" }}
+            />
+          </div>
+        </div>
+      )}
 
     {/* Footer */}
       <footer style={{

@@ -142,7 +142,10 @@ const handleRemove = async (targetId: number) => {
 
 const handleSendInvite = async (targetId: number) => {
   const socket = matchmakingSocket.connect();
-  
+  if (!socket.connected) {
+    await new Promise<void>(resolve => socket.once('connect', resolve));
+  }
+ 
   const registerAndSend = () => {
     const handleDirectSession = (data: any) => {
       console.log("[Sidebar] DIRECT_SESSION_READY:", data);

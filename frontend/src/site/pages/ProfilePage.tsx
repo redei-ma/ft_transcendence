@@ -462,19 +462,19 @@ export default function ProfilePage() {
               {m.result}
             </div>
             <img src={myIcon} alt="" style={{ width: 28, height: 28, borderRadius: '4px' }} />
-            <span style={{ fontFamily: theme.fonts.heading, fontSize: '13px', fontWeight: 600 }}>
+            <span style={{ fontFamily: theme.fonts.heading, fontSize: '13px', fontWeight: 600, color: theme.colors.textPrimary }}>
               {me?.username || profile?.username || '?'}
             </span>
             <span style={{ fontFamily: theme.fonts.mono, fontSize: '10px', color: theme.colors.textMuted }}>
               vs
             </span>
-            <span style={{ fontFamily: theme.fonts.heading, fontSize: '13px', color: theme.colors.textSecondary }}>
+            <span style={{ fontFamily: theme.fonts.heading, fontSize: '13px' }}>
               {opponent?.username || 'Deleted User'}
             </span>
             <img src={oppIcon} alt="" style={{ width: 28, height: 28, borderRadius: '4px' }} />
             <div style={{ flex: 1 }} />
            <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-              <span style={{ fontFamily: theme.fonts.mono, fontSize: '10px' }}>{m.mode}</span>
+              <span style={{ fontFamily: theme.fonts.mono, fontSize: '10px', color: theme.colors.textSecondary }}>{m.mode}</span>
               <span style={{ fontFamily: theme.fonts.mono, fontSize: '10px' }}>
                 {mins}:{secs.toString().padStart(2, '0')}
               </span>
@@ -484,7 +484,7 @@ export default function ProfilePage() {
             </div>
 
             <div style={{ textAlign: 'center' }}>
-              <div style={{ fontFamily: theme.fonts.mono, fontSize: '14px', fontWeight: 700 }}>
+              <div style={{ fontFamily: theme.fonts.mono, fontSize: '14px', fontWeight: 700, color: theme.colors.textSecondary }}>
                 {me?.kills || 0}/{me?.deaths || 0}
               </div>
               <div style={{ fontFamily: theme.fonts.heading, fontSize: '9px' }}>K/D</div>
