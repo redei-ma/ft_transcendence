@@ -29,7 +29,7 @@ export interface	Player extends DynamicEntity{
 	type: 'player';
 	socketId: string | undefined;
 	userDbId:  number | null;
-
+	userName: string;
 	rotation: number; // Orientation angle (in radians)
 
 	characterName: CharacterName;

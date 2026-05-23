@@ -73,6 +73,7 @@ export class GameSession {
 	addPlayer(
 		player: MatchMakingData,
 		socketId: string | undefined,
+		userName: string
 	): ExitStatus {
 
 		if (socketId && player.userDbId){
@@ -86,7 +87,7 @@ export class GameSession {
 		}
 
 		let exitStatus: ExitStatus;
-		exitStatus = this.currentState.addPlayer(player, socketId);
+		exitStatus = this.currentState.addPlayer(player, socketId, userName);
 		if (exitStatus.status === SuccessCode.OK){
 			if (player.userDbId)
 				this.addedPlayersIds.push(player.userDbId)

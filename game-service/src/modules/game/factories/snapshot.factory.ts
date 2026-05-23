@@ -13,8 +13,7 @@ export class Snapshot{
 			type: 'player',
 			characterName: player.characterName,
 
-			//invece di entity id non e' meglio mandare userDbId?
-			id: player.entityId,
+			id: player.userName,
 			teamId: player.teamId,
 			//x: fixedX,
 			//z: fixedZ,
