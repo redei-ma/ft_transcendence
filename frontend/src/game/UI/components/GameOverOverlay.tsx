@@ -8,20 +8,21 @@ interface GameOverOverlayProps {
   players: PlayerSnapshot[];
   onPlayAgain: () => void;
   onQuit: () => void;
+  myUserId?: string;
 }
 
-export function GameOverOverlay({ gameOver, players, onPlayAgain, onQuit }: GameOverOverlayProps) {
+export function GameOverOverlay({ gameOver, players, onPlayAgain, onQuit, myUserId }: GameOverOverlayProps) {
   const winnerIds = new Set(gameOver.winnerData?.winnerPlayersIds || []);
 
-  const winners = players.filter(p => winnerIds.has(p.id));
-  const losers = players.filter(p => !winnerIds.has(p.id));
+  const winners = players.filter(p => winnerIds.has(p.id) || winnerIds.has((p as any).userName));
+  const losers = players.filter(p => !winnerIds.has(p.id) && !winnerIds.has((p as any).userName));
 
-  const winnerName = winners.length > 0 ? winners[0].characterName : 'unknown';
-  const displayName = winnerName.charAt(0).toUpperCase() + winnerName.slice(1);
   const isDraw = winners.length === 0;
+  const amIWinner = winners.some(p => String(p.id) === String(myUserId) || (p as any).userName === myUserId);
 
-  const color = winnerName === CharacterName.ZEUS ? theme.colors.zeus : theme.colors.ade;
-  const glow = winnerName === CharacterName.ZEUS ? theme.colors.zeusGlow : theme.colors.adeGlow;
+  const resultText = isDraw ? 'Draw' : (amIWinner ? 'You Win' : 'You Lose');
+  const resultColor = isDraw ? theme.colors.textSecondary : (amIWinner ? theme.colors.zeus : theme.colors.dead);
+  const resultGlow = isDraw ? 'none' : `0 0 20px ${resultColor}, 0 0 60px ${resultColor}`;
 
   return (
     <div style={{
@@ -39,14 +40,14 @@ export function GameOverOverlay({ gameOver, players, onPlayAgain, onQuit }: Game
         fontSize: '72px',
         fontFamily: theme.fonts.heading,
         fontWeight: 'bold',
-        color: isDraw ? theme.colors.textSecondary : color,
-        textShadow: isDraw ? 'none' : `0 0 20px ${color}, 0 0 60px ${color}`,
+        color: resultColor,
+        textShadow: resultGlow,
         letterSpacing: '6px',
         textTransform: 'uppercase',
         margin: 0,
         animation: 'scaleIn 0.6s ease-out',
       }}>
-        {isDraw ? 'Draw' : `${displayName} Wins`}
+        {resultText}
       </h1>
 
       <p style={{
@@ -62,10 +63,10 @@ export function GameOverOverlay({ gameOver, players, onPlayAgain, onQuit }: Game
 
       <div style={{
         backgroundColor: theme.colors.bgDark,
-        border: `1px solid ${isDraw ? theme.colors.border : color}`,
+        border: `1px solid ${resultColor}`,
         borderRadius: '12px',
         minWidth: '420px',
-        boxShadow: isDraw ? 'none' : `0 0 30px ${glow}`,
+        boxShadow: resultGlow,
         overflow: 'hidden',
       }}>
         <div style={{
@@ -92,15 +93,6 @@ export function GameOverOverlay({ gameOver, players, onPlayAgain, onQuit }: Game
           <PlayerRow key={p.id} player={p} isWinner={false} />
         ))}
       </div>
-
-      <p style={{
-        marginTop: theme.spacing.xl,
-        color: theme.colors.textMuted,
-        fontSize: '12px',
-        fontFamily: theme.fonts.mono,
-      }}>
-        [ victory artwork placeholder ]
-      </p>
       
       {/* Actions */}
       <div style={{
@@ -185,7 +177,8 @@ function HeaderCell({ children, center }: { children: string; center?: boolean }
 
 function PlayerRow({ player, isWinner }: { player: PlayerSnapshot; isWinner: boolean }) {
   const playerColor = player.characterName === CharacterName.ZEUS ? theme.colors.zeus : theme.colors.ade;
-  const displayName = player.characterName.charAt(0).toUpperCase() + player.characterName.slice(1);
+  const displayName = (player as any).userName || player.characterName;
+  const charLabel = player.characterName.charAt(0).toUpperCase() + player.characterName.slice(1);
 
   return (
     <div style={{
@@ -209,7 +202,7 @@ function PlayerRow({ player, isWinner }: { player: PlayerSnapshot; isWinner: boo
           fontSize: '11px',
           fontFamily: theme.fonts.mono,
         }}>
-          (Team {player.teamId})
+          ({charLabel})
         </span>
       </div>
 

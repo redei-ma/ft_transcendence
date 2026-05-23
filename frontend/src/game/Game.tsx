@@ -21,6 +21,7 @@ interface GameProps {
   onPlayAgain: () => void;
   onQuit: () => void;
   myUserId: string;
+  myUsername: string;
 }
 
 function CameraController({ mapWidth, mapDepth }: { mapWidth: number; mapDepth: number }) {
@@ -83,7 +84,7 @@ function ResizeWarning({ onLeave }: { onLeave: () => void }) {
   );
 }
 
-export default function Game({ selectedCharacter, selectedMode, onPlayAgain, onQuit, myUserId }: GameProps) {
+export default function Game({ selectedCharacter, selectedMode, onPlayAgain, onQuit, myUserId, myUsername }: GameProps) {
   const inputManagerRef = useRef<InputManager | null>(null);
   
   // Il Socket Hook ora non restituisce nulla, aggiorna solo lo store
@@ -309,15 +310,15 @@ export default function Game({ selectedCharacter, selectedMode, onPlayAgain, onQ
       )}
 
       {gameOver && (
-        <GameOverOverlayWrapper gameOver={gameOver} onPlayAgain={handlePlayAgainInternal} onQuit={handleQuitInternal} />
+        <GameOverOverlayWrapper gameOver={gameOver} onPlayAgain={handlePlayAgainInternal} onQuit={handleQuitInternal} myUserId={myUsername} />
       )}
     </div>
   );
 }
 
-function GameOverOverlayWrapper({ gameOver, onPlayAgain, onQuit }: {
-  gameOver: any; onPlayAgain: () => void; onQuit: () => void;
+function GameOverOverlayWrapper({ gameOver, onPlayAgain, onQuit, myUserId }: {
+  gameOver: any; onPlayAgain: () => void; onQuit: () => void; myUserId: string;
 }) {
   const players = useGameStore((state) => state.gameState?.players) || [];
-  return <GameOverOverlay gameOver={gameOver} players={players} onPlayAgain={onPlayAgain} onQuit={onQuit} />;
+  return <GameOverOverlay gameOver={gameOver} players={players} onPlayAgain={onPlayAgain} onQuit={onQuit} myUserId={myUserId} />;
 }

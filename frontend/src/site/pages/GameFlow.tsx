@@ -254,6 +254,7 @@ export default function GameFlow({ userId, username, onExit, sessionId: initialS
           onPlayAgain={handlePlayAgain}
           onQuit={handleQuit}
           myUserId={String(userId)}
+          myUsername={username}
         />
       )}
     </div>

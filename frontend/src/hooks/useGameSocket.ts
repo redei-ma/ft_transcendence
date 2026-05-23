@@ -36,6 +36,7 @@ export function useGameSocket() {
     };
 
     const handleGameOver = (payload: any) => {
+      console.log("[GameOver] payload:", JSON.stringify(payload));
       log.game('Game over:', payload);
       const winnerData = payload.entities || payload.winnerData || undefined;
       useGameStore.getState().setGameOver({ winnerData, time: payload.time || 0 });
