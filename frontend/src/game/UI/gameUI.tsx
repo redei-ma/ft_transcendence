@@ -2,6 +2,7 @@ import { MapEmitPayload } from '../../types/game.types';
 import { theme } from '../../configs/theme';
 import { CharacterName } from '@transcendence/types';
 import { useGameStore } from '../../storage/gameStore';
+import { GameConfig } from '@transcendence/types';
 
 interface GameUIProps {
   character: string;
@@ -21,12 +22,13 @@ export default function GameUI({
   
   const players = useGameStore((state) => state.gameState?.players) || [];
   const playersCount = players.length;
+  const gameTime = useGameStore((state) => state.gameState?.time) || 0;
+  const remaining = Math.max(0, GameConfig.SERVER.MAX_GAME_DURATION - gameTime);
+  const mins = Math.floor(remaining / 60);
+  const secs = Math.floor(remaining % 60);
 
   return (
     <>
-      {/* ⚡ RIMOSSO: Il blocco <HPBar /> che era qui è stato cancellato 
-          perché ora vive in PlayerEntity.tsx sopra i modelli 3D! */}
-
       {players.map((player) => {
         if (!player.isDead) return null;
         return (
@@ -58,6 +60,18 @@ export default function GameUI({
           </div>
         );
       })}
+
+      {/* Timer */}
+      <div style={{
+        position: 'absolute', top: 20, left: '50%', transform: 'translateX(-50%)',
+        fontFamily: theme.fonts.heading, fontSize: '28px', fontWeight: 700,
+        color: remaining <= 10 ? theme.colors.dead : theme.colors.gold,
+        letterSpacing: '4px', zIndex: 100,
+        textShadow: '0 0 10px rgba(0,0,0,0.8)',
+        transition: 'color 0.3s',
+      }}>
+        {mins}:{secs.toString().padStart(2, '0')}
+      </div>
 
       {/* ⚡ SPOSTATO: Messo a right: 20 per non accavallarsi con i testi a sinistra */}
       <div style={{
