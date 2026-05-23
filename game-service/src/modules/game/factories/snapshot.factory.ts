@@ -13,7 +13,8 @@ export class Snapshot{
 			type: 'player',
 			characterName: player.characterName,
 
-			id: player.userName,
+			id: player.entityId,
+			userName: player.userName,
 			teamId: player.teamId,
 			//x: fixedX,
 			//z: fixedZ,

@@ -111,7 +111,7 @@ export class Engine{
 		private pushEndGameEvent(winnerTeamId: number, reason: EndReason): void{
 			let winnerPlayersIds: string[] = [];
 			if (winnerTeamId !== -1)
-				winnerPlayersIds = this.getPlayersByTeam(winnerTeamId).map(p => p.entityId);
+				winnerPlayersIds = this.getPlayersByTeam(winnerTeamId).map(p => p.userName);
 			this.endEvents.push({
 				eventName: 'game-over',
 				winnerData: { winnerTeam: winnerTeamId, winnerPlayersIds: winnerPlayersIds },

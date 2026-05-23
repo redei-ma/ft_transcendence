@@ -12,6 +12,7 @@ export interface PlayerSnapshot {
 	type: string;
 	characterName: CharacterName;
 	id: string;
+	userName: string;
 	teamId: number;
 
 	//potremmo sostituire l oggetto vettore con due numeri, per alleggerire il pacchetto
