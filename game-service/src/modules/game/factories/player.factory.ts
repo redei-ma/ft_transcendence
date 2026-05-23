@@ -53,7 +53,7 @@ export function getNewPlayer(
 			teamId: teamId,
 			characterName: characterName,
 			userDbId: userDbId,
-			userName: finalUserName,
+			userName: userName === "BOT" ? userName : finalUserName,
 			socketId: socketId,
 			entityId: entityId,
 			position: new Vector(world.spawnPoints[spawnIndex].x, world.spawnPoints[spawnIndex].z),
