@@ -16,6 +16,10 @@ export class Snapshot{
 			id: player.entityId,
 			userName: player.userName,
 			teamId: player.teamId,
+			
+			meleeAttackCooldown: player.meleeAttackCooldown,
+			spellAttackCooldown: player.spellAttackCooldown,
+			defenceAttackCooldown: player.defenceAttackCooldown,
 			//x: fixedX,
 			//z: fixedZ,
 			position: {x: fixedX, z: fixedZ} as Vector,

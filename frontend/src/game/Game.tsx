@@ -12,6 +12,7 @@ import { EffectComposer, Bloom } from '@react-three/postprocessing';
 import mapTexture from '../assets/mapTexture1.png';
 import { useGameStore } from '../storage/gameStore';
 import { useThree } from '@react-three/fiber';
+import {PillarModel, WallModel } from './entities/mapModels';import { updateEmail } from '../site/services/apiService';
 
 interface GameProps {
   selectedCharacter: CharacterName;
@@ -197,7 +198,7 @@ export default function Game({ selectedCharacter, selectedMode, onPlayAgain, onQ
           <PlayerEntity key={id} playerId={id} />
         ))}
 
-        {world?.map?.pillars?.map((p: any, i: number) => {
+        {/* {world?.map?.pillars?.map((p: any, i: number) => {
         const px = p.position?.x ?? p.x ?? 0;
         const pz = p.position?.z ?? p.z ?? 0;
         return (
@@ -229,8 +230,24 @@ export default function Game({ selectedCharacter, selectedMode, onPlayAgain, onQ
               <meshStandardMaterial color="#1a1a2e" transparent opacity={0.6} />
             </mesh>
           );
+        })} */}
+
+        {world?.map?.pillars?.map((p: any, i: number) => {
+          const px = p.position?.x ?? p.x ?? 0;
+          const pz = p.position?.z ?? p.z ?? 0;
+          return (
+            <PillarModel key={`pillar-${i}`} position={[px, 0, pz]} radius={p.radius} />
+          );
         })}
-        
+
+        {world?.map?.walls?.map((w: any, i: number) => {
+          const wx = w.position?.x ?? 0;
+          const wz = w.position?.z ?? 0;
+          return (
+            <WallModel key={`wall-${i}`} position={[wx + w.width/2, 0, wz + w.depth/2]} width={w.width} depth={w.depth} />
+          );
+        })}
+
         {bulletIds.map((id) => (
           <BulletEntity key={id} bulletId={id} />
         ))}
