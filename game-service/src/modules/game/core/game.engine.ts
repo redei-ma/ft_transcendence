@@ -109,18 +109,22 @@ export class Engine{
 		}
 
 		private pushEndGameEvent(winnerTeamId: number, reason: EndReason): void{
-			let finalData: FinalData;
+			let finalData: FinalData = {
+				winnerTeam: winnerTeamId,
+				winnerPlayerStats: [],
+				loserPlayerStats: []
+			};
 
 			for (const player of this.players.values()){
 				if (player.teamId === winnerTeamId){
-					finalData.winnerPlayersStats.push({
+					finalData.winnerPlayerStats.push({
 						userName: player.userName,
 						kill: player.kill,
 						dead: player.deads
 					});
 				}
 				else{
-					finalData.loserPlayersStats.push({
+					finalData.loserPlayerStats.push({
 						userName: player.userName,
 						kill: player.kill,
 						dead: player.deads

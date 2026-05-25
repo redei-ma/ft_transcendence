@@ -80,7 +80,7 @@ export class CombatSystem{
 		const dx = attackCenter.x - victim.position.x;
 		const dz = attackCenter.z - victim.position.z;
 		const distanceSquared = dx * dx + dz * dz;
-		const effectiveAttackRadius = attacker.radius + GameConfig.COMBAT.ATTACK_RANGE_OFFSET;
+		const effectiveAttackRadius = attacker.radius + GameConfig.COMBAT.MELEE_HITBOX_RADIUS;
 		const radiiSum = victim.radius + effectiveAttackRadius;
 		if (distanceSquared <= radiiSum * radiiSum)
 			return (true);
@@ -93,8 +93,6 @@ export class CombatSystem{
 		victim.deads++;
 		attacker.kill++;
 
-		// da aggiungere, l achievement non vale in local o bot
-		// if (isLocal() || isBot()) return ;
 		if (attacker.hp <= (GameConfig.PLAYER.DEFAULT_HP * GameConfig.ACHIEVEMENT.CLUTCHMASTER)){
 			attacker.clutchMasterUnlook = true;
 		}

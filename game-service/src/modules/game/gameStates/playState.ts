@@ -61,7 +61,7 @@ export class PlayState implements IGameState {
 				this.session.server
 					.to(this.session.gameId)
 					.emit(GameEvents.GAME_OVER, {
-						entities: event.winnerData,
+						entities: event.finalData,
 						time: remaningTime,
 					});
 				this.session.transitionTo(new EndState(this.session));
