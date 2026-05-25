@@ -68,14 +68,14 @@ export function PlayerModel({ characterName, playerId }: PlayerModelProps) {
     const player = useGameStore.getState().gameState?.players.find(p => p.id === playerId);
     if (!player || !groupRef.current) return;
 
-    // --- GESTIONE OPACITÀ (Tuo codice originale) ---
+    // --- GESTIONE OPACITÀ ---
     const targetOpacity = player.isDead ? 0.2 : 1;
     if (Math.abs(currentOpacity.current - targetOpacity) > 0.01) {
       currentOpacity.current += (targetOpacity - currentOpacity.current) * 0.1;
       applyOpacity(clonedScene, currentOpacity.current);
     }
 
-    // --- GESTIONE ANIMAZIONI (Nuovo!) ---
+    // --- GESTIONE ANIMAZIONI ---
     // Otteniamo la posizione globale reale del modello nel mondo 3D
     const currentWorldPos = new THREE.Vector3();
     groupRef.current.getWorldPosition(currentWorldPos);

@@ -169,26 +169,26 @@ export default function Game({ selectedCharacter, selectedMode, onPlayAgain, onQ
     };
   }, [initialSize]);
 
-  // if (!world) {
-  //   return (
-  //     <div style={{
-  //       position: 'fixed', inset: 0,
-  //       display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-  //       background: theme.colors.bgDark,
-  //     }}>
-  //       <p style={{
-  //         fontFamily: theme.fonts.heading,
-  //         fontSize: '20px',
-  //         letterSpacing: '4px',
-  //         textTransform: 'uppercase',
-  //         color: theme.colors.textSecondary,
-  //         margin: 0,
-  //       }}>
-  //         Entering the Arena...
-  //       </p>
-  //     </div>
-  //   );
-  // }
+  if (!world) {
+    return (
+      <div style={{
+        position: 'fixed', inset: 0,
+        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+        background: theme.colors.bgDark,
+      }}>
+        <p style={{
+          fontFamily: theme.fonts.heading,
+          fontSize: '20px',
+          letterSpacing: '4px',
+          textTransform: 'uppercase',
+          color: theme.colors.textSecondary,
+          margin: 0,
+        }}>
+          Entering the Arena...
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div style={{
