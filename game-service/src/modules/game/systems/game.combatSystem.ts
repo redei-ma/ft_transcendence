@@ -24,6 +24,8 @@ export class CombatSystem{
 	}
 
 	public handleSpellAttack(attacker: Player, gameWorld: World): void{
+		const attackType: AttackType | undefined = attacker.attackType;
+		if (!attackType) return;
 
 		this.calculateBulletDisplacement(attacker);
 		this.calculateAttackImpactPoint(attacker, AttackType.SPELL_ATTACK);
@@ -78,7 +80,8 @@ export class CombatSystem{
 		const dx = attackCenter.x - victim.position.x;
 		const dz = attackCenter.z - victim.position.z;
 		const distanceSquared = dx * dx + dz * dz;
-		const radiiSum = victim.radius + attacker.meleeAttackHitboxRadius;
+		const effectiveAttackRadius = attacker.radius + GameConfig.COMBAT.ATTACK_RANGE_OFFSET;
+		const radiiSum = victim.radius + effectiveAttackRadius;
 		if (distanceSquared <= radiiSum * radiiSum)
 			return (true);
 		return (false);

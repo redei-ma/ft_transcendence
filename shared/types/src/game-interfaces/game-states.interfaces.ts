@@ -2,9 +2,16 @@ import { Vector } from "../game.vector";
 import { AttackType, BulletHit, CharacterName } from "../enums";
 import { Player } from "./dynamic-entitys.interfaces";
 
-export interface WinnerData {
+export interface FinalPlayerStats{
+	userName: string,
+	kill: number,
+	dead: number
+}
+
+export interface FinalData {
 	winnerTeam: number | null;
-	winnerPlayersIds: string[];
+	winnerPlayersStats: FinalPlayerStats[];
+	loserPlayerStats: FinalPlayerStats[];
 }
 
 export interface PlayerSnapshot {

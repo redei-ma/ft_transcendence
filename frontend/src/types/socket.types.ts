@@ -1,4 +1,4 @@
-import { PlayerSnapshot, BulletSnapshot, WinnerData, CharacterName } from '@transcendence/types';
+import { PlayerSnapshot, BulletSnapshot, FinalData, CharacterName } from '@transcendence/types';
 
 export interface JoinLobbyPayload {
   characterName: CharacterName;
@@ -18,7 +18,7 @@ export interface GameStatePayload {
   bullets: BulletSnapshot[];
 }
 
-export interface GameOverPayload {
-  winnerData: WinnerData;
+export interface FinalData {
+  finalData: FinalData;
   time: number;
 }

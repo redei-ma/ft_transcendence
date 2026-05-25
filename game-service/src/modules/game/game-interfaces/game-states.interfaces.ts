@@ -1,4 +1,4 @@
-import { PlayerSnapshot, BulletSnapshot, WinnerData } from '@transcendence/types'
+import { PlayerSnapshot, BulletSnapshot, FinalData } from '@transcendence/types'
 
 export interface GameStateEvents {
 	eventName: "game-state";
@@ -11,6 +11,6 @@ export interface GameStateEvents {
 
 export interface GameEndEvents {
 	eventName: "game-over";
-	winnerData: WinnerData | undefined;
+	finalData: FinalData | undefined;
 	time: number;
 }

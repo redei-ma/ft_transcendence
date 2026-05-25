@@ -25,7 +25,7 @@ export const GameConfig = {
     DEFAULT_PLAYERS_FOR_TEAM: 2, // Per gestire 2vs2, 2vs2vs2, ecc.
   },
   COMBAT: {
-    MELEE_HITBOX_RADIUS: 3.0,
+    MELEE_HITBOX_RADIUS: 7.34,
     SPELL_HITBOX_RADIUS: 1.5,
     ATTACK_RANGE_OFFSET: 1.5,
     SPELL_ATTACK_RANGE_OFFSET: 1.0,
