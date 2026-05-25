@@ -73,6 +73,9 @@ export function PlayerModel({ characterName, playerId }: PlayerModelProps) {
     if (Math.abs(currentOpacity.current - targetOpacity) > 0.01) {
       currentOpacity.current += (targetOpacity - currentOpacity.current) * 0.1;
       applyOpacity(clonedScene, currentOpacity.current);
+    } else if (currentOpacity.current !== targetOpacity) {
+      currentOpacity.current = targetOpacity;
+      applyOpacity(clonedScene, targetOpacity)
     }
 
     // --- GESTIONE ANIMAZIONI ---
