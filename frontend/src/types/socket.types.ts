@@ -18,7 +18,7 @@ export interface GameStatePayload {
   bullets: BulletSnapshot[];
 }
 
-export interface FinalData {
+export interface GameOverPayload {
   finalData: FinalData;
   time: number;
 }

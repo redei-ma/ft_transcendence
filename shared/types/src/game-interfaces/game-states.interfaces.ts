@@ -11,7 +11,7 @@ export interface FinalPlayerStats{
 export interface FinalData {
 	winnerTeam: number | null;
 	winnerPlayersStats: FinalPlayerStats[];
-	loserPlayerStats: FinalPlayerStats[];
+	loserPlayersStats: FinalPlayerStats[];
 }
 
 export interface PlayerSnapshot {
