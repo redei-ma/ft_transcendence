@@ -18,7 +18,7 @@ export class PlayState implements IGameState {
 
 	name = "PLAY";
 
-	private fullEvents: (GameStateEvents | GameEndEvents)[];
+	private fullEvents: (GameStateEvents | GameEndEvents)[] = [];
 	private NETWORK_TICK_RATE: number = (1 / 30);
 	private networkAccumulator = 0.0;
 	constructor(private readonly session: GameSession) {}
