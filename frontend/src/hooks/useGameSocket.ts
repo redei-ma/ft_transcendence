@@ -38,8 +38,8 @@ export function useGameSocket() {
     const handleGameOver = (payload: any) => {
       console.log("[GameOver] payload:", JSON.stringify(payload));
       log.game('Game over:', payload);
-      const winnerData = payload.entities || payload.winnerData || undefined;
-      useGameStore.getState().setGameOver({ winnerData, time: payload.time || 0 });
+      const finalData = payload.entities || payload.finalData || undefined;
+      useGameStore.getState().setGameOver({ finalData, time: payload.time || 0 });
     };
 
     socket.on('connect', handleConnect);

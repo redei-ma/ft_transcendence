@@ -10,8 +10,8 @@ export interface FinalPlayerStats{
 
 export interface FinalData {
 	winnerTeam: number | null;
-	winnerPlayersStats: FinalPlayerStats[];
-	loserPlayersStats: FinalPlayerStats[];
+	winnerPlayerStats: FinalPlayerStats[];
+	loserPlayerStats: FinalPlayerStats[];
 }
 
 export interface PlayerSnapshot {
