@@ -29,7 +29,6 @@ export class InputManager {
   private setupListeners(): void {
     window.addEventListener('keydown', this.handleKeyDown);
     window.addEventListener('keyup', this.handleKeyUp);
-    window.addEventListener('mousedown', this.handleMouseDown);
     this.intervalId = setInterval(() => this.sendInputs(), 50);
   }
 
@@ -77,33 +76,26 @@ export class InputManager {
     }
   };
 
-  private handleMouseDown = (e: MouseEvent): void => {
-    if (!this.isAiming || e.button !== 0) return;
+  private playerPosition: { x: number; z: number } | null = null;
+
+  public setPlayerPosition(x: number, z: number): void {
+    this.playerPosition = { x, z };
+  }
+
+  public fireSpellAt(worldX: number, worldZ: number): void {
+    console.log("[InputManager] fireSpellAt:", worldX, worldZ, "playerPos:", this.playerPosition);
+    if (!this.playerPosition) return;
     
-    // Calcola direzione dal centro dello schermo verso il click
-    const centerX = window.innerWidth / 2;
-    const centerY = window.innerHeight / 2;
-    const dx = e.clientX - centerX;
-    const dy = e.clientY - centerY;
-    
-    const length = Math.sqrt(dx * dx + dy * dy);
-    if (length < 5) return; // Click troppo vicino al centro
-    
-    // Normalizza a -1/1
-    const screenX = dx / length;
-    const screenY = dy / length;
-    
-    // Ruota per vista isometrica (45°)
-    const angle = Math.PI / 4;
-    const mapX = screenX * Math.cos(angle) + screenY * Math.sin(angle);
-    const mapZ = -screenX * Math.sin(angle) + screenY * Math.cos(angle);
-    
-    // Clamp a -1/1
+    const dx = worldX - this.playerPosition.x;
+    const dz = worldZ - this.playerPosition.z;
+    const length = Math.sqrt(dx * dx + dz * dz);
+    if (length < 0.1) return;
+
     this.pendingSpellDirection = {
-      x: Math.max(-1, Math.min(1, mapX)),
-      z: Math.max(-1, Math.min(1, mapZ)),
+      x: Math.max(-1, Math.min(1, dx / length)),
+      z: Math.max(-1, Math.min(1, dz / length)),
     };
-  };
+  }
 
   private sendInputs(): void {
     if (!socketService.isConnected()) return;
@@ -183,7 +175,6 @@ export class InputManager {
     log.input('InputManager disposing');
     window.removeEventListener('keydown', this.handleKeyDown);
     window.removeEventListener('keyup', this.handleKeyUp);
-    window.removeEventListener('mousedown', this.handleMouseDown);
     if (this.intervalId !== null) {
       clearInterval(this.intervalId);
       this.intervalId = null;
