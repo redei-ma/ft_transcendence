@@ -9,7 +9,6 @@ export interface WinnerData {
 
 export interface PlayerSnapshot {
 	//potremmo togliere dati superflui per alleggerire il pacchetto
-	type: string;
 	characterName: CharacterName;
 	id: string;
 	userName: string;
@@ -21,6 +20,8 @@ export interface PlayerSnapshot {
 	position: Vector;
 	rotation: number;
 	hp: number;
+	kill: number;
+	dead: number;
 	attackType: AttackType | undefined;
 	respawnTimer: number;
 	disconnectionTimer: number;

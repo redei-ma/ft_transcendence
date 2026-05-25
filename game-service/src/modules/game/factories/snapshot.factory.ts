@@ -25,6 +25,8 @@ export class Snapshot{
 			position: {x: fixedX, z: fixedZ} as Vector,
 			rotation: fixedRotation,
 			hp: player.hp,
+			kill: player.kill,
+			dead: player.dead,
 			isAttacking: player.isAttacking,
 			isDefending: player.isDefending,
 			attackType: player.attackType,
