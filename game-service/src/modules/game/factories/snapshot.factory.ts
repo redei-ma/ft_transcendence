@@ -26,7 +26,7 @@ export class Snapshot{
 			rotation: fixedRotation,
 			hp: player.hp,
 			kill: player.kill,
-			dead: player.dead,
+			dead: player.deads,
 			isAttacking: player.isAttacking,
 			isDefending: player.isDefending,
 			attackType: player.attackType,
