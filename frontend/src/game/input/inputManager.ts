@@ -14,10 +14,11 @@ export class InputManager {
   private keys: Set<string> = new Set();
   private intervalId: ReturnType<typeof setInterval> | null = null;
   private isLocalGame: boolean;
-
-  // Traccia quali attacchi sono già stati inviati
-  // Viene resettato al keyup — così l'attacco parte UNA volta per pressione
   private attackSent: { [playerIndex: number]: boolean } = { 0: false, 1: false };
+  
+  // Mouse aim
+  private isAiming: boolean = false;
+  private pendingSpellDirection: { x: number; z: number } | null = null;
 
   constructor(isLocalGame: boolean = true) {
     this.isLocalGame = isLocalGame;
@@ -28,20 +29,18 @@ export class InputManager {
   private setupListeners(): void {
     window.addEventListener('keydown', this.handleKeyDown);
     window.addEventListener('keyup', this.handleKeyUp);
+    window.addEventListener('mousedown', this.handleMouseDown);
     this.intervalId = setInterval(() => this.sendInputs(), 50);
   }
 
-   private handleKeyDown = (e: KeyboardEvent): void => {
-    // Blocca TUTTI i default del browser durante il gioco
+  private handleKeyDown = (e: KeyboardEvent): void => {
     const key = e.key.toLowerCase();
     
-    // Blocca combinazioni con Ctrl (Ctrl+S, Ctrl+W, ecc.)
     if (e.ctrlKey || e.metaKey) {
       e.preventDefault();
       e.stopPropagation();
     }
 
-    // Blocca tasti singoli problematici
     if ([
       'arrowup', 'arrowdown', 'arrowleft', 'arrowright',
       ' ', 'shift', 'control', 'tab', 'alt', 'meta',
@@ -52,35 +51,80 @@ export class InputManager {
     }
 
     this.keys.add(key);
+
+    // Attiva aim mode quando Shift è premuto (solo single player)
+    if (key === 'shift' && !this.isLocalGame) {
+      this.isAiming = true;
+      document.body.style.cursor = 'url(/src/assets/images/AimCursor.png) 16 16, crosshair';
+    }
   };
 
   private handleKeyUp = (e: KeyboardEvent): void => {
     const key = e.key.toLowerCase();
     this.keys.delete(key);
 
-    // Reset attack sent per P0
     if (key === ' ' || key === 'shift' || key === 'c') {
       this.attackSent[0] = false;
     }
-    // Reset attack sent per P1
     if (key === 'p' || key === 'o' || key === 'i') {
       this.attackSent[1] = false;
     }
+
+    // Disattiva aim mode
+    if (key === 'shift') {
+      this.isAiming = false;
+      document.body.style.cursor = '';
+    }
+  };
+
+  private handleMouseDown = (e: MouseEvent): void => {
+    if (!this.isAiming || e.button !== 0) return;
+    
+    // Calcola direzione dal centro dello schermo verso il click
+    const centerX = window.innerWidth / 2;
+    const centerY = window.innerHeight / 2;
+    const dx = e.clientX - centerX;
+    const dy = e.clientY - centerY;
+    
+    const length = Math.sqrt(dx * dx + dy * dy);
+    if (length < 5) return; // Click troppo vicino al centro
+    
+    // Normalizza a -1/1
+    const screenX = dx / length;
+    const screenY = dy / length;
+    
+    // Ruota per vista isometrica (45°)
+    const angle = Math.PI / 4;
+    const mapX = screenX * Math.cos(angle) + screenY * Math.sin(angle);
+    const mapZ = -screenX * Math.sin(angle) + screenY * Math.cos(angle);
+    
+    // Clamp a -1/1
+    this.pendingSpellDirection = {
+      x: Math.max(-1, Math.min(1, mapX)),
+      z: Math.max(-1, Math.min(1, mapZ)),
+    };
   };
 
   private sendInputs(): void {
     if (!socketService.isConnected()) return;
 
-    // P1: WASD + Space(melee) / Shift(spell) / Ctrl(defence)
     const p0 = this.buildPayload(
       'w', 's', 'a', 'd',
       ' ', 'shift', 'c',
       0
     );
+    
+    // Se c'è uno spell pendente dal mouse, sovrascrivilo
+    if (this.pendingSpellDirection) {
+      p0.x = this.pendingSpellDirection.x;
+      p0.z = this.pendingSpellDirection.z;
+      p0.attackType = AttackType.SPELL_ATTACK;
+      this.pendingSpellDirection = null;
+    }
+    
     if (p0.attackType) console.log('P0 attack payload:', JSON.stringify(p0));
     socketService.emit(GameEvents.INPUT, p0);
 
-    // P2: Frecce + 1(melee) / 2(spell) / 3(defence)
     if (this.isLocalGame) {
       const p1 = this.buildPayload(
         'arrowup', 'arrowdown', 'arrowleft', 'arrowright',
@@ -109,7 +153,6 @@ export class InputManager {
     const mapX = screenX * Math.cos(angle) + screenZ * Math.sin(angle);
     const mapZ = -screenX * Math.sin(angle) + screenZ * Math.cos(angle);
 
-    // Attacco: manda SOLO una volta per pressione
     let attackType: AttackType | undefined = undefined;
 
     if (!this.attackSent[playerIndex]) {
@@ -119,10 +162,8 @@ export class InputManager {
       } else if (this.keys.has(meleeKey)) {
         attackType = AttackType.MELEE_ATTACK;
         this.attackSent[playerIndex] = true;
-      } else if (this.keys.has(spellKey)) {
-        attackType = AttackType.SPELL_ATTACK;
-        this.attackSent[playerIndex] = true;
       }
+      // Spell via tastiera rimosso — ora si fa con il mouse click
     }
 
     const payload: GameInputPayload = {
@@ -131,7 +172,6 @@ export class InputManager {
       playerIndex,
     };
 
-    // Manda attackType solo se presente — @IsOptional nel DTO
     if (attackType) {
       payload.attackType = attackType;
     }
@@ -143,9 +183,12 @@ export class InputManager {
     log.input('InputManager disposing');
     window.removeEventListener('keydown', this.handleKeyDown);
     window.removeEventListener('keyup', this.handleKeyUp);
+    window.removeEventListener('mousedown', this.handleMouseDown);
     if (this.intervalId !== null) {
       clearInterval(this.intervalId);
       this.intervalId = null;
     }
+    // Ripristina cursore
+    document.body.style.cursor = '';
   }
 }
