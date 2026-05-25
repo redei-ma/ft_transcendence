@@ -9,7 +9,7 @@ import { BulletEntity } from './entities/BulletEntity';
 import { GameOverOverlay } from './UI/components/GameOverOverlay';
 import GameChat from './UI/components/GameChat';
 import { EffectComposer, Bloom } from '@react-three/postprocessing';
-import mapTexture from '../assets/mapTexture1.png';
+import mapTexture from '../assets/images/mapTexture1.png';
 import { useGameStore } from '../storage/gameStore';
 import { useThree } from '@react-three/fiber';
 import { theme } from '../configs/theme';
@@ -169,26 +169,26 @@ export default function Game({ selectedCharacter, selectedMode, onPlayAgain, onQ
     };
   }, [initialSize]);
 
-  if (!world) {
-    return (
-      <div style={{
-        position: 'fixed', inset: 0,
-        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-        background: theme.colors.bgDark,
-      }}>
-        <p style={{
-          fontFamily: theme.fonts.heading,
-          fontSize: '20px',
-          letterSpacing: '4px',
-          textTransform: 'uppercase',
-          color: theme.colors.textSecondary,
-          margin: 0,
-        }}>
-          Entering the Arena...
-        </p>
-      </div>
-    );
-  }
+  // if (!world) {
+  //   return (
+  //     <div style={{
+  //       position: 'fixed', inset: 0,
+  //       display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+  //       background: theme.colors.bgDark,
+  //     }}>
+  //       <p style={{
+  //         fontFamily: theme.fonts.heading,
+  //         fontSize: '20px',
+  //         letterSpacing: '4px',
+  //         textTransform: 'uppercase',
+  //         color: theme.colors.textSecondary,
+  //         margin: 0,
+  //       }}>
+  //         Entering the Arena...
+  //       </p>
+  //     </div>
+  //   );
+  // }
 
   return (
     <div style={{

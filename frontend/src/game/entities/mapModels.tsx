@@ -1,6 +1,6 @@
 import { useGLTF, Clone } from '@react-three/drei';
-import pillarModelUrl from '../../assets/PillarOpt.glb?url';
-import wallModelUrl from '../../assets/Wall.glb?url';
+import pillarModelUrl from '../../assets/models/PillarOpt.glb?url';
+import wallModelUrl from '../../assets/models/Wall.glb?url';
 
 interface WallModelProps {
   position: [number, number, number];

@@ -3,10 +3,10 @@ import { theme } from '../../configs/theme';
 import { NAVBAR_HEIGHT } from '../components/Navbar';
 import { useState } from 'react';
 import * as Icons from '../components/Icons';
-import zeusDescImg from '../../assets/ZeusDescription.png';
-import adeDescImg from '../../assets/AdeDescription.png';
-import zeusDetailImg from '../../assets/ZeusDetail.png';
-import adeDetailImg from '../../assets/AdeDetail.png';
+import zeusDescImg from '../../assets/images/ZeusDescription.png';
+import adeDescImg from '../../assets/images/AdeDescription.png';
+import zeusDetailImg from '../../assets/images/ZeusDetail.png';
+import adeDetailImg from '../../assets/images/AdeDetail.png';
 
 interface DashboardPageProps {
   onNavigate: (page: string) => void;

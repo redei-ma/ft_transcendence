@@ -5,8 +5,8 @@ import * as THREE from 'three';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 import { CharacterName, GameConfig } from '@transcendence/types';
 import { useGameStore } from '../../storage/gameStore';
-import zeusModelUrl from '../../assets/ZeusWalking.glb?url';
-import hadesModelUrl from '../../assets/HadesWalking.glb?url';
+import zeusModelUrl from '../../assets/models/ZeusWalking.glb?url';
+import hadesModelUrl from '../../assets/models/HadesWalking.glb?url';
 
 const MODEL_PATHS: Record<string, string> = {
   [CharacterName.ZEUS]: zeusModelUrl,

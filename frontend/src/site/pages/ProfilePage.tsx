@@ -7,8 +7,8 @@ import { UserProfile, UserStats, UserSettings, UserAchievementsResponse, MatchHi
 import { theme } from '../../configs/theme';
 import { NAVBAR_HEIGHT } from '../components/Navbar';
 import { CharacterName } from '@transcendence/types';
-import AdeHistory from '../../assets/AdeHistory.png';
-import ZeusHistory from '../../assets/ZeusHistory.png';
+import AdeHistory from '../../assets/images/AdeHistory.png';
+import ZeusHistory from '../../assets/images/ZeusHistory.png';
 
 const statusColor = (s: string) => 
   s === 'ONLINE' ? theme.colors.hpHigh : 
