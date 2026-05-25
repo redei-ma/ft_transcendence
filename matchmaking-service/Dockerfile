@@ -3,18 +3,18 @@ FROM node:20.20.2-alpine3.23 AS build
 
 WORKDIR /app/shared/auth
 COPY shared/auth/ .
-RUN --mount=type=cache,target=/root/.npm npm install && npm run build
+RUN npm install && npm run build
 
 WORKDIR /app/shared
 COPY shared/prisma/schema.prisma ./prisma/schema.prisma
 
 WORKDIR /app/shared/types
 COPY shared/types/ .
-RUN --mount=type=cache,target=/root/.npm npm install && npm run build
+RUN npm install && npm run build
 
 WORKDIR /app/matchmaking-service
 COPY matchmaking-service/package*.json ./
-RUN --mount=type=cache,target=/root/.npm npm install --install-links
+RUN npm install --install-links
 COPY matchmaking-service/. .
 RUN npm run build
 
