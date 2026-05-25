@@ -49,13 +49,14 @@ export class PlayState implements IGameState {
 
 			/* sending the snapshots */
 			if (event.eventName === "game-state") {
-				// if (shouldSendGameState) da mettere quando francesco mettera' interpolazione
-				this.session.server
-					.to(this.session.gameId)
-					.emit(GameEvents.GAME_STATE, {
-						entities: event.data,
-						time: remaningTime,
-					});
+				if (shouldSendGameState){
+					this.session.server
+						.to(this.session.gameId)
+						.emit(GameEvents.GAME_STATE, {
+							entities: event.data,
+							time: remaningTime,
+						});
+				}
 			} else {
 				this.session.server
 					.to(this.session.gameId)
