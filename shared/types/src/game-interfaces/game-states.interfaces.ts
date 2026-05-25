@@ -25,6 +25,10 @@ export interface PlayerSnapshot {
 	respawnTimer: number;
 	disconnectionTimer: number;
 
+	meleeAttackCooldown: number;
+	spellAttackCooldown: number;
+	defenceAttackCooldown: number;
+
 	isDead: boolean;
 	isAttacking: boolean;
 	isDisconnected: boolean;
