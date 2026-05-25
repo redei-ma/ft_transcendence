@@ -10,7 +10,6 @@ export class Snapshot{
 		let snapshot :PlayerSnapshot = {
 			//vedi game-states.interfaces.ts
 			//type e characterName si potrebbero togliere? chiedere a fra
-			type: 'player',
 			characterName: player.characterName,
 
 			id: player.entityId,
