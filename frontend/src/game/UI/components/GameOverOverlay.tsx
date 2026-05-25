@@ -238,7 +238,7 @@ export function GameOverOverlay({ gameOver, players, onPlayAgain, onQuit, myUser
   const winnerStats: any[] = gameOver.finalData?.winnerPlayerStats || [];
   const loserStats: any[] = gameOver.finalData?.loserPlayerStats || [];
 
-  const isDraw = winnerStats.length === 0 && loserStats.length === 0;
+  const isDraw = winnerStats.length === 0;
   const amIWinner = winnerStats.some((s: any) => s.userName === myUserId);
 
   const resultText = isDraw ? 'Draw' : (amIWinner ? 'You Win' : 'You Lose');
