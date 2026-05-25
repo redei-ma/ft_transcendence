@@ -22,8 +22,9 @@ export default function GameUI({
   
   const players = useGameStore((state) => state.gameState?.players) || [];
   const playersCount = players.length;
+  if (players.length > 0) console.log("[HUD] player data:", JSON.stringify(players[0]));
   const gameTime = useGameStore((state) => state.gameState?.time) || 0;
-  const remaining = Math.max(0, GameConfig.SERVER.MAX_GAME_DURATION - gameTime);
+  const remaining = Math.max(0, gameTime);
   const mins = Math.floor(remaining / 60);
   const secs = Math.floor(remaining % 60);
 
