@@ -54,10 +54,11 @@ export function PlayerEntity({ playerId }: PlayerEntityProps) {
         <div style={{ transform: 'scale(0.8)' }}>
           <HPBar 
             characterName={initialPlayer.characterName}
+            displayName={(initialPlayer as any).userName}
             currentHP={currentHP}
             maxHP={maxHP}
             isDisconnected={isDisconnected}
-            isFloating={true} 
+            isFloating={true}
           />
         </div>
       </Html>

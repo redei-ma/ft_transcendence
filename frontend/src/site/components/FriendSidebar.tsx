@@ -2,10 +2,11 @@ import { useState, useEffect, useCallback } from 'react';
 import * as api from '../services/apiService';
 import * as Icons from './Icons';
 import { theme } from '../../configs/theme';
+import { matchmakingSocket } from '../../services/matchmakingSocket';
+import { GameEvents } from '@transcendence/types';
+
 
 const SIDEBAR_WIDTH = 300;
-const FRIENDS_POLL = 30000;
-const INVITES_POLL = 5000;
 
 type Tab = 'friends' | 'requests' | 'add';
 
@@ -22,22 +23,23 @@ const statusLabel = (s: string) =>
   : 'Offline';
 
 interface FriendsSidebarProps {
-  onGameInviteAccepted: (sessionId: string) => void;
+  onGameInviteAccepted: (sessionId: string, inviterId?: number) => void;
+  gameInvites: api.GameInvite[];
+  onAcceptInvite: (invite: api.GameInvite) => void;
+  onDeclineInvite: (invite: api.GameInvite) => void;
 }
 
-export default function FriendsSidebar({ onGameInviteAccepted }: FriendsSidebarProps) {
+export default function FriendsSidebar({ onGameInviteAccepted, gameInvites, onAcceptInvite, onDeclineInvite }: FriendsSidebarProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [tab, setTab] = useState<Tab>('friends');
   const [friends, setFriends] = useState<api.FriendEntry[]>([]);
   const [requests, setRequests] = useState<api.FriendRequestsResponse | null>(null);
   const [loading, setLoading] = useState(true);
-
-  // Game invites
-  const [gameInvites, setGameInvites] = useState<api.GameInvite[]>([]);
+  
   const [now, setNow] = useState(Date.now());
 
   // Add friend
-  const [addId, setAddId] = useState('');
+  const [addUser, setAddUser] = useState('');
   const [addMsg, setAddMsg] = useState('');
   const [addError, setAddError] = useState('');
 
@@ -54,21 +56,19 @@ export default function FriendsSidebar({ onGameInviteAccepted }: FriendsSidebarP
     setLoading(false);
   }, []);
 
-  const fetchInvites = useCallback(async () => {
-    const data = await api.getGameInvites();
-    if (data) setGameInvites(data.invites);
-  }, []);
-
-  // Polling amici (30s) + inviti (5s)
+  // Caricamento iniziale
   useEffect(() => {
     fetchFriends();
-    fetchInvites();
-    const friendsInterval = setInterval(fetchFriends, FRIENDS_POLL);
-    const invitesInterval = setInterval(fetchInvites, INVITES_POLL);
-    return () => { clearInterval(friendsInterval); clearInterval(invitesInterval); };
-  }, [fetchFriends, fetchInvites]);
+  }, [fetchFriends]);
 
-  // 5. Ricezione live degli status amici via SSE (propagato dalla Navbar tramite CustomEvent)
+  // Aggiornamento lista amici via SSE quando cambia una friendship
+  useEffect(() => {
+    const handler = () => fetchFriends();
+    window.addEventListener('friend-list-changed', handler);
+    return () => window.removeEventListener('friend-list-changed', handler);
+  }, [fetchFriends]);
+
+  // Ricezione live degli status amici via SSE (propagato dalla Navbar tramite CustomEvent)
   //    Aggiorna lo status dell'amico nella lista locale senza rifare il fetch.
   useEffect(() => {
     const handler = (e: Event) => {
@@ -79,6 +79,19 @@ export default function FriendsSidebar({ onGameInviteAccepted }: FriendsSidebarP
     };
     window.addEventListener('friend-status-update', handler);
     return () => window.removeEventListener('friend-status-update', handler);
+  }, []);
+
+  // 6. Il nostro invite è stato rifiutato — aggiorna il messaggio e rimuovi l'invite
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const { receiverId } = (e as CustomEvent).detail;
+      setInviteMsg(prev => ({ ...prev, [receiverId]: 'Declined' }));
+      setTimeout(() => {
+        setInviteMsg(prev => { const n = { ...prev }; delete n[receiverId]; return n; });
+      }, 3000);
+    };
+    window.addEventListener('game-invite-declined', handler);
+    return () => window.removeEventListener('game-invite-declined', handler);
   }, []);
 
   // Countdown timer
@@ -100,57 +113,82 @@ export default function FriendsSidebar({ onGameInviteAccepted }: FriendsSidebarP
   });
 
   const handleAddFriend = async () => {
-    setAddMsg('');
-    setAddError('');
-    const id = parseInt(addId.trim(), 10);
-    if (isNaN(id) || id <= 0) return setAddError('Inserisci un ID valido.');
-    const result = await api.sendFriendRequest(id);
-    if (result.ok) {
-      setAddMsg('Richiesta inviata!');
-      setAddId('');
-      fetchFriends();
-    } else {
-      setAddError(result.message || 'Errore');
+  setAddMsg('');
+  setAddError('');
+  const input = addUser.trim();
+  if (!input) return setAddError('Enter a username.');
+
+  const found = await api.searchUserByUsername(input);
+  if (!found) return setAddError(`User "${input}" not found.`);
+
+  const result = await api.sendFriendRequest(found.id);
+  if (result.ok) {
+    setAddMsg('Request sent!');
+    setAddUser('');
+    fetchFriends();
+  } else {
+    setAddError(result.message || 'Error');
+  }
+};
+
+const handleAcceptFriend = async (targetId: number) => {
+  if (await api.respondFriendRequest(targetId, 'ACCEPTED')) fetchFriends();
+};
+const handleRejectFriend = async (targetId: number) => {
+  if (await api.respondFriendRequest(targetId, 'REJECTED')) fetchFriends();
+};
+const handleRemove = async (targetId: number) => {
+  if (await api.removeFriend(targetId)) fetchFriends();
+};
+
+const handleSendInvite = async (targetId: number) => {
+  const socket = matchmakingSocket.connect();
+  if (!socket.connected) {
+    await new Promise<void>(resolve => socket.once('connect', resolve));
+  }
+ 
+  const registerAndSend = () => {
+    const handleDirectSession = (data: any) => {
+      console.log("[Sidebar] DIRECT_SESSION_READY:", data);
+      if (data?.sessionId) {
+        socket.off('direct_session_ready', handleDirectSession);
+        onGameInviteAccepted(data.sessionId);
+      }
+    };
+    socket.on('direct_session_ready', handleDirectSession);
+  };
+
+  if (socket.connected) {
+    registerAndSend();
+  } else {
+    socket.once('connect', registerAndSend);
+  }
+
+  const result = await api.sendGameInvite(targetId);
+  setInviteMsg(prev => ({
+    ...prev,
+    [targetId]: result.ok ? 'Invited!' : (result.message || 'Error'),
+  }));
+  setTimeout(() => {
+    setInviteMsg(prev => { const n = { ...prev }; delete n[targetId]; return n; });
+  }, 3000);
+};
+
+const handleAcceptInvite = (invite: api.GameInvite) => onAcceptInvite(invite);
+const handleRejectInvite = (invite: api.GameInvite) => onDeclineInvite(invite);
+
+  useEffect(() => {
+  const handleDirectSession = (data: any) => {
+    console.log("[Sidebar] DIRECT_SESSION_READY:", data);
+    if (data?.sessionId) {
+      onGameInviteAccepted(data.sessionId);
     }
   };
-
-  const handleAcceptFriend = async (targetId: number) => {
-    if (await api.respondFriendRequest(targetId, 'ACCEPTED')) fetchFriends();
+  matchmakingSocket.on(GameEvents.DIRECT_SESSION_READY, handleDirectSession);
+  return () => {
+    matchmakingSocket.off(GameEvents.DIRECT_SESSION_READY, handleDirectSession);
   };
-
-  const handleRejectFriend = async (targetId: number) => {
-    if (await api.respondFriendRequest(targetId, 'REJECTED')) fetchFriends();
-  };
-
-  const handleRemove = async (targetId: number) => {
-    if (await api.removeFriend(targetId)) fetchFriends();
-  };
-
-  const handleSendInvite = async (targetId: number) => {
-    const result = await api.sendGameInvite(targetId);
-    setInviteMsg(prev => ({
-      ...prev,
-      [targetId]: result.ok ? 'Invited!' : (result.message || 'Error'),
-    }));
-    setTimeout(() => {
-      setInviteMsg(prev => { const n = { ...prev }; delete n[targetId]; return n; });
-    }, 3000);
-  };
-
-  const handleAcceptInvite = async (invite: api.GameInvite) => {
-    const result = await api.respondGameInvite(invite.id, 'ACCEPTED');
-    if (result.ok && result.sessionId) {
-      setGameInvites(prev => prev.filter(i => i.id !== invite.id));
-      onGameInviteAccepted(result.sessionId);
-    }
-  };
-
-  const handleRejectInvite = async (invite: api.GameInvite) => {
-    const result = await api.respondGameInvite(invite.id, 'REJECTED');
-    if (result.ok) {
-      setGameInvites(prev => prev.filter(i => i.id !== invite.id));
-    }
-  };
+}, [onGameInviteAccepted]);
 
   // ─── Tab button ───
   const TabBtn = ({ id, label, badge }: { id: Tab; label: string; badge?: number }) => (
@@ -225,6 +263,7 @@ export default function FriendsSidebar({ onGameInviteAccepted }: FriendsSidebarP
         }}>
           <span style={{ fontFamily: theme.fonts.heading, fontSize: '14px', fontWeight: 700, color: theme.colors.goldBright, letterSpacing: '2px', textTransform: 'uppercase' }}>
             Friends
+            Your ID: 
           </span>
           <span style={{ fontFamily: theme.fonts.mono, fontSize: '11px', color: theme.colors.hpHigh }}>
             {onlineCount} online
@@ -486,9 +525,9 @@ export default function FriendsSidebar({ onGameInviteAccepted }: FriendsSidebarP
               <div style={{ display: 'flex', gap: '6px', marginBottom: '12px' }}>
                 <input
                   type="text"
-                  placeholder="Player ID"
-                  value={addId}
-                  onChange={(e) => setAddId(e.target.value.replace(/\D/g, ''))}
+                  placeholder="Type an Username"
+                  value={addUser}
+                  onChange={(e) => setAddUser(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleAddFriend()}
                   style={{
                     flex: 1, padding: '8px 12px', background: theme.colors.bgDark,
@@ -509,7 +548,7 @@ export default function FriendsSidebar({ onGameInviteAccepted }: FriendsSidebarP
 
               <div style={{ marginTop: '16px', padding: '12px', background: 'rgba(200,170,100,0.04)', borderRadius: '4px', border: `1px solid ${theme.colors.border}` }}>
                 <p style={{ fontSize: '10px', color: theme.colors.textMuted, lineHeight: 1.5 }}>
-                  Your ID is visible on your profile page. Share it with friends so they can add you too!
+                  Your Username is visible on your profile page. Share it with friends so they can add you too!
                 </p>
               </div>
             </div>

@@ -14,7 +14,7 @@ export interface IGameState{
 
 	onInput(entityId: string, input: Vector, attackType: AttackType): void;
 
-	addPlayer(player: MatchMakingData, socketId: string | undefined): ExitStatus;
+	addPlayer(player: MatchMakingData, socketId: string | undefined, userName?: string): ExitStatus;
 
 	reconnectPlayer(userdbId: number, socketId: string): ExitStatus;
 

@@ -3,7 +3,7 @@ import { inputStyle } from '../styles/shared';
 import * as Icons from '../components/Icons';
 import * as authService from '../services/authService';
 import { toErrorString } from '../services/authService';
-import welcomeScene from '../../assets/welcomeScene.png';
+import welcomeScene from '../../assets/images/welcomeScene.png';
 import { theme } from '../../configs/theme';
 
 interface LoginPageProps {

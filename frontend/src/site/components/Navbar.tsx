@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { navLinkBase } from '../styles/shared';
 import { useDropdown, DropdownPanel, DropdownItem } from './Dropdown';
 import * as Icons from './Icons';
@@ -53,56 +53,79 @@ export default function Navbar({ currentPage, onNavigate, onLogout, username, av
   }, []);
 
   // Integrazione SSE (Server-Sent Events) per le Notifiche Live
-useEffect(() => {
+  const sseRetryDelayRef = useRef(3000);
+  const sseRetryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
     if (!username) return;
 
-    // 1. Carica lo storico iniziale
     fetchNotifications();
 
-    // 2. Apri il canale SSE per ricevere eventi in tempo reale
-    const SSE_URL = '/api/users/me/notification/stream'; 
-    
-    const eventSource = new EventSource(SSE_URL, {
-      withCredentials: true // FONDAMENTALE per far leggere i cookie di sessione a NestJS
-    });
+    const SSE_URL = '/api/users/me/notifications/stream';
+    let es: EventSource | null = null;
+    let destroyed = false;
 
-    // 3. Evento "notification" — una nuova notifica (friend request, achievement, ecc.)
-    //    Renato manda: { id, type, message }
-    //    Lo aggiungiamo in cima alla lista e incrementiamo il contatore non-letti.
-    eventSource.addEventListener('notification', (event: any) => {
-      try {
-        const newNotif: NotificationItem = JSON.parse(event.data);
-        setNotifications(prev => [newNotif, ...prev]);
-        if (!newNotif.isRead) {
-          setUnreadCount(prev => prev + 1);
-        }
-      } catch (err) {
-        console.error("[SSE] Errore nel parsing della notifica:", err);
-      }
-    });
+    const connect = () => {
+      if (destroyed) return;
 
-    // 4. Evento "friend_status" — un amico ha cambiato stato (ONLINE, OFFLINE, IN_GAME, IN_QUEUE)
-    //    Renato manda: { userId, status }
-    //    Lo ri-emettiamo come CustomEvent sul window, così la FriendsSidebar
-    //    può ascoltarlo e aggiornare lo status in tempo reale senza polling.
-    eventSource.addEventListener('friend_status', (event: any) => {
-      try {
-        const data = JSON.parse(event.data);
-        window.dispatchEvent(new CustomEvent('friend-status-update', { detail: data }));
-      } catch (err) {
-        console.error("[SSE] Errore nel parsing del friend_status:", err);
-      }
-    });
+      es = new EventSource(SSE_URL, { withCredentials: true });
 
-    eventSource.onerror = () => {
-      console.error("[SSE] Errore di connessione al flusso. Tentativo di riconnessione automatico...");
-      // L'EventSource del browser proverà a riconnettersi automaticamente, 
-      // non c'è bisogno di logiche di reconnect.
+      es.addEventListener('notification', (event: any) => {
+        try {
+          const newNotif: NotificationItem = JSON.parse(event.data);
+          setNotifications(prev => [newNotif, ...prev]);
+          if (!newNotif.isRead) setUnreadCount(prev => prev + 1);
+          if (newNotif.type === 'FRIEND_ACCEPTED' || newNotif.type === 'FRIEND_REQ') {
+            window.dispatchEvent(new CustomEvent('friend-list-changed'));
+          }
+        } catch {}
+      });
+
+      es.addEventListener('friend_status', (event: any) => {
+        try {
+          const data = JSON.parse(event.data);
+          window.dispatchEvent(new CustomEvent('friend-status-update', { detail: data }));
+        } catch {}
+      });
+
+      es.addEventListener('game_invite', (event: any) => {
+        try {
+          const data = JSON.parse(event.data);
+          window.dispatchEvent(new CustomEvent('game-invite-received', { detail: data }));
+        } catch {}
+      });
+
+      es.addEventListener('friend_removed', () => {
+        window.dispatchEvent(new CustomEvent('friend-list-changed'));
+      });
+
+      es.addEventListener('game_invite_declined', (event: any) => {
+        try {
+          const data = JSON.parse(event.data);
+          window.dispatchEvent(new CustomEvent('game-invite-declined', { detail: data }));
+        } catch {}
+      });
+
+      es.onerror = () => {
+        es?.close();
+        es = null;
+        if (destroyed) return;
+        const delay = sseRetryDelayRef.current;
+        sseRetryDelayRef.current = Math.min(delay * 2, 30000);
+        sseRetryTimerRef.current = setTimeout(connect, delay);
+      };
+
+      es.onopen = () => {
+        sseRetryDelayRef.current = 3000;
+      };
     };
 
-    // Cleanup: chiudiamo il "tubo" se cambiamo utente o il componente viene smontato
+    connect();
+
     return () => {
-      eventSource.close();
+      destroyed = true;
+      if (sseRetryTimerRef.current) clearTimeout(sseRetryTimerRef.current);
+      es?.close();
     };
   }, [username]);
 
@@ -324,7 +347,6 @@ useEffect(() => {
                     <DropdownItem icon={Icons.BarChart} label="Statistics" onClick={() => scrollTo('profile', 'profile-stats')} />
                     <DropdownItem icon={Icons.BarChart} label="Match History" onClick={() => scrollTo('profile', 'profile-matches')} />
                     <DropdownItem icon={Icons.Trophy} label="Achievements" onClick={() => scrollTo('profile', 'profile-achievements')} />
-                    <DropdownItem icon={Icons.Users} label="Friends" onClick={() => scrollTo('profile', 'profile-friends')} />
                     <div style={{ height: '1px', background: theme.colors.border, margin: '4px 12px' }} />
                     <DropdownItem icon={Icons.Shield} label="Security & 2FA" onClick={() => scrollTo('profile', 'profile-security')} />
                   </DropdownPanel>

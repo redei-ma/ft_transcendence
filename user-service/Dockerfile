@@ -1,5 +1,5 @@
 # --- Stage 1: Build ---
-FROM node:20-alpine AS build
+FROM node:20.20.2-alpine3.23 AS build
 
 WORKDIR /app
 RUN apk add --no-cache openssl
@@ -27,7 +27,7 @@ COPY user-service/. .
 RUN npx prisma generate --schema=../shared/prisma/schema.prisma && npm run build
 
 # --- Stage 2: Production ---
-FROM node:20-alpine AS production
+FROM node:20.20.2-alpine3.23 AS production
 
 RUN addgroup -g 1001 -S appgroup && adduser -u 1001 -S appuser -G appgroup
 
@@ -36,7 +36,7 @@ WORKDIR /app/user-service
 COPY --from=build /app/user-service/node_modules ./node_modules
 COPY --from=build /app/user-service/package*.json ./
 COPY --from=build /app/user-service/dist ./dist
-COPY --from=build /app/prisma ./shared/prisma
+COPY --from=build /app/shared/prisma ./shared/prisma
 
 USER appuser
 EXPOSE 3001

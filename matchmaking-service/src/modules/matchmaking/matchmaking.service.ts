@@ -2,8 +2,6 @@ import { Injectable, Logger } from "@nestjs/common";
 import { JoinQueueDto } from "./dto/join-queue.dto";
 import Redis from "ioredis";
 import { InjectRedis } from "@nestjs-modules/ioredis";
-import { HttpService } from "@nestjs/axios";
-import { firstValueFrom } from "rxjs";
 import { EventEmitter2 } from "@nestjs/event-emitter";
 import { Cron } from "@nestjs/schedule";
 import { CharacterName, MatchType, MatchMode, GameEvents, UserStatus } from "@transcendence/types";
@@ -64,7 +62,6 @@ export class MatchmakingService {
 	constructor(
 		@InjectRedis() private readonly redis: Redis,
 		private readonly eventEmitter: EventEmitter2,
-		private readonly httpService: HttpService,
 	) {}
 
 	/* ---------------------------------------------------------------------------------------------------------------- */
@@ -89,21 +86,22 @@ export class MatchmakingService {
 				return;
 			}
 			let dbStatus: UserStatus;
-			
+
 			if (statusData.state === INGAME) {
 				dbStatus = UserStatus.IN_GAME;
 			} else if (statusData.state === INQUEUE) {
 				dbStatus = UserStatus.IN_QUEUE;
 			} else {
-				dbStatus = UserStatus.ONLINE; 
+				dbStatus = UserStatus.ONLINE;
 			}
 
-			const url = `http://user-service:3001/internal/users/${userId}/status`; 
-			
-			await firstValueFrom(
-				this.httpService.patch(url, { status: dbStatus })
-			);
-			
+			const url = `http://user-service:3001/internal/users/${userId}/status`;
+
+			await fetch(url, {
+				method: 'PATCH',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ status: dbStatus }),
+			});
 		} catch (error) {
 			this.logger.error(
 				`[Sync DB] Impossibile aggiornare lo stato DB per l'utente ${userId}: ${error.message}`
@@ -118,18 +116,13 @@ export class MatchmakingService {
 	): Promise<number | null> {
 		try {
 			const url = `http://user-service:3001/internal/users/${userId}/elo`;
-			const response = await firstValueFrom(
-				this.httpService.get<{ eloCurrent: number }>(url),
-			);
-			this.logger.log(
-				`ELO fetched for player ${userId}: ${response.data.eloCurrent}`,
-			);
-			return response.data.eloCurrent;
+			const response = await fetch(url);
+			if (!response.ok) throw new Error(`HTTP ${response.status}`);
+			const data = await response.json() as { eloCurrent: number };
+			this.logger.log(`ELO fetched for player ${userId}: ${data.eloCurrent}`);
+			return data.eloCurrent;
 		} catch (error) {
-			this.logger.error(
-				`Error fetching ELO for player ${userId}:`,
-				error.response?.data,
-			);
+			this.logger.error(`Error fetching ELO for player ${userId}:`, error.message);
 			return null;
 		}
 	}
@@ -391,19 +384,15 @@ export class MatchmakingService {
 		};
 
 		try {
-			this.logger.log(
-				`[ExecuteMatch] Invio payload: ${JSON.stringify(payload)}`,
-			);
-			await firstValueFrom(
-				this.httpService.post(
-					"http://game-service:3000/matchmaking/create-match",
-					payload,
-				),
-			);
+			this.logger.log(`[ExecuteMatch] Invio payload: ${JSON.stringify(payload)}`);
+			const res = await fetch("http://game-service:3000/matchmaking/create-match", {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify(payload),
+			});
+			if (!res.ok) throw new Error(`HTTP ${res.status}`);
 		} catch (error) {
-			this.logger.error(
-				`[ExecuteMatch] Errore Game Server: ${error.message}`,
-			);
+			this.logger.error(`[ExecuteMatch] Errore Game Server: ${error.message}`);
 		}
 
 		// Notifica Socket
@@ -657,15 +646,19 @@ export class MatchmakingService {
 		};
 
 		try {
-			const url = "http://game-service:3000/matchmaking/create-match";
-			await firstValueFrom(this.httpService.post(url, payload));
+			const res = await fetch("http://game-service:3000/matchmaking/create-match", {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify(payload),
+			});
+			if (!res.ok) throw new Error(`HTTP ${res.status}`);
 			this.logger.log(
 				`[LocalMatch] Sessione locale inviata al Game Server per ${userId}`,
 			);
 		} catch (error) {
 			this.logger.error(
 				"Errore invio match locale al Game Server:",
-				error.response?.data || error.message,
+				error.message,
 			);
 		}
 
@@ -789,15 +782,19 @@ export class MatchmakingService {
 		};
 
 		try {
-			const url = "http://game-service:3000/matchmaking/create-match";
-			await firstValueFrom(this.httpService.post(url, payload));
+			const res = await fetch("http://game-service:3000/matchmaking/create-match", {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify(payload),
+			});
+			if (!res.ok) throw new Error(`HTTP ${res.status}`);
 			this.logger.log(
 				`[AiMatch] Match vs AI inviato al Game Server per ${userId}`,
 			);
 		} catch (error) {
 			this.logger.error(
 				"Errore invio match AI al Game Server:",
-				error.response?.data || error.message,
+				error.message,
 			);
 		}
 
@@ -824,27 +821,61 @@ export class MatchmakingService {
 
 	/* ---------------------------------------------------------------------------------------------------------------- */
 
-	/**
-	 * Crea una sessione temporanea su Redis per due giocatori che hanno accettato un invito.
-	 * Nessun personaggio è ancora stato scelto.
-	 */
-	async createDirectSession(player1Id: number, player2Id: number) {
-		const sessionId = `direct_${Math.random().toString(36).substring(7)}`;
+	async createDirectSession(inviterId: number, acceptorId: number) {
+		const [rawP1, rawP2] = await Promise.all([
+			this.redis.get(`status:${inviterId}`),
+			this.redis.get(`status:${acceptorId}`)
+		]);
 
+		const statusP1 = rawP1 ? JSON.parse(rawP1) : null;
+		const statusP2 = rawP2 ? JSON.parse(rawP2) : null;
+
+		if (!statusP1 || !statusP2 || !statusP1.socketId || !statusP2.socketId) {
+			this.logger.warn(`[DirectSession] Impossibile creare: uno dei player è offline.`);
+			return { 
+				status: "ERROR_PLAYERS_OFFLINE", 
+				message: "Uno dei giocatori si è disconnesso." 
+			};
+		}
+
+		if (statusP1.state === INGAME || statusP2.state === INGAME) {
+			return { status: "ERROR_PLAYERS_BUSY", message: "Qualcuno è già in partita." };
+		}
+
+		const sessionId = `direct_${Math.random().toString(36).substring(7)}`;
 		const sessionData = {
 			sessionId,
-			p1: { id: player1Id, ready: false, characterName: null, socketId: null },
-			p2: { id: player2Id, ready: false, characterName: null, socketId: null },
+			p1: { id: inviterId, ready: false, characterName: null, socketId: null },
+			p2: { id: acceptorId, ready: false, characterName: null, socketId: null },
 			createdAt: Date.now()
 		};
-
 		await this.redis.set(`direct_session:${sessionId}`, JSON.stringify(sessionData), "EX", 300);
 
-		this.logger.log(
-			`[DirectSession] Creata pre-lobby ${sessionId} per p1:${player1Id} e p2:${player2Id}`
-		);
+		await this.setUserStatus(inviterId, {
+			state: "character_selection",
+			sessionId: sessionId,
+			socketId: statusP1.socketId
+		}, 300);
 
-		return { sessionId };
+		await this.setUserStatus(acceptorId, {
+			state: "character_selection",
+			sessionId: sessionId,
+			socketId: statusP2.socketId
+		}, 300);
+
+		this.eventEmitter.emit(GameEvents.INTERNAL_DIRECT_SESSION_READY, {
+			socketId: statusP1.socketId,
+			data: { status: "SESSION_CREATED", sessionId: sessionId }
+		});
+
+		this.eventEmitter.emit(GameEvents.INTERNAL_DIRECT_SESSION_READY, {
+			socketId: statusP2.socketId,
+			data: { status: "SESSION_CREATED", sessionId: sessionId }
+		});
+
+		this.logger.log(`[DirectSession] Notifiche inviate a ${inviterId} e ${acceptorId} per la sessione ${sessionId}`);
+
+		return { sessionId, status: "SUCCESS" };
 	}
 
 	/* ---------------------------------------------------------------------------------------------------------------- */
@@ -950,12 +981,33 @@ export class MatchmakingService {
 	/* ---------------------------------------------------------------------------------------------------------------- */
 
 	async leaveQueue(userId: number, player: JoinQueueDto) {
+		this.logger.log(`[LeaveQueue] Richiesta di uscita dalla coda per utente: ${userId}`);
 
+		const USER_STATUS_KEY = `status:${userId}`;
+		const currentStatusRaw = await this.redis.get(USER_STATUS_KEY);
+
+		if (currentStatusRaw) {
+			const statusData = JSON.parse(currentStatusRaw);
+
+			// BLOCCO DI SICUREZZA: Evita di rompere un match appena creato
+			if (statusData.state === INGAME) {
+				this.logger.warn(
+					`[LeaveQueue] L'utente ${userId} ha provato ad uscire dalla coda, ma la partita è già iniziata (INGAME).`
+				);
+				return { 
+					status: "ERROR_ALREADY_IN_GAME", 
+					message: "Partita già trovata, impossibile annullare la ricerca." 
+				};
+			}
+		}
+
+		// Procediamo con la rimozione sicura dalle code pubbliche
 		const resultRanked = await this.redis.zrem("matchmaking_queue", String(userId));
 		const resultUnranked = await this.redis.zrem("matchmaking_queue_unranked", String(userId));
 
 		const wasInQueue = resultRanked === 1 || resultUnranked === 1;
 
+		// Riportiamo l'utente in LOBBY in modo pulito
 		await this.setUserStatus(userId, {
 			state: LOBBY,
 			characterName: player.characterName,
@@ -964,12 +1016,84 @@ export class MatchmakingService {
 		}, 3600);
 
 		if (wasInQueue) {
-			this.logger.log(`[Logic] Utente ${userId} rimosso dalla coda (Ranked o Unranked) e riportato in lobby.`);
+			this.logger.log(`[LeaveQueue] Utente ${userId} rimosso in sicurezza dalla coda (Ranked o Unranked) e riportato in lobby.`);
 			return { status: "LEFT_QUEUE_SUCCESS", userId };
 		} else {
-			this.logger.log(`[Logic] Tentativo di rimozione: ${userId} non era in nessuna coda, ma lo stato è stato resettato a lobby.`);
+			this.logger.log(`[LeaveQueue] Tentativo di rimozione: ${userId} non era in nessuna coda, ma lo stato è stato resettato a lobby.`);
 			return { status: "NOT_IN_QUEUE", userId };
 		}
+	}
+
+	/* ---------------------------------------------------------------------------------------------------------------- */
+
+	async handleUserDisconnect(userId: number) {
+		const USER_STATUS_KEY = `status:${userId}`;
+		const currentStatusRaw = await this.redis.get(USER_STATUS_KEY);
+		
+		if (currentStatusRaw) {
+			const statusData = JSON.parse(currentStatusRaw);
+			
+			// Se si è disconnesso proprio mentre era nella pre-lobby
+			if ((statusData.state === "pre_match" || statusData.state === "character_selection") && statusData.sessionId) {
+				this.logger.log(`[Disconnect] L'utente ${userId} si è disconnesso durante il pre_match. Annullamento sessione ${statusData.sessionId}.`);
+				
+				await this.cancelDirectSession(
+					userId, 
+					statusData.sessionId, 
+					"L'avversario si è disconnesso durante la selezione del personaggio."
+				);
+			}
+			// (Opzionale) Qui in futuro potresti aggiungere logiche per toglierlo anche dalla coda pubblica
+		}
+	}
+
+	/* ---------------------------------------------------------------------------------------------------------------- */
+
+	/**
+	 * Annulla esplicitamente una sessione diretta (es. l'utente preme "Back").
+	 */
+	async cancelDirectSession(userId: number, sessionId: string, reason: string = "L'avversario ha annullato la partita.") {
+		const sessionKey = `direct_session:${sessionId}`;
+		const sessionRaw = await this.redis.get(sessionKey);
+
+		if (!sessionRaw) {
+			// La sessione potrebbe essere già stata annullata o scaduta
+			await this.setPlayerToLobby(userId);
+			return { status: "ERROR_SESSION_NOT_FOUND", message: "Sessione già annullata o inesistente." };
+		}
+
+		const session = JSON.parse(sessionRaw);
+		
+		// Identifica l'avversario
+		const opponentId = session.p1.id === userId ? session.p2.id : session.p1.id;
+
+		// Elimina la sessione pendente da Redis
+		await this.redis.del(sessionKey);
+
+		// Riporta l'utente che ha annullato in LOBBY
+		await this.setPlayerToLobby(userId);
+
+		// Avvisa e riporta in LOBBY l'avversario (se è ancora online)
+		const opponentStatusRaw = await this.redis.get(`status:${opponentId}`);
+		if (opponentStatusRaw) {
+			const opponentData = JSON.parse(opponentStatusRaw);
+			
+			if (opponentData.socketId) {
+				// Utilizziamo l'evento esistente per recapitare il messaggio di annullamento
+				this.eventEmitter.emit(GameEvents.INTERNAL_MATCH_FOUND, {
+					socketId: opponentData.socketId,
+					data: { status: "MATCH_CANCELLED", message: reason }
+				});
+			}
+			
+			await this.setUserStatus(opponentId, { 
+				state: LOBBY, 
+				socketId: opponentData.socketId 
+			}, 3600);
+		}
+
+		this.logger.log(`[DirectSession] Sessione ${sessionId} annullata da ${userId}`);
+		return { status: "SESSION_CANCELLED" };
 	}
 
 	/* ---------------------------------------------------------------------------------------------------------------- */
@@ -980,14 +1104,22 @@ export class MatchmakingService {
 	 * per forzare il frontend a ricollegarsi alla schermata di gioco.
 	 */
 	async checkAndReconnectUser(userId: number, socketId: string) {
-		const USER_STATUS_KEY = `status:${userId}`;
-		const currentStatusRaw = await this.redis.get(USER_STATUS_KEY);
-		
-		if (!currentStatusRaw) return null;
+    	const USER_STATUS_KEY = `status:${userId}`;
+    	const currentStatusRaw = await this.redis.get(USER_STATUS_KEY);
+    
+    	// Salva sempre il socketId, anche se l'utente è in lobby o senza stato
+    	if (!currentStatusRaw) {
+    	    await this.setUserStatus(String(userId), { state: LOBBY, socketId }, 3600);
+    	    return null;
+    	}
 
-		const statusData = JSON.parse(currentStatusRaw);
-
-		if (statusData && statusData.state === "pre_match" && statusData.sessionId) {
+    	const statusData = JSON.parse(currentStatusRaw);
+    	// Se è in lobby, aggiorna il socketId
+    	if (statusData.state === LOBBY) {
+    	    await this.setUserStatus(String(userId), { ...statusData, socketId }, 3600);
+    	    return null;
+    	}
+		if (statusData && (statusData.state === "pre_match" || statusData.state === "character_selection") && statusData.sessionId) {
 			this.logger.log(`[Auto-Reconnect] Utente ${userId} disconnesso/ricaricato in pre_match. Annullamento sessione ${statusData.sessionId}.`);
 
 			const sessionRaw = await this.redis.get(`direct_session:${statusData.sessionId}`);
@@ -1132,5 +1264,27 @@ export class MatchmakingService {
 
 		this.logger.log(`[Cleanup] Match ${matchId} rimosso con successo.`);
 		return { status: "MATCH_FINALIZED", matchId };
+	}
+
+	async setPlayerToLobby(userId: number) {
+		const USER_STATUS_KEY = `status:${userId}`;
+		const dataRaw = await this.redis.get(USER_STATUS_KEY);
+
+		if (dataRaw) {
+			const userData = JSON.parse(dataRaw);
+
+			await this.setUserStatus(String(userId), {
+				state: LOBBY,
+				userDbId: Number(userId),
+				characterName: userData.characterName,
+				isAiPlayer: false,
+				rank: userData.rank,
+				socketId: userData.socketId || undefined,
+			}, 3600);
+
+			this.logger.log(
+				`[Abbandono] Utente ${userId} sbloccato dal match e riportato in lobby.`,
+			);
+		}
 	}
 }

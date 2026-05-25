@@ -1,32 +1,17 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import * as api from '../services/apiService';
 import * as Icons from './Icons';
 import { theme } from '../../configs/theme';
 
-const POLL_INTERVAL = 5000;
-
 interface GameInviteToastProps {
-  onAccepted: (sessionId: string) => void;
+  invites: api.GameInvite[];
+  onAccept: (invite: api.GameInvite) => void;
+  onDecline: (invite: api.GameInvite) => void;
 }
 
-export default function GameInviteToast({ onAccepted }: GameInviteToastProps) {
-  const [invites, setInvites] = useState<api.GameInvite[]>([]);
+export default function GameInviteToast({ invites, onAccept, onDecline }: GameInviteToastProps) {
   const [dismissed, setDismissed] = useState<Set<number>>(new Set());
   const [now, setNow] = useState(Date.now());
-
-  // Polling inviti pendenti
-  const fetchInvites = useCallback(async () => {
-    const data = await api.getGameInvites();
-    if (data) {
-      setInvites(data.invites);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchInvites();
-    const interval = setInterval(fetchInvites, POLL_INTERVAL);
-    return () => clearInterval(interval);
-  }, [fetchInvites]);
 
   // Countdown timer — aggiorna ogni secondo
   useEffect(() => {
@@ -34,22 +19,8 @@ export default function GameInviteToast({ onAccepted }: GameInviteToastProps) {
     return () => clearInterval(timer);
   }, []);
 
-  const handleAccept = async (invite: api.GameInvite) => {
-    const result = await api.respondGameInvite(invite.id, 'ACCEPTED');
-    if (result.ok && result.sessionId) {
-      // Rimuovi l'invito dalla lista
-      setInvites(prev => prev.filter(i => i.id !== invite.id));
-      // Notifica App.tsx per avviare il gioco
-      onAccepted(result.sessionId);
-    }
-  };
-
-  const handleReject = async (invite: api.GameInvite) => {
-    const result = await api.respondGameInvite(invite.id, 'REJECTED');
-    if (result.ok) {
-      setInvites(prev => prev.filter(i => i.id !== invite.id));
-    }
-  };
+  const handleAccept = (invite: api.GameInvite) => onAccept(invite);
+  const handleReject = (invite: api.GameInvite) => onDecline(invite);
 
   const handleDismiss = (inviteId: number) => {
     setDismissed(prev => new Set(prev).add(inviteId));

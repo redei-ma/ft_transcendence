@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { MatchMode } from '@transcendence/types';
 import { theme } from '../configs/theme';
-import Cerberus from '../assets/Cerberus.png';
+import Cerberus from '../assets/images/Cerberus.png';
 
 interface ModeSelectSceneProps {
   onModeSelect: (mode: MatchMode) => void;

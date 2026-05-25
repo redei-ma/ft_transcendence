@@ -2,7 +2,7 @@ import { Snapshot } from "../factories";
 import { GameRules } from "./game.rules";
 import { World } from "./game.world";
 import { PlayerManager, BulletManager } from "../managers";
-import { GameConfig, MatchMode, MatchType, EndReason,  Player, PlayerSnapshot, BulletSnapshot } from "@transcendence/types";
+import { GameConfig, MatchMode, MatchType, EndReason,  Player, PlayerSnapshot, BulletSnapshot, FinalData } from "@transcendence/types";
 import { MatchResult } from "src/types/match-result.interface";
 import { GameEndEvents, GameStateEvents } from "../game-interfaces";
 
@@ -109,12 +109,31 @@ export class Engine{
 		}
 
 		private pushEndGameEvent(winnerTeamId: number, reason: EndReason): void{
-			let winnerPlayersIds: string[] = [];
-			if (winnerTeamId !== -1)
-				winnerPlayersIds = this.getPlayersByTeam(winnerTeamId).map(p => p.entityId);
+			let finalData: FinalData = {
+				winnerTeam: winnerTeamId,
+				winnerPlayerStats: [],
+				loserPlayerStats: []
+			};
+
+			for (const player of this.players.values()){
+				if (player.teamId === winnerTeamId){
+					finalData.winnerPlayerStats.push({
+						userName: player.userName,
+						kill: player.kill,
+						dead: player.deads
+					});
+				}
+				else{
+					finalData.loserPlayerStats.push({
+						userName: player.userName,
+						kill: player.kill,
+						dead: player.deads
+					});
+				}
+			}
 			this.endEvents.push({
 				eventName: 'game-over',
-				winnerData: { winnerTeam: winnerTeamId, winnerPlayersIds: winnerPlayersIds },
+				finalData: finalData,
 				time: this.gameTimer,
 			});
 

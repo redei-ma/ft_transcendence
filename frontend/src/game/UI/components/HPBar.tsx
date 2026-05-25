@@ -4,6 +4,7 @@ import { CharacterName } from '@transcendence/types';
 
 interface HPBarProps {
   characterName: string;
+  displayName?: string;
   maxHP: number;
   currentHP: number;
   isDisconnected?: boolean;
@@ -14,6 +15,7 @@ interface HPBarProps {
 
 export default function HPBar({
   characterName,
+  displayName,
   maxHP,
   currentHP,
   isDisconnected = false,
@@ -46,7 +48,7 @@ export default function HPBar({
         color: theme.colors.goldDim, fontSize: '13px', fontWeight: 'bold',
         marginBottom: '4px', textAlign: 'center', textShadow: `0 0 8px ${theme.colors.goldDim}`,
       }}>
-        {characterName}
+        {displayName || characterName}
       </div>
 
       {/* Bar container */}

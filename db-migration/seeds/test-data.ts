@@ -29,7 +29,7 @@ export async function seedTestData(prisma: PrismaClient): Promise<void> {
 			username: "alice",
 			isEmailVerified: true,
 			avatarUrl: "https://api.dicebear.com/9.x/shapes/svg?seed=alice",
-			status: UserStatus.ONLINE,
+			status: UserStatus.OFFLINE,
 			accounts: {
 				create: [
 					{
@@ -41,21 +41,21 @@ export async function seedTestData(prisma: PrismaClient): Promise<void> {
 			},
 			stats: {
 				create: {
-					eloCurrent: 1250,
-					eloPeak: 1300,
-					totalWins: 15,
-					totalLosses: 8,
-					totalDraws: 2,
-					currentWinStreak: 3,
-					bestWinStreak: 5,
+					eloCurrent: 1000,
+					eloPeak: 1000,
+					totalWins: 1,
+					totalLosses: 1,
+					totalDraws: 1,
+					currentWinStreak: 0,
+					bestWinStreak: 1,
 					currentLoseStreak: 0,
-					totalKills: 52,
-					totalDeaths: 31,
+					totalKills: 1,
+					totalDeaths: 1,
 				},
 			},
 		},
 	});
-	console.log("  ✓ alice (LOCAL + GOOGLE, verified, online)");
+	console.log("  ✓ alice    (LOCAL + GOOGLE, verified, offline)");
 
 	const bob = await prisma.user.upsert({
 		where: { email: "bob@test.com" },
@@ -68,27 +68,27 @@ export async function seedTestData(prisma: PrismaClient): Promise<void> {
 			status: UserStatus.OFFLINE,
 			accounts: {
 				create: {
-					provider: Provider.GOOGLE,
-					oauthId: "google_bob_456",
+					provider: Provider.LOCAL,
+					passwordHash: TEST_PASSWORD_HASH,
 				},
 			},
 			stats: {
 				create: {
 					eloCurrent: 980,
-					eloPeak: 1050,
-					totalWins: 5,
-					totalLosses: 10,
-					totalDraws: 1,
+					eloPeak: 1000,
+					totalWins: 1,
+					totalLosses: 2,
+					totalDraws: 0,
 					currentWinStreak: 0,
-					bestWinStreak: 2,
-					currentLoseStreak: 3,
-					totalKills: 18,
-					totalDeaths: 35,
+					bestWinStreak: 1,
+					currentLoseStreak: 1,
+					totalKills: 1,
+					totalDeaths: 1,
 				},
 			},
 		},
 	});
-	console.log("  ✓ bob (GOOGLE only, verified, offline)");
+	console.log("  ✓ bob      (LOCAL, verified, offline)");
 
 	const charlie = await prisma.user.upsert({
 		where: { email: "charlie@test.com" },
@@ -110,7 +110,7 @@ export async function seedTestData(prisma: PrismaClient): Promise<void> {
 			},
 		},
 	});
-	console.log("  ✓ charlie (LOCAL only, verified, no matches)");
+	console.log("  ✓ charlie  (LOCAL, verified, offline)");
 
 	const diana = await prisma.user.upsert({
 		where: { email: "diana@test.com" },
@@ -120,7 +120,7 @@ export async function seedTestData(prisma: PrismaClient): Promise<void> {
 			username: "diana",
 			isEmailVerified: true,
 			avatarUrl: "https://api.dicebear.com/9.x/shapes/svg?seed=diana",
-			status: UserStatus.IN_GAME,
+			status: UserStatus.OFFLINE,
 			accounts: {
 				create: [
 					{
@@ -132,21 +132,21 @@ export async function seedTestData(prisma: PrismaClient): Promise<void> {
 			},
 			stats: {
 				create: {
-					eloCurrent: 1100,
-					eloPeak: 1150,
-					totalWins: 10,
-					totalLosses: 10,
-					totalDraws: 5,
-					currentWinStreak: 0,
-					bestWinStreak: 3,
+					eloCurrent: 1020,
+					eloPeak: 1020,
+					totalWins: 1,
+					totalLosses: 0,
+					totalDraws: 1,
+					currentWinStreak: 1,
+					bestWinStreak: 1,
 					currentLoseStreak: 0,
-					totalKills: 40,
-					totalDeaths: 40,
+					totalKills: 0,
+					totalDeaths: 0,
 				},
 			},
 		},
 	});
-	console.log("  ✓ diana (LOCAL + GOOGLE, verified, in_game)");
+	console.log("  ✓ diana    (LOCAL + GOOGLE, verified, offline)");
 
 	const eve = await prisma.user.upsert({
 		where: { email: "eve@test.com" },
@@ -156,7 +156,7 @@ export async function seedTestData(prisma: PrismaClient): Promise<void> {
 			username: "eve",
 			isEmailVerified: true,
 			avatarUrl: "https://api.dicebear.com/9.x/shapes/svg?seed=eve",
-			status: UserStatus.ONLINE,
+			status: UserStatus.OFFLINE,
 			accounts: {
 				create: {
 					provider: Provider.LOCAL,
@@ -164,22 +164,11 @@ export async function seedTestData(prisma: PrismaClient): Promise<void> {
 				},
 			},
 			stats: {
-				create: {
-					eloCurrent: 1100,
-					eloPeak: 1100,
-					totalWins: 8,
-					totalLosses: 8,
-					totalDraws: 0,
-					currentWinStreak: 1,
-					bestWinStreak: 3,
-					currentLoseStreak: 0,
-					totalKills: 30,
-					totalDeaths: 28,
-				},
+				create: {},
 			},
 		},
 	});
-	console.log("  ✓ eve (LOCAL only, verified, online, elo 1100)");
+	console.log("  ✓ eve      (LOCAL, verified, offline)");
 
 	const frank = await prisma.user.upsert({
 		where: { email: "frank@test.com" },
@@ -197,81 +186,64 @@ export async function seedTestData(prisma: PrismaClient): Promise<void> {
 				},
 			},
 			stats: {
-				create: {
-					eloCurrent: 1100,
-					eloPeak: 1150,
-					totalWins: 7,
-					totalLosses: 9,
-					totalDraws: 1,
-					currentWinStreak: 0,
-					bestWinStreak: 4,
-					currentLoseStreak: 2,
-					totalKills: 27,
-					totalDeaths: 32,
-				},
+				create: {},
 			},
 		},
 	});
-	console.log("  ✓ frank (LOCAL only, verified, offline, elo 1100)");
+	console.log("  ✓ frank    (LOCAL, verified, offline)");
 
 	// ─── Character Stats ──────────────────────────────────────────
 
 	await prisma.characterStats.createMany({
 		skipDuplicates: true,
 		data: [
+			// alice: match1(ZEUS WIN, k1/d0), match2(ADE LOSS, k0/d1), match3(ZEUS DRAW, k0/d0)
 			{
 				userId: alice.id,
 				characterName: CharacterName.ZEUS,
-				wins: 10,
-				losses: 3,
+				wins: 1,
+				losses: 0,
 				draws: 1,
-				kills: 35,
-				deaths: 15,
+				kills: 1,
+				deaths: 0,
 			},
 			{
 				userId: alice.id,
 				characterName: CharacterName.ADE,
-				wins: 5,
-				losses: 5,
-				draws: 1,
-				kills: 17,
-				deaths: 16,
+				wins: 0,
+				losses: 1,
+				draws: 0,
+				kills: 0,
+				deaths: 1,
 			},
+			// bob: match1(ADE LOSS, k0/d1), match2(ADE WIN, k1/d0), match6(ADE LOSS resign, k0/d0)
 			{
 				userId: bob.id,
 				characterName: CharacterName.ADE,
-				wins: 5,
-				losses: 10,
-				draws: 1,
-				kills: 18,
-				deaths: 35,
+				wins: 1,
+				losses: 2,
+				draws: 0,
+				kills: 1,
+				deaths: 1,
 			},
+			// diana: match3(ZEUS DRAW, k0/d0), match6(ZEUS WIN resign, k0/d0)
 			{
 				userId: diana.id,
 				characterName: CharacterName.ZEUS,
-				wins: 6,
-				losses: 4,
-				draws: 3,
-				kills: 22,
-				deaths: 18,
-			},
-			{
-				userId: diana.id,
-				characterName: CharacterName.ADE,
-				wins: 4,
-				losses: 6,
-				draws: 2,
-				kills: 18,
-				deaths: 22,
+				wins: 1,
+				losses: 0,
+				draws: 1,
+				kills: 0,
+				deaths: 0,
 			},
 		],
 	});
-	console.log("  ✓ Character stats");
+	console.log("  ✓ Character stats (alice: ZEUS/ADE, bob: ADE, diana: ZEUS)");
 
 	// ─── Matches ──────────────────────────────────────────────────
 
-	// Ranked match: alice beats bob
-	const match1 = await prisma.match.create({
+	// Ranked match: alice beats bob (killout)
+	await prisma.match.create({
 		data: {
 			mode: MatchMode.RANKED,
 			type: MatchType.FFA,
@@ -284,28 +256,28 @@ export async function seedTestData(prisma: PrismaClient): Promise<void> {
 						userId: alice.id,
 						teamId: 1,
 						characterName: CharacterName.ZEUS,
-						kills: 3,
-						deaths: 1,
+						kills: 1,
+						deaths: 0,
 					},
 					{
 						userId: bob.id,
 						teamId: 2,
 						characterName: CharacterName.ADE,
-						kills: 1,
-						deaths: 3,
+						kills: 0,
+						deaths: 1,
 					},
 				],
 			},
 		},
 	});
 
-	// Ranked match: bob beats alice
-	const match2 = await prisma.match.create({
+	// Ranked match: bob beats alice (killout)
+	await prisma.match.create({
 		data: {
 			mode: MatchMode.RANKED,
 			type: MatchType.FFA,
 			durationSeconds: 175,
-			endReason: EndReason.TIMEOUT,
+			endReason: EndReason.KILLOUT,
 			winningTeamId: 2,
 			participants: {
 				create: [
@@ -313,27 +285,27 @@ export async function seedTestData(prisma: PrismaClient): Promise<void> {
 						userId: alice.id,
 						teamId: 1,
 						characterName: CharacterName.ADE,
-						kills: 2,
-						deaths: 2,
+						kills: 0,
+						deaths: 1,
 					},
 					{
 						userId: bob.id,
 						teamId: 2,
 						characterName: CharacterName.ADE,
-						kills: 2,
-						deaths: 1,
+						kills: 1,
+						deaths: 0,
 					},
 				],
 			},
 		},
 	});
 
-	// Draw match: alice vs diana
-	const match3 = await prisma.match.create({
+	// Ranked draw: alice vs diana (timeout, nobody died)
+	await prisma.match.create({
 		data: {
 			mode: MatchMode.RANKED,
 			type: MatchType.FFA,
-			durationSeconds: 180,
+			durationSeconds: 300,
 			endReason: EndReason.TIMEOUT,
 			winningTeamId: null,
 			participants: {
@@ -342,81 +314,23 @@ export async function seedTestData(prisma: PrismaClient): Promise<void> {
 						userId: alice.id,
 						teamId: 1,
 						characterName: CharacterName.ZEUS,
-						kills: 2,
-						deaths: 2,
-					},
-					{
-						userId: diana.id,
-						teamId: 2,
-						characterName: CharacterName.ZEUS,
-						kills: 2,
-						deaths: 2,
-					},
-				],
-			},
-		},
-	});
-
-	// AI match: alice vs bot
-	const match4 = await prisma.match.create({
-		data: {
-			mode: MatchMode.AI,
-			type: MatchType.FFA,
-			durationSeconds: 90,
-			endReason: EndReason.KILLOUT,
-			winningTeamId: 1,
-			participants: {
-				create: [
-					{
-						userId: alice.id,
-						teamId: 1,
-						characterName: CharacterName.ZEUS,
-						kills: 3,
+						kills: 0,
 						deaths: 0,
 					},
 					{
-						userId: null, // Bot
-						teamId: 2,
-						characterName: CharacterName.ADE,
-						kills: 0,
-						deaths: 3,
-					},
-				],
-			},
-		},
-	});
-
-	// Local match: diana vs guest
-	const match5 = await prisma.match.create({
-		data: {
-			mode: MatchMode.LOCAL,
-			type: MatchType.FFA,
-			durationSeconds: 150,
-			endReason: EndReason.KILLOUT,
-			winningTeamId: 1,
-			participants: {
-				create: [
-					{
 						userId: diana.id,
-						teamId: 1,
-						characterName: CharacterName.ADE,
-						kills: 3,
-						deaths: 2,
-					},
-					{
-						userId: null, // Guest
 						teamId: 2,
 						characterName: CharacterName.ZEUS,
-						kills: 2,
-						deaths: 3,
+						kills: 0,
+						deaths: 0,
 					},
 				],
 			},
 		},
 	});
 
-	// Resignation match: bob resigns against diana
-	const match6 = await prisma.match.create({
+	// Unranked: bob resigns against diana (nobody died)
+	await prisma.match.create({
 		data: {
 			mode: MatchMode.UNRANKED,
 			type: MatchType.FFA,
@@ -430,13 +344,13 @@ export async function seedTestData(prisma: PrismaClient): Promise<void> {
 						teamId: 1,
 						characterName: CharacterName.ADE,
 						kills: 0,
-						deaths: 2,
+						deaths: 0,
 					},
 					{
 						userId: diana.id,
 						teamId: 2,
 						characterName: CharacterName.ZEUS,
-						kills: 2,
+						kills: 0,
 						deaths: 0,
 					},
 				],
@@ -444,7 +358,7 @@ export async function seedTestData(prisma: PrismaClient): Promise<void> {
 		},
 	});
 
-	console.log("  ✓ 6 matches (ranked, ai, local, draw, resignation)");
+	console.log("  ✓ 4 matches (2 ranked killout, 1 ranked draw, 1 unranked resignation)");
 
 	// ─── Friendships ──────────────────────────────────────────────
 
@@ -471,9 +385,19 @@ export async function seedTestData(prisma: PrismaClient): Promise<void> {
 				receiverId: diana.id,
 				status: FriendshipStatus.REJECTED,
 			},
+			{
+				senderId: charlie.id,
+				receiverId: eve.id,
+				status: FriendshipStatus.ACCEPTED,
+			},
+			{
+				senderId: frank.id,
+				receiverId: bob.id,
+				status: FriendshipStatus.PENDING,
+			},
 		],
 	});
-	console.log("  ✓ Friendships (accepted, pending, rejected)");
+	console.log("  ✓ Friendships (alice-bob accepted, alice-diana accepted, charlie-eve accepted, charlie→alice pending, frank→bob pending, bob→diana rejected)");
 
 	// ─── Game Invites ─────────────────────────────────────────────
 
@@ -487,8 +411,8 @@ export async function seedTestData(prisma: PrismaClient): Promise<void> {
 			{
 				senderId: alice.id,
 				receiverId: bob.id,
-				status: InviteStatus.PENDING,
-				expiresAt: oneHourFromNow,
+				status: InviteStatus.EXPIRED,
+				expiresAt: oneHourAgo,
 			},
 			{
 				senderId: diana.id,
@@ -497,80 +421,151 @@ export async function seedTestData(prisma: PrismaClient): Promise<void> {
 				expiresAt: oneHourFromNow,
 			},
 			{
-				senderId: bob.id,
-				receiverId: diana.id,
+				senderId: charlie.id,
+				receiverId: alice.id,
 				status: InviteStatus.EXPIRED,
 				expiresAt: oneHourAgo,
 			},
 		],
 	});
-	console.log("  ✓ Game invites (pending, accepted, expired)");
+	console.log("  ✓ Game invites (alice→bob expired, diana→alice accepted, charlie→alice expired)");
 
 	// ─── Achievements ─────────────────────────────────────────────
 
 	const firstBlood = await prisma.achievement.findUniqueOrThrow({
 		where: { name: "First Blood" },
 	});
-	const flawless = await prisma.achievement.findUniqueOrThrow({
-		where: { name: "Flawless Victory" },
+	const perfectlyBalanced = await prisma.achievement.findUniqueOrThrow({
+		where: { name: "Perfectly Balanced" },
 	});
-	const killMachine = await prisma.achievement.findUniqueOrThrow({
-		where: { name: "Kill Machine" },
+	const conqueror = await prisma.achievement.findUniqueOrThrow({
+		where: { name: "Conqueror" },
+	});
+	const tacticalRetreat = await prisma.achievement.findUniqueOrThrow({
+		where: { name: "Tactical Retreat" },
 	});
 
 	await prisma.userAchievement.createMany({
 		skipDuplicates: true,
 		data: [
-			// Alice: 3 achievements
+			// Alice: First Blood (match1, first ever) + Perfectly Balanced (match3, draw)
 			{ userId: alice.id, achievementId: firstBlood.id },
-			{ userId: alice.id, achievementId: flawless.id },
-			{ userId: alice.id, achievementId: killMachine.id },
-			// Bob: 1 achievement
+			{ userId: alice.id, achievementId: perfectlyBalanced.id },
+			// Bob: First Blood (match1) + Tactical Retreat (match6, resigned)
 			{ userId: bob.id, achievementId: firstBlood.id },
-			// Diana: 2 achievements
+			{ userId: bob.id, achievementId: tacticalRetreat.id },
+			// Diana: First Blood (match3) + Perfectly Balanced (match3) + Conqueror (match6, won by resignation)
 			{ userId: diana.id, achievementId: firstBlood.id },
-			{ userId: diana.id, achievementId: flawless.id },
+			{ userId: diana.id, achievementId: perfectlyBalanced.id },
+			{ userId: diana.id, achievementId: conqueror.id },
 		],
 	});
-	console.log(
-		"  ✓ Achievements unlocked (alice: 3, bob: 1, diana: 2, charlie: 0)",
-	);
+	console.log("  ✓ Achievements (alice: 2, bob: 2, diana: 3, charlie: 0)");
 
 	// ─── Notifications ────────────────────────────────────────────
 
 	await prisma.notification.createMany({
 		data: [
-			// Alice: mix of read and unread
+			// Alice sent friend requests to bob and diana — both accepted
+			// → alice receives FRIEND_ACCEPTED from both
+			{
+				userId: alice.id,
+				type: NotificationType.FRIEND_ACCEPTED,
+				message: "bob accepted your friend request.",
+				isRead: true,
+			},
+			{
+				userId: alice.id,
+				type: NotificationType.FRIEND_ACCEPTED,
+				message: "diana accepted your friend request.",
+				isRead: true,
+			},
+			// charlie sent alice a friend request → alice receives FRIEND_REQ
 			{
 				userId: alice.id,
 				type: NotificationType.FRIEND_REQ,
 				message: "charlie sent you a friend request.",
 				isRead: false,
 			},
+			// Alice: First Blood (match1) + Perfectly Balanced (match3)
 			{
 				userId: alice.id,
 				type: NotificationType.ACHV_UNLOCKED,
-				message:
-					'Congratulations! You\'ve earned the "Kill Machine" achievement.',
-				isRead: false,
-			},
-			// Bob: unread notifications
-			{
-				userId: bob.id,
-				type: NotificationType.FRIEND_ACCEPTED,
-				message: "alice accepted your friend request.",
+				message: 'Congratulations! You\'ve earned the "First Blood" achievement.',
 				isRead: true,
 			},
-			// Diana: all read
+			{
+				userId: alice.id,
+				type: NotificationType.ACHV_UNLOCKED,
+				message: 'Congratulations! You\'ve earned the "Perfectly Balanced" achievement.',
+				isRead: false,
+			},
+			// Bob: received friend request from alice (accepted, so read), First Blood, Tactical Retreat, pending request from frank
+			{
+				userId: bob.id,
+				type: NotificationType.FRIEND_REQ,
+				message: "alice sent you a friend request.",
+				isRead: true,
+			},
+			{
+				userId: bob.id,
+				type: NotificationType.ACHV_UNLOCKED,
+				message: 'Congratulations! You\'ve earned the "First Blood" achievement.',
+				isRead: true,
+			},
+			{
+				userId: bob.id,
+				type: NotificationType.ACHV_UNLOCKED,
+				message: 'Congratulations! You\'ve earned the "Tactical Retreat" achievement.',
+				isRead: false,
+			},
+			{
+				userId: bob.id,
+				type: NotificationType.FRIEND_REQ,
+				message: "frank sent you a friend request.",
+				isRead: false,
+			},
+			// Diana: received friend requests from alice (accepted) and bob (rejected), First Blood, Perfectly Balanced, Conqueror
 			{
 				userId: diana.id,
+				type: NotificationType.FRIEND_REQ,
+				message: "alice sent you a friend request.",
+				isRead: true,
+			},
+			{
+				userId: diana.id,
+				type: NotificationType.FRIEND_REQ,
+				message: "bob sent you a friend request.",
+				isRead: true,
+			},
+			{
+				userId: diana.id,
+				type: NotificationType.ACHV_UNLOCKED,
+				message: 'Congratulations! You\'ve earned the "First Blood" achievement.',
+				isRead: true,
+			},
+			{
+				userId: diana.id,
+				type: NotificationType.ACHV_UNLOCKED,
+				message: 'Congratulations! You\'ve earned the "Perfectly Balanced" achievement.',
+				isRead: true,
+			},
+			{
+				userId: diana.id,
+				type: NotificationType.ACHV_UNLOCKED,
+				message: 'Congratulations! You\'ve earned the "Conqueror" achievement.',
+				isRead: false,
+			},
+			// Charlie: eve accepted the friend request charlie sent
+			{
+				userId: charlie.id,
 				type: NotificationType.FRIEND_ACCEPTED,
-				message: "alice accepted your friend request.",
+				message: "eve accepted your friend request.",
 				isRead: true,
 			},
 		],
 	});
-	console.log("  ✓ Notifications (read and unread)");
+	console.log("  ✓ Notifications (alice: 5, bob: 4, diana: 5, charlie: 1)");
 
 	console.log("Test data seeding complete!");
 }

@@ -24,6 +24,8 @@ export class CombatSystem{
 	}
 
 	public handleSpellAttack(attacker: Player, gameWorld: World): void{
+		const attackType: AttackType | undefined = attacker.attackType;
+		if (!attackType) return;
 
 		this.calculateBulletDisplacement(attacker);
 		this.calculateAttackImpactPoint(attacker, AttackType.SPELL_ATTACK);
@@ -78,7 +80,8 @@ export class CombatSystem{
 		const dx = attackCenter.x - victim.position.x;
 		const dz = attackCenter.z - victim.position.z;
 		const distanceSquared = dx * dx + dz * dz;
-		const radiiSum = victim.radius + attacker.meleeAttackHitboxRadius;
+		const effectiveAttackRadius = attacker.radius + GameConfig.COMBAT.MELEE_HITBOX_RADIUS;
+		const radiiSum = victim.radius + effectiveAttackRadius;
 		if (distanceSquared <= radiiSum * radiiSum)
 			return (true);
 		return (false);
@@ -90,8 +93,6 @@ export class CombatSystem{
 		victim.deads++;
 		attacker.kill++;
 
-		// da aggiungere, l achievement non vale in local o bot
-		// if (isLocal() || isBot()) return ;
 		if (attacker.hp <= (GameConfig.PLAYER.DEFAULT_HP * GameConfig.ACHIEVEMENT.CLUTCHMASTER)){
 			attacker.clutchMasterUnlook = true;
 		}

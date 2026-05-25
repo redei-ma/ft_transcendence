@@ -5,10 +5,12 @@ import * as THREE from 'three';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 import { CharacterName, GameConfig } from '@transcendence/types';
 import { useGameStore } from '../../storage/gameStore';
+import zeusModelUrl from '../../assets/models/ZeusWalking.glb?url';
+import hadesModelUrl from '../../assets/models/HadesWalking.glb?url';
 
 const MODEL_PATHS: Record<string, string> = {
-  [CharacterName.ZEUS]: '/models/ZeusWalking.glb', // Assicurati di puntare ai file con le animazioni
-  [CharacterName.ADE]: '/models/HadesWalking.glb',
+  [CharacterName.ZEUS]: zeusModelUrl,
+  [CharacterName.ADE]: hadesModelUrl,
 };
 
 const MODEL_HEIGHT = GameConfig.PLAYER.RADIUS * 3;
@@ -66,14 +68,17 @@ export function PlayerModel({ characterName, playerId }: PlayerModelProps) {
     const player = useGameStore.getState().gameState?.players.find(p => p.id === playerId);
     if (!player || !groupRef.current) return;
 
-    // --- GESTIONE OPACITÀ (Tuo codice originale) ---
+    // --- GESTIONE OPACITÀ ---
     const targetOpacity = player.isDead ? 0.2 : 1;
     if (Math.abs(currentOpacity.current - targetOpacity) > 0.01) {
       currentOpacity.current += (targetOpacity - currentOpacity.current) * 0.1;
       applyOpacity(clonedScene, currentOpacity.current);
+    } else if (currentOpacity.current !== targetOpacity) {
+      currentOpacity.current = targetOpacity;
+      applyOpacity(clonedScene, targetOpacity)
     }
 
-    // --- GESTIONE ANIMAZIONI (Nuovo!) ---
+    // --- GESTIONE ANIMAZIONI ---
     // Otteniamo la posizione globale reale del modello nel mondo 3D
     const currentWorldPos = new THREE.Vector3();
     groupRef.current.getWorldPosition(currentWorldPos);
@@ -130,5 +135,5 @@ function applyOpacity(scene: THREE.Object3D, opacity: number) {
 }
 
 // Preload dei file
-useGLTF.preload(MODEL_PATHS[CharacterName.ZEUS]);
-useGLTF.preload(MODEL_PATHS[CharacterName.ADE]);
+useGLTF.preload(zeusModelUrl);
+useGLTF.preload(hadesModelUrl);

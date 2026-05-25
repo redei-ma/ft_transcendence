@@ -3,9 +3,12 @@ import {
 	BadRequestException,
 	NotFoundException,
 	ConflictException,
+	Logger,
 } from "@nestjs/common";
+import { OnEvent } from "@nestjs/event-emitter";
 import { PrismaService } from "../../prisma/prisma.service";
-import { Provider } from "@transcendence/types";
+import { SseService } from "./sse.service";
+import { Provider, UserStatus } from "@transcendence/types";
 import {
 	CreateLocalUserDto,
 	CreateOAuthUserDto,
@@ -29,7 +32,36 @@ import {
 
 @Injectable()
 export class InternalUserService {
-	constructor(private readonly prisma: PrismaService) {}
+	private readonly logger = new Logger(InternalUserService.name);
+
+	constructor(
+		private readonly prisma: PrismaService,
+		private readonly sseService: SseService,
+	) {}
+
+	// ─── SSE event handlers ────────────────────────────────────────────────────
+
+	@OnEvent("user.connected")
+	async handleUserConnected(userId: number): Promise<void> {
+		const user = await this.prisma.user.findUnique({
+			where: { id: userId },
+			select: { status: true },
+		});
+		if (user?.status !== UserStatus.OFFLINE) return;
+		await this.updateStatus(userId, { status: UserStatus.ONLINE });
+		this.logger.log(`userId=${userId} marked ONLINE on SSE connect`);
+	}
+
+	@OnEvent("user.disconnected")
+	async handleUserDisconnected(userId: number): Promise<void> {
+		const user = await this.prisma.user.findUnique({
+			where: { id: userId },
+			select: { status: true },
+		});
+		if (user?.status !== UserStatus.ONLINE) return;
+		await this.updateStatus(userId, { status: UserStatus.OFFLINE });
+		this.logger.log(`userId=${userId} marked OFFLINE after grace period`);
+	}
 
 	// ─── Create user ───────────────────────────────────────────────────────────────────────────────
 
@@ -313,6 +345,7 @@ export class InternalUserService {
 			where: { id },
 			data: { status: dto.status },
 		});
+		await this.sseService.notifyStatusChange(id, dto.status);
 	}
 
 	/**

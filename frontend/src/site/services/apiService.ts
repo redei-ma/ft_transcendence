@@ -1,5 +1,6 @@
 
 import { fetchWithAuthRetry } from "./authService";
+import { refreshToken } from "../services/authService";
 
 export interface UserProfile {
     id: number;
@@ -196,6 +197,7 @@ export async function updateUsername(username: string): Promise<boolean> {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ username }),
         });
+        refreshToken();
         return !!res && res.ok;
     } catch (error) {
         console.error("[API] Error updating username:", error);
@@ -265,11 +267,24 @@ export async function getPublicProfile(
     userId: number,
 ): Promise<UserProfile | null> {
     try {
-        const res = await fetchWithAuthRetry(`/api/users/${userId}`);
+        const res = await fetchWithAuthRetry(`/api/users/profile?id=${userId}`);
         if (!res || !res.ok) return null;
         return (await res.json()) as UserProfile;
     } catch (error) {
         console.error("[API] Error fetching public profile:", error);
+        return null;
+    }
+}
+
+export async function searchUserByUsername(
+    username: string,
+): Promise<{ id: number; username: string; avatarUrl: string; status: string } | null> {
+    try {
+        const res = await fetchWithAuthRetry(`/api/users/search/${encodeURIComponent(username)}`);
+        if (!res || !res.ok) return null;
+        return await res.json();
+    } catch (error) {
+        console.error("[API] Error searching user by username:", error);
         return null;
     }
 }
@@ -310,7 +325,7 @@ export async function generate2fa() {
   try {
     const res = await fetchWithAuthRetry("/api/auth/2fa/setup", { method: "POST" });
     if (!res || !res.ok) return null;
-    return await res.json(); 
+    return await res.json();
   } catch (error) {
     console.error("[API] Error generating 2FA:", error);
     return null;
@@ -346,7 +361,7 @@ export async function requestEmailChange(password: string, newEmail: string): Pr
     const res = await fetchWithAuthRetry("/api/auth/change-email-request", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ password, newEmail }), 
+      body: JSON.stringify({ password, newEmail }),
     });
 
     if (!res) return { ok: false, message: "Connessione al server fallita" };
@@ -365,7 +380,7 @@ export async function changePassword(oldPass: string, newPass: string): Promise<
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ oldPass, newPass }),
     });
-    
+
     if (!res) return { ok: false, message: "Connessione al server fallita" };
 
     const data = await res.json().catch(() => ({}));
@@ -550,7 +565,7 @@ export async function getMyMatches(page = 1, limit = 10, mode?: string): Promise
         if (mode) url += `&mode=${mode}`;
         const res = await fetchWithAuthRetry(url);
         if (!res || !res.ok) return null;
-        return (await res.json()) as MatchHistoryResponse; 
+        return (await res.json()) as MatchHistoryResponse;
     }
     catch (error) {
         console.error("[API] Error fetching matches:", error);

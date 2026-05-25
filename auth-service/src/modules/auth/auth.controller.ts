@@ -125,6 +125,15 @@ export class AuthController {
     return { ok: true };
   }
 
+  @Get('session-check')
+  async sessionCheck(@Req() req: Request) {
+    // Check if the refresh cookie exists in the request
+    const hasRefreshToken = !!req.cookies?.[REFRESH_COOKIE_NAME || 'refresh_token'];
+    
+    // We return 200 OK even if false, so the console stays clean!
+    return { hasSession: hasRefreshToken };
+  }
+
   @Post('logout')
   @UseGuards(JwtAuthGuard)
   async logout(

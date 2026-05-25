@@ -10,17 +10,22 @@ export class Snapshot{
 		let snapshot :PlayerSnapshot = {
 			//vedi game-states.interfaces.ts
 			//type e characterName si potrebbero togliere? chiedere a fra
-			type: 'player',
 			characterName: player.characterName,
 
-			//invece di entity id non e' meglio mandare userDbId?
 			id: player.entityId,
+			userName: player.userName,
 			teamId: player.teamId,
+			
+			meleeAttackCooldown: player.meleeAttackCooldown,
+			spellAttackCooldown: player.spellAttackCooldown,
+			defenceAttackCooldown: player.defenceAttackCooldown,
 			//x: fixedX,
 			//z: fixedZ,
 			position: {x: fixedX, z: fixedZ} as Vector,
 			rotation: fixedRotation,
 			hp: player.hp,
+			kill: player.kill,
+			dead: player.deads,
 			isAttacking: player.isAttacking,
 			isDefending: player.isDefending,
 			attackType: player.attackType,

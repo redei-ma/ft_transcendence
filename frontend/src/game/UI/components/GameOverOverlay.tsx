@@ -1,27 +1,25 @@
 import { GameOverPayload } from '../../../types/game.types';
-import {PlayerSnapshot} from '@transcendence/types';
+import { PlayerSnapshot } from '@transcendence/types';
 import { theme } from '../../../configs/theme';
-import {CharacterName} from '@transcendence/types';
 
 interface GameOverOverlayProps {
   gameOver: GameOverPayload;
   players: PlayerSnapshot[];
   onPlayAgain: () => void;
   onQuit: () => void;
+  myUserId?: string;
 }
 
-export function GameOverOverlay({ gameOver, players, onPlayAgain, onQuit }: GameOverOverlayProps) {
-  const winnerIds = new Set(gameOver.winnerData?.winnerPlayersIds || []);
+export function GameOverOverlay({ gameOver, players, onPlayAgain, onQuit, myUserId }: GameOverOverlayProps) {
+  const winnerStats: any[] = gameOver.finalData?.winnerPlayerStats || [];
+  const loserStats: any[] = gameOver.finalData?.loserPlayerStats || [];
 
-  const winners = players.filter(p => winnerIds.has(p.id));
-  const losers = players.filter(p => !winnerIds.has(p.id));
+  const isDraw = winnerStats.length === 0;
+  const amIWinner = winnerStats.some((s: any) => s.userName === myUserId);
 
-  const winnerName = winners.length > 0 ? winners[0].characterName : 'unknown';
-  const displayName = winnerName.charAt(0).toUpperCase() + winnerName.slice(1);
-  const isDraw = winners.length === 0;
-
-  const color = winnerName === CharacterName.ZEUS ? theme.colors.zeus : theme.colors.ade;
-  const glow = winnerName === CharacterName.ZEUS ? theme.colors.zeusGlow : theme.colors.adeGlow;
+  const resultText = isDraw ? 'Draw' : (amIWinner ? 'You Win' : 'You Lose');
+  const resultColor = isDraw ? theme.colors.textSecondary : (amIWinner ? theme.colors.zeus : theme.colors.dead);
+  const resultGlow = isDraw ? 'none' : `0 0 20px ${resultColor}, 0 0 60px ${resultColor}`;
 
   return (
     <div style={{
@@ -39,14 +37,14 @@ export function GameOverOverlay({ gameOver, players, onPlayAgain, onQuit }: Game
         fontSize: '72px',
         fontFamily: theme.fonts.heading,
         fontWeight: 'bold',
-        color: isDraw ? theme.colors.textSecondary : color,
-        textShadow: isDraw ? 'none' : `0 0 20px ${color}, 0 0 60px ${color}`,
+        color: resultColor,
+        textShadow: resultGlow,
         letterSpacing: '6px',
         textTransform: 'uppercase',
         margin: 0,
         animation: 'scaleIn 0.6s ease-out',
       }}>
-        {isDraw ? 'Draw' : `${displayName} Wins`}
+        {resultText}
       </h1>
 
       <p style={{
@@ -62,10 +60,10 @@ export function GameOverOverlay({ gameOver, players, onPlayAgain, onQuit }: Game
 
       <div style={{
         backgroundColor: theme.colors.bgDark,
-        border: `1px solid ${isDraw ? theme.colors.border : color}`,
+        border: `1px solid ${resultColor}`,
         borderRadius: '12px',
         minWidth: '420px',
-        boxShadow: isDraw ? 'none' : `0 0 30px ${glow}`,
+        boxShadow: resultGlow,
         overflow: 'hidden',
       }}>
         <div style={{
@@ -80,29 +78,58 @@ export function GameOverOverlay({ gameOver, players, onPlayAgain, onQuit }: Game
           <HeaderCell center>DEATHS</HeaderCell>
         </div>
 
-        {winners.map((p) => (
-          <PlayerRow key={p.id} player={p} isWinner />
-        ))}
+        {winnerStats.map((s: any, i: number) => {
+          const player = players.find(p => (p as any).userName === s.userName);
+          const isMe = s.userName === myUserId;
+          return (
+            <div key={`w-${i}`} style={{
+              display: 'grid', gridTemplateColumns: '1fr 80px 80px',
+              padding: '12px 24px', backgroundColor: 'rgba(255,255,255,0.02)',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <span>👑</span>
+                <span style={{
+                  color: isMe ? '#66B2FF' : '#FF6666', fontSize: '16px',
+                  fontWeight: 'bold', fontFamily: theme.fonts.heading,
+                }}>{s.userName}</span>
+                <span style={{ color: theme.colors.textMuted, fontSize: '11px', fontFamily: theme.fonts.mono }}>
+                  ({player ? player.characterName.charAt(0).toUpperCase() + player.characterName.slice(1) : '?'})
+                </span>
+              </div>
+              <StatCell>{String(s.kill)}</StatCell>
+              <StatCell>{String(s.dead)}</StatCell>
+            </div>
+          );
+        })}
 
-        {losers.length > 0 && winners.length > 0 && (
+        {winnerStats.length > 0 && loserStats.length > 0 && (
           <div style={{ height: '1px', backgroundColor: theme.colors.border }} />
         )}
 
-        {losers.map((p) => (
-          <PlayerRow key={p.id} player={p} isWinner={false} />
-        ))}
+        {loserStats.map((s: any, i: number) => {
+          const player = players.find(p => (p as any).userName === s.userName);
+          const isMe = s.userName === myUserId;
+          return (
+            <div key={`l-${i}`} style={{
+              display: 'grid', gridTemplateColumns: '1fr 80px 80px',
+              padding: '12px 24px',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <span style={{
+                  color: isMe ? '#66B2FF' : '#FF6666', fontSize: '16px',
+                  fontFamily: theme.fonts.heading,
+                }}>{s.userName}</span>
+                <span style={{ color: theme.colors.textMuted, fontSize: '11px', fontFamily: theme.fonts.mono }}>
+                  ({player ? player.characterName.charAt(0).toUpperCase() + player.characterName.slice(1) : '?'})
+                </span>
+              </div>
+              <StatCell>{String(s.kill)}</StatCell>
+              <StatCell>{String(s.dead)}</StatCell>
+            </div>
+          );
+        })}
       </div>
 
-      <p style={{
-        marginTop: theme.spacing.xl,
-        color: theme.colors.textMuted,
-        fontSize: '12px',
-        fontFamily: theme.fonts.mono,
-      }}>
-        [ victory artwork placeholder ]
-      </p>
-      
-      {/* Actions */}
       <div style={{
         marginTop: '40px',
         display: 'flex',
@@ -180,42 +207,6 @@ function HeaderCell({ children, center }: { children: string; center?: boolean }
     }}>
       {children}
     </span>
-  );
-}
-
-function PlayerRow({ player, isWinner }: { player: PlayerSnapshot; isWinner: boolean }) {
-  const playerColor = player.characterName === CharacterName.ZEUS ? theme.colors.zeus : theme.colors.ade;
-  const displayName = player.characterName.charAt(0).toUpperCase() + player.characterName.slice(1);
-
-  return (
-    <div style={{
-      display: 'grid',
-      gridTemplateColumns: '1fr 80px 80px',
-      padding: '12px 24px',
-      backgroundColor: isWinner ? 'rgba(255,255,255,0.02)' : 'transparent',
-    }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-        {isWinner && <span>👑</span>}
-        <span style={{
-          color: playerColor,
-          fontSize: '16px',
-          fontWeight: isWinner ? 'bold' : 'normal',
-          fontFamily: theme.fonts.heading,
-        }}>
-          {displayName}
-        </span>
-        <span style={{
-          color: theme.colors.textMuted,
-          fontSize: '11px',
-          fontFamily: theme.fonts.mono,
-        }}>
-          (Team {player.teamId})
-        </span>
-      </div>
-
-      <StatCell>—</StatCell>
-      <StatCell>—</StatCell>
-    </div>
   );
 }
 

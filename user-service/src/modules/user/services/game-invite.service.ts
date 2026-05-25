@@ -6,7 +6,11 @@ import {
 	BadRequestException,
 } from "@nestjs/common";
 import { PrismaService } from "../../prisma/prisma.service";
-import { InviteStatus, UserStatus } from "@transcendence/types";
+import { SseService } from "./sse.service";
+import {
+	InviteStatus,
+	UserStatus,
+} from "@transcendence/types";
 import {
 	SendGameInviteDto,
 	RespondGameInviteDto,
@@ -14,7 +18,6 @@ import {
 	GameInviteResponseDto,
 	GameInviteListResponseDto,
 } from "../dto";
-import { NotificationTemplates } from "../../notification/notification.templates";
 
 const INVITE_USER_SELECT = {
 	id: true,
@@ -34,14 +37,16 @@ const INVITE_SELECT = {
 
 @Injectable()
 export class GameInviteService {
-	constructor(private readonly prisma: PrismaService) {}
+	constructor(
+		private readonly prisma: PrismaService,
+		private readonly sseService: SseService,
+	) {}
 
 	// ─── Public API ────────────────────────────────────────────────────────────
 
 	/**
 	 * Sends a game invite from senderId to receiverId.
 	 * Blocks if a non-expired PENDING invite already exists for the same pair.
-	 * Notifies the receiver via SSE with an ephemeral GAME_INVITE event (when SSE is implemented).
 	 *
 	 * @param senderId - ID of the user sending the invite (from JWT).
 	 * @param receiverId - ID of the user to invite.
@@ -91,7 +96,7 @@ export class GameInviteService {
 			Date.now() + (dto.expiresInSeconds ?? 60) * 1000,
 		);
 
-		const created = await this.prisma.gameInvite.create({
+		const invite = await this.prisma.gameInvite.create({
 			data: {
 				senderId,
 				receiverId,
@@ -101,11 +106,13 @@ export class GameInviteService {
 			select: INVITE_SELECT,
 		});
 
-		// TODO: emit ephemeral GAME_INVITE event via SSE to receiver (when SSE is implemented)
-		// Event: { type: "GAME_INVITE", ...NotificationTemplates.GAME_INVITE(sender.username), inviteId: created.id }
-		// No DB persistence — game invites are real-time only
+		this.sseService.pushGameInvite(receiverId, {
+			id: invite.id,
+			expiresAt: invite.expiresAt,
+			sender: invite.sender,
+		});
 
-		return created;
+		return invite;
 	}
 
 	/**
@@ -184,6 +191,7 @@ export class GameInviteService {
 				where: { id: inviteId },
 				data: { status: InviteStatus.REJECTED },
 			});
+			this.sseService.pushGameInviteDeclined(invite.senderId, inviteId, userId);
 			return { sessionId: null };
 		}
 

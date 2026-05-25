@@ -14,7 +14,7 @@ import { MatchmakingService } from "./matchmaking.service";
 import { JoinQueueDto } from "./dto/join-queue.dto";
 import { parseCookieHeader, verifyJwtToken, AUTH_COOKIE_NAME } from "@transcendence/auth";
 import { Logger } from "@nestjs/common";
-import { ErrorCode, ExitStatus, GameEvents } from "@transcendence/types";
+import { ErrorCode, ExitStatus, GameEvents, MatchMode } from "@transcendence/types";
 
 @WebSocketGateway({ cors: true })
 export class MatchmakingGateway
@@ -88,11 +88,11 @@ export class MatchmakingGateway
 		}
 	}
 
-	async handleDisconnect(client: Socket) {
+	/*async handleDisconnect(client: Socket) {
 		console.log(`Client disconnected: ${client.id}`);
 	}
 
-	/*async handleDisconnect(client: Socket) {
+	async handleDisconnect(client: Socket) {
         const userId = this.socketToUser.get(client.id);
         if (userId) {
             console.log(`[Disconnect] Pulizia per utente ${userId} (Socket: ${client.id})`);
@@ -101,6 +101,21 @@ export class MatchmakingGateway
             this.socketToUser.delete(client.id);
         }
     }*/
+
+	async handleDisconnect(client: Socket) {
+		const userId = this.socketToUser.get(client.id);
+		if (userId) {
+			this.logger.log(`[Disconnect] Pulizia per utente ${userId} (Socket: ${client.id})`);
+			
+			// Avviamo la logica di pulizia nel service (se era in pre_match annullerà la partita)
+			await this.matchmakingService.handleUserDisconnect(userId);
+			
+			// Rimuoviamo il mapping
+			this.socketToUser.delete(client.id);
+		} else {
+			this.logger.log(`Client disconnected without active session mapping: ${client.id}`);
+		}
+	}
 
 	@OnEvent(GameEvents.INTERNAL_MATCH_FOUND)
 	handleMatchFoundInternal(payload: { socketId: string; data: { status: string; matchId: string } }) {
@@ -117,7 +132,7 @@ export class MatchmakingGateway
 		}
 	}
 
-
+	
 	@SubscribeMessage(GameEvents.JOIN_RANKED)
 	async handleJoinRanked(
 		@MessageBody() data: JoinQueueDto,
@@ -171,6 +186,61 @@ export class MatchmakingGateway
 		this.emitMatchmakingResponse(client, GameEvents.JOIN_LOCAL, result);
 	}
 
+	@SubscribeMessage(GameEvents.ACCEPT_DIRECT_INVITE)
+	async handleAcceptDirectInvite(
+		@MessageBody() data: { inviterId: number },
+		@ConnectedSocket() client: Socket,
+	) {
+		const acceptorId: number = client.data.user.sub;
+		this.registerUserSocket(client.id, acceptorId);
+		
+		this.logger.log(`[WS] L'utente ${acceptorId} accetta sfida da ${data.inviterId}`);
+		
+		const result = await this.matchmakingService.createDirectSession(data.inviterId, acceptorId);
+		
+		if (result.status && result.status.startsWith("ERROR_")) {
+			this.emitMatchmakingResponse(client, GameEvents.ACCEPT_DIRECT_INVITE, result);
+		} else {
+			this.emitMatchmakingResponse(client, GameEvents.ACCEPT_DIRECT_INVITE, { status: "PROCESSING" });
+		}
+	}
+
+	@OnEvent(GameEvents.INTERNAL_DIRECT_SESSION_READY)
+	handleDirectSessionReadyInternal(payload: { socketId: string; data: { status: string; sessionId: string } }) {
+		const clientSocket = this.server.sockets.sockets.get(payload.socketId);
+		if (clientSocket) {
+
+			clientSocket.emit(GameEvents.DIRECT_SESSION_READY, payload.data);
+			this.logger.log(`[Socket] JOIN_DIRECT_SESSION inviato al socket: ${payload.socketId}`);
+		}
+	}
+	
+	@SubscribeMessage(GameEvents.JOIN_DIRECT_SESSION)
+	async handleJoinDirectSession(
+		@MessageBody() data: { sessionId: string; characterName: string; matchMode?: MatchMode },
+		@ConnectedSocket() client: Socket,
+	) {
+		const userId: number = client.data.user.sub;
+		const socketId = client.id;
+		
+		// Aggiorniamo la mappa interna dei socket
+		this.registerUserSocket(socketId, userId);
+		
+		this.logger.log(`[WS] L'utente ${userId} è pronto per la sessione privata ${data.sessionId} con ${data.characterName}`);
+
+		// Chiamiamo il service passando tutti i dati, incluso il socketId attuale
+		const result = await this.matchmakingService.joinDirectSession(
+			userId,
+			data.sessionId,
+			data.characterName,
+			socketId,
+			data.matchMode // Opzionale, se non passato il service userà UNRANKED di default
+		);
+
+		// Rispondiamo al client con l'esito (es. WAITING_FOR_OPPONENT, MATCH_STARTING, o ERROR)
+		this.emitMatchmakingResponse(client, GameEvents.JOIN_DIRECT_SESSION, result);
+	}
+
 	@SubscribeMessage(GameEvents.LEAVE_QUEUE)
 	async handleLeaveQueue(
 		@MessageBody() data: JoinQueueDto,
@@ -183,6 +253,23 @@ export class MatchmakingGateway
 		this.emitMatchmakingResponse(client, GameEvents.LEAVE_QUEUE, result);
 	}
 
+	@SubscribeMessage(GameEvents.CANCEL_DIRECT_SESSION) 
+	async handleCancelDirectSession(
+		@MessageBody() data: { sessionId: string },
+		@ConnectedSocket() client: Socket,
+	) {
+		// Controllo di sicurezza se l'utente è autenticato
+		const userId: number = client.data?.user?.sub;
+		if (!userId) return;
+
+		this.logger.log(`[WS] Utente ${userId} annulla volontariamente la sessione ${data.sessionId}`);
+		
+		const result = await this.matchmakingService.cancelDirectSession(userId, data.sessionId);
+		
+		// Usiamo il tuo helper per emettere la risposta al client che ha annullato
+		this.emitMatchmakingResponse(client, GameEvents.CANCEL_DIRECT_SESSION, result);
+	}
+	
 	private registerUserSocket(socketId: string, userId: number) {
 		this.socketToUser.set(socketId, userId);
 	}

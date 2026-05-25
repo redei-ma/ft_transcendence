@@ -67,38 +67,29 @@ export class SocketService {
 		});
 
 		this.socket.on("exception", async (data: { status: string; errorCode: string; message: string }) => {
-			console.error(`🚨 [GameSocket] Exception from server: [${data.errorCode}] ${data.message}`);
-			switch (data.errorCode) {
-				case "UNAUTHORIZED_TOKEN":
-			      	console.log("🔄 [GameSocket] Token expired, attempting refresh...");
-      				const refreshed = await refreshToken();
-      				if (refreshed) {
-        				console.log("✅ [GameSocket] Token refreshed, reconnecting...");
-        				this.socket?.disconnect();
-        				this.socket?.connect();
-      				} else {
-        				console.error("🚫 [GameSocket] Refresh failed, bubbling to handler.");
-        				this.onGameError?.(data.errorCode, data.message);
-      				}
-					break;
-				case "UNAUTHORIZED":
-					
-					break;
-				case "PLAYER_NOT_FOUND":
-					break;
-				case "SESSION_NOT_FOUND":
-					break;
-				case "MATCH_ALREADY_STARTED":
-					break;
-				case "SERVER_SHUTDOWN":
-					break;
-				case "INVALID_INPUT":
-					break;
-				default:
-				    console.warn(`[GameSocket] Unhandled error code: ${data.errorCode}`);
-				    this.onGameError?.(data.errorCode, data.message);
-				    break;
-			}
+    		console.error(`🚨 [GameSocket] Exception from server: [${data.errorCode}] ${data.message}`);
+
+    		if (data.errorCode === "UNAUTHORIZED_TOKEN") {
+    		    console.log("🔄 [GameSocket] Token expired, attempting refresh...");
+    		    const refreshed = await refreshToken();
+    		    if (refreshed) {
+    		        console.log("✅ [GameSocket] Token refreshed, reconnecting...");
+    		        this.socket?.disconnect();
+    		        this.socket?.connect();
+    		    } else {
+    		        console.error("🚫 [GameSocket] Refresh failed, bubbling to handler.");
+    		        this.onGameError?.(data.errorCode, data.message);
+    		    }
+    		    return;
+    		}
+		
+    		if (data.errorCode === "INVALID_INPUT") {
+    		    console.warn(`[GameSocket] Invalid input: ${data.message}`);
+    		    return;
+    		}
+		
+    		// Tutti gli altri errori → notifica GameFlow
+    		this.onGameError?.(data.errorCode, data.message);
 		});
 
 		return this.socket;
@@ -114,8 +105,12 @@ export class SocketService {
 		}
 	}
 
+	isConnected(): boolean {
+		return !!this.socket?.connected;
+	}
+
 	emit(event: GameEvents, data?: any) {
-		if (!this.socket) {
+		if (!this.socket?.connected) {
 			console.error(`⚠️ [GameSocket] Cannot emit '${event}': not connected.`);
 			return;
 		}

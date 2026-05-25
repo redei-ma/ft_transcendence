@@ -1,5 +1,5 @@
 # --- Stage 1: Build (dev mode uses this stage via target: build) ---
-FROM node:20-alpine AS build
+FROM node:20.20.2-alpine3.23 AS build
 
 WORKDIR /app/shared
 COPY shared/prisma/schema.prisma ./prisma/schema.prisma

@@ -1,5 +1,5 @@
 # --- Stage 1: Build ---
-FROM node:20-alpine AS build
+FROM node:20.20.2-alpine3.23 AS build
 
 WORKDIR /app/shared/auth
 COPY shared/auth/ .
@@ -23,7 +23,7 @@ COPY auth-service/. .
 RUN npm run build
 
 # --- Stage 2: Production ---
-FROM node:20-alpine AS production
+FROM node:20.20.2-alpine3.23 AS production
 
 RUN addgroup -g 1001 -S appgroup && adduser -u 1001 -S appuser -G appgroup
 

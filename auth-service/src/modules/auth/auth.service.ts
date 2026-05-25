@@ -14,10 +14,20 @@ import { MailService } from './mail/mail.service';
 import { UserClient } from '../user/user.client';
 import * as speakeasy from 'speakeasy';
 import * as QRCode from 'qrcode';
-import { CreateOAuthUserDto, CreateLocalUserNoHashDto } from '@transcendence/dto';
+import {
+  CreateOAuthUserDto,
+  CreateLocalUserNoHashDto,
+} from '@transcendence/dto';
 import { UserStatus, Provider } from '@transcendence/types';
-import { ResetPasswordDto, ChangePasswordDto, EmailDto, NewEmailDto, LoginDto, Enable2FADto } from '../../dto/input.dto';
-import { isEmail}  from 'class-validator';
+import {
+  ResetPasswordDto,
+  ChangePasswordDto,
+  EmailDto,
+  NewEmailDto,
+  LoginDto,
+  Enable2FADto,
+} from '../../dto/input.dto';
+import { isEmail } from 'class-validator';
 
 @Injectable()
 export class AuthService {
@@ -30,13 +40,17 @@ export class AuthService {
 
   async registerAndSendVerification(dto: CreateLocalUserNoHashDto) {
     // Check if email already exists
-    const existingEmail = await this.usersService.findUser({ email: dto.email });
+    const existingEmail = await this.usersService.findUser({
+      email: dto.email,
+    });
     if (existingEmail) {
       throw new ConflictException('A user with this email already exists.');
     }
 
     // Check if username already exists
-    const existingUsername = await this.usersService.findUser({ username: dto.username });
+    const existingUsername = await this.usersService.findUser({
+      username: dto.username,
+    });
     if (existingUsername) {
       throw new ConflictException('This username is already taken.');
     }
@@ -63,7 +77,9 @@ export class AuthService {
         user: { username: user.username, email: user.email },
       };
     } catch (error) {
-      throw new BadRequestException('Registration failed. Please try again later.');
+      throw new BadRequestException(
+        'Registration failed. Please try again later.',
+      );
     }
   }
 
@@ -72,11 +88,17 @@ export class AuthService {
 
     if (!user) {
       // Do NOT reveal user existence
-      return { message: 'If an account with this email exists and is not verified, a verification email was sent.' };
+      return {
+        message:
+          'If an account with this email exists and is not verified, a verification email was sent.',
+      };
     }
 
     if (user.isEmailVerified) {
-      return { message: 'If an account with this email exists and is not verified, a verification email was sent.' };
+      return {
+        message:
+          'If an account with this email exists and is not verified, a verification email was sent.',
+      };
     }
 
     const token = this.generateEmailVerificationToken(user.id);
@@ -84,7 +106,10 @@ export class AuthService {
 
     await this.mailService.sendVerifyEmail(user.email, verifyUrl);
 
-    return { message: 'If an account with this email exists and is not verified, a verification email was sent.' };
+    return {
+      message:
+        'If an account with this email exists and is not verified, a verification email was sent.',
+    };
   }
 
   async login(dto: LoginDto) {
@@ -98,18 +123,25 @@ export class AuthService {
       throw new UnauthorizedException('invalid credentials');
     }
 
-    const localAccount = user.accounts.find((a) => a.provider === Provider.LOCAL);
+    const localAccount = user.accounts.find(
+      (a) => a.provider === Provider.LOCAL,
+    );
     if (!localAccount?.passwordHash) {
       throw new UnauthorizedException('This account uses Google login');
     }
 
-    const isMatch = await bcrypt.compare(dto.password, localAccount.passwordHash);
+    const isMatch = await bcrypt.compare(
+      dto.password,
+      localAccount.passwordHash,
+    );
     if (!isMatch) {
       throw new UnauthorizedException('invalid credentials');
     }
 
     if (!user.isEmailVerified) {
-      throw new ForbiddenException('please verify your email before logging in');
+      throw new ForbiddenException(
+        'please verify your email before logging in',
+      );
     }
 
     if (user.is2faEnabled) {
@@ -127,6 +159,10 @@ export class AuthService {
       if (!valid) {
         throw new UnauthorizedException('Invalid 2FA code');
       }
+    }
+
+    if (user.status !== UserStatus.OFFLINE) {
+      throw new ForbiddenException('This account is already logged in');
     }
 
     const accessPayload: JwtAccessPayloadDto = {
@@ -249,7 +285,9 @@ export class AuthService {
 
     const hashed = await bcrypt.hash(dto.newPassword, 10);
 
-    await this.usersService.updatePassword(payload.sub, { passwordHash: hashed });
+    await this.usersService.updatePassword(payload.sub, {
+      passwordHash: hashed,
+    });
 
     // Invalidate refresh tokens after password change
     await this.usersService.invalidateRefreshTokens(payload.sub);
@@ -283,7 +321,9 @@ export class AuthService {
           avatarUrl: googleUser.avatarUrl,
         });
       } else {
-        const uniqueUsername = await this.generateUniqueUsername(googleUser.username);
+        const uniqueUsername = await this.generateUniqueUsername(
+          googleUser.username,
+        );
 
         user = await this.usersService.createOAuthUser({
           email: googleUser.email,
@@ -322,7 +362,9 @@ export class AuthService {
 
     const qrCode = await QRCode.toDataURL(secret.otpauth_url);
 
-    await this.usersService.setup2fa(userId, { twoFactorSecret: secret.base32 });
+    await this.usersService.setup2fa(userId, {
+      twoFactorSecret: secret.base32,
+    });
 
     return {
       qrCode,
@@ -357,23 +399,36 @@ export class AuthService {
     if (!user) throw new NotFoundException('User not found');
 
     // Check for LOCAL account and verify password
-    const localAccount = user.accounts.find(a => a.provider === Provider.LOCAL);
+    const localAccount = user.accounts.find(
+      (a) => a.provider === Provider.LOCAL,
+    );
     if (!localAccount || !localAccount.passwordHash) {
-      throw new ForbiddenException('Local account password required to change email.');
+      throw new ForbiddenException(
+        'Local account password required to change email.',
+      );
     }
 
-    const isMatch = await bcrypt.compare(dto.password, localAccount.passwordHash);
+    const isMatch = await bcrypt.compare(
+      dto.password,
+      localAccount.passwordHash,
+    );
     if (!isMatch) {
       throw new UnauthorizedException('Current password incorrect ');
     }
 
     if (user.email === dto.newEmail) {
-      throw new BadRequestException('The new email must be different from the current one.');
+      throw new BadRequestException(
+        'The new email must be different from the current one.',
+      );
     }
 
-    const existingUser = await this.usersService.findUser({ email: dto.newEmail });
+    const existingUser = await this.usersService.findUser({
+      email: dto.newEmail,
+    });
     if (existingUser) {
-      throw new ConflictException('This email is already associated with another account.');
+      throw new ConflictException(
+        'This email is already associated with another account.',
+      );
     }
 
     const token = this.jwtService.sign(
@@ -387,7 +442,10 @@ export class AuthService {
     const verifyUrl = `${this.config.getOrThrow('PUBLIC_URL')}/api/auth/confirm-email-change?token=${encodeURIComponent(token)}`;
     await this.mailService.sendVerifyEmail(dto.newEmail, verifyUrl);
 
-    return { message: 'Confirmation email sent to your new address. By changing email all other Id Provider (es. Google) will be disconnected. ' };
+    return {
+      message:
+        'Confirmation email sent to your new address. By changing email all other Id Provider (es. Google) will be disconnected. ',
+    };
   }
 
   async confirmEmailChange(token: string) {
@@ -399,31 +457,43 @@ export class AuthService {
     if (!user) throw new NotFoundException('User not found. ');
 
     // Check if new email is taken by someone else in the meantime
-    const existingUser = await this.usersService.findUser({ email: payload.newEmail });
+    const existingUser = await this.usersService.findUser({
+      email: payload.newEmail,
+    });
     if (existingUser) throw new ConflictException('Email already in use. ');
 
     // Update the actual email (user-service handles OAuth unlinking internally)
     await this.usersService.updateEmail(user.id, { email: payload.newEmail });
 
-    return { message: 'Email updated successfully. OAuth accounts have been unlinked for security. If you re-enter through Google with the old email a new account will be created. ' };
+    return {
+      message:
+        'Email updated successfully. OAuth accounts have been unlinked for security. If you re-enter through Google with the old email a new account will be created. ',
+    };
   }
 
   async changePassword(userId: number, body: ChangePasswordDto) {
     const user = await this.usersService.findUser({ id: userId });
     if (!user) throw new NotFoundException();
 
-    const localAccount = user?.accounts.find(a => a.provider === Provider.LOCAL);
+    const localAccount = user?.accounts.find(
+      (a) => a.provider === Provider.LOCAL,
+    );
 
     // If they have a password, they MUST verify the old one
     if (localAccount?.passwordHash) {
-      const isMatch = await bcrypt.compare(body.oldPass, localAccount.passwordHash);
+      const isMatch = await bcrypt.compare(
+        body.oldPass,
+        localAccount.passwordHash,
+      );
       if (!isMatch) {
         throw new UnauthorizedException('Current password incorrect ');
       }
 
       // Check if new password is same as old
       if (await bcrypt.compare(body.newPass, localAccount.passwordHash)) {
-        throw new BadRequestException('New password must be different from the old one.');
+        throw new BadRequestException(
+          'New password must be different from the old one.',
+        );
       }
     }
     // If no local account exists yet, we will create one during updatePassword

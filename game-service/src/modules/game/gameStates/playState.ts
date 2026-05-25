@@ -18,7 +18,7 @@ export class PlayState implements IGameState {
 
 	name = "PLAY";
 
-	private fullEvents: (GameStateEvents | GameEndEvents)[];
+	private fullEvents: (GameStateEvents | GameEndEvents)[] = [];
 	private NETWORK_TICK_RATE: number = (1 / 30);
 	private networkAccumulator = 0.0;
 	constructor(private readonly session: GameSession) {}
@@ -49,18 +49,19 @@ export class PlayState implements IGameState {
 
 			/* sending the snapshots */
 			if (event.eventName === "game-state") {
-				// if (shouldSendGameState) da mettere quando francesco mettera' interpolazione
-				this.session.server
-					.to(this.session.gameId)
-					.emit(GameEvents.GAME_STATE, {
-						entities: event.data,
-						time: remaningTime,
-					});
+				if (shouldSendGameState){
+					this.session.server
+						.to(this.session.gameId)
+						.emit(GameEvents.GAME_STATE, {
+							entities: event.data,
+							time: remaningTime,
+						});
+				}
 			} else {
 				this.session.server
 					.to(this.session.gameId)
 					.emit(GameEvents.GAME_OVER, {
-						entities: event.winnerData,
+						entities: event.finalData,
 						time: remaningTime,
 					});
 				this.session.transitionTo(new EndState(this.session));

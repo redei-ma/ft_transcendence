@@ -59,7 +59,7 @@ export class InputManager {
     this.keys.delete(key);
 
     // Reset attack sent per P0
-    if (key === ' ' || key === 'shift' || key === 'control') {
+    if (key === ' ' || key === 'shift' || key === 'c') {
       this.attackSent[0] = false;
     }
     // Reset attack sent per P1
@@ -69,13 +69,15 @@ export class InputManager {
   };
 
   private sendInputs(): void {
+    if (!socketService.isConnected()) return;
+
     // P1: WASD + Space(melee) / Shift(spell) / Ctrl(defence)
     const p0 = this.buildPayload(
       'w', 's', 'a', 'd',
-      ' ', 'shift', 'control',
+      ' ', 'shift', 'c',
       0
     );
-    if (p0.attackType) console.log('P0 attack:', p0.attackType);
+    if (p0.attackType) console.log('P0 attack payload:', JSON.stringify(p0));
     socketService.emit(GameEvents.INPUT, p0);
 
     // P2: Frecce + 1(melee) / 2(spell) / 3(defence)

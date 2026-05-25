@@ -1,4 +1,4 @@
-import { CharacterName, EndReason, MatchMode, MatchType, Pillar, PlayerSnapshot, BulletSnapshot, WinnerData } from '@transcendence/types';
+import { CharacterName, EndReason, MatchMode, MatchType, Pillar, PlayerSnapshot, BulletSnapshot, FinalData } from '@transcendence/types';
 export { CharacterName, EndReason, MatchMode, MatchType };
 
 export interface Vector {
@@ -15,7 +15,7 @@ export interface GameStatePayload {
 }
 
 export interface GameOverPayload {
-  winnerData: WinnerData | undefined;
+  finalData: FinalData | undefined;
   time: number;
 }
 

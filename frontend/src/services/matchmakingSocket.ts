@@ -117,6 +117,17 @@ class MatchmakingSocket {
 	getSocket(): Socket | null {
 		return this.socket;
 	}
+
+	connectAndEmit(event: GameEvents, data?: any): void {
+	  const socket = this.connect();
+	  if (socket.connected) {
+	    this.emit(event, data);
+	  } else {
+	    socket.once('connect', () => {
+	      this.emit(event, data);
+	    });
+	  }
+	}
 }
 
 export const matchmakingSocket = new MatchmakingSocket();

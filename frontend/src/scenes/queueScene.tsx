@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { GameEvents } from '@transcendence/types';
 import { matchmakingSocket } from '../services/matchmakingSocket';
 import { theme } from '../configs/theme';
 
@@ -17,7 +18,7 @@ export default function QueueScene({ onCancel }: QueueSceneProps) {
   }, []);
 
   const handleCancel = () => {
-    matchmakingSocket.disconnect(); // disconnessione = leave queue
+    matchmakingSocket.emit(GameEvents.LEAVE_QUEUE, {}); // Per abbandonare la coda
     onCancel();
   };
 

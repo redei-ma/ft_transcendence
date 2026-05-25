@@ -106,7 +106,7 @@ export class GameService implements OnModuleInit, OnModuleDestroy{
 				}
 				catch(error){
 					this.sessionToDestroy.add(game);
-					this.logger.error(`Critical error in game ${game.gameId}`, error.stack);
+					this.logger.error(`Critical error in game ${game.gameId}`, error);
 				}
 			});
 			this.timeAccumulator -= this.TIME_STEPS;
@@ -162,9 +162,12 @@ export class GameService implements OnModuleInit, OnModuleDestroy{
             const player = session.players.get(entityId);
             if (player && player.userDbId !== null) {
                 this.userToGameData.delete(player.userDbId);
-                this.logger.log(`Player ${player.userDbId} left voluntarily. Cleared for new matchmaking.`);
+                this.logger.log(`Player ${player.userDbId} left voluntarily. Cleared for new matchmaking. =====================================`);
 				this.notifyMatchmakingPlayerLeft(player.userDbId, session.gameId);
             }
+			else{
+				this.logger.error("player not found");
+			}
 
             session.removePlayer(entityId, true);
         }

@@ -7,6 +7,7 @@ import {
 	calculateEloMulti,
 	ELO_DEFAULT,
 	NotificationType,
+	NotificationTemplates,
 } from "@transcendence/types";
 import { Prisma } from "@prisma/client";
 import { MatchResult, PlayerResult } from "../../types/match-result.interface";
@@ -23,7 +24,7 @@ export class MatchResultService {
 	constructor(
 		private readonly prisma: PrismaService,
 		private readonly achievementService: AchievementService,
-		private readonly userNotificationClient: UserNotificationClient,
+		private readonly notificationClient: UserNotificationClient,
 	) {}
 
 	/**
@@ -37,9 +38,12 @@ export class MatchResultService {
 	async processMatchEnd(
 		matchResult: MatchResult,
 	): Promise<{ userId: number; achievementName: string }[]> {
-		const skipStats =
+		if (
 			matchResult.mode === MatchMode.LOCAL ||
-			matchResult.mode === MatchMode.AI;
+			matchResult.mode === MatchMode.AI
+		) {
+			return [];
+		}
 
 		// Step 1: transaction — save match + update stats
 		const playersStats = await this.prisma.$transaction(async (tx) => {
@@ -65,9 +69,6 @@ export class MatchResultService {
 					deaths: p.deaths,
 				})),
 			});
-
-			// LOCAL / AI mode: save match only, no stats
-			if (skipStats) return [];
 
 			// Pre-fetch current ELO for all real players (needed for ELO calculation)
 			const eloMap = new Map<number, number>();
@@ -100,28 +101,26 @@ export class MatchResultService {
 			return updatedStats;
 		});
 
-		// Step 2: check achievements (skip for LOCAL / AI)
-		if (skipStats || playersStats.length === 0) return [];
+		// Step 2: check achievements
+		if (playersStats.length === 0) return [];
 
 		const unlocked = await this.achievementService.checkAchievements(
 			matchResult,
 			playersStats,
 		);
 
-		// // Step 3: send notifications for unlocked achievements
-		// for (const { userId, achievementName } of unlocked) {
-		// 	await this.userNotificationClient
-		// 		.createNotification(
-		// 			userId,
-		// 			NotificationType.ACHV_UNLOCKED,
-		// 			`Congratulations! You've earned the "${achievementName}" achievement.`,
-		// 		)
-		// 		.catch((err: unknown) => {
-		// 			this.logger.error(
-		// 				`Failed to notify user ${userId} for achievement "${achievementName}": ${err}`,
-		// 			);
-		// 		});
-		// }
+		// Step 3: send notifications for unlocked achievements (fire-and-forget)
+		await Promise.allSettled(
+			unlocked.map(({ userId, achievementName }) => {
+				const { message } =
+					NotificationTemplates.ACHV_UNLOCKED(achievementName);
+				return this.notificationClient.sendNotification(
+					userId,
+					NotificationType.ACHV_UNLOCKED,
+					message,
+				);
+			}),
+		);
 
 		return unlocked;
 	}

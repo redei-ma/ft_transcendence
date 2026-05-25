@@ -1,4 +1,4 @@
-FROM node:20-alpine
+FROM node:20.20.2-alpine3.23
 
 RUN addgroup -g 1001 -S appgroup && adduser -u 1001 -S appuser -G appgroup
 

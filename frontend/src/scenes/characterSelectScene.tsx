@@ -2,8 +2,8 @@ import { useState, useEffect, useRef } from 'react';
 import { matchmakingSocket } from '../services/matchmakingSocket';
 import { CharacterName, MatchMode, MatchType, GameEvents } from '@transcendence/types';
 import { theme } from '../configs/theme';
-import zeusImg from '../assets/ZeusSelection.png';
-import adeImg from '../assets/AdeSelection.png'; // Cambia in .png se necessario
+import zeusImg from '../assets/images/ZeusSelection.png';
+import adeImg from '../assets/images/AdeSelection.png'; // Cambia in .png se necessario
 
 type Character = typeof CharacterName[keyof typeof CharacterName];
 
@@ -12,6 +12,7 @@ interface CharacterSelectSceneProps {
   userDbId: string;
   onConfirm: (p1: Character, p2: Character) => void;
   onBack: () => void;
+  sessionId?: string | null;
 }
 
 const CHARACTERS: Character[] = [CharacterName.ZEUS, CharacterName.ADE];
@@ -30,6 +31,7 @@ export default function CharacterSelectScene({
   userDbId,
   onConfirm,
   onBack,
+  sessionId,
 }: CharacterSelectSceneProps) {
   const isLocal = mode === MatchMode.LOCAL;
   const isAI = mode === MatchMode.AI;
@@ -112,23 +114,30 @@ export default function CharacterSelectScene({
       const finalP1 = CHARACTERS[p1Index];
       const finalP2 = CHARACTERS[p2Index];
       
-    const payload = {
-      characterName: isSplitScreen ? [finalP1, finalP2] : [finalP1],
-      rank: (mode === MatchMode.RANKED || mode === MatchMode.UNRANKED) ? 500 : null,
-      rankRange: (mode === MatchMode.RANKED || mode === MatchMode.UNRANKED) ? 100 : null,
-      matchType: MatchType.FFA,
-      matchMode: mode,
-      isAiPlayer: isAI,
-    };
-      
-      let event: GameEvents;
-      if (isLocal) event = GameEvents.JOIN_LOCAL;
-      else if (isAI) event = GameEvents.JOIN_AI;
-      else if (mode === MatchMode.RANKED) event = GameEvents.JOIN_RANKED;
-      else event = GameEvents.JOIN_UNRANKED;
+    if (sessionId) {
+        // Direct invite — join alla sessione privata
+        console.log(`[CharSelect] Emitting JOIN_DIRECT_SESSION:`, { sessionId, characterName: finalP1 });
+        matchmakingSocket.emit(GameEvents.JOIN_DIRECT_SESSION, { sessionId, characterName: finalP1 });
+      } else {
+        // Flusso normale — coda pubblica
+        const payload = {
+          characterName: isSplitScreen ? [finalP1, finalP2] : [finalP1],
+          rank: (mode === MatchMode.RANKED || mode === MatchMode.UNRANKED) ? 500 : null,
+          rankRange: (mode === MatchMode.RANKED || mode === MatchMode.UNRANKED) ? 100 : null,
+          matchType: MatchType.FFA,
+          matchMode: mode,
+          isAiPlayer: isAI,
+        };
 
-      console.log(`[CharSelect] Emitting ${event}:`, payload);
-      matchmakingSocket.emit(event, payload);
+        let event: GameEvents;
+        if (isLocal) event = GameEvents.JOIN_LOCAL;
+        else if (isAI) event = GameEvents.JOIN_AI;
+        else if (mode === MatchMode.RANKED) event = GameEvents.JOIN_RANKED;
+        else event = GameEvents.JOIN_UNRANKED;
+
+        console.log(`[CharSelect] Emitting ${event}:`, payload);
+        matchmakingSocket.emit(event, payload);
+      }
 
       onConfirm(finalP1, finalP2);
     }, 600);

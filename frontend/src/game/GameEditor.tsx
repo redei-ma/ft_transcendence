@@ -9,7 +9,7 @@ import { BulletEntity } from './entities/BulletEntity';
 import { GameOverOverlay } from './UI/components/GameOverOverlay';
 import GameChat from './UI/components/GameChat';
 import { EffectComposer, Bloom } from '@react-three/postprocessing';
-import mapTexture from '../assets/mapTexture1.png';
+import mapTexture from '../assets/images/mapTexture1.png';
 import { useGameStore } from '../storage/gameStore';
 
 interface GameProps {
