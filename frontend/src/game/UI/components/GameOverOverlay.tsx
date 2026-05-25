@@ -82,7 +82,7 @@ export function GameOverOverlay({ gameOver, players, onPlayAgain, onQuit, myUser
         </div>
 
         {winners.map((p) => (
-          <PlayerRow key={p.id} player={p} isWinner />
+          <PlayerRow key={p.id} player={p} isWinner isMe={String(p.id) === String(myUserId) || (p as any).userName === myUserId} />
         ))}
 
         {losers.length > 0 && winners.length > 0 && (
@@ -90,7 +90,7 @@ export function GameOverOverlay({ gameOver, players, onPlayAgain, onQuit, myUser
         )}
 
         {losers.map((p) => (
-          <PlayerRow key={p.id} player={p} isWinner={false} />
+          <PlayerRow key={p.id} player={p} isWinner={false} isMe={String(p.id) === String(myUserId) || (p as any).userName === myUserId} />
         ))}
       </div>
       
@@ -175,8 +175,8 @@ function HeaderCell({ children, center }: { children: string; center?: boolean }
   );
 }
 
-function PlayerRow({ player, isWinner }: { player: PlayerSnapshot; isWinner: boolean }) {
-  const playerColor = player.characterName === CharacterName.ZEUS ? theme.colors.zeus : theme.colors.ade;
+function PlayerRow({ player, isWinner, isMe }: { player: PlayerSnapshot; isWinner: boolean; isMe: boolean }) {
+  const playerColor = isMe ? '#66B2FF' : '#FF6666';
   const displayName = (player as any).userName || player.characterName;
   const charLabel = player.characterName.charAt(0).toUpperCase() + player.characterName.slice(1);
 
@@ -206,8 +206,8 @@ function PlayerRow({ player, isWinner }: { player: PlayerSnapshot; isWinner: boo
         </span>
       </div>
 
-      <StatCell>—</StatCell>
-      <StatCell>—</StatCell>
+      <StatCell>{String((player as any).kill ?? 0)}</StatCell>
+      <StatCell>{String((player as any).dead ?? 0)}</StatCell>
     </div>
   );
 }
