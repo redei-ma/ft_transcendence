@@ -107,6 +107,7 @@ services:
             - ./auth-service/.env
         environment:
             NODE_ENV: production
+            PORT: "${AUTH_SERVICE_PORT}"
         healthcheck:
             test:
                 [
@@ -132,9 +133,9 @@ services:
             - "3001"
         env_file:
             - .env.shared
-            - ./user-service/.env
         environment:
             NODE_ENV: production
+            PORT: "${USER_SERVICE_PORT}"
         volumes:
             - uploads_data:/uploads
         healthcheck:
@@ -164,9 +165,9 @@ services:
             - "3000"
         env_file:
             - .env.shared
-            - ./game-service/.env
         environment:
             NODE_ENV: production
+            PORT: "${GAME_SERVICE_PORT}"
         healthcheck:
             test:
                 [
@@ -192,9 +193,9 @@ services:
             - "3500"
         env_file:
             - .env.shared
-            - ./matchmaking-service/.env
         environment:
             NODE_ENV: production
+            PORT: "${MATCHMAKING_SERVICE_PORT}"
         healthcheck:
             test:
                 [

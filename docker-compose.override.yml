@@ -79,7 +79,7 @@ services:
         command: npm run dev -- --host
         environment:
             NODE_ENV: development
-            CHOKIDAR_USEPOLLING: "${CHOKIDAR_USEPOLLING:-false}"
+            CHOKIDAR_USEPOLLING: "false" # set to "true" on macOS if hot reload doesn't work
         volumes:
             - ./frontend/src:/app/frontend/src
         healthcheck:

@@ -63,6 +63,13 @@ const ACHIEVEMENTS: AchievementDefinition[] = [
 		iconPath: "/icons/zeus.png",
 	},
 
+	{
+		name: "Flawless Victory",
+		description: "Win a match without dying",
+		tier: AchievementType.GOLD,
+		iconPath: "/icons/flawless.png",
+	},
+
 	// ─── Gold ────────────────────────────────────────────────────
 	{
 		name: "Winning Streak",
