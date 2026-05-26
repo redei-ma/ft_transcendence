@@ -237,7 +237,8 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
             <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
               <ControlRow keys={["W A S D"]} action="Movement" />
               <ControlRow keys={["SPACE"]} action="Melee Attack" />
-              <ControlRow keys={["SHIFT", "L-CLICK"]} action="Aim & Shoot Spell" />
+              <ControlRow keys={["SHIFT"]} action="Press/Release for enable or disable Aim-Mode" />
+              <ControlRow keys={["L-CLICK"]} action="Shoot a Spell at click location (Aim-Mode enabled ONLY)" />
               <ControlRow keys={["C"]} action="Defense Stance" />
               <ControlRow keys={["ENTER"]} action="Open Game Chat" />
             </div>
@@ -255,7 +256,7 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
                 <span style={{ fontFamily: theme.fonts.heading, color: theme.colors.zeus, fontSize: "13px", letterSpacing: "1px", textTransform: "uppercase", textAlign: "center", marginBottom: "8px", fontWeight: "bold" }}>Player 1</span>
                 <ControlRow keys={["W A S D"]} action="Move" stacked />
                 <ControlRow keys={["SPACE"]} action="Melee" stacked />
-                <ControlRow keys={["SHIFT"]} action="Spell" stacked />
+                <ControlRow keys={["SHIFT"]} action="Spell (Where you look at)" stacked />
                 <ControlRow keys={["C"]} action="Defense" stacked />
               </div>
 
@@ -267,7 +268,7 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
                 <span style={{ fontFamily: theme.fonts.heading, color: theme.colors.ade, fontSize: "13px", letterSpacing: "1px", textTransform: "uppercase", textAlign: "center", marginBottom: "8px", fontWeight: "bold" }}>Player 2</span>
                 <ControlRow keys={["ARROWS"]} action="Move" stacked />
                 <ControlRow keys={["P"]} action="Melee" stacked />
-                <ControlRow keys={["O"]} action="Spell" stacked />
+                <ControlRow keys={["O"]} action="Spell (Where you look at)" stacked />
                 <ControlRow keys={["I"]} action="Defense" stacked />
               </div>
             </div>

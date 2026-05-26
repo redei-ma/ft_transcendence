@@ -76,12 +76,13 @@ export class InputManager {
     }
   };
 
+  
   private playerPosition: { x: number; z: number } | null = null;
-
+  
   public setPlayerPosition(x: number, z: number): void {
     this.playerPosition = { x, z };
   }
-
+  
   public fireSpellAt(worldX: number, worldZ: number): void {
     console.log("[InputManager] fireSpellAt:", worldX, worldZ, "playerPos:", this.playerPosition);
     if (!this.playerPosition) return;
@@ -90,16 +91,16 @@ export class InputManager {
     const dz = worldZ - this.playerPosition.z;
     const length = Math.sqrt(dx * dx + dz * dz);
     if (length < 0.1) return;
-
+    
     this.pendingSpellDirection = {
       x: Math.max(-1, Math.min(1, dx / length)),
       z: Math.max(-1, Math.min(1, dz / length)),
     };
   }
-
+  
   private sendInputs(): void {
     if (!socketService.isConnected()) return;
-
+    
     const p0 = this.buildPayload(
       'w', 's', 'a', 'd',
       ' ', 'shift', 'c',
@@ -116,7 +117,7 @@ export class InputManager {
     
     if (p0.attackType) console.log('P0 attack payload:', JSON.stringify(p0));
     socketService.emit(GameEvents.INPUT, p0);
-
+    
     if (this.isLocalGame) {
       const p1 = this.buildPayload(
         'arrowup', 'arrowdown', 'arrowleft', 'arrowright',
@@ -127,7 +128,11 @@ export class InputManager {
       socketService.emit(GameEvents.INPUT, p1);
     }
   }
-
+  
+  public getIsLocal(): boolean {
+    return this.isLocalGame;
+  }
+  
   private buildPayload(
     upKey: string, downKey: string, leftKey: string, rightKey: string,
     meleeKey: string, spellKey: string, defenceKey: string,
@@ -148,15 +153,17 @@ export class InputManager {
     let attackType: AttackType | undefined = undefined;
 
     if (!this.attackSent[playerIndex]) {
-      if (this.keys.has(defenceKey)) {
-        attackType = AttackType.DEFENCE_ATTACK;
-        this.attackSent[playerIndex] = true;
-      } else if (this.keys.has(meleeKey)) {
-        attackType = AttackType.MELEE_ATTACK;
-        this.attackSent[playerIndex] = true;
-      }
-      // Spell via tastiera rimosso — ora si fa con il mouse click
+    if (this.keys.has(defenceKey)) {
+      attackType = AttackType.DEFENCE_ATTACK;
+      this.attackSent[playerIndex] = true;
+    } else if (this.keys.has(meleeKey)) {
+      attackType = AttackType.MELEE_ATTACK;
+      this.attackSent[playerIndex] = true;
+    } else if (this.keys.has(spellKey) && (this.isLocalGame || playerIndex === 1)) {
+      attackType = AttackType.SPELL_ATTACK;
+      this.attackSent[playerIndex] = true;
     }
+  }
 
     const payload: GameInputPayload = {
       x: Math.round(mapX),
