@@ -146,6 +146,11 @@ export class AchievementService implements OnModuleInit {
 				earned.push("Zeus Champion");
 			}
 
+			// Flawless Victory: win without dying
+			if (isWinner && player.deaths === 0) {
+				earned.push("Flawless Victory");
+			}
+
 			// ─── Gold ────────────────────────────────────────
 
 			// Winning Streak

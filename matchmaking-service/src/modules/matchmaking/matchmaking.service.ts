@@ -1,4 +1,4 @@
-import { Injectable, Logger } from "@nestjs/common";
+import { Injectable, Logger, OnModuleDestroy } from "@nestjs/common";
 import { JoinQueueDto } from "./dto/join-queue.dto";
 import Redis from "ioredis";
 import { InjectRedis } from "@nestjs-modules/ioredis";
@@ -56,13 +56,20 @@ interface RedisUserStatus {
 }
 
 @Injectable()
-export class MatchmakingService {
+export class MatchmakingService implements OnModuleDestroy {
 	private readonly logger = new Logger(MatchmakingService.name);
 
 	constructor(
 		@InjectRedis() private readonly redis: Redis,
 		private readonly eventEmitter: EventEmitter2,
 	) {}
+
+	async onModuleDestroy(): Promise<void> {
+		this.logger.warn('Matchmaking service shutting down, clearing queues...');
+		await this.redis.del('matchmaking_queue');
+		await this.redis.del('matchmaking_queue_unranked');
+		this.logger.warn('Queues cleared.');
+	}
 
 	/* ---------------------------------------------------------------------------------------------------------------- */
 

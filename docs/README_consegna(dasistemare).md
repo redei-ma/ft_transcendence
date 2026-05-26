@@ -1,4 +1,4 @@
-\_This project has been created as part of the 42 curriculum by redei-ma, gpirozzi, fzuccaro, ade-ross, lacerbi.
+_This project has been created as part of the 42 curriculum by redei-ma, gpirozzi, fzuccaro, ade-ross, lacerbi._
 
 # ft_transcendence - Clash of Olympus
 
@@ -16,7 +16,7 @@
 - Two playable characters: Zeus (lightning) and Ade (fire)
 - ELO-based ranked matchmaking system
 - User profiles with avatar upload, friend system, and online status
-- 12 achievements across 4 tiers (Bronze, Silver, Gold, Platinum)
+- 13 achievements across 4 tiers (Bronze, Silver, Gold, Platinum)
 - Match history and detailed statistics per character
 - In-game chat during matches
 - Notification system (friend requests, game invites, achievement unlocks)
@@ -33,7 +33,7 @@
 | **Renato**    | `redei-ma` | **Project Manager** | `user-service` + Prisma + DB   | DB Schema, API, Friends, Stats, Achievements, Notifications |
 | **Giovanni**  | `gpirozzi` | **Tech Lead**       | `game-service` + `matchmaking` | Game engine, Physics, WebSocket, ELO, Match results         |
 | **Francesco** | `fzuccaro` | **Product Owner**   | `frontend`                     | React, Three.js, UI/UX, Visual Effects, Game scenes         |
-| **Ale**       | `ade-ross` | **Architect**       | `auth-service` + `nginx`       | JWT, OAuth, 2FA, Docker orchestration, SSL, Reverse proxy   |
+| **Ale**       | `ade-ross` | **Architect**       | `auth-service` + `nginx`       | JWT, OAuth, 2FA, SSL, Reverse proxy                         |
 | **Leonardo**  | `lacerbi`  | **Developer**       | `matchmaking-service`          | AI bot algorithms, Matchmaking queue logic                  |
 
 ---
@@ -145,10 +145,12 @@ Redis is **not** a shared datastore across all services. Only `game-service` and
 | **React**                         | 19      | Component-based UI, large ecosystem, team familiarity                     |
 | **Vite**                          | 7       | Fast HMR for development, optimized production builds                     |
 | **Three.js** + React Three Fiber  | 0.182   | 3D isometric rendering in the browser with declarative React syntax       |
-| **@react-three/drei**             | 10      | Three.js helper components (camera rigs, controls, loaders)               |
+| **@react-three/drei**             | 10      | Three.js helper components for loading 3D models (GLTF/OBJ) and scene utilities |
 | **Tailwind CSS**                  | 3.4     | Utility-first styling, fast prototyping, consistent design system         |
 | **Zustand**                       | 5       | Lightweight state management without boilerplate                          |
-| **Socket.io-client**              | 4.8     | Real-time bidirectional communication with the game server (msgpack parser included) |
+| **Socket.io-client**              | 4.8     | Real-time bidirectional communication with the game server                           |
+| **socket.io-msgpack-parser**      | 3.0     | Binary msgpack serialization on both client and server for reduced payload size      |
+| **@react-three/postprocessing**   | 3.0     | Post-processing effects (Bloom/glow) applied to the 3D game scene via EffectComposer |
 
 ### Backend
 
@@ -208,7 +210,7 @@ User ──< Notification     (persistent, typed: FRIEND_REQ / GAME_INVITE / ACH
 | **CharacterStats**   | characterName (ADE/ZEUS), wins, losses, kills, deaths          | Per-character performance       |
 | **Match**            | mode (RANKED/UNRANKED/LOCAL/AI), endReason, winningTeamId      | Game record                     |
 | **MatchParticipant** | matchId, userId, teamId, characterName, kills, deaths          | Player performance in a match   |
-| **Achievement**      | name, description, tier (BRONZE/SILVER/GOLD/PLATINUM)          | Achievement catalog (12 total)  |
+| **Achievement**      | name, description, tier (BRONZE/SILVER/GOLD/PLATINUM)          | Achievement catalog (13 total)  |
 | **UserAchievement**  | userId, achievementId, unlockedAt                              | Achievement unlocks             |
 | **Friendship**       | senderId, receiverId, status                                   | Friend relationships            |
 | **GameInvite**       | senderId, receiverId, status, expiresAt                        | Game challenge invitations      |
@@ -233,7 +235,7 @@ User ──< Notification     (persistent, typed: FRIEND_REQ / GAME_INVITE / ACH
 | Notification system       | Persistent notifications for friend requests, game invites, achievements    | Renato (user-service)                                 |
 | ELO ranking & leaderboard | Chess.com-style ELO calculation (K=32), paginated leaderboard               | Giovanni (game-service), Renato (user-service)        |
 | Match history             | Paginated match records with mode filter, per-player stats                  | Renato (user-service), Giovanni (game-service)        |
-| Achievement system        | 12 achievements across 4 tiers, automatic unlock check after each match     | Giovanni (game-service), Renato (user-service)        |
+| Achievement system        | 13 achievements across 4 tiers, automatic unlock check after each match     | Giovanni (game-service), Renato (user-service)        |
 | Real-time game engine     | Server-authoritative game loop at 60fps with physics simulation             | Giovanni (game-service)                               |
 | 3D isometric arena        | Three.js rendering with React Three Fiber, character auras, impact effects  | Francesco (frontend)                                  |
 | WebSocket multiplayer     | Socket.io with msgpack serialization for low-latency game state sync        | Giovanni (game-service), Francesco (frontend)         |
@@ -242,10 +244,12 @@ User ──< Notification     (persistent, typed: FRIEND_REQ / GAME_INVITE / ACH
 | Ranked matchmaking        | ELO-based queue with progressive tolerance range                            | Giovanni, Leonardo (matchmaking-service)              |
 | Unranked & local modes    | Quick play without ELO impact, same-device local mode                       | Giovanni, Leonardo (matchmaking-service)              |
 | Private challenges        | Invite a specific player to a match                                         | Leonardo (matchmaking-service), Renato (user-service) |
-| Docker infrastructure     | Multi-stage Dockerfiles, docker-compose orchestration, Makefile automation  | Ale                                                   |
+| Docker infrastructure     | Multi-stage Dockerfiles, docker-compose orchestration, Makefile automation  | Renato (with Ale)                                     |
 | HTTPS & security          | Nginx reverse proxy with SSL, rate limiting, security headers               | Ale                                                   |
-| Health checks             | Every service exposes /health, Docker healthchecks with dependency ordering | Renato, Ale                                           |
+| Health checks             | Every service exposes /health, Docker healthchecks with dependency ordering | Renato (with Ale)                                     |
 | Swagger API docs          | Auto-generated API documentation at /api/docs                               | Renato (user-service)                                 |
+| Privacy Policy            | GDPR-compliant privacy policy, accepted on first login and accessible from the dashboard footer | Ale, Francesco (frontend)     |
+| Terms of Service          | Terms of service, accepted on first login and accessible from the dashboard footer              | Ale, Francesco (frontend)     |
 
 ---
 
@@ -259,16 +263,22 @@ User ──< Notification     (persistent, typed: FRIEND_REQ / GAME_INVITE / ACH
 | 2   | **Real-time (WebSockets)**          | Web       | Major | 2      | Giovanni, Francesco | Socket.io for game state at 60fps and matchmaking queue. Msgpack parser for efficient serialization        |
 | 3   | **User Interaction**                | Web       | Major | 2      | Renato, Francesco   | Friend system (add/remove/accept/reject), user profiles, in-game chat via WebSocket                        |
 | 4   | **ORM**                             | Web       | Minor | 1      | Renato              | Prisma ORM with shared schema, typed queries, migration system                                             |
-| 5   | **Notification System**             | Web       | Minor | 1      | Renato              | Persistent notifications (DB) for friend requests, game invites, achievement unlocks. CRUD with pagination |
-| 6   | **Standard User Management**        | User Mgmt | Major | 2      | Renato, Francesco   | Profile editing, avatar upload (Sharp), friends with online status, profile pages                          |
-| 7   | **Game Statistics & Match History** | User Mgmt | Minor | 1      | Renato, Giovanni    | ELO tracking, win/loss/draw, K/D ratio, per-character stats, paginated match history, leaderboard          |
-| 8   | **OAuth 2.0**                       | User Mgmt | Minor | 1      | Ale                 | Google OAuth via Passport with account linking/unlinking                                                   |
-| 9   | **2FA**                             | User Mgmt | Minor | 1      | Ale                 | TOTP via Speakeasy, QR code generation, setup/enable/disable flow                                          |
-| 10  | **AI Opponent**                     | AI        | Major | 2      | Leonardo, Giovanni  | Bot AI integrated into game engine, simulates human-like play                                              |
-| 11  | **Web-based Game**                  | Gaming    | Major | 2      | Giovanni, Francesco | 1v1 arena brawler with combat mechanics (melee, spell, defense), win/loss conditions                       |
-| 12  | **Remote Players**                  | Gaming    | Major | 2      | Giovanni, Francesco | Two players on separate computers via WebSocket, reconnection handling, lag compensation                   |
-| 13  | **Advanced 3D Graphics**            | Gaming    | Major | 2      | Francesco           | Three.js + React Three Fiber isometric arena, character auras, particle effects, post-processing           |
-| 14  | **Gamification**                    | Gaming    | Minor | 1      | Giovanni, Renato    | 12 achievements (4 tiers), ELO leaderboard, character-specific progression                                 |
+| 5   | **Standard User Management**        | User Mgmt | Major | 2      | Renato, Francesco   | Profile editing, avatar upload (Sharp), friends with online status, profile pages                          |
+| 6   | **Game Statistics & Match History** | User Mgmt | Minor | 1      | Renato, Giovanni    | ELO tracking, win/loss/draw, K/D ratio, per-character stats, paginated match history, leaderboard          |
+| 7   | **OAuth 2.0**                       | User Mgmt | Minor | 1      | Ale                 | Google OAuth via Passport with account linking/unlinking                                                   |
+| 8   | **2FA**                             | User Mgmt | Minor | 1      | Ale                 | TOTP via Speakeasy, QR code generation, setup/enable/disable flow                                          |
+| 9   | **AI Opponent**                     | AI        | Major | 2      | Leonardo, Giovanni  | Bot AI integrated into game engine, simulates human-like play                                              |
+| 10  | **Web-based Game**                  | Gaming    | Major | 2      | Giovanni, Francesco | 1v1 arena brawler with combat mechanics (melee, spell, defense), win/loss conditions                       |
+| 11  | **Remote Players**                  | Gaming    | Major | 2      | Giovanni, Francesco | Two players on separate computers via WebSocket, reconnection handling, delta-time compensation and client-side interpolation for smooth remote gameplay |
+| 12  | **Advanced 3D Graphics**            | Gaming    | Major | 2      | Francesco           | Three.js + React Three Fiber isometric arena, character auras, particle effects, post-processing           |
+| 13  | **Gamification**                    | Gaming    | Minor | 1      | Giovanni, Renato    | 13 achievements (4 tiers), ELO leaderboard, win streak tracking                                            |
+| 14  | **Microservices**                   | DevOps    | Major | 2      | Renato (with Ale)   | 4 independent NestJS services (auth, user, game, matchmaking), each with single responsibility, communicating via REST and Redis pub/sub |
+
+**Total: 23 points** — 9 Major × 2pts + 5 Minor × 1pt
+
+### Not included: Public API (IV.1 Major)
+
+> The project exposes REST APIs documented via Swagger (`/api/docs`), with rate limiting and JWT authentication. However, the module requires a **static API key** for public external access, which is not currently implemented. To fully claim this module (+2pts), a public API key system would need to be added.
 
 ---
 
@@ -283,6 +293,8 @@ User ──< Notification     (persistent, typed: FRIEND_REQ / GAME_INVITE / ACH
 - Built WebSocket client integration for game state and matchmaking
 - Styled the application with Tailwind CSS (dark Greek-mythology theme)
 
+**Challenge:** > TODO — Francesco: descrivi una sfida tecnica che hai affrontato e come l'hai risolta.
+
 ### Renato (Project Manager - User Service & Database)
 
 - Designed the complete Prisma database schema (11 models, all enums, relations, indexes)
@@ -290,7 +302,9 @@ User ──< Notification     (persistent, typed: FRIEND_REQ / GAME_INVITE / ACH
 - Implemented internal API endpoints for service-to-service communication (protected by API key)
 - Set up the migration system (db-migration one-shot container)
 - Coordinated team meetings, tracked progress, managed task distribution
-- Contributed to Docker infrastructure and Makefile automation
+- Led Docker infrastructure: multi-stage Dockerfiles for all services, docker-compose orchestration, Makefile automation
+
+**Challenge:** > TODO — Renato: descrivi una sfida tecnica che hai affrontato e come l'hai risolta.
 
 ### Giovanni (Tech Lead - Game Service)
 
@@ -301,18 +315,24 @@ User ──< Notification     (persistent, typed: FRIEND_REQ / GAME_INVITE / ACH
 - Implemented match result processing: save match records, update ELO, update stats, check achievements in a single Prisma transaction
 - Contributed to matchmaking service (ranked queue, ELO matching algorithm)
 
+**Challenge:** > TODO — Giovanni: descrivi una sfida tecnica che hai affrontato e come l'hai risolta.
+
 ### Ale (Architect - Auth Service & Infrastructure)
 
 - Built the `auth-service`: local login (bcrypt), Google OAuth (Passport), JWT tokens (access + refresh), email verification, password reset, 2FA (Speakeasy TOTP)
-- Configured the complete Docker infrastructure: docker-compose with all services, multi-stage Dockerfiles, network isolation, volume persistence, health checks, dependency ordering
 - Set up Nginx as reverse proxy with SSL termination, rate limiting per endpoint, security headers, WebSocket upgrade
 - Managed TLS certificate generation and ngrok tunnel for OAuth development
+- Contributed to Docker infrastructure setup alongside Renato
+
+**Challenge:** > TODO — Ale: descrivi una sfida tecnica che hai affrontato e come l'hai risolta.
 
 ### Leonardo (Developer - AI & Matchmaking)
 
 - Implemented the AI bot logic for single-player mode (decision-making, pathfinding, human-like behavior)
 - Contributed to the matchmaking service: queue management, challenge system, AI match creation
 - Worked on game state management and player status tracking
+
+**Challenge:** > TODO — Leonardo: descrivi una sfida tecnica che hai affrontato e come l'hai risolta.
 
 ---
 
@@ -323,6 +343,8 @@ User ──< Notification     (persistent, typed: FRIEND_REQ / GAME_INVITE / ACH
 - **Docker** and **Docker Compose** (v2) installed
 - **Make** (optional, for convenience commands)
 - A modern browser (latest stable Google Chrome)
+
+> **Note:** The web interface (dashboard, profile, leaderboard) is fully responsive and works on mobile and tablet. The game itself requires a **desktop browser** — keyboard and mouse input are not available on touch devices.
 
 ### Step-by-step setup
 
