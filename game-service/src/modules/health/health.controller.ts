@@ -5,6 +5,7 @@ import {
 	PrismaHealthIndicator,
 } from "@nestjs/terminus";
 import { PrismaService } from "../prisma/prisma.service";
+import { RedisHealthIndicator } from "./redis.health";
 
 @Controller("health")
 export class HealthController {
@@ -12,6 +13,7 @@ export class HealthController {
 		private health: HealthCheckService,
 		private db: PrismaHealthIndicator,
 		private prisma: PrismaService,
+		private redis: RedisHealthIndicator,
 	) {}
 
 	@Get()
@@ -22,6 +24,7 @@ export class HealthController {
 			// If the database is unreachable, it automatically returns a 503 Service Unavailable status,
 			// indicating the service is not healthy.
 			() => this.db.pingCheck("database", this.prisma, { timeout: 5000 }),
+			() => this.redis.isHealthy("redis"),
 		]);
 	}
 }
