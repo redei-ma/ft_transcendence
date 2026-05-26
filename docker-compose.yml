@@ -107,7 +107,6 @@ services:
             - ./auth-service/.env
         environment:
             NODE_ENV: production
-            PORT: "${AUTH_SERVICE_PORT}"
         healthcheck:
             test:
                 [
@@ -135,7 +134,6 @@ services:
             - .env.shared
         environment:
             NODE_ENV: production
-            PORT: "${USER_SERVICE_PORT}"
         volumes:
             - uploads_data:/uploads
         healthcheck:
@@ -167,7 +165,6 @@ services:
             - .env.shared
         environment:
             NODE_ENV: production
-            PORT: "${GAME_SERVICE_PORT}"
         healthcheck:
             test:
                 [
@@ -195,7 +192,6 @@ services:
             - .env.shared
         environment:
             NODE_ENV: production
-            PORT: "${MATCHMAKING_SERVICE_PORT}"
         healthcheck:
             test:
                 [
