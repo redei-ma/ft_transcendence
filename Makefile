@@ -98,16 +98,16 @@ down: ##@Docker — Stop and remove containers (volumes preserved)
 	@printf "$(YELLOW)>>> Stopping services...$(RESET)\n"
 	@$(COMPOSE) down
 
-restart: down up ##@Docker — Full stop + start (dev mode)
+restart: down up ##@Docker — Full stop + start in DEV mode
 
-rebuild: certs ##@Docker — Force rebuild without cache (DB preserved), then start
+rebuild: certs ##@Docker — Force rebuild without cache in DEV mode (DB preserved), then start
 	@printf "$(CYAN)>>> Rebuilding without cache...$(RESET)\n"
 	@$(COMPOSE) down --remove-orphans
 	@$(COMPOSE) build --no-cache
 	@$(COMPOSE) up -d
 	@printf "$(GREEN)>>> Rebuild complete.$(RESET)\n"
 
-re: fclean up ##@Docker — Full wipe (DB included) + fresh build
+re: fclean up ##@Docker — Full wipe (DB included) + fresh build in DEV mode
 
 # --- Cleanup -------------------------------------------------
 

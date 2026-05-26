@@ -48,7 +48,7 @@ _This project has been created as part of the 42 curriculum by redei-ma, gpirozz
 
 ### Tools
 
-- **Task tracking:** GitHub Issues for tracking bugs and feature requests. Informal task assignment during meetings.
+- **Task tracking:** Tasks and priorities defined during team meetings. Progress and bugs discussed directly between members during daily check-ins.
 - **Communication:** Discord for voice calls and screen-sharing during development sessions. WhatsApp for daily messages, quick updates, and coordination.
 - **Version control:** Git with feature branches (`feature/auth-oauth`, `feature/user-friends`, etc.) merged into `develop` via pull requests.
 
@@ -349,7 +349,7 @@ User ──< Notification     (persistent, typed: FRIEND_REQ / GAME_INVITE / ACH
 - **Make**
 - A modern browser (latest stable Google Chrome)
 
-> **Note:** The game requires a **desktop browser** — keyboard and mouse are not available on touch devices.
+> **Note:** The game requires a **desktop browser** with keyboard and mouse input — mobile and tablet devices are not supported.
 
 ### Step-by-step setup
 
@@ -414,9 +414,9 @@ make up
 | `make up` | Build and start all services in **dev mode** (hot reload) |
 | `make up-prod` | Build and start in **production mode** (no hot reload) |
 | `make down` | Stop all containers (data preserved) |
-| `make restart` | Stop + start in dev mode |
-| `make rebuild` | Force rebuild without cache (data preserved) |
-| `make re` | **Full wipe** — destroys DB and rebuilds from scratch |
+| `make restart` | Stop + start in **dev mode** |
+| `make rebuild` | Force rebuild without cache in **dev mode** (data preserved) |
+| `make re` | **Full wipe** — destroys DB and rebuilds from scratch in **dev mode** |
 | `make clean` | Stop containers only (volumes and images preserved) |
 | `make clean-data` | Stop + remove DB/Redis volumes (images preserved) |
 | `make fclean` | Remove containers, volumes, and project images |
