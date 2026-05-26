@@ -32,10 +32,10 @@ export class DefendState implements IAiStates{
 
         if ('isAttacking' in this.threat){
             // is player
-            if (!this.hasStartedToDefend && bot.isAttacking) {
+            if (!this.hasStartedToDefend && bot.isDefending) {
                 this.hasStartedToDefend = true;
             }
-            if ((this.hasStartedToDefend && !bot.isAttacking) || this.stuckTimer >= GameConfig.COMBAT.DEFENCE_DURATION * 2) {
+            if ((this.hasStartedToDefend && !bot.isDefending) || this.stuckTimer >= GameConfig.COMBAT.DEFENCE_DURATION * 2) {
                 return tacticsHelper(bot, this.threat);
             }
             this.handlePlayerDefend(bot, stats, dx, dz);

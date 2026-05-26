@@ -6,13 +6,13 @@ export class GameInputDto {
 	@IsNumber()
 	@Min(-1.0)
 	@Max(1.0)
-	x: number;
+	x: number = 0;
 
 	@IsNotEmpty()
 	@IsNumber()
 	@Min(-1.0)
 	@Max(1.0)
-	z: number;
+	z: number = 0;
 
 	@IsOptional()
 	@IsNotEmpty()
@@ -22,5 +22,5 @@ export class GameInputDto {
 	@IsOptional()
 	@IsNumber()
 	@IsNotEmpty()
-	playerIndex: number;
+	playerIndex: number = 0;
 }

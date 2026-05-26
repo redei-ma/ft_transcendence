@@ -1,7 +1,7 @@
 export const GameConfig = {
   SERVER: {
     TICK_RATE: 16,
-    MAX_GAME_DURATION: 500.0,
+    MAX_GAME_DURATION: 300.0,
     MAX_LOBBY_DURATION: 500.0,
     MAX_GAME_KILLS: 3,
     SHUTDOWN_TIMER: 4.0,
@@ -18,7 +18,7 @@ export const GameConfig = {
   PLAYER: {
     DEFAULT_HP: 100,
     SPEED: 20.0,
-    RADIUS: 2.7,
+    RADIUS: 2.5,
     RESPAWN_TIMER: 5.0,
   },
   MATCH: {
@@ -35,11 +35,11 @@ export const GameConfig = {
   },
   BOT: {
     MELEE_DANGER_ZONE: 25,
-    BULLET_DANGER_ZONE: 400,
-    VISUAL_RADIUS_SQ: 3000.0,
+    BULLET_DANGER_ZONE: 500,
+    VISUAL_RADIUS_SQ: 5000.0,
     WAYPOINT_TOLERANCE_SQ: 9.0,
-    WANDER_STUCK_TIMER: 4.0,
-    MAX_PATH_TIME: 2.5,
+    WANDER_STUCK_TIMER: 2.0,
+    MAX_PATH_TIME: 1.5,
     SECURITY_RANGE: 10.0,
     SPELL_AIM_SPREAD_DEG: 20,
   },
