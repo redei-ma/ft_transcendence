@@ -106,7 +106,7 @@ export class GameService implements OnModuleInit, OnModuleDestroy{
 				}
 				catch(error){
 					this.sessionToDestroy.add(game);
-					this.logger.error(`Critical error in game ${game.gameId}`, error.stack);
+					this.logger.error(`Critical error in game ${game.gameId}`, error);
 				}
 			});
 			this.timeAccumulator -= this.TIME_STEPS;

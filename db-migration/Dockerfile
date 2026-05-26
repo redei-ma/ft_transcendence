@@ -11,11 +11,11 @@ COPY shared/prisma ./prisma
 
 WORKDIR /app/shared/types
 COPY shared/types/ .
-RUN --mount=type=cache,target=/root/.npm npm install && npm run build
+RUN npm install && npm run build
 
 WORKDIR /app/db-migration
 COPY db-migration/package*.json ./
-RUN --mount=type=cache,target=/root/.npm npm ci --install-links
+RUN npm ci --install-links
 
 RUN npx prisma generate --schema=../shared/prisma/schema.prisma
 

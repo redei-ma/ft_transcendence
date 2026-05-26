@@ -37,6 +37,7 @@ export default function GameFlow({ userId, username, onExit, sessionId: initialS
   const [sessionId, setSessionId] = useState<string | null>(initialSessionId || null);
   const [isReconnecting, setIsReconnecting] = useState(false);
   const hasResignedRef = useRef(false);
+  const [cancelMessage, setCancelMessage] = useState<string | null>(null);
 
   useEffect(() => {
     const socket = matchmakingSocket.connect();
@@ -55,8 +56,8 @@ export default function GameFlow({ userId, username, onExit, sessionId: initialS
       if (hasResignedRef.current) return;
         
       if (data?.status === 'MATCH_CANCELLED') {
-        alert(data?.message || "L'avversario ha abbandonato. Partita annullata.");
-        onExit();
+        setCancelMessage(data?.message || "L'avversario ha abbandonato. Partita annullata.");
+        setTimeout(() => onExit(), 3000);
         return;
       }
     
@@ -192,6 +193,30 @@ export default function GameFlow({ userId, username, onExit, sessionId: initialS
         </div>
       )}
 
+      {cancelMessage && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 3000,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          backgroundColor: 'rgba(10, 15, 25, 0.90)', backdropFilter: 'blur(10px)',
+        }}>
+          <div style={{
+            padding: '40px 60px', background: theme.colors.bgPanel,
+            border: `1px solid ${theme.colors.dead}`, borderRadius: '4px',
+            textAlign: 'center', boxShadow: '0 0 50px rgba(221,68,68,0.3)',
+          }}>
+            <h2 style={{
+              fontFamily: theme.fonts.heading, color: theme.colors.dead,
+              fontSize: '20px', letterSpacing: '2px', marginBottom: '16px',
+              textTransform: 'uppercase',
+            }}>Match Cancelled</h2>
+            <p style={{
+              fontFamily: theme.fonts.mono, color: theme.colors.textPrimary,
+              fontSize: '13px', lineHeight: 1.6,
+            }}>{cancelMessage}</p>
+          </div>
+        </div>
+      )}
+
       {scene === 'mode-select' && (
         <ModeSelectScene onModeSelect={handleModeSelect} onBack={onExit} />
       )}
@@ -229,6 +254,7 @@ export default function GameFlow({ userId, username, onExit, sessionId: initialS
           onPlayAgain={handlePlayAgain}
           onQuit={handleQuit}
           myUserId={String(userId)}
+          myUsername={username}
         />
       )}
     </div>

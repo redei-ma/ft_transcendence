@@ -79,10 +79,18 @@ export class GameGateway
 
 		const userDbId: number = client.data.user.sub;
 		if(isNaN(userDbId)){
+			this.logger.warn("invalid userDbId reached");
 			this.sendErrorAndDisconnectClient(client, {status: ErrorCode.UNAUTHORIZED, message: 'invalid userId'});
 			return ;
 		}
-		this.logger.log(`New client arrived ${userDbId}`);
+
+		const userName: string = client.data.user.username;
+		if (!userName || userName.trim() === ""){
+			this.logger.warn("invalid user name reached");
+			this.sendErrorAndDisconnectClient(client, {status: ErrorCode.UNAUTHORIZED, message: 'invalid user name'});
+			return ;
+		}
+		this.logger.log(`New client arrived ${userName}`);
 
 		const gameData: GameData | undefined =
 			this.gameService.hasPendingMatch(userDbId);
@@ -112,7 +120,7 @@ export class GameGateway
 					);
 					return;
 				} else {
-					const result = session.addPlayer(player, socketId);
+					const result = session.addPlayer(player, socketId, userName);
 
 					if (result.status !== SuccessCode.OK) {
 						this.logger.warn(

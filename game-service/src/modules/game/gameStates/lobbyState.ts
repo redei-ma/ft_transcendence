@@ -43,6 +43,7 @@ export class LobbyState implements IGameState {
 	addPlayer(
 		player: MatchMakingData,
 		socketId: string | undefined,
+		username: string
 	): ExitStatus {
 		const entityId: string = randomUUID();
 
@@ -65,6 +66,7 @@ export class LobbyState implements IGameState {
 			spawnIndex,
 			player.characterName,
 			player.userDbId,
+			username,
 			entityId,
 			player.isAiPlayer,
 			this.session.getPlayerIndex(),
@@ -109,6 +111,7 @@ export class LobbyState implements IGameState {
 			spawnIndex,
 			player.characterName,
 			player.userDbId,
+			"BOT",
 			entityId,
 			player.isAiPlayer,
 			this.session.getPlayerIndex(),

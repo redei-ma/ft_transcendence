@@ -38,7 +38,7 @@ function calculateTeamId(spawnIndex: number, matchType: MatchType): number{
 /* returns a player, if there is a position is modified else default position */
 export function getNewPlayer(
 	world: World, socketId: string | undefined, spawnIndex: number,
-	characterName: CharacterName, userDbId: number | null, entityId: string,
+	characterName: CharacterName, userDbId: number | null, userName:string, entityId: string,
 	isBot: boolean, playerIndex: number | undefined,
 	matchType: MatchType): Player{
 
@@ -46,12 +46,14 @@ export function getNewPlayer(
 	const character = (characterName in CHARACTER_DATA) ? characterName : CharacterName.ZEUS;
 
 	const stats = CHARACTER_DATA[character];
+	const finalUserName = (playerIndex && playerIndex > 0) ? `${userName}_${playerIndex + 1}` : userName;
 
 	return {
 			type: 'player',
 			teamId: teamId,
 			characterName: characterName,
 			userDbId: userDbId,
+			userName: userName === "BOT" ? userName : finalUserName,
 			socketId: socketId,
 			entityId: entityId,
 			position: new Vector(world.spawnPoints[spawnIndex].x, world.spawnPoints[spawnIndex].z),

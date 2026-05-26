@@ -2,8 +2,8 @@ import { useState, useEffect, useRef } from 'react';
 import { matchmakingSocket } from '../services/matchmakingSocket';
 import { CharacterName, MatchMode, MatchType, GameEvents } from '@transcendence/types';
 import { theme } from '../configs/theme';
-import zeusImg from '../assets/ZeusSelection.png';
-import adeImg from '../assets/AdeSelection.png'; // Cambia in .png se necessario
+import zeusImg from '../assets/images/ZeusSelection.png';
+import adeImg from '../assets/images/AdeSelection.png'; // Cambia in .png se necessario
 
 type Character = typeof CharacterName[keyof typeof CharacterName];
 

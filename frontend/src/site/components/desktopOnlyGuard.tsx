@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { theme } from '../../configs/theme';
-import welcomeScene from '../../assets/welcomeScene.png';
+import welcomeScene from '../../assets/images/welcomeScene.png';
 
 export default function DesktopOnlyGuard({ children }: { children: React.ReactNode }) {
   const [isBlocked, setIsBlocked] = useState(false);

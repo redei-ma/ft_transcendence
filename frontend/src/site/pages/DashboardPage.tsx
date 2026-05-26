@@ -3,8 +3,10 @@ import { theme } from '../../configs/theme';
 import { NAVBAR_HEIGHT } from '../components/Navbar';
 import { useState } from 'react';
 import * as Icons from '../components/Icons';
-import zeusDescImg from '../../assets/ZeusDescription.png';
-import adeDescImg from '../../assets/AdeDescription.png';
+import zeusDescImg from '../../assets/images/ZeusDescription.png';
+import adeDescImg from '../../assets/images/AdeDescription.png';
+import zeusDetailImg from '../../assets/images/ZeusDetail.png';
+import adeDetailImg from '../../assets/images/AdeDetail.png';
 
 interface DashboardPageProps {
   onNavigate: (page: string) => void;
@@ -13,13 +15,13 @@ interface DashboardPageProps {
 //  Componente di supporto per renderizzare i tasti in modo ordinato
 const ControlRow = ({ keys, action, stacked = false }: { keys: string[], action: string, stacked?: boolean }) => (
   <div style={{
-    display: "flex", 
-    flexDirection: stacked ? "column" : "row", 
-    alignItems: stacked ? "flex-start" : "center", 
-    gap: stacked ? "8px" : "16px", 
+    display: "flex",
+    flexDirection: stacked ? "column" : "row",
+    alignItems: stacked ? "flex-start" : "center",
+    gap: stacked ? "8px" : "16px",
     padding: "12px 16px",
-    background: theme.colors.bgDark, 
-    border: `1px solid ${theme.colors.border}`, 
+    background: theme.colors.bgDark,
+    border: `1px solid ${theme.colors.border}`,
     borderRadius: "4px",
   }}>
     <div style={{ display: "flex", gap: "6px", alignItems: "center", flexWrap: "wrap" }}>
@@ -28,7 +30,7 @@ const ControlRow = ({ keys, action, stacked = false }: { keys: string[], action:
           <kbd style={{
             padding: "4px 10px", background: theme.colors.bgPanel,
             border: `1px solid ${theme.colors.textMuted}`, borderRadius: "3px",
-            color: theme.colors.gold, fontFamily: theme.fonts.heading, fontSize: "11px", 
+            color: theme.colors.gold, fontFamily: theme.fonts.heading, fontSize: "11px",
             fontWeight: 700, letterSpacing: "1px", whiteSpace: "nowrap",
           }}>{k}</kbd>
           {i < keys.length - 1 && <span style={{color: theme.colors.textMuted, fontSize: "12px", fontFamily: theme.fonts.mono}}>+</span>}
@@ -42,27 +44,28 @@ const ControlRow = ({ keys, action, stacked = false }: { keys: string[], action:
 
 export default function DashboardPage({ onNavigate }: DashboardPageProps) {
   const [footerModal, setFooterModal] = useState<'privacy' | 'terms' | null>(null);
+  const [charModal, setCharModal] = useState<string | null>(null);
   return (
     <div className="animate-fadeIn" style={{ paddingTop: `${NAVBAR_HEIGHT}px` }}>
-      
+
       {/* ================= SECTION CON BACKGROUND VIDEO ================= */}
       <div id="section-game" style={{
         position: "relative",
         minHeight: `calc(100vh - ${NAVBAR_HEIGHT}px)`,
-        display: "flex", 
-        flexDirection: "column", 
-        alignItems: "center", 
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
         justifyContent: "center",
         overflow: "hidden",
         scrollMarginTop: `${NAVBAR_HEIGHT}px`,
       }}>
-        
+
         {/* Sfondo Video Assoluto */}
-        <video 
-          src="/videos/video1.mp4" 
-          autoPlay 
-          loop 
-          muted 
+        <video
+          src="/videos/video1.mp4"
+          autoPlay
+          loop
+          muted
           playsInline
           style={{
             position: "absolute",
@@ -100,31 +103,31 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
           width: "100%"
         }}>
           <h1 style={{
-            fontSize: "clamp(42px, 8vw, 86px)", 
+            fontSize: "clamp(42px, 8vw, 86px)",
             fontFamily: theme.fonts.heading,
             fontWeight: 900,
             background: `linear-gradient(180deg, ${theme.colors.goldBright}, ${theme.colors.gold}, ${theme.colors.goldDark})`,
-            WebkitBackgroundClip: "text", 
+            WebkitBackgroundClip: "text",
             WebkitTextFillColor: "transparent",
-            letterSpacing: "6px", 
-            lineHeight: 1.1, 
-            marginBottom: "16px", 
+            letterSpacing: "6px",
+            lineHeight: 1.1,
+            marginBottom: "16px",
             textTransform: "uppercase",
             textShadow: "0 4px 20px rgba(0,0,0,0.8)"
           }}>Clash of<br />Olympus</h1>
-          
-          <p style={{ 
-            color: theme.colors.textSecondary, 
+
+          <p style={{
+            color: theme.colors.textSecondary,
             fontFamily: theme.fonts.heading,
-            fontSize: "clamp(12px, 2vw, 16px)", 
-            letterSpacing: "6px", 
-            textTransform: "uppercase", 
+            fontSize: "clamp(12px, 2vw, 16px)",
+            letterSpacing: "6px",
+            textTransform: "uppercase",
             marginBottom: "48px",
             textShadow: "0 2px 10px rgba(0,0,0,0.9)"
           }}>
             An Isometric Mythological Brawler
           </p>
-          
+
           {/* BOTTONE TONDO */}
           <button className="btn-press" onClick={() => onNavigate("play")} style={{
             marginTop: "20px",
@@ -138,12 +141,12 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
             gap: "8px",
             background: `radial-gradient(circle at center, rgba(232,213,163,0.15) 0%, rgba(62,52,26,0.6) 80%, rgba(6,14,20,0.9) 100%)`,
             border: `2px solid ${theme.colors.goldBright}`,
-            color: theme.colors.goldBright, 
-            fontFamily: theme.fonts.heading, 
+            color: theme.colors.goldBright,
+            fontFamily: theme.fonts.heading,
             fontSize: "14px",
-            fontWeight: 800, 
-            letterSpacing: "2px", 
-            textTransform: "uppercase", 
+            fontWeight: 800,
+            letterSpacing: "2px",
+            textTransform: "uppercase",
             cursor: "pointer",
             transition: "all 0.3s",
             boxShadow: `0 0 50px ${theme.colors.goldGlow}, inset 0 0 30px rgba(232,213,163,0.2)`,
@@ -161,52 +164,52 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
       <div id="section-characters" style={{
         padding: "80px 48px",
         background: `linear-gradient(180deg, ${theme.colors.bgDark} 0%, ${theme.colors.bg} 100%)`,
-        borderTop: `1px solid ${theme.colors.border}`, 
+        borderTop: `1px solid ${theme.colors.border}`,
         scrollMarginTop: `${NAVBAR_HEIGHT}px`,
       }}>
         <h2 style={sectionTitleStyle}>CHARACTERS</h2>
-        
-        <div style={{ 
-          display: "grid", 
+
+        <div style={{
+          display: "grid",
           gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
-          gap: "40px", 
-          maxWidth: "1400px", 
-          margin: "0 auto" 
+          gap: "40px",
+          maxWidth: "1400px",
+          margin: "0 auto"
         }}>
-          {[
+        {[
             { name: "HADES", img: adeDescImg },
             { name: "ZEUS", img: zeusDescImg },
           ].map((c) => (
-            <div key={c.name} style={{
+            <div key={c.name} onClick={() => setCharModal(c.name)} style={{
               background: theme.colors.bgPanel,
-              border: `1px solid ${theme.colors.border}`, 
+              border: `1px solid ${theme.colors.border}`,
               borderRadius: "8px",
               overflow: "hidden",
-              transition: "all 0.3s ease", 
+              transition: "all 0.3s ease",
               cursor: "pointer",
               boxShadow: `0 10px 30px rgba(0,0,0,0.5)`,
               display: "flex",
             }}
-              onMouseEnter={(e) => { 
-                e.currentTarget.style.borderColor = theme.colors.gold; 
-                e.currentTarget.style.transform = "translateY(-6px)"; 
-                e.currentTarget.style.boxShadow = `0 15px 40px rgba(0,0,0,0.7), 0 0 25px ${theme.colors.goldGlow}`; 
+              onMouseEnter={(e) => {
+                e.currentTarget.style.borderColor = theme.colors.gold;
+                e.currentTarget.style.transform = "translateY(-6px)";
+                e.currentTarget.style.boxShadow = `0 15px 40px rgba(0,0,0,0.7), 0 0 25px ${theme.colors.goldGlow}`;
               }}
-              onMouseLeave={(e) => { 
-                e.currentTarget.style.borderColor = theme.colors.border; 
-                e.currentTarget.style.transform = "translateY(0)"; 
-                e.currentTarget.style.boxShadow = `0 10px 30px rgba(0,0,0,0.5)`; 
+              onMouseLeave={(e) => {
+                e.currentTarget.style.borderColor = theme.colors.border;
+                e.currentTarget.style.transform = "translateY(0)";
+                e.currentTarget.style.boxShadow = `0 10px 30px rgba(0,0,0,0.5)`;
               }}>
-              
-              <img 
-                src={c.img} 
-                alt={`${c.name} Character Card`} 
+
+              <img
+                src={c.img}
+                alt={`${c.name} Character Card`}
                 style={{
                   width: "100%",
                   height: "auto",
                   display: "block",
                   objectFit: "cover"
-                }} 
+                }}
               />
             </div>
           ))}
@@ -216,16 +219,16 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
 
       {/* ================= CONTROLS SECTION ===================== */}
       <div id="section-commands" style={{
-        padding: "80px 48px", 
+        padding: "80px 48px",
         borderTop: `1px solid ${theme.colors.border}`,
         maxWidth: "1100px", // ⚡ Allargato per fare spazio a 2 colonne
-        margin: "0 auto", 
+        margin: "0 auto",
         scrollMarginTop: `${NAVBAR_HEIGHT}px`,
       }}>
         <h2 style={sectionTitleStyle}>Controls</h2>
-        
+
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: "32px" }}>
-          
+
           {/* PANNELLO 1: Single Player / Online */}
           <div style={{ background: theme.colors.bgPanel, border: `1px solid ${theme.colors.border}`, borderRadius: "8px", padding: "24px" }}>
             <h3 style={{ fontFamily: theme.fonts.heading, color: theme.colors.goldBright, fontSize: "16px", letterSpacing: "2px", marginBottom: "20px", textTransform: "uppercase", textAlign: "center", borderBottom: `1px solid ${theme.colors.border}`, paddingBottom: "12px" }}>
@@ -245,7 +248,7 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
             <h3 style={{ fontFamily: theme.fonts.heading, color: theme.colors.goldBright, fontSize: "16px", letterSpacing: "2px", marginBottom: "20px", textTransform: "uppercase", textAlign: "center", borderBottom: `1px solid ${theme.colors.border}`, paddingBottom: "12px" }}>
               Local Game (Shared Keyboard)
             </h3>
-            
+
             <div style={{ display: "flex", gap: "16px" }}>
               {/* Player 1 */}
               <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: "10px" }}>
@@ -255,7 +258,7 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
                 <ControlRow keys={["SHIFT"]} action="Spell" stacked />
                 <ControlRow keys={["C"]} action="Defense" stacked />
               </div>
-              
+
               {/* Divisore */}
               <div style={{ width: "1px", background: theme.colors.border }} />
 
@@ -273,6 +276,36 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
         </div>
       </div>
       {/* ========================================================================= */}
+
+      {/* Character Detail Modal */}
+      {charModal && (
+        <div style={{
+          position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)",
+          display: "flex", alignItems: "center", justifyContent: "center", zIndex: 9999,
+        }} onClick={() => setCharModal(null)}>
+          <div onClick={(e) => e.stopPropagation()} style={{
+            background: theme.colors.bgPanel, border: `1px solid ${theme.colors.gold}`,
+            borderRadius: "4px", padding: "24px", maxWidth: "700px", width: "90%",
+            maxHeight: "85vh", overflowY: "auto",
+            boxShadow: `0 0 40px ${theme.colors.goldGlow}`,
+            textAlign: "center",
+          }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
+              <h2 style={{ fontFamily: theme.fonts.heading, color: theme.colors.goldBright, fontSize: "24px", letterSpacing: "4px" }}>
+                {charModal}
+              </h2>
+              <button onClick={() => setCharModal(null)} style={{
+                background: "none", border: "none", color: theme.colors.textMuted, cursor: "pointer",
+              }}><Icons.X size={20} /></button>
+            </div>
+            <img
+              src={charModal === "ZEUS" ? zeusDetailImg : adeDetailImg}
+              alt={charModal}
+              style={{ width: "100%", borderRadius: "4px" }}
+            />
+          </div>
+        </div>
+      )}
 
     {/* Footer */}
       <footer style={{
@@ -332,7 +365,7 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
 
 // Costanti contenenti il testo per il Modal Footer
 
-const PRIVACY_TEXT = 
+const PRIVACY_TEXT =
 
 `1. Introduction
 
@@ -403,13 +436,13 @@ These services may process your data according to their own privacy policies.
 10. Contact
 
 For any privacy-related requests, contact:
-your-email@example.com
+clashofolympusoriginal@gmail.com
 
 11. Changes
 
 We may update this Privacy Policy at any time. Continued use of the Service implies acceptance of the updated policy.`;
 
-const TERMS_TEXT = 
+const TERMS_TEXT =
 
 `1. Acceptance of Terms
 
