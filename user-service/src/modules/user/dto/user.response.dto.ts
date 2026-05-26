@@ -44,6 +44,9 @@ export class UserProfileResponseDto {
 	})
 	status: UserStatus;
 
+	@ApiProperty({ description: "Privacy policy acceptance timestamp, null if not yet accepted", nullable: true })
+	privacyPolicyAcceptedAt: Date | null;
+
 	@ApiProperty({ description: "Account registration timestamp" })
 	createdAt: Date;
 }

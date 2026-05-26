@@ -56,7 +56,7 @@ generate: ##@Setup — Build shared packages (@transcendence/types + @transcende
 
 migrate: ##@DB — Create a new Prisma migration (usage: make migrate NAME=my_migration)
 	@test -n "$(NAME)" || (printf "$(RED)>>> ERROR: NAME is required. Usage: make migrate NAME=my_migration$(RESET)\n" && exit 1)
-	@$(COMPOSE) ps postgres | grep -q "running" || \
+	@$(COMPOSE) ps postgres | grep -qE "running|healthy|Up" || \
 		(printf "$(RED)>>> ERROR: postgres is not running. Run 'make up' first.$(RESET)\n" && exit 1)
 	@printf "$(CYAN)>>> Creating migration: $(NAME)...$(RESET)\n"
 	@$(COMPOSE) run --rm --entrypoint "" \

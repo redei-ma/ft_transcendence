@@ -37,6 +37,7 @@ export const USER_PROFILE_SELECT = {
 	username: true,
 	avatarUrl: true,
 	status: true,
+	privacyPolicyAcceptedAt: true,
 	createdAt: true,
 } as const;
 
