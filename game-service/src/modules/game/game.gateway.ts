@@ -201,7 +201,13 @@ export class GameGateway
 			this.logger.warn(
 				`error in removing the player from the game, message: ${result.message}`,
 			);
-		} else this.logger.log(`client with socket-id ${socketId} is leaving the game`);
+		} else{
+			client.emit('LEAVE_GAME_ACK',{
+				status: 'success',
+				message: 'Partita abbandonata correttamente'
+			});
+			this.logger.log(`client with socket-id ${socketId} is leaving the game`);
+		}
 	}
 
 	@Throttle({ default: { limit: 20, ttl: 10000 } })
