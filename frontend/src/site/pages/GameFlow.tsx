@@ -60,7 +60,6 @@ export default function GameFlow({ userId, username, onExit, sessionId: initialS
         setTimeout(() => onExit(), 3000);
         return;
       }
-    
       // Deduce il matchMode dal matchId per la riconnessione
       if (data?.matchId) {
         if (data.matchId.startsWith('local_')) {
@@ -69,7 +68,7 @@ export default function GameFlow({ userId, username, onExit, sessionId: initialS
           setSelectedMode(MatchMode.AI);
         }
       }
-    
+      
       setScene((prevScene) => {
         if (prevScene === 'game') return prevScene;
         if (prevScene !== 'queue') {
@@ -86,7 +85,7 @@ export default function GameFlow({ userId, username, onExit, sessionId: initialS
       });
     };
 
-    // SENDER: Leonardo ci avvisa che l'invitato ha accettato
+    // SENDER: Matchamking ci avvisa che l'invitato ha accettato
     const handleDirectSessionReady = (data: any) => {
       console.log("[GameFlow] DIRECT_SESSION_READY:", data);
       if (data?.sessionId) {
@@ -152,10 +151,36 @@ export default function GameFlow({ userId, username, onExit, sessionId: initialS
 
   const handleQuit = () => {
     hasResignedRef.current = true;
-    socketService.emit(GameEvents.LEAVE_GAME, { userId: String(userId) });
-    socketService.disconnect();
-    matchmakingSocket.disconnect();
-    onExit();
+    
+    const cleanup = () => {
+      socketService.disconnect();
+      matchmakingSocket.disconnect();
+      onExit();
+    };
+  
+    const safetyTimeout = setTimeout(() => {
+      console.warn('[GameFlow] LEAVE_GAME ack timeout — cleanup forzato');
+      cleanup();
+    }, 1000);
+  
+    socketService.emit(
+      GameEvents.LEAVE_GAME,
+      { userId: String(userId) },
+      (response) => {
+        clearTimeout(safetyTimeout);
+      
+        if (response.status === 'success') {
+          console.log('[GameFlow] Leave confermato:', response.message);
+        } else {
+          console.warn(
+            `[GameFlow] Leave fallito lato server [${response.errorCode}]:`,
+            response.message
+          );
+        }
+      
+        cleanup();
+      }
+    );
   };
 
   return (

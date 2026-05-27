@@ -29,11 +29,9 @@ interface GameProps {
 
 function CameraController({ mapWidth, mapDepth }: { mapWidth: number; mapDepth: number }) {
   const { camera, size } = useThree();
-  const initialized = useRef(false);
 
   useEffect(() => {
-    if (initialized.current) return;
-    initialized.current = true;
+    if (size.width === 0 || size.height === 0) return; // Skip se size non è ancora valido
 
     const mapSize = Math.max(mapWidth, mapDepth);
     if (size.height < size.width) {
@@ -42,7 +40,7 @@ function CameraController({ mapWidth, mapDepth }: { mapWidth: number; mapDepth: 
       camera.zoom = size.width / (mapSize * 0.82);
     }
     camera.updateProjectionMatrix();
-  }, [size, camera, mapWidth, mapDepth]);
+  }, [size.width, size.height, camera, mapWidth, mapDepth]);
 
   return null;
 }

@@ -3,6 +3,12 @@ import * as msgpackParser from "socket.io-msgpack-parser";
 import { GameEvents } from '@transcendence/types';
 import { refreshToken } from "../site/services/authService";
 
+export interface AckResponse {
+  status: 'success' | 'error';
+  message: string;
+  errorCode?: string;
+}
+
 export class SocketService {
 	private socket: Socket | null = null;
 	private listenerMap = new Map<(data: any) => void, (data: any) => void>();
@@ -109,15 +115,19 @@ export class SocketService {
 		return !!this.socket?.connected;
 	}
 
-	emit(event: GameEvents, data?: any) {
-		if (!this.socket?.connected) {
-			console.error(`⚠️ [GameSocket] Cannot emit '${event}': not connected.`);
-			return;
-		}
-		if (event !== GameEvents.INPUT) {
-			console.log(`↗️ [GameSocket] Emitting [${event}]:`, data);
-		}
-		this.socket.emit(event, data);
+	emit(event: GameEvents, data?: any, ack?: (response: AckResponse) => void) {
+	  if (!this.socket?.connected) {
+	    console.error(`⚠️ [GameSocket] Cannot emit '${event}': not connected.`);
+	    return;
+	  }
+	  if (event !== GameEvents.INPUT) {
+	    console.log(`↗️ [GameSocket] Emitting [${event}]:`, data);
+	  }
+	  if (ack) {
+	    this.socket.emit(event, data, ack);
+	  } else {
+	    this.socket.emit(event, data);
+	  }
 	}
 
 	on(event: GameEvents, callback: (data: any) => void) {
