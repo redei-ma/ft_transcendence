@@ -437,7 +437,7 @@ These services may process your data according to their own privacy policies.
 10. Contact
 
 For any privacy-related requests, contact:
-clashofolympusoriginal@gmail.com
+${EMAIL_USER}
 
 11. Changes
 
