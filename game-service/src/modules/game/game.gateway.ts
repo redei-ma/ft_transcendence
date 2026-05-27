@@ -188,11 +188,11 @@ export class GameGateway
 	@SubscribeMessage(GameEvents.LEAVE_GAME)
 	handleLeaveGame(
 		@ConnectedSocket() client: Socket,
-	): void {
+	): any {
 		const socketId = client.id;
 		if (!socketId) {
 			this.logger.error("invalid socket reached, ignoring");
-			return;
+			return { status: 'error', message: 'Invalid socket' };
 		}
 
 		const result = 	this.gameService.handleLeaveGame(socketId);
@@ -201,12 +201,13 @@ export class GameGateway
 			this.logger.warn(
 				`error in removing the player from the game, message: ${result.message}`,
 			);
+			return { status: 'error', errorCode: result.status, message: result.message };
 		} else{
-			client.emit('LEAVE_GAME_ACK',{
-				status: 'success',
-				message: 'Partita abbandonata correttamente'
-			});
 			this.logger.log(`client with socket-id ${socketId} is leaving the game`);
+			return { 
+            	status: 'success', 
+            	message: 'You have successfully abandoned the game' 
+        	};
 		}
 	}
 
