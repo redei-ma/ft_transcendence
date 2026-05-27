@@ -364,6 +364,7 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
   );
 }
 
+const EMAIL_USER = import.meta.env.VITE_EMAIL_USER || 'email not currently available';
 // Costanti contenenti il testo per il Modal Footer
 
 const PRIVACY_TEXT =
