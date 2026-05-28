@@ -186,25 +186,6 @@ export class MatchmakingGateway
 		this.emitMatchmakingResponse(client, GameEvents.JOIN_LOCAL, result);
 	}
 
-	@SubscribeMessage(GameEvents.ACCEPT_DIRECT_INVITE)
-	async handleAcceptDirectInvite(
-		@MessageBody() data: { inviterId: number },
-		@ConnectedSocket() client: Socket,
-	) {
-		const acceptorId: number = client.data.user.sub;
-		this.registerUserSocket(client.id, acceptorId);
-		
-		this.logger.log(`[WS] L'utente ${acceptorId} accetta sfida da ${data.inviterId}`);
-		
-		const result = await this.matchmakingService.createDirectSession(data.inviterId, acceptorId);
-		
-		if (result.status && result.status.startsWith("ERROR_")) {
-			this.emitMatchmakingResponse(client, GameEvents.ACCEPT_DIRECT_INVITE, result);
-		} else {
-			this.emitMatchmakingResponse(client, GameEvents.ACCEPT_DIRECT_INVITE, { status: "PROCESSING" });
-		}
-	}
-
 	@OnEvent(GameEvents.INTERNAL_DIRECT_SESSION_READY)
 	handleDirectSessionReadyInternal(payload: { socketId: string; data: { status: string; sessionId: string } }) {
 		const clientSocket = this.server.sockets.sockets.get(payload.socketId);

@@ -828,65 +828,6 @@ export class MatchmakingService implements OnModuleDestroy {
 
 	/* ---------------------------------------------------------------------------------------------------------------- */
 
-	async createDirectSession(inviterId: number, acceptorId: number) {
-		const [rawP1, rawP2] = await Promise.all([
-			this.redis.get(`status:${inviterId}`),
-			this.redis.get(`status:${acceptorId}`)
-		]);
-
-		const statusP1 = rawP1 ? JSON.parse(rawP1) : null;
-		const statusP2 = rawP2 ? JSON.parse(rawP2) : null;
-
-		if (!statusP1 || !statusP2 || !statusP1.socketId || !statusP2.socketId) {
-			this.logger.warn(`[DirectSession] Impossibile creare: uno dei player è offline.`);
-			return {
-				status: "ERROR_PLAYERS_OFFLINE",
-				message: "Uno dei giocatori si è disconnesso."
-			};
-		}
-
-		if (statusP1.state === INGAME || statusP2.state === INGAME) {
-			return { status: "ERROR_PLAYERS_BUSY", message: "Qualcuno è già in partita." };
-		}
-
-		const sessionId = `direct_${Math.random().toString(36).substring(7)}`;
-		const sessionData = {
-			sessionId,
-			p1: { id: inviterId, ready: false, characterName: null, socketId: null },
-			p2: { id: acceptorId, ready: false, characterName: null, socketId: null },
-			createdAt: Date.now()
-		};
-		await this.redis.set(`direct_session:${sessionId}`, JSON.stringify(sessionData), "EX", 300);
-
-		await this.setUserStatus(inviterId, {
-			state: "character_selection",
-			sessionId: sessionId,
-			socketId: statusP1.socketId
-		}, 300);
-
-		await this.setUserStatus(acceptorId, {
-			state: "character_selection",
-			sessionId: sessionId,
-			socketId: statusP2.socketId
-		}, 300);
-
-		this.eventEmitter.emit(GameEvents.INTERNAL_DIRECT_SESSION_READY, {
-			socketId: statusP1.socketId,
-			data: { status: "SESSION_CREATED", sessionId: sessionId }
-		});
-
-		this.eventEmitter.emit(GameEvents.INTERNAL_DIRECT_SESSION_READY, {
-			socketId: statusP2.socketId,
-			data: { status: "SESSION_CREATED", sessionId: sessionId }
-		});
-
-		this.logger.log(`[DirectSession] Notifiche inviate a ${inviterId} e ${acceptorId} per la sessione ${sessionId}`);
-
-		return { sessionId, status: "SUCCESS" };
-	}
-
-	/* ---------------------------------------------------------------------------------------------------------------- */
-
 	/**
 	 * Creates a direct session from a REST call (user-service).
 	 * The receiver is not yet connected to the matchmaking WS, so their socketId is null.
