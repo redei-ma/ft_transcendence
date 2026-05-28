@@ -150,7 +150,7 @@ export default function Navbar({ currentPage, onNavigate, onLogout, username, av
     if (n.type === 'FRIEND_REQ' || n.type === 'FRIEND_ACCEPTED') {
       scrollTo('profile', 'profile-friends');
     } else if (n.type === 'ACHV_UNLOCKED') {
-      scrollTo('profile', 'profile-stats');
+      scrollTo('profile', 'profile-achievements');
     }
   };
 
