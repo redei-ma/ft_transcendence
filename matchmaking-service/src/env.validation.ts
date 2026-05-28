@@ -8,7 +8,7 @@ export const envValidationSchema = Joi.object({
 	FRONTEND_URL: Joi.string().uri().required(),
 
 	// Server
-	MATCHMAKING_SERVICE_PORT: Joi.number().default(3500),
+	MATCHMAKING_SERVICE_PORT: Joi.number().required(),
 	NODE_ENV: Joi.string()
 		.valid("development", "production", "test")
 		.default("development"),
