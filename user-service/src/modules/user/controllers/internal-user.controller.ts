@@ -288,12 +288,13 @@ export class InternalUserController {
 	 * Increment the token version, invalidating all existing JWTs.
 	 */
 	@Patch(":id/token-version")
-	@HttpCode(HttpStatus.NO_CONTENT)
+	@HttpCode(HttpStatus.OK)
 	@ApiOperation({ summary: "Increment token version (invalidates JWTs)" })
 	@ApiParam({ name: "id", type: Number })
 	@ApiResponse({
-		status: HttpStatus.NO_CONTENT,
+		status: HttpStatus.OK,
 		description: "Token version incremented",
+		schema: { properties: { tokenVersion: { type: "number" } } },
 	})
 	@ApiResponse({
 		status: HttpStatus.NOT_FOUND,
@@ -301,8 +302,9 @@ export class InternalUserController {
 	})
 	async incrementTokenVersion(
 		@Param("id", ParseIntPipe) id: number,
-	): Promise<void> {
-		return this.internalUserService.incrementTokenVersion(id);
+	): Promise<{ tokenVersion: number }> {
+		const tokenVersion = await this.internalUserService.incrementTokenVersion(id);
+		return { tokenVersion };
 	}
 
 	/**
