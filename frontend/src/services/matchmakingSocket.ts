@@ -61,8 +61,23 @@ class MatchmakingSocket {
 			}
 		});
 
-		this.socket.on("exception", (data: { status: string; errorCode: string; message: string }) => {
+		this.socket.on("exception", async (data: { status: string; errorCode: string; message: string }) => {
 			console.error(`🚨 [Matchmaking] Exception from server: [${data.errorCode}] ${data.message}`);
+
+			if (data.errorCode === "UNAUTHORIZED_TOKEN") {
+				console.log("🔄 [Matchmaking] Token expired, attempting refresh...");
+				const refreshed = await refreshToken();
+				if (refreshed) {
+					console.log("✅ [Matchmaking] Token refreshed, reconnecting...");
+					this.socket?.disconnect();
+					this.socket?.connect();
+				} else {
+					console.error("🚫 [Matchmaking] Refresh failed, bubbling to handler.");
+					this.onMatchError?.(data.errorCode, data.message);
+				}
+				return;
+			}
+
 			if (this.onMatchError) {
 				this.onMatchError(data.errorCode, data.message);
 			}
