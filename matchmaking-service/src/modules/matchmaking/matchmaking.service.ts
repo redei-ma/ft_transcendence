@@ -839,9 +839,9 @@ export class MatchmakingService implements OnModuleDestroy {
 
 		if (!statusP1 || !statusP2 || !statusP1.socketId || !statusP2.socketId) {
 			this.logger.warn(`[DirectSession] Impossibile creare: uno dei player è offline.`);
-			return { 
-				status: "ERROR_PLAYERS_OFFLINE", 
-				message: "Uno dei giocatori si è disconnesso." 
+			return {
+				status: "ERROR_PLAYERS_OFFLINE",
+				message: "Uno dei giocatori si è disconnesso."
 			};
 		}
 
@@ -882,6 +882,58 @@ export class MatchmakingService implements OnModuleDestroy {
 
 		this.logger.log(`[DirectSession] Notifiche inviate a ${inviterId} e ${acceptorId} per la sessione ${sessionId}`);
 
+		return { sessionId, status: "SUCCESS" };
+	}
+
+	/* ---------------------------------------------------------------------------------------------------------------- */
+
+	/**
+	 * Creates a direct session from a REST call (user-service).
+	 * The receiver is not yet connected to the matchmaking WS, so their socketId is null.
+	 * When the receiver connects, checkAndReconnectUser will register their socketId.
+	 */
+	async createDirectSessionFromRest(inviterId: number, receiverId: number): Promise<{ sessionId: string; status: string } | { status: string; message: string }> {
+		const rawP1 = await this.redis.get(`status:${inviterId}`);
+		const statusP1 = rawP1 ? JSON.parse(rawP1) : null;
+
+		if (!statusP1 || !statusP1.socketId) {
+			this.logger.warn(`[DirectSession] Inviter ${inviterId} non connesso al matchmaking.`);
+			return { status: "ERROR_INVITER_OFFLINE", message: "Il mittente non è connesso." };
+		}
+
+		if (statusP1.state === INGAME) {
+			return { status: "ERROR_PLAYERS_BUSY", message: "Il mittente è già in partita." };
+		}
+
+		const sessionId = `direct_${Math.random().toString(36).substring(7)}`;
+		const sessionData = {
+			sessionId,
+			p1: { id: inviterId, ready: false, characterName: null, socketId: statusP1.socketId },
+			p2: { id: receiverId, ready: false, characterName: null, socketId: null },
+			createdAt: Date.now(),
+		};
+		await this.redis.set(`direct_session:${sessionId}`, JSON.stringify(sessionData), "EX", 300);
+
+		// Sender: set to character_selection immediately
+		await this.setUserStatus(inviterId, {
+			state: "character_selection",
+			sessionId,
+			socketId: statusP1.socketId,
+		}, 300);
+
+		// Receiver: reserve character_selection without socketId (updated on WS connect)
+		await this.setUserStatus(receiverId, {
+			state: "character_selection",
+			sessionId,
+		}, 300);
+
+		// Notify sender via socket
+		this.eventEmitter.emit(GameEvents.INTERNAL_DIRECT_SESSION_READY, {
+			socketId: statusP1.socketId,
+			data: { status: "SESSION_CREATED", sessionId },
+		});
+
+		this.logger.log(`[DirectSession REST] Sessione ${sessionId} creata per ${inviterId} → ${receiverId}`);
 		return { sessionId, status: "SUCCESS" };
 	}
 
@@ -1127,13 +1179,28 @@ export class MatchmakingService implements OnModuleDestroy {
     	    return null;
     	}
 		if (statusData && (statusData.state === "pre_match" || statusData.state === "character_selection") && statusData.sessionId) {
+			// If socketId was null, this is the receiver connecting for the first time (session created via REST).
+			// Just register their socket and update the session — do NOT cancel.
+			if (!statusData.socketId) {
+				this.logger.log(`[DirectSession] Receiver ${userId} si connette per la prima volta alla sessione ${statusData.sessionId}.`);
+				await this.setUserStatus(userId, { ...statusData, socketId }, 300);
+				const sessionRaw = await this.redis.get(`direct_session:${statusData.sessionId}`);
+				if (sessionRaw) {
+					const session = JSON.parse(sessionRaw);
+					if (String(session.p1.id) === String(userId)) session.p1.socketId = socketId;
+					else if (String(session.p2.id) === String(userId)) session.p2.socketId = socketId;
+					await this.redis.set(`direct_session:${statusData.sessionId}`, JSON.stringify(session), "EX", 300);
+				}
+				return null;
+			}
+
 			this.logger.log(`[Auto-Reconnect] Utente ${userId} disconnesso/ricaricato in pre_match. Annullamento sessione ${statusData.sessionId}.`);
 
 			const sessionRaw = await this.redis.get(`direct_session:${statusData.sessionId}`);
 			if (sessionRaw) {
 				const session = JSON.parse(sessionRaw);
 				const opponentId = session.p1.id === userId ? session.p2.id : session.p1.id;
-				
+
 				const opponentStatusRaw = await this.redis.get(`status:${opponentId}`);
 				if (opponentStatusRaw) {
 					const opponentData = JSON.parse(opponentStatusRaw);
@@ -1143,16 +1210,16 @@ export class MatchmakingService implements OnModuleDestroy {
 							data: { status: "MATCH_CANCELLED", message: "L'avversario si è disconnesso. Partita annullata." }
 						});
 					}
-					await this.setUserStatus(opponentId, { 
-						state: LOBBY, 
-						socketId: opponentData.socketId 
+					await this.setUserStatus(opponentId, {
+						state: LOBBY,
+						socketId: opponentData.socketId
 					}, 3600);
 				}
 				await this.redis.del(`direct_session:${statusData.sessionId}`);
 			}
 
 			await this.setUserStatus(userId, { state: LOBBY, socketId: socketId }, 3600);
-			
+
 			setTimeout(() => {
 				this.eventEmitter.emit(GameEvents.INTERNAL_MATCH_FOUND, {
 					socketId: socketId,
@@ -1160,7 +1227,7 @@ export class MatchmakingService implements OnModuleDestroy {
 				});
 			}, 1000);
 
-			return null; 
+			return null;
 		}
 
 		if (statusData && statusData.state === INGAME && statusData.matchId) {

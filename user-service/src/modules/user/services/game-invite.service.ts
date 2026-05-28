@@ -4,6 +4,8 @@ import {
 	ConflictException,
 	ForbiddenException,
 	BadRequestException,
+	InternalServerErrorException,
+	Logger,
 } from "@nestjs/common";
 import { PrismaService } from "../../prisma/prisma.service";
 import { SseService } from "./sse.service";
@@ -18,6 +20,7 @@ import {
 	GameInviteResponseDto,
 	GameInviteListResponseDto,
 } from "../dto";
+import { getInternalHeaders } from "@transcendence/auth";
 
 const INVITE_USER_SELECT = {
 	id: true,
@@ -37,6 +40,8 @@ const INVITE_SELECT = {
 
 @Injectable()
 export class GameInviteService {
+	private readonly logger = new Logger(GameInviteService.name);
+
 	constructor(
 		private readonly prisma: PrismaService,
 		private readonly sseService: SseService,
@@ -210,13 +215,32 @@ export class GameInviteService {
 			);
 		}
 
-		// TODO: call matchmaking-service to create a direct session
-		// POST http://matchmaking-service:3500/internal/matchmaking/direct-session
-		// Body:     { player1Id: invite.senderId, player2Id: userId }
-		// Response: { sessionId: string }
-		// On 409:   throw ConflictException — player entered game/queue (race condition)
-		// On error: propagate as InternalServerErrorException
-		const sessionId = "TODO_MATCHMAKING_NOT_YET_IMPLEMENTED";
+		// Call matchmaking-service to create a direct session.
+		// Matchmaking will notify the sender via socket and return the sessionId.
+		let sessionId: string;
+		try {
+			const resp = await fetch("http://matchmaking-service:3500/internal/direct-session", {
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+					...getInternalHeaders(),
+				},
+				body: JSON.stringify({ inviterId: invite.senderId, receiverId: userId }),
+			});
+
+			const data = await resp.json() as { sessionId?: string; status?: string; message?: string };
+
+			if (!resp.ok || !data.sessionId) {
+				this.logger.warn(`[GameInvite] Matchmaking rifiutato: ${data.status} — ${data.message}`);
+				throw new ConflictException(data.message ?? "The challenger is no longer available");
+			}
+
+			sessionId = data.sessionId;
+		} catch (err) {
+			if (err instanceof ConflictException) throw err;
+			this.logger.error("[GameInvite] Errore chiamata matchmaking:", err);
+			throw new InternalServerErrorException("Failed to create game session");
+		}
 
 		await this.prisma.gameInvite.update({
 			where: { id: inviteId },

@@ -40,17 +40,7 @@ export default function GameFlow({ userId, username, onExit, sessionId: initialS
   const [cancelMessage, setCancelMessage] = useState<string | null>(null);
 
   useEffect(() => {
-    const socket = matchmakingSocket.connect();
-    // RECEIVER
-    if (initialSessionId && inviterId) {
-      if (socket.id) {
-        matchmakingSocket.emit(GameEvents.ACCEPT_DIRECT_INVITE, {inviterId});
-      } else {
-        socket.once('connect', () => {
-          matchmakingSocket.emit(GameEvents.ACCEPT_DIRECT_INVITE, {inviterId});
-        });
-      }
-    }
+    matchmakingSocket.connect();
     const handleMatchFound = (data: any) => {
       console.log("[GameFlow] MATCH_FOUND data:", JSON.stringify(data));
       if (hasResignedRef.current) return;

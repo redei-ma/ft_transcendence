@@ -3,7 +3,7 @@ import { Controller, Post, Body, UseGuards } from "@nestjs/common";
 import { MessagePattern, Payload } from "@nestjs/microservices";
 import { MatchmakingService } from "./matchmaking.service";
 import { JoinQueueDto } from "./dto/join-queue.dto";
-import { JwtAuthGuard, CurrentUser } from "@transcendence/auth";
+import { JwtAuthGuard, CurrentUser, InternalGuard } from "@transcendence/auth";
 import { GameEvents } from "@transcendence/types";
 
 @Controller()
@@ -28,6 +28,12 @@ export class MatchmakingController {
 	async joinUnrankedQueueHttp(@Body() data: JoinQueueDto, @CurrentUser("sub") userId: number) {
 		console.log(`[HTTP] Ricevuta richiesta Unranked per utente: ${userId}`);
 		return await this.matchmakingService.processUnrankedQueue(userId, data);
+	}
+
+	@UseGuards(InternalGuard)
+	@Post("internal/direct-session")
+	async createDirectSessionInternal(@Body() body: { inviterId: number; receiverId: number }) {
+		return await this.matchmakingService.createDirectSessionFromRest(body.inviterId, body.receiverId);
 	}
 
 	@MessagePattern(GameEvents.END_GAME)
