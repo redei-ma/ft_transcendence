@@ -165,8 +165,7 @@ export class AuthService {
       throw new ForbiddenException('This account is already logged in');
     }
 
-    await this.usersService.invalidateRefreshTokens(user.id);
-
+    const newTokenVersion = await this.usersService.invalidateRefreshTokens(user.id);
 
     const accessPayload: JwtAccessPayloadDto = {
       sub: user.id,
@@ -175,7 +174,7 @@ export class AuthService {
 
     const refreshPayload: JwtRefreshPayloadDto = {
       sub: user.id,
-      tokenVersion: (user.tokenVersion + 1),
+      tokenVersion: newTokenVersion,
     };
 
     const accessToken = this.jwtService.sign(accessPayload, {

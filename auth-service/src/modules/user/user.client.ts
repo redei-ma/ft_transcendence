@@ -74,8 +74,9 @@ export class UserClient {
     });
   }
 
-  async invalidateRefreshTokens(userId: number): Promise<void> {
-    await this.request(`/${userId}/token-version`, { method: 'PATCH' });
+  async invalidateRefreshTokens(userId: number): Promise<number> {
+    const  newTokenVersion: number = await this.request(`/${userId}/token-version`, { method: 'PATCH' });
+    return newTokenVersion;
   }
 
   async markEmailVerified(userId: number): Promise<void> {
