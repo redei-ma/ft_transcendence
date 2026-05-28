@@ -5,17 +5,15 @@ import { seedAchievementData } from './seeds/achievements';
 const prisma = new PrismaClient();
 
 async function main() {
-  try {
-    await prisma.$executeRaw`UPDATE "User" SET status = 'OFFLINE'`;
-    console.log('All users reset to OFFLINE.');
-  } catch {
-    console.log('Skipping user reset offline.');
-  }
-
   await seedAchievementData(prisma);
 
   if (process.env.NODE_ENV !== 'production') {
-    await seedTestData(prisma);
+    const alreadySeeded = await prisma.user.findUnique({ where: { email: 'alice@test.com' } });
+    if (!alreadySeeded) {
+      await seedTestData(prisma);
+    } else {
+      console.log('Test data already seeded, skipping.');
+    }
   }
 }
 
