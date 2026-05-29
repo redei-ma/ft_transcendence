@@ -5,6 +5,7 @@ import * as authService from '../services/authService';
 import { toErrorString } from '../services/authService';
 import welcomeScene from '../../assets/images/welcomeScene.png';
 import { theme } from '../../configs/theme';
+import { PASSWORD_REGEX, PASSWORD_ERROR_MESSAGE } from '@transcendence/types';
 
 interface LoginPageProps {
   onLogin: () => void;
@@ -12,13 +13,13 @@ interface LoginPageProps {
 
 // Validazione
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const PWD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
 const USERNAME_MIN = 3;
 const USERNAME_MAX = 20;
 
 export default function LoginPage({ onLogin }: LoginPageProps) {
   const [mode, setMode] = useState<"login" | "register" | "forgot" | "reset">("login");
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [show2fa, setShow2fa] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -45,30 +46,32 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
   // Validazione locale prima dell'invio
   const validate = (): string | null => {
     if (mode === "login") {
-      if (!formData.identifier.trim()) return "Inserisci username o email.";
-      if (!formData.password) return "Inserisci la password.";
-      if (show2fa && formData.totp.length !== 6) return "Il codice 2FA deve essere di 6 cifre.";
+      if (!formData.identifier.trim()) return "Enter your username or email.";
+      if (!formData.password) return "Enter your password.";
+      if (show2fa && formData.totp.length !== 6) return "The 2FA code must be 6 digits.";
     }
 
     if (mode === "register") {
-      if (!formData.username.trim()) return "Inserisci un username.";
-      if (formData.username.trim().length < USERNAME_MIN) return `Username troppo corto (min ${USERNAME_MIN} caratteri).`;
-      if (formData.username.trim().length > USERNAME_MAX) return `Username troppo lungo (max ${USERNAME_MAX} caratteri).`;
-      if (!formData.email.trim()) return "Inserisci un'email.";
-      if (!EMAIL_REGEX.test(formData.email.trim())) return "Formato email non valido.";
-      if (!formData.password) return "Inserisci la password.";
-      if (!PWD_REGEX.test(formData.password)) return "La password deve contenere almeno 8 caratteri, una lettera maiuscola, una minuscola, un numero e un carattere speciale.";
+      if (!formData.username.trim()) return "Enter a username.";
+      if (formData.username.trim().length < USERNAME_MIN) return `Username too short (min ${USERNAME_MIN} characters).`;
+      if (formData.username.trim().length > USERNAME_MAX) return `Username too long (max ${USERNAME_MAX} characters).`;
+      if (!formData.email.trim()) return "Enter an email address.";
+      if (!EMAIL_REGEX.test(formData.email.trim())) return "Invalid email format.";
+      if (!formData.password) return "Enter a password.";
+      if (!PASSWORD_REGEX.test(formData.password)) return PASSWORD_ERROR_MESSAGE;
+      if (!formData.confirmPassword) return "Please confirm your password.";
+      if (formData.password !== formData.confirmPassword) return "Passwords do not match.";
     }
 
     if (mode === "forgot") {
-      if (!formData.email.trim()) return "Inserisci la tua email.";
-      if (!EMAIL_REGEX.test(formData.email.trim())) return "Formato email non valido.";
+      if (!formData.email.trim()) return "Enter your email address.";
+      if (!EMAIL_REGEX.test(formData.email.trim())) return "Invalid email format.";
     }
 
     if (mode === "reset") {
-      if (!formData.password) return "Inserisci la nuova password.";
-      if (formData.password !== formData.confirmPassword) return "Le password non combaciano.";
-      if (!PWD_REGEX.test(formData.password)) return "La password deve contenere min 8 car., maiuscola, minuscola, numero e simbolo speciale.";
+      if (!formData.password) return "Enter your new password.";
+      if (!PASSWORD_REGEX.test(formData.password)) return PASSWORD_ERROR_MESSAGE;
+      if (formData.password !== formData.confirmPassword) return "Passwords do not match.";
     }
 
     return null;
@@ -108,26 +111,26 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
       } else if (mode === "register") {
         const { ok, data } = await authService.register(formData.username.trim(), formData.email.trim(), formData.password);
         if (ok) {
-          setSuccessMsg("Registrazione completata! Controlla l'email per verificare l'account.");
+          setSuccessMsg("Registration successful! Check your email to verify your account.");
           setRegisteredEmail(formData.email.trim()); // Memorizza l'email pulita in caso di resend
           setMode("login");
-          setFormData(prev => ({ ...prev, password: "" }));
+          setFormData(prev => ({ ...prev, password: "", confirmPassword: "" }));
         } else {
-          setError(toErrorString(data.error || data.message || "Registration failed"));
+          setError(toErrorString(data.message || data.error || "Registration failed"));
         }
 
       } else if (mode === "forgot") {
         const ok = await authService.forgotPassword(formData.email.trim());
-        if (ok) setSuccessMsg("Se l'email esiste, ti abbiamo inviato un link per resettare la password.");
-        else setError("Errore nell'invio dell'email.");
+        if (ok) setSuccessMsg("If this email is registered, we sent you a password reset link.");
+        else setError("Failed to send email. Please try again.");
 
       } else if (mode === "reset") {
         const result = await authService.resetPassword(formData.resetToken, formData.password);
         if (result.ok) {
-          setSuccessMsg("Password resettata con successo! Ora puoi accedere.");
+          setSuccessMsg("Password reset successfully! You can now log in.");
           setMode("login");
         } else {
-          setError(toErrorString(result.message || "Errore nel reset della password. Token scaduto?"));
+          setError(toErrorString(result.message || "Password reset failed. The link may have expired."));
         }
       }
     } catch {
@@ -156,20 +159,28 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
     }
 
     if (!targetEmail) {
-      return setError("Per reinviare il link, inserisci il tuo indirizzo email valido nel campo di testo.");
+      return setError("To resend the verification link, enter your email address in the text field.");
     }
 
     setLoading(true);
     const result = await authService.resendVerification(targetEmail);
     if (result.ok) {
-      setSuccessMsg(`L'email di verifica è stata reinviata a: ${targetEmail}`);
+      setSuccessMsg(`Verification email resent to: ${targetEmail}`);
     } else {
-      setError(toErrorString(result.message || "Errore nell'invio dell'email."));
+      setError(toErrorString(result.message || "Failed to send email. Please try again."));
     }
     setLoading(false);
   };
 
-  const switchMode = (m: typeof mode) => { setMode(m); setError(""); setSuccessMsg(""); setShow2fa(false); };
+  const switchMode = (m: typeof mode) => {
+    setMode(m);
+    setError("");
+    setSuccessMsg("");
+    setShow2fa(false);
+    setShowPassword(false);
+    setShowConfirmPassword(false);
+    setFormData(prev => ({ ...prev, username: "", email: "", password: "", confirmPassword: "" }));
+  };
 
   return (
     <div className="animate-fadeIn" style={{
@@ -201,26 +212,26 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
           {mode === "login" && "Clash of Olympus"}
           {mode === "register" && "Join the Arena"}
           {mode === "forgot" && "Reset Password"}
-          {mode === "reset" && "Nuova Password"}
+          {mode === "reset" && "New Password"}
         </h1>
 
         {successMsg && (
-          <div style={{ width: "100%", padding: "8px 12px", marginBottom: "12px", background: "rgba(168,198,108,0.15)", border: `1px solid ${theme.colors.hpHigh}`, borderRadius: "2px", color: theme.colors.hpHigh, fontFamily: theme.fonts.mono, fontSize: "12px", textAlign: "center" }}>
+          <div style={{ width: "100%", padding: "8px 12px", marginBottom: "12px", background: "rgba(30,120,20,0.30)", border: "1px solid #4a9e2a", borderRadius: "2px", color: "#5ab832", fontFamily: theme.fonts.mono, fontSize: "12px", textAlign: "center" }}>
             {successMsg}
-            {(successMsg.includes("Registrazione completata") || successMsg.includes("reinviata a")) && (
-              <button type="button" onClick={handleResend} style={{ display: 'block', margin: '8px auto 0', padding: '4px 8px', background: 'none', border: `1px solid ${theme.colors.hpHigh}`, color: theme.colors.hpHigh, cursor: 'pointer', fontSize: '11px', borderRadius: '2px' }}>
-                Re-invia email
+            {(successMsg.includes("Registration successful") || successMsg.includes("resent to")) && (
+              <button type="button" onClick={handleResend} style={{ display: 'block', margin: '8px auto 0', padding: '4px 8px', background: 'none', border: "1px solid #4a9e2a", color: "#5ab832", cursor: 'pointer', fontSize: '11px', borderRadius: '2px' }}>
+                Resend email
               </button>
             )}
           </div>
         )}
 
         {error && (
-          <div style={{ width: "100%", padding: "8px 12px", marginBottom: "12px", background: "rgba(232,64,87,0.15)", border: `1px solid ${theme.colors.dead}`, borderRadius: "2px", color: theme.colors.dead, fontFamily: theme.fonts.mono, fontSize: "12px", textAlign: "center" }}>
+          <div style={{ width: "100%", padding: "8px 12px", marginBottom: "12px", background: "rgba(232,64,87,0.25)", border: `1px solid ${theme.colors.dead}`, borderRadius: "2px", color: theme.colors.dead, fontFamily: theme.fonts.mono, fontSize: "12px", textAlign: "center" }}>
             {error}
             {error.toLowerCase().includes("verify your email") && (
               <button type="button" onClick={handleResend} style={{ display: 'block', margin: '8px auto 0', padding: '4px 8px', background: 'none', border: `1px solid ${theme.colors.dead}`, color: theme.colors.textPrimary, cursor: 'pointer', fontSize: '11px' }}>
-                Re-invia email
+                Resend email
               </button>
             )}
           </div>
@@ -263,6 +274,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
           {(mode === "login" || mode === "register" || mode === "reset") && (
             <div style={{ position: "relative" }}>
               <input className="input-glow" type={showPassword ? "text" : "password"} placeholder="Password"
+                autoComplete={mode === "login" ? "current-password" : "new-password"}
                 value={formData.password}
                 onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                 style={{ ...inputStyle, paddingRight: "44px" }} />
@@ -273,12 +285,19 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
             </div>
           )}
 
-          {/* Confirm password (reset only) */}
-          {mode === "reset" && (
-            <input className="input-glow" type="password" placeholder="Conferma Password"
-              value={formData.confirmPassword}
-              onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
-              style={inputStyle} />
+          {/* Confirm password (register + reset) */}
+          {(mode === "register" || mode === "reset") && (
+            <div style={{ position: "relative" }}>
+              <input className="input-glow" type={showConfirmPassword ? "text" : "password"} placeholder="Confirm Password"
+                autoComplete="new-password"
+                value={formData.confirmPassword}
+                onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
+                style={{ ...inputStyle, paddingRight: "44px" }} />
+              <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                style={{ position: "absolute", right: "12px", top: "50%", transform: "translateY(-50%)", background: "none", border: "none", color: theme.colors.textMuted, cursor: "pointer", padding: "4px", display: "flex" }}>
+                {showConfirmPassword ? <Icons.EyeOff size={18} /> : <Icons.Eye size={18} />}
+              </button>
+            </div>
           )}
 
           {/* 2FA */}

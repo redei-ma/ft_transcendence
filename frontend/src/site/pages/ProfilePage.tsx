@@ -6,7 +6,7 @@ import * as authService from '../services/authService';
 import { UserProfile, UserStats, UserSettings, UserAchievementsResponse, MatchHistoryResponse, generate2fa, turnOn2fa, turnOff2fa } from '../services/apiService';
 import { theme } from '../../configs/theme';
 import { NAVBAR_HEIGHT } from '../components/Navbar';
-import { CharacterName } from '@transcendence/types';
+import { CharacterName, PASSWORD_REGEX, PASSWORD_ERROR_MESSAGE } from '@transcendence/types';
 import AdeHistory from '../../assets/images/AdeHistory.png';
 import ZeusHistory from '../../assets/images/ZeusHistory.png';
 
@@ -160,27 +160,25 @@ export default function ProfilePage() {
 
   const handleSavePassword = () => {
     setPwdError('');
-    const pwdRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
-    
-    if (pwdData.new !== pwdData.confirm) return setPwdError("Le nuove password non combaciano!");
-    if (!pwdRegex.test(pwdData.new)) return setPwdError("Minimo 8 caratteri, una maiuscola, una minuscola, un numero e un simbolo speciale.");
+    if (pwdData.new !== pwdData.confirm) return setPwdError("Passwords do not match.");
+    if (!PASSWORD_REGEX.test(pwdData.new)) return setPwdError(PASSWORD_ERROR_MESSAGE);
 
     setDialog({
       isOpen: true,
-      title: "Conferma Cambio Password",
-      msg: "Sei sicuro di voler cambiare la tua password? Verrai disconnesso a breve.",
+      title: "Confirm Password Change",
+      msg: "Are you sure you want to change your password? You will be logged out shortly.",
       action: async () => {
         setDialog(null);
         const result = await api.changePassword(pwdData.old, pwdData.new);
         if (result.ok) {
-          setMsg("Password aggiornata con successo! Disconnessione in corso...");
+          setMsg("Password updated successfully! Logging out...");
           setIsChangingPwd(false);
           setPwdData({ old: '', new: '', confirm: '' });
           setTimeout(() => {
             window.location.reload();
           }, 2000);
         } else {
-          setPwdError(result.message || "Errore durante il cambio password");
+          setPwdError(result.message || "Failed to change password.");
         }
       }
     });
@@ -344,9 +342,9 @@ export default function ProfilePage() {
 
           {isChangingPwd && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '12px' }} className="animate-slideUp">
-              <input type="password" placeholder="Vecchia Password" value={pwdData.old} onChange={e => setPwdData({...pwdData, old: e.target.value})} style={inputStyle} />
-              <input type="password" placeholder="Nuova Password" value={pwdData.new} onChange={e => setPwdData({...pwdData, new: e.target.value})} style={inputStyle} />
-              <input type="password" placeholder="Conferma Nuova Password" value={pwdData.confirm} onChange={e => setPwdData({...pwdData, confirm: e.target.value})} style={inputStyle} />
+              <input type="password" placeholder="Current Password" autoComplete="current-password" value={pwdData.old} onChange={e => setPwdData({...pwdData, old: e.target.value})} style={inputStyle} />
+              <input type="password" placeholder="New Password" autoComplete="new-password" value={pwdData.new} onChange={e => setPwdData({...pwdData, new: e.target.value})} style={inputStyle} />
+              <input type="password" placeholder="Confirm New Password" autoComplete="new-password" value={pwdData.confirm} onChange={e => setPwdData({...pwdData, confirm: e.target.value})} style={inputStyle} />
               
               {pwdError && <span style={{ color: theme.colors.dead, fontSize: '12px', fontFamily: theme.fonts.mono }}>{pwdError}</span>}
               

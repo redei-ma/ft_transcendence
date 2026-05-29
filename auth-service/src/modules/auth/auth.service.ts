@@ -45,7 +45,7 @@ export class AuthService {
       email: dto.email,
     });
     if (existingEmail) {
-      throw new ConflictException('A user with this email already exists.');
+      throw new BadRequestException('Registration failed. Please check your details.');
     }
 
     // Check if username already exists
@@ -53,7 +53,7 @@ export class AuthService {
       username: dto.username,
     });
     if (existingUsername) {
-      throw new ConflictException('This username is already taken.');
+      throw new BadRequestException('Registration failed. Please check your details.');
     }
 
     try {
