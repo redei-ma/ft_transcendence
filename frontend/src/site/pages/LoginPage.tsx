@@ -222,7 +222,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
           <div style={{ width: "100%", padding: "8px 12px", marginBottom: "12px", background: "rgba(168,198,108,0.15)", border: `1px solid ${theme.colors.hpHigh}`, borderRadius: "2px", color: theme.colors.bgDark, fontFamily: theme.fonts.mono, fontSize: "12px", textAlign: "center" }}>
             {successMsg}
             {(successMsg.includes("Registration successful") || successMsg.includes("resent to")) && (
-              <button type="button" onClick={handleResend} style={{ display: 'block', margin: '8px auto 0', padding: '4px 8px', background: 'none', border: `1px solid ${theme.colors.hpHigh}`, color: theme.colors.bgDark, cursor: 'pointer', fontSize: '11px', borderRadius: '2px' }}>
+              <button type="button" onClick={handleResend} style={{ display: 'block', margin: '8px auto 0', padding: '6px 14px', background: theme.colors.hpHigh, border: 'none', color: theme.colors.bgDark, cursor: 'pointer', fontSize: '11px', fontWeight: 700, borderRadius: '2px', letterSpacing: '0.5px' }}>
                 Resend email
               </button>
             )}

@@ -152,15 +152,18 @@ export class AuthController {
   }
 
   @Get('verify-email')
-  async verifyEmail(@Query() query: TokenQueryDto) {
-
-    const decodedToken = decodeURIComponent(query.token);
-
-    await this.authService.verifyEmailToken(decodedToken);
-
-    return {
-      message: 'Email successfully verified. You can now log in.',
-    };
+  async verifyEmail(
+    @Query() query: TokenQueryDto,
+    @Res() res: Response,
+  ): Promise<void> {
+    const frontendUrl = this.config.getOrThrow('PUBLIC_URL');
+    try {
+      await this.authService.verifyEmailToken(decodeURIComponent(query.token));
+      res.redirect(`${frontendUrl}/?verified=success`);
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : 'Verification failed.';
+      res.redirect(`${frontendUrl}/?verified=error&msg=${encodeURIComponent(msg)}`);
+    }
   }
 
   @Post('forgot-password')
@@ -208,8 +211,18 @@ export class AuthController {
   }
 
   @Get('confirm-email-change')
-  async confirmEmailChange(@Query() query: TokenQueryDto) {
-    return this.authService.confirmEmailChange(decodeURIComponent(query.token));
+  async confirmEmailChange(
+    @Query() query: TokenQueryDto,
+    @Res() res: Response,
+  ): Promise<void> {
+    const frontendUrl = this.config.getOrThrow('PUBLIC_URL');
+    try {
+      await this.authService.confirmEmailChange(decodeURIComponent(query.token));
+      res.redirect(`${frontendUrl}/?email-changed=success`);
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : 'Email change failed.';
+      res.redirect(`${frontendUrl}/?email-changed=error&msg=${encodeURIComponent(msg)}`);
+    }
   }
 
   @Delete('account')

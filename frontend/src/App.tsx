@@ -12,6 +12,7 @@ import { theme } from './configs/theme';
 import DesktopOnlyGuard from './site/components/desktopOnlyGuard';
 import FriendsSidebar from './site/components/FriendSidebar';
 import GameInviteToast from './site/components/GameInviteToast';
+import EmailCallbackPage from './site/pages/EmailCallbackPage';
 
 export default function App() {
   const [isAuthLoading, setIsAuthLoading] = useState(true);
@@ -21,6 +22,24 @@ export default function App() {
   const [pendingSessionId, setPendingSessionId] = useState<string | null>(null);
   const [pendingInviterId, setPendingInviterId] = useState<number | null>(null);
   const [gameInvites, setGameInvites] = useState<GameInvite[]>([]);
+
+  type EmailCallback = { type: 'verified' | 'email-changed'; status: 'success' | 'error'; message: string } | null;
+  const [emailCallback, setEmailCallback] = useState<EmailCallback>(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.has('verified')) {
+      const status = params.get('verified') as 'success' | 'error';
+      const message = decodeURIComponent(params.get('msg') ?? '');
+      window.history.replaceState({}, document.title, '/');
+      return { type: 'verified', status, message };
+    }
+    if (params.has('email-changed')) {
+      const status = params.get('email-changed') as 'success' | 'error';
+      const message = decodeURIComponent(params.get('msg') ?? '');
+      window.history.replaceState({}, document.title, '/');
+      return { type: 'email-changed', status, message };
+    }
+    return null;
+  });
 
   const fetchGameInvites = useCallback(async () => {
     const data = await getGameInvites();
@@ -190,6 +209,17 @@ export default function App() {
         return <DashboardPage onNavigate={setCurrentPage} />;
     }
   };
+
+  if (emailCallback) {
+    return (
+      <EmailCallbackPage
+        type={emailCallback.type}
+        status={emailCallback.status}
+        message={emailCallback.message}
+        onDone={() => setEmailCallback(null)}
+      />
+    );
+  }
 
   if (isAuthLoading) return null;
 
