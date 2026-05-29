@@ -1,4 +1,4 @@
-import { Canvas } from '@react-three/fiber';
+import { Canvas, useThree, useFrame } from '@react-three/fiber';
 import { useGameSocket } from '../hooks/useGameSocket';
 import { InputManager } from './input/inputManager';
 import { useEffect, useRef, useMemo, useState } from 'react';
@@ -11,6 +11,9 @@ import GameChat from './UI/components/GameChat';
 import { EffectComposer, Bloom } from '@react-three/postprocessing';
 import mapTexture from '../assets/images/mapTexture1.png';
 import { useGameStore } from '../storage/gameStore';
+import { theme } from '../configs/theme';
+import { PillarModel, WallModel } from './entities/mapModels';
+import * as THREE from 'three';
 
 interface GameProps {
   selectedCharacter: CharacterName;
@@ -20,11 +23,104 @@ interface GameProps {
   onPlayAgain: () => void;
   onQuit: () => void;
   myUserId: string;
+  myUsername: string;
 }
 
 type EditorTool = 'pillar' | 'wall';
 
-export default function Game({ selectedCharacter, selectedMode, onPlayAgain, onQuit, myUserId }: GameProps) {
+function CameraController({ mapWidth, mapDepth }: { mapWidth: number; mapDepth: number }) {
+  const { camera, size } = useThree();
+
+  useEffect(() => {
+    if (size.width === 0 || size.height === 0) return;
+
+    const mapSize = Math.max(mapWidth, mapDepth);
+    if (size.height < size.width) {
+      camera.zoom = size.height / (mapSize * 0.82);
+    } else {
+      camera.zoom = size.width / (mapSize * 0.82);
+    }
+    camera.updateProjectionMatrix();
+  }, [size.width, size.height, camera, mapWidth, mapDepth]);
+
+  return null;
+}
+
+function AimPlane({ inputManagerRef, myUserId }: { inputManagerRef: React.RefObject<InputManager | null>; myUserId: string }) {
+  useFrame(() => {
+    const player = useGameStore.getState().gameState?.players.find(
+      p => (p as any).userName === myUserId || p.id === myUserId
+    );
+    if (player && inputManagerRef.current) {
+      inputManagerRef.current.setPlayerPosition(player.position.x, player.position.z);
+    }
+  });
+
+  const handleClick = (e: any) => {
+    if (!inputManagerRef.current) return;
+    if (!e.nativeEvent.shiftKey) return;
+    if (inputManagerRef.current.getIsLocal()) return;
+    e.stopPropagation();
+    inputManagerRef.current.fireSpellAt(e.point.x, e.point.z);
+  };
+
+  const mapWidth = useGameStore.getState().world?.map?.width || 130;
+  const mapDepth = useGameStore.getState().world?.map?.depth || 130;
+
+  return (
+    <mesh
+      rotation={[-Math.PI / 2, 0, 0]}
+      position={[mapWidth / 2, 0, mapDepth / 2]}
+      visible={false}
+      onClick={handleClick}
+    >
+      <planeGeometry args={[mapWidth * 2, mapDepth * 2]} />
+      <meshBasicMaterial transparent opacity={0} />
+    </mesh>
+  );
+}
+
+function ResizeWarning({ onLeave }: { onLeave: () => void }) {
+  const [countdown, setCountdown] = useState(5);
+
+  useEffect(() => {
+    if (countdown <= 0) return;
+    const timer = setTimeout(() => setCountdown(countdown - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [countdown]);
+
+  return (
+    <div style={{
+      position: 'fixed', inset: 0, zIndex: 9999,
+      background: 'rgba(0,0,0,0.95)',
+      display: 'flex', flexDirection: 'column',
+      alignItems: 'center', justifyContent: 'center', gap: '24px',
+    }}>
+      <h2 style={{
+        fontFamily: '"Cinzel", serif', color: '#d44',
+        fontSize: '22px', letterSpacing: '2px', textTransform: 'uppercase',
+      }}>BACK TO FULL-SCREEN MODE</h2>
+      <p style={{
+        fontFamily: '"JetBrains Mono", monospace', fontSize: '13px',
+        color: 'rgba(200,170,100,0.6)', textAlign: 'center', lineHeight: 1.6,
+      }}>
+        Restore the original window size or you will be kicked from the match.
+      </p>
+      <div style={{
+        fontFamily: '"Cinzel", serif', fontSize: '48px', fontWeight: 700,
+        color: countdown <= 2 ? '#d44' : '#e8d5a3',
+        transition: 'color 0.3s',
+      }}>{countdown}</div>
+      <button onClick={onLeave} style={{
+        padding: '10px 24px', background: '#d44', border: 'none',
+        borderRadius: '4px', color: 'white', fontFamily: '"Cinzel", serif',
+        fontSize: '12px', fontWeight: 700, letterSpacing: '1px', cursor: 'pointer',
+      }}>LEAVE NOW</button>
+    </div>
+  );
+}
+
+export default function Game({ selectedCharacter, selectedMode, onPlayAgain, onQuit, myUserId, myUsername }: GameProps) {
   const inputManagerRef = useRef<InputManager | null>(null);
   
   useGameSocket();
@@ -39,6 +135,9 @@ export default function Game({ selectedCharacter, selectedMode, onPlayAgain, onQ
 
   const playerIds = useMemo(() => playerIdsStr ? playerIdsStr.split(',') : [], [playerIdsStr]);
   const bulletIds = useMemo(() => bulletIdsStr ? bulletIdsStr.split(',') : [], [bulletIdsStr]);
+
+  const [showLeaveDialog, setShowLeaveDialog] = useState(false);
+  const isLocal = selectedMode === MatchMode.LOCAL;
 
   // ==========================================
   // 🛠️ EDITOR STATE & LOGIC
@@ -81,7 +180,7 @@ export default function Game({ selectedCharacter, selectedMode, onPlayAgain, onQ
       setCustomPillars(prev => prev.slice(0, -1));
     } else {
       setCustomWalls(prev => prev.slice(0, -1));
-      setWallStart(null); // Annulla anche se stavi disegnando a metà
+      setWallStart(null);
     }
   };
 
@@ -95,8 +194,7 @@ export default function Game({ selectedCharacter, selectedMode, onPlayAgain, onQ
   // ==========================================
 
   useEffect(() => {
-    const isLocal = selectedMode === MatchMode.LOCAL;
-    const inputManager = new InputManager(isLocal);
+    const inputManager = new InputManager(selectedMode === MatchMode.LOCAL);
     inputManagerRef.current = inputManager;
     return () => {
       inputManager.dispose();
@@ -118,6 +216,72 @@ export default function Game({ selectedCharacter, selectedMode, onPlayAgain, onQ
     resetGame();
     onQuit();
   };
+
+  const [initialSize] = useState({ w: window.innerWidth, h: window.innerHeight });
+  const [resized, setResized] = useState(false);
+  const handleQuitRef = useRef(handleQuitInternal);
+  handleQuitRef.current = handleQuitInternal;
+
+  useEffect(() => {
+    let kickTimeout: ReturnType<typeof setTimeout> | null = null;
+
+    const handleResize = () => {
+      const diffW = Math.abs(window.innerWidth - initialSize.w);
+      const diffH = Math.abs(window.innerHeight - initialSize.h);
+
+      if (diffW > 50 || diffH > 50) {
+        setResized(true);
+        if (!kickTimeout) {
+          kickTimeout = setTimeout(() => {
+            handleQuitRef.current();
+          }, 5000);
+        }
+      } else {
+        setResized(false);
+        if (kickTimeout) {
+          clearTimeout(kickTimeout);
+          kickTimeout = null;
+        }
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      if (kickTimeout) clearTimeout(kickTimeout);
+    };
+  }, [initialSize]);
+
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (!gameOver) {
+        e.preventDefault();
+      }
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [gameOver]);
+
+  if (!world) {
+    return (
+      <div style={{
+        position: 'fixed', inset: 0,
+        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+        background: theme.colors.bgDark,
+      }}>
+        <p style={{
+          fontFamily: theme.fonts.heading,
+          fontSize: '20px',
+          letterSpacing: '4px',
+          textTransform: 'uppercase',
+          color: theme.colors.textSecondary,
+          margin: 0,
+        }}>
+          Entering the Arena...
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div style={{
@@ -183,7 +347,7 @@ export default function Game({ selectedCharacter, selectedMode, onPlayAgain, onQ
         orthographic
         camera={{
           position: [centerX + 80, 100, centerZ + 80],
-          zoom: 5, near: 0.1, far: 1000,
+          near: 0.1, far: 1000,
         }}
         onCreated={({ camera }) => {
           camera.lookAt(centerX, 0, centerZ);
@@ -193,7 +357,10 @@ export default function Game({ selectedCharacter, selectedMode, onPlayAgain, onQ
       >
         <ambientLight intensity={0.6} />
         <directionalLight position={[50, 100, 50]} intensity={0.8} />
-
+        <CameraController mapWidth={mapWidth} mapDepth={mapDepth} />
+        
+        {!isEditMode && <AimPlane inputManagerRef={inputManagerRef} myUserId={myUsername} />}
+        
         <gridHelper args={[mapWidth, 20, 0xffffff, 0x444444]} position={[centerX, 0, centerZ]} />
 
         {/* 🛠️ PIANO DI CLICK (Raycasting) PER L'EDITOR */}
@@ -216,28 +383,23 @@ export default function Game({ selectedCharacter, selectedMode, onPlayAgain, onQ
               } 
               else if (activeTool === 'wall') {
                 if (!wallStart) {
-                  // Primo click: fissa il punto di partenza
                   setWallStart({ x, z });
                   setCursorPos({ x, z });
                 } else {
-                  // Secondo click: crea il muro
                   const x1 = wallStart.x;
                   const z1 = wallStart.z;
                   
-                  // Calcola dimensioni
                   let w = Math.abs(x - x1);
                   let d = Math.abs(z - z1);
                   
-                  // Evita muri con spessore 0 (li forza a 5 per fare i muri dritti perfetti)
                   if (w === 0) w = 5;
                   if (d === 0) d = 5;
 
-                  // L'angolo in alto a sinistra (Top-Left) è il minimo tra i due punti
                   const finalX = Math.min(x1, x);
                   const finalZ = Math.min(z1, z);
 
                   setCustomWalls(prev => [...prev, { id: `custom_wal_${prev.length + 1}`, x: finalX, z: finalZ, width: w, depth: d }]);
-                  setWallStart(null); // Reset per il prossimo muro
+                  setWallStart(null);
                   setCursorPos(null);
                 }
               }
@@ -301,7 +463,7 @@ export default function Game({ selectedCharacter, selectedMode, onPlayAgain, onQ
             </mesh>
           );
         })}
-        
+
         {/* Proiettili */}
         {bulletIds.map((id) => (
           <BulletEntity key={id} bulletId={id} />
@@ -311,6 +473,61 @@ export default function Game({ selectedCharacter, selectedMode, onPlayAgain, onQ
           <Bloom luminanceThreshold={1} luminanceSmoothing={0.9} mipmapBlur intensity={1.5} />
         </EffectComposer>
       </Canvas>
+      
+      {resized && !isEditMode && (
+        <ResizeWarning onLeave={handleQuitInternal} />
+      )}
+
+      {!gameOver && !isEditMode && (
+        <button onClick={() => setShowLeaveDialog(true)} style={{
+          position: 'absolute', top: 16, left: 16, zIndex: 1000,
+          padding: '8px 16px', background: 'rgba(0,0,0,0.6)',
+          border: '1px solid #d44', borderRadius: '4px',
+          color: '#d44', fontFamily: '"Cinzel", serif',
+          fontSize: '11px', fontWeight: 700, letterSpacing: '1px',
+          cursor: 'pointer', backdropFilter: 'blur(4px)',
+          transition: 'all 0.2s',
+        }}
+          onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(221,68,68,0.2)'}
+          onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(0,0,0,0.6)'}
+        >LEAVE</button>
+      )}
+
+      {showLeaveDialog && (
+        <div style={{
+          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999,
+        }}>
+          <div style={{
+            background: '#0d1a25', border: '1px solid #e8d5a3', borderRadius: '4px',
+            padding: '32px', maxWidth: '420px', textAlign: 'center',
+            boxShadow: '0 0 40px rgba(200,170,100,0.3)',
+          }}>
+            <h3 style={{
+              fontFamily: '"Cinzel", serif', color: '#f0e0b0', fontSize: '18px',
+              marginBottom: '16px', letterSpacing: '1px',
+            }}>Abandon Match</h3>
+            <p style={{
+              fontFamily: '"JetBrains Mono", monospace', fontSize: '13px',
+              color: '#e8d5a3', marginBottom: '32px', lineHeight: 1.6,
+            }}>
+              Are you sure you want to leave?{!isLocal && ' This will count as a loss.'}
+            </p>
+            <div style={{ display: 'flex', gap: '16px', justifyContent: 'center' }}>
+              <button onClick={() => setShowLeaveDialog(false)} style={{
+                padding: '10px 24px', background: 'none',
+                border: '1px solid rgba(200,170,100,0.15)', color: 'rgba(200,170,100,0.35)',
+                cursor: 'pointer', fontFamily: '"Cinzel", serif', letterSpacing: '1px',
+              }}>CANCEL</button>
+              <button onClick={() => { setShowLeaveDialog(false); handleQuitInternal(); }} style={{
+                padding: '10px 24px', background: '#d44', border: 'none',
+                color: 'white', fontWeight: 'bold', cursor: 'pointer',
+                borderRadius: '2px', fontFamily: '"Cinzel", serif', letterSpacing: '1px',
+              }}>LEAVE</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {!gameOver && !isEditMode && (
         <GameUI
@@ -327,15 +544,15 @@ export default function Game({ selectedCharacter, selectedMode, onPlayAgain, onQ
       )}
 
       {gameOver && !isEditMode && (
-        <GameOverOverlayWrapper gameOver={gameOver} onPlayAgain={handlePlayAgainInternal} onQuit={handleQuitInternal} />
+        <GameOverOverlayWrapper gameOver={gameOver} onPlayAgain={handlePlayAgainInternal} onQuit={handleQuitInternal} myUserId={myUsername} />
       )}
     </div>
   );
 }
 
-function GameOverOverlayWrapper({ gameOver, onPlayAgain, onQuit }: {
-  gameOver: any; onPlayAgain: () => void; onQuit: () => void;
+function GameOverOverlayWrapper({ gameOver, onPlayAgain, onQuit, myUserId }: {
+  gameOver: any; onPlayAgain: () => void; onQuit: () => void; myUserId: string;
 }) {
   const players = useGameStore((state) => state.gameState?.players) || [];
-  return <GameOverOverlay gameOver={gameOver} players={players} onPlayAgain={onPlayAgain} onQuit={onQuit} />;
+  return <GameOverOverlay gameOver={gameOver} players={players} onPlayAgain={onPlayAgain} onQuit={onQuit} myUserId={myUserId} />;
 }

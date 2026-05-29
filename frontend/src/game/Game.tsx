@@ -285,7 +285,7 @@ export default function Game({ selectedCharacter, selectedMode, onPlayAgain, onQ
            return (
              <PillarModel key={`pillar-${i}`} position={[px, 0, pz]} radius={p.radius} />
            );
-         })}
+         })} */}
 
          {world?.map?.walls?.map((w: any, i: number) => {
            const wx = w.position?.x ?? 0;
@@ -293,7 +293,7 @@ export default function Game({ selectedCharacter, selectedMode, onPlayAgain, onQ
            return (
              <WallModel key={`wall-${i}`} position={[wx + w.width/2, 0, wz + w.depth/2]} width={w.width} depth={w.depth} />
            );
-         })} */}
+         })}
 
         {bulletIds.map((id) => (
           <BulletEntity key={id} bulletId={id} />
