@@ -15,10 +15,9 @@ export class AiService{
 
     public updateInput(bot: Player, gameWorld: World, allPlayers: Readonly<Map<string, Player>>, dt: number){
 
-        //AGGIUNTO PER RENDERE BOT PIU SCARSO
         let timer = this.reactionTimers.get(bot.entityId) || 0;
         timer += dt;
-        if (timer < 0.25){
+        if (timer < 0.05){
             this.reactionTimers.set(bot.entityId, timer);
             return;
         }

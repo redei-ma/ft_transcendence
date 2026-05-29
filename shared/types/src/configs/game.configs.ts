@@ -18,7 +18,7 @@ export const GameConfig = {
   PLAYER: {
     DEFAULT_HP: 100,
     SPEED: 20.0,
-    RADIUS: 2.5,
+    RADIUS: 2.4,
     RESPAWN_TIMER: 5.0,
   },
   MATCH: {
@@ -41,7 +41,7 @@ export const GameConfig = {
     WANDER_STUCK_TIMER: 2.0,
     MAX_PATH_TIME: 1.5,
     SECURITY_RANGE: 10.0,
-    SPELL_AIM_SPREAD_DEG: 20,
+    SPELL_AIM_SPREAD_DEG: 5,
   },
   ACHIEVEMENT: {
     CLUTCHMASTER: 0.05,
