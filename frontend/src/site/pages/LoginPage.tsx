@@ -218,10 +218,10 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
         </h1>
 
         {successMsg && (
-          <div style={{ width: "100%", padding: "8px 12px", marginBottom: "12px", background: "rgba(30,120,20,0.30)", border: "1px solid #4a9e2a", borderRadius: "2px", color: "#5ab832", fontFamily: theme.fonts.mono, fontSize: "12px", textAlign: "center" }}>
+          <div style={{ width: "100%", padding: "8px 12px", marginBottom: "12px", background: "rgba(168,198,108,0.15)", border: `1px solid ${theme.colors.hpHigh}`, borderRadius: "2px", color: theme.colors.bgDark, fontFamily: theme.fonts.mono, fontSize: "12px", textAlign: "center" }}>
             {successMsg}
             {(successMsg.includes("Registration successful") || successMsg.includes("resent to")) && (
-              <button type="button" onClick={handleResend} style={{ display: 'block', margin: '8px auto 0', padding: '4px 8px', background: 'none', border: "1px solid #4a9e2a", color: "#5ab832", cursor: 'pointer', fontSize: '11px', borderRadius: '2px' }}>
+              <button type="button" onClick={handleResend} style={{ display: 'block', margin: '8px auto 0', padding: '4px 8px', background: 'none', border: `1px solid ${theme.colors.hpHigh}`, color: theme.colors.bgDark, cursor: 'pointer', fontSize: '11px', borderRadius: '2px' }}>
                 Resend email
               </button>
             )}
@@ -229,10 +229,10 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
         )}
 
         {error && (
-          <div style={{ width: "100%", padding: "8px 12px", marginBottom: "12px", background: "rgba(232,64,87,0.25)", border: `1px solid ${theme.colors.dead}`, borderRadius: "2px", color: theme.colors.dead, fontFamily: theme.fonts.mono, fontSize: "12px", textAlign: "center" }}>
+          <div style={{ width: "100%", padding: "8px 12px", marginBottom: "12px", background: "rgba(232,64,87,0.25)", border: `1px solid ${theme.colors.dead}`, borderRadius: "2px", color: theme.colors.bgDark, fontFamily: theme.fonts.mono, fontSize: "12px", textAlign: "center" }}>
             {error}
             {error.toLowerCase().includes("verify your email") && (
-              <button type="button" onClick={handleResend} style={{ display: 'block', margin: '8px auto 0', padding: '4px 8px', background: 'none', border: `1px solid ${theme.colors.dead}`, color: theme.colors.textPrimary, cursor: 'pointer', fontSize: '11px' }}>
+              <button type="button" onClick={handleResend} style={{ display: 'block', margin: '8px auto 0', padding: '4px 8px', background: 'none', border: `1px solid ${theme.colors.dead}`, color: theme.colors.bgDark, cursor: 'pointer', fontSize: '11px' }}>
                 Resend email
               </button>
             )}
@@ -267,6 +267,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
           {/* FORGOT: solo email */}
           {mode === "forgot" && (
             <input className="input-glow" type="email" placeholder="Email"
+              autoComplete="off"
               value={formData.email}
               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
               style={inputStyle} />

@@ -349,8 +349,8 @@ export default function ProfilePage() {
               {pwdError && <span style={{ color: theme.colors.dead, fontSize: '12px', fontFamily: theme.fonts.mono }}>{pwdError}</span>}
               
               <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', marginTop: '8px' }}>
-                <button onClick={() => {setIsChangingPwd(false); setPwdError('');}} style={{ padding: '6px 12px', background: 'none', border: `1px solid ${theme.colors.border}`, color: theme.colors.textMuted, cursor: 'pointer' }}>Annulla</button>
-                <button onClick={handleSavePassword} style={{ padding: '6px 12px', background: theme.colors.zeus, border: 'none', color: 'white', fontWeight: 'bold', cursor: 'pointer', borderRadius: '2px' }}>Salva</button>
+                <button onClick={() => { setIsChangingPwd(false); setPwdError(''); setPwdData({ old: '', new: '', confirm: '' }); }} style={{ padding: '6px 12px', background: 'none', border: `1px solid ${theme.colors.border}`, color: theme.colors.textMuted, cursor: 'pointer' }}>Cancel</button>
+                <button onClick={handleSavePassword} style={{ padding: '6px 12px', background: theme.colors.zeus, border: 'none', color: 'white', fontWeight: 'bold', cursor: 'pointer', borderRadius: '2px' }}>Save</button>
               </div>
             </div>
           )}
