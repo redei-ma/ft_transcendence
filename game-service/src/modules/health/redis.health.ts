@@ -17,8 +17,8 @@ export class RedisHealthIndicator
 	constructor(private readonly configService: ConfigService) {
 		super();
 		this.client = new Redis({
-			host: this.configService.get<string>('REDIS_HOST', 'redis'),
-			port: this.configService.get<number>('REDIS_PORT', 6379),
+			host: this.configService.get<string>('REDIS_HOST'),
+			port: this.configService.get<number>('REDIS_PORT'),
 			lazyConnect: true,
 		});
 	}

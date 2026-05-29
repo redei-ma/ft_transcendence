@@ -104,7 +104,7 @@ export default function FriendsSidebar({ onGameInviteAccepted, gameInvites, onAc
   const receivedCount = requests?.received?.length || 0;
   const activeInvites = gameInvites.filter(inv => new Date(inv.expiresAt).getTime() > now);
   const badgeCount = receivedCount + activeInvites.length;
-  const onlineCount = friends.filter(f => f.friend.status === 'ONLINE').length;
+  const onlineCount = friends.filter(f => f.friend.status === 'ONLINE' || f.friend.status === 'IN_GAME' || f.friend.status === 'IN_QUEUE').length;
 
   // Ordina: online first
   const sortedFriends = [...friends].sort((a, b) => {
@@ -243,7 +243,6 @@ const handleRejectInvite = (invite: api.GameInvite) => onDeclineInvite(invite);
         }}>
           <span style={{ fontFamily: theme.fonts.heading, fontSize: '14px', fontWeight: 700, color: theme.colors.goldBright, letterSpacing: '2px', textTransform: 'uppercase' }}>
             Friends
-            Your ID: 
           </span>
           <span style={{ fontFamily: theme.fonts.mono, fontSize: '11px', color: theme.colors.hpHigh }}>
             {onlineCount} online

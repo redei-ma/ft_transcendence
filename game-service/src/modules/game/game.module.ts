@@ -8,6 +8,7 @@ import { MapManager } from './managers/game.mapManager';
 import { PlayerManager } from './managers/playerManager/player.manager';
 import { BulletManager } from './managers/bullet.manager';
 import { ClientsModule, Transport } from '@nestjs/microservices';
+import { ConfigService } from '@nestjs/config';
 import { NetworkConfig } from '@transcendence/types';
 import { MatchMakingController } from './controllers/game.Matchmaking.controller';
 import { JwtAuthGuard } from '@transcendence/auth';
@@ -17,14 +18,17 @@ import { AiService } from './core/aiService/game.aiService';
 @Module({
 	imports: [
 		MatchResultModule,
-		ClientsModule.register([
+		ClientsModule.registerAsync([
 			{
 				name: NetworkConfig.MATCHMAKING.SERVICE.REDIS,
-				transport: Transport.REDIS,
-				options: {
-					host: process.env.REDIS_HOST || 'localhost',
-					port: 6379,
-				},
+				useFactory: (configService: ConfigService) => ({
+					transport: Transport.REDIS,
+					options: {
+						host: configService.get<string>('REDIS_HOST'),
+						port: configService.get<number>('REDIS_PORT'),
+					},
+				}),
+				inject: [ConfigService],
 			},
 		]),
 	],

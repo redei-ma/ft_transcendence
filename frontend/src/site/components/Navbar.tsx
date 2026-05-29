@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { navLinkBase } from '../styles/shared';
 import { useDropdown, DropdownPanel, DropdownItem } from './Dropdown';
 import * as Icons from './Icons';
@@ -52,11 +52,12 @@ export default function Navbar({ currentPage, onNavigate, onLogout, username, av
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Ricezione notifiche via CustomEvent (SSE vive in App.tsx)
   useEffect(() => {
     if (!username) return;
     fetchNotifications();
+  }, [username]);
 
+  useEffect(() => {
     const handler = (e: Event) => {
       const newNotif = (e as CustomEvent<NotificationItem>).detail;
       setNotifications(prev => [newNotif, ...prev]);
@@ -64,7 +65,7 @@ export default function Navbar({ currentPage, onNavigate, onLogout, username, av
     };
     window.addEventListener('new-notification', handler);
     return () => window.removeEventListener('new-notification', handler);
-  }, [username]);
+  }, []);
 
   const handleMarkAllRead = async () => {
     if (await api.markAllNotificationsRead()) {

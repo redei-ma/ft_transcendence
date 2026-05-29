@@ -33,8 +33,8 @@ export class InputManager {
   }
 
   private handleKeyDown = (e: KeyboardEvent): void => {
-    const key = e.key.toLowerCase();
-    
+    const key = e.code.startsWith('Shift') ? e.code.toLowerCase() : e.key.toLowerCase();
+
     if (e.ctrlKey || e.metaKey) {
       e.preventDefault();
       e.stopPropagation();
@@ -42,7 +42,7 @@ export class InputManager {
 
     if ([
       'arrowup', 'arrowdown', 'arrowleft', 'arrowright',
-      ' ', 'shift', 'control', 'tab', 'alt', 'meta',
+      ' ', 'shiftleft', 'shiftright', 'control', 'tab', 'alt', 'meta',
       'f1', 'f2', 'f3', 'f4', 'f5', 'f6', 'f7', 'f8', 'f9', 'f10', 'f11', 'f12',
       'p', 'o', 'i',
     ].includes(key)) {
@@ -52,17 +52,17 @@ export class InputManager {
     this.keys.add(key);
 
     // Attiva aim mode quando Shift è premuto (solo single player)
-    if (key === 'shift' && !this.isLocalGame) {
+    if (key === 'shiftleft' && !this.isLocalGame) {
       this.isAiming = true;
       document.body.style.cursor = 'url(/src/assets/images/AimCursor.png) 16 16, crosshair';
     }
   };
 
   private handleKeyUp = (e: KeyboardEvent): void => {
-    const key = e.key.toLowerCase();
+    const key = e.code.startsWith('Shift') ? e.code.toLowerCase() : e.key.toLowerCase();
     this.keys.delete(key);
 
-    if (key === ' ' || key === 'shift' || key === 'c') {
+    if (key === ' ' || key === 'shiftleft' || key === 'c') {
       this.attackSent[0] = false;
     }
     if (key === 'p' || key === 'o' || key === 'i') {
@@ -70,7 +70,7 @@ export class InputManager {
     }
 
     // Disattiva aim mode
-    if (key === 'shift') {
+    if (key === 'shiftleft') {
       this.isAiming = false;
       document.body.style.cursor = '';
     }
@@ -103,7 +103,7 @@ export class InputManager {
     
     const p0 = this.buildPayload(
       'w', 's', 'a', 'd',
-      ' ', 'shift', 'c',
+      ' ', 'shiftleft', 'c',
       0
     );
     

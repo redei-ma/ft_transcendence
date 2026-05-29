@@ -22,5 +22,5 @@ export const envValidationSchema = Joi.object({
     .valid('development', 'production', 'test')
     .default('development'),
 
-  AUTH_SERVICE_PORT: Joi.number().default(3002),
+  AUTH_SERVICE_PORT: Joi.number().required(),
 });

@@ -42,7 +42,7 @@ export default function App() {
       if (destroyed) return;
       es = new EventSource(SSE_URL, { withCredentials: true });
 
-      es.addEventListener('notification', (event: any) => {
+      es.addEventListener('notification', (event: MessageEvent) => {
         try {
           const data = JSON.parse(event.data);
           window.dispatchEvent(new CustomEvent('new-notification', { detail: data }));
@@ -52,14 +52,14 @@ export default function App() {
         } catch {}
       });
 
-      es.addEventListener('friend_status', (event: any) => {
+      es.addEventListener('friend_status', (event: MessageEvent) => {
         try {
           const data = JSON.parse(event.data);
           window.dispatchEvent(new CustomEvent('friend-status-update', { detail: data }));
         } catch {}
       });
 
-      es.addEventListener('game_invite', (event: any) => {
+      es.addEventListener('game_invite', (event: MessageEvent) => {
         try {
           const data = JSON.parse(event.data);
           window.dispatchEvent(new CustomEvent('game-invite-received', { detail: data }));
@@ -70,7 +70,7 @@ export default function App() {
         window.dispatchEvent(new CustomEvent('friend-list-changed'));
       });
 
-      es.addEventListener('game_invite_declined', (event: any) => {
+      es.addEventListener('game_invite_declined', (event: MessageEvent) => {
         try {
           const data = JSON.parse(event.data);
           window.dispatchEvent(new CustomEvent('game-invite-declined', { detail: data }));
