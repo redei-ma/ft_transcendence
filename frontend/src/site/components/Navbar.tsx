@@ -52,81 +52,18 @@ export default function Navbar({ currentPage, onNavigate, onLogout, username, av
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Integrazione SSE (Server-Sent Events) per le Notifiche Live
-  const sseRetryDelayRef = useRef(3000);
-  const sseRetryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
+  // Ricezione notifiche via CustomEvent (SSE vive in App.tsx)
   useEffect(() => {
     if (!username) return;
-
     fetchNotifications();
 
-    const SSE_URL = '/api/users/me/notifications/stream';
-    let es: EventSource | null = null;
-    let destroyed = false;
-
-    const connect = () => {
-      if (destroyed) return;
-
-      es = new EventSource(SSE_URL, { withCredentials: true });
-
-      es.addEventListener('notification', (event: any) => {
-        try {
-          const newNotif: NotificationItem = JSON.parse(event.data);
-          setNotifications(prev => [newNotif, ...prev]);
-          if (!newNotif.isRead) setUnreadCount(prev => prev + 1);
-          if (newNotif.type === 'FRIEND_ACCEPTED' || newNotif.type === 'FRIEND_REQ') {
-            window.dispatchEvent(new CustomEvent('friend-list-changed'));
-          }
-        } catch {}
-      });
-
-      es.addEventListener('friend_status', (event: any) => {
-        try {
-          const data = JSON.parse(event.data);
-          window.dispatchEvent(new CustomEvent('friend-status-update', { detail: data }));
-        } catch {}
-      });
-
-      es.addEventListener('game_invite', (event: any) => {
-        try {
-          const data = JSON.parse(event.data);
-          window.dispatchEvent(new CustomEvent('game-invite-received', { detail: data }));
-        } catch {}
-      });
-
-      es.addEventListener('friend_removed', () => {
-        window.dispatchEvent(new CustomEvent('friend-list-changed'));
-      });
-
-      es.addEventListener('game_invite_declined', (event: any) => {
-        try {
-          const data = JSON.parse(event.data);
-          window.dispatchEvent(new CustomEvent('game-invite-declined', { detail: data }));
-        } catch {}
-      });
-
-      es.onerror = () => {
-        es?.close();
-        es = null;
-        if (destroyed) return;
-        const delay = sseRetryDelayRef.current;
-        sseRetryDelayRef.current = Math.min(delay * 2, 30000);
-        sseRetryTimerRef.current = setTimeout(connect, delay);
-      };
-
-      es.onopen = () => {
-        sseRetryDelayRef.current = 3000;
-      };
+    const handler = (e: Event) => {
+      const newNotif = (e as CustomEvent<NotificationItem>).detail;
+      setNotifications(prev => [newNotif, ...prev]);
+      if (!newNotif.isRead) setUnreadCount(prev => prev + 1);
     };
-
-    connect();
-
-    return () => {
-      destroyed = true;
-      if (sseRetryTimerRef.current) clearTimeout(sseRetryTimerRef.current);
-      es?.close();
-    };
+    window.addEventListener('new-notification', handler);
+    return () => window.removeEventListener('new-notification', handler);
   }, [username]);
 
   const handleMarkAllRead = async () => {

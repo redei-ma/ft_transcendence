@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { getMyProfile, UserProfile, getGameInvites, GameInvite, respondGameInvite } from './site/services/apiService';
 import './site/styles/site.css';
 import LoginPage from './site/pages/LoginPage';
@@ -26,6 +26,79 @@ export default function App() {
     const data = await getGameInvites();
     if (data) setGameInvites(data.invites);
   }, []);
+
+  // SSE — connessione persistente per notifiche, status amici, inviti
+  const sseRetryDelayRef = useRef(3000);
+  const sseRetryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (!isLoggedIn) return;
+
+    const SSE_URL = '/api/users/me/notifications/stream';
+    let es: EventSource | null = null;
+    let destroyed = false;
+
+    const connect = () => {
+      if (destroyed) return;
+      es = new EventSource(SSE_URL, { withCredentials: true });
+
+      es.addEventListener('notification', (event: any) => {
+        try {
+          const data = JSON.parse(event.data);
+          window.dispatchEvent(new CustomEvent('new-notification', { detail: data }));
+          if (data.type === 'FRIEND_ACCEPTED' || data.type === 'FRIEND_REQ') {
+            window.dispatchEvent(new CustomEvent('friend-list-changed'));
+          }
+        } catch {}
+      });
+
+      es.addEventListener('friend_status', (event: any) => {
+        try {
+          const data = JSON.parse(event.data);
+          window.dispatchEvent(new CustomEvent('friend-status-update', { detail: data }));
+        } catch {}
+      });
+
+      es.addEventListener('game_invite', (event: any) => {
+        try {
+          const data = JSON.parse(event.data);
+          window.dispatchEvent(new CustomEvent('game-invite-received', { detail: data }));
+        } catch {}
+      });
+
+      es.addEventListener('friend_removed', () => {
+        window.dispatchEvent(new CustomEvent('friend-list-changed'));
+      });
+
+      es.addEventListener('game_invite_declined', (event: any) => {
+        try {
+          const data = JSON.parse(event.data);
+          window.dispatchEvent(new CustomEvent('game-invite-declined', { detail: data }));
+        } catch {}
+      });
+
+      es.onerror = () => {
+        es?.close();
+        es = null;
+        if (destroyed) return;
+        const delay = sseRetryDelayRef.current;
+        sseRetryDelayRef.current = Math.min(delay * 2, 30000);
+        sseRetryTimerRef.current = setTimeout(connect, delay);
+      };
+
+      es.onopen = () => {
+        sseRetryDelayRef.current = 3000;
+      };
+    };
+
+    connect();
+
+    return () => {
+      destroyed = true;
+      if (sseRetryTimerRef.current) clearTimeout(sseRetryTimerRef.current);
+      es?.close();
+    };
+  }, [isLoggedIn]);
 
   useEffect(() => {
     if (!isLoggedIn) return;
