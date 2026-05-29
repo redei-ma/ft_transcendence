@@ -130,6 +130,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
         const result = await authService.resetPassword(formData.resetToken, formData.password);
         if (result.ok) {
           setSuccessMsg("Password reset successfully! You can now log in.");
+          setFormData(prev => ({ ...prev, password: "", confirmPassword: "" }));
           setMode("login");
         } else {
           setError(toErrorString(result.message || "Password reset failed. The link may have expired."));
