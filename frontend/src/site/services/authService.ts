@@ -73,6 +73,7 @@ export async function login(
       body: JSON.stringify(payload),
     });
 
+    if (res.status === 429) return { ok: false, data: { error: 'rate_limited' } };
     return { ok: res.ok, data: await res.json() };
   } catch (error) {
     console.error("[Auth] Login error:", error);
@@ -93,6 +94,7 @@ export async function register(
       body: JSON.stringify({ username, email, password }),
     });
 
+    if (res.status === 429) return { ok: false, data: { error: 'rate_limited' } };
     return { ok: res.ok, data: await res.json() };
   } catch (error) {
     console.error("[Auth] Register error:", error);
@@ -111,17 +113,18 @@ export async function logout(): Promise<void> {
   }
 }
 
-export async function forgotPassword(email: string): Promise<boolean> {
+export async function forgotPassword(email: string): Promise<'ok' | 'rate_limited' | 'error'> {
   try {
     const res = await fetch("/api/auth/forgot-password", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email }),
     });
-    return res.ok;
+    if (res.status === 429) return 'rate_limited';
+    return 'ok';
   } catch (error) {
     console.error("[Auth] Forgot password error:", error);
-    return false;
+    return 'error';
   }
 }
 

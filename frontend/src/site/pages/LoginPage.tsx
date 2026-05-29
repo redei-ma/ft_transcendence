@@ -5,14 +5,13 @@ import * as authService from '../services/authService';
 import { toErrorString } from '../services/authService';
 import welcomeScene from '../../assets/images/welcomeScene.png';
 import { theme } from '../../configs/theme';
-import { PASSWORD_REGEX, PASSWORD_ERROR_MESSAGE } from '@transcendence/types';
+import { PASSWORD_REGEX, PASSWORD_ERROR_MESSAGE, EMAIL_REGEX, RATE_LIMIT_ERROR_MESSAGE } from '@transcendence/types';
 
 interface LoginPageProps {
   onLogin: () => void;
 }
 
 // Validazione
-const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const USERNAME_MIN = 3;
 const USERNAME_MAX = 20;
 
@@ -94,7 +93,8 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
         if (show2fa) {
           const { ok, data } = await authService.login(formData.identifier.trim(), formData.password, formData.totp);
           if (ok) return onLogin();
-          setError(toErrorString(data.message || data.error || "Invalid 2FA code"));
+          if (data.error === 'rate_limited') setError(RATE_LIMIT_ERROR_MESSAGE);
+          else setError(toErrorString(data.message || data.error || "Invalid 2FA code"));
         } else {
           const { ok, data } = await authService.login(formData.identifier.trim(), formData.password);
 
@@ -104,8 +104,8 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
             return;
           }
           if (ok) return onLogin();
-
-          setError(toErrorString(data.message || data.error || "Login failed"));
+          if (data.error === 'rate_limited') setError(RATE_LIMIT_ERROR_MESSAGE);
+          else setError(toErrorString(data.message || data.error || "Login failed"));
         }
 
       } else if (mode === "register") {
@@ -115,13 +115,16 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
           setRegisteredEmail(formData.email.trim()); // Memorizza l'email pulita in caso di resend
           setMode("login");
           setFormData(prev => ({ ...prev, password: "", confirmPassword: "" }));
+        } else if (data.error === 'rate_limited') {
+          setError(RATE_LIMIT_ERROR_MESSAGE);
         } else {
           setError(toErrorString(data.message || data.error || "Registration failed"));
         }
 
       } else if (mode === "forgot") {
-        await authService.forgotPassword(formData.email.trim());
-        setSuccessMsg("If this email is registered, we sent you a password reset link.");
+        const forgotResult = await authService.forgotPassword(formData.email.trim());
+        if (forgotResult === 'rate_limited') setError(RATE_LIMIT_ERROR_MESSAGE);
+        else setSuccessMsg("If this email is registered, we sent you a password reset link.");
 
       } else if (mode === "reset") {
         const result = await authService.resetPassword(formData.resetToken, formData.password);
