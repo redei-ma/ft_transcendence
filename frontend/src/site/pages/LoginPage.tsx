@@ -120,9 +120,8 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
         }
 
       } else if (mode === "forgot") {
-        const ok = await authService.forgotPassword(formData.email.trim());
-        if (ok) setSuccessMsg("If this email is registered, we sent you a password reset link.");
-        else setError("Failed to send email. Please try again.");
+        await authService.forgotPassword(formData.email.trim());
+        setSuccessMsg("If this email is registered, we sent you a password reset link.");
 
       } else if (mode === "reset") {
         const result = await authService.resetPassword(formData.resetToken, formData.password);
