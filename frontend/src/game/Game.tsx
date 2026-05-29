@@ -136,7 +136,7 @@ export default function Game({ selectedCharacter, selectedMode, onPlayAgain, onQ
   const bulletIds = useMemo(() => bulletIdsStr ? bulletIdsStr.split(',') : [], [bulletIdsStr]);
 
   const [showLeaveDialog, setShowLeaveDialog] = useState(false);
-  const isLocal = selectedMode === MatchMode.LOCAL;
+  const isLocal = selectedMode === MatchMode.LOCAL || selectedMode === MatchMode.AI;
 
   useEffect(() => {
     const inputManager = new InputManager(selectedMode === MatchMode.LOCAL);

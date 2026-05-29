@@ -143,25 +143,17 @@ const handleRemove = async (targetId: number) => {
 
 const handleSendInvite = async (targetId: number) => {
   const socket = matchmakingSocket.connect();
-  if (!socket.connected) {
-    await new Promise<void>(resolve => socket.once('connect', resolve));
-  }
- 
-  const registerAndSend = () => {
-    const handleDirectSession = (data: any) => {
-      console.log("[Sidebar] DIRECT_SESSION_READY:", data);
-      if (data?.sessionId) {
-        socket.off('direct_session_ready', handleDirectSession);
-        onGameInviteAccepted(data.sessionId);
-      }
-    };
-    socket.on('direct_session_ready', handleDirectSession);
+
+  const registerListener = () => {
+    socket.once(GameEvents.DIRECT_SESSION_READY, (data: { sessionId?: string }) => {
+      if (data?.sessionId) onGameInviteAccepted(data.sessionId);
+    });
   };
 
   if (socket.connected) {
-    registerAndSend();
+    registerListener();
   } else {
-    socket.once('connect', registerAndSend);
+    socket.once('connect', registerListener);
   }
 
   const result = await api.sendGameInvite(targetId);
@@ -177,18 +169,6 @@ const handleSendInvite = async (targetId: number) => {
 const handleAcceptInvite = (invite: api.GameInvite) => onAcceptInvite(invite);
 const handleRejectInvite = (invite: api.GameInvite) => onDeclineInvite(invite);
 
-  useEffect(() => {
-  const handleDirectSession = (data: any) => {
-    console.log("[Sidebar] DIRECT_SESSION_READY:", data);
-    if (data?.sessionId) {
-      onGameInviteAccepted(data.sessionId);
-    }
-  };
-  matchmakingSocket.on(GameEvents.DIRECT_SESSION_READY, handleDirectSession);
-  return () => {
-    matchmakingSocket.off(GameEvents.DIRECT_SESSION_READY, handleDirectSession);
-  };
-}, [onGameInviteAccepted]);
 
   // ─── Tab button ───
   const TabBtn = ({ id, label, badge }: { id: Tab; label: string; badge?: number }) => (

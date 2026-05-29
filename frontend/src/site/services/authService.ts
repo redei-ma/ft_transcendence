@@ -129,20 +129,28 @@ export function redirectToGoogle(): void {
   window.location.href = "/api/auth/google";
 }
 
-export async function refreshToken(): Promise<boolean> {
-  try {
-    const checkRes = await fetch("/api/auth/session-check");
-    const { hasSession } = await checkRes.json();
-    if (!hasSession) return false;
+let refreshPromise: Promise<boolean> | null = null;
 
-    const res = await fetch("/api/auth/refresh", {
-      method: "POST",
-      credentials: "include",
-    });
-    return res.ok;
-  } catch {
-    return false;
-  }
+export async function refreshToken(): Promise<boolean> {
+  if (refreshPromise) return refreshPromise;
+  refreshPromise = (async () => {
+    try {
+      const checkRes = await fetch("/api/auth/session-check");
+      const { hasSession } = await checkRes.json();
+      if (!hasSession) return false;
+
+      const res = await fetch("/api/auth/refresh", {
+        method: "POST",
+        credentials: "include",
+      });
+      return res.ok;
+    } catch {
+      return false;
+    } finally {
+      refreshPromise = null;
+    }
+  })();
+  return refreshPromise;
 }
 
 export async function resendVerification(email: string): Promise<{ ok: boolean; message?: string }> {
