@@ -364,6 +364,7 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
   );
 }
 
+const EMAIL_USER = import.meta.env.VITE_EMAIL_USER || 'email not currently available';
 // Costanti contenenti il testo per il Modal Footer
 
 const PRIVACY_TEXT =
@@ -437,7 +438,7 @@ These services may process your data according to their own privacy policies.
 10. Contact
 
 For any privacy-related requests, contact:
-clashofolympusoriginal@gmail.com
+${EMAIL_USER}
 
 11. Changes
 

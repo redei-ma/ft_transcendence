@@ -165,6 +165,8 @@ export class AuthService {
       throw new ForbiddenException('This account is already logged in');
     }
 
+    const newTokenVersion = await this.usersService.invalidateRefreshTokens(user.id);
+
     const accessPayload: JwtAccessPayloadDto = {
       sub: user.id,
       username: user.username,
@@ -172,7 +174,7 @@ export class AuthService {
 
     const refreshPayload: JwtRefreshPayloadDto = {
       sub: user.id,
-      tokenVersion: user.tokenVersion,
+      tokenVersion: newTokenVersion,
     };
 
     const accessToken = this.jwtService.sign(accessPayload, {
@@ -291,6 +293,9 @@ export class AuthService {
 
     // Invalidate refresh tokens after password change
     await this.usersService.invalidateRefreshTokens(payload.sub);
+
+    const status = UserStatus.OFFLINE;
+    await this.usersService.updateStatus(payload.sub, { status });
   }
 
   private async generateUniqueUsername(base: string): Promise<string> {

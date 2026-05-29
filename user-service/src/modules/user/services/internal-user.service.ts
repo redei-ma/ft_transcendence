@@ -324,12 +324,14 @@ export class InternalUserService {
 	 * @param id - ID of the user.
 	 * @throws NotFoundException (404) — if the user does not exist.
 	 */
-	async incrementTokenVersion(id: number): Promise<void> {
+	async incrementTokenVersion(id: number): Promise<number> {
 		await ensureUserExists(this.prisma, id);
-		await this.prisma.user.update({
+		const updated = await this.prisma.user.update({
 			where: { id },
 			data: { tokenVersion: { increment: 1 } },
+			select: { tokenVersion: true },
 		});
+		return updated.tokenVersion;
 	}
 
 	/**

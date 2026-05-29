@@ -340,20 +340,22 @@ User ──< Notification     (persistent, typed: FRIEND_REQ / GAME_INVITE / ACH
 
 ---
 
-## Instructions
+# Instructions
 
-### Prerequisites
+## Prerequisites
 
-- **Docker** and **Docker Compose** (v2)
-- **Git LFS** — required for 3D model assets (GLB files)
-- **Make**
-- A modern browser (latest stable Google Chrome)
+* **Docker** and **Docker Compose** (v2)
+* **Git LFS** — required for 3D model assets (GLB files)
+* **Make**
+* A modern desktop browser (latest stable Google Chrome recommended)
 
-> **Note:** The game requires a **desktop browser** with keyboard and mouse input — mobile and tablet devices are not supported.
+> **Note:** The game requires a desktop browser with keyboard and mouse input — mobile and tablet devices are not supported.
+
+---
 
 ### Step-by-step setup
 
-1. **Install Git LFS** (once per machine):
+#### 1. Install Git LFS (once per machine)
 
 ```bash
 # macOS
@@ -362,11 +364,13 @@ brew install git-lfs
 # Ubuntu / Debian
 sudo apt install git-lfs
 
-# then activate it for your git user
+# activate it for your git user
 git lfs install
 ```
 
-2. **Clone the repository and pull LFS assets:**
+---
+
+#### 2. Clone the repository and pull LFS assets
 
 ```bash
 git clone https://github.com/redei-ma/ft_transcendence.git
@@ -374,38 +378,257 @@ cd ft_transcendence
 git lfs pull
 ```
 
-3. **Create environment files:**
+---
+
+#### 3. Create environment files
 
 ```bash
 cp .env.shared.example .env.shared
 cp auth-service/.env.example auth-service/.env
 ```
 
-Edit `.env.shared` and set:
+---
 
-- `POSTGRES_PASSWORD` — database password
-- `JWT_ACCESS_SECRET` / `JWT_REFRESH_SECRET` — random 32+ char strings (`openssl rand -base64 32`)
-- `INTERNAL_SERVICE_SECRET` — random string for service-to-service auth
+#### 4. Configure environment variables
 
-Edit `auth-service/.env` and set:
+##### Shared configuration (`.env.shared`)
 
-- `JWT_EMAIL_SECRET` / `JWT_PASSWORD_RESET_SECRET` — random 32+ char strings
-- `PUBLIC_URL` — your public URL (ngrok domain for OAuth callbacks)
-- `EMAIL_USER` / `EMAIL_PASS` — Gmail account with App Password enabled
-- `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` — from Google Cloud Console (optional, OAuth only)
+Edit `.env.shared` and configure:
 
-4. **Start the application:**
+```env
+POSTGRES_PASSWORD=
+
+JWT_ACCESS_SECRET=
+JWT_REFRESH_SECRET=
+INTERNAL_SERVICE_SECRET=
+
+EMAIL_USER=
+EMAIL_PASS=
+
+NGROK_AUTHTOKEN=
+NGROK_DOMAIN=
+```
+
+###### Generate secure secrets
+
+You can generate secure random secrets with:
+
+```bash
+openssl rand -base64 32
+```
+
+Use different values for each secret.
+
+---
+
+##### Configure email credentials
+
+The application uses Gmail SMTP for:
+
+* email verification
+* password reset emails
+
+###### Enable 2FA on your Google account
+
+Before generating an App Password, you must enable 2-Factor Authentication:
+
+1. Go to:
+   https://myaccount.google.com/security
+
+2. Enable:
+
+   * "2-Step Verification"
+
+---
+
+###### Create a Gmail App Password
+
+After enabling 2FA:
+
+1. Open:
+   https://myaccount.google.com/apppasswords
+
+2. Create a new App Password
+
+3. Select:
+
+   * App → "Mail"
+   * Device → "Other"
+
+4. Copy the generated password
+
+Use:
+
+```env
+EMAIL_USER=your_email@gmail.com
+EMAIL_PASS=generated_app_password
+```
+
+> Do NOT use your normal Gmail password.
+>
+> The `EMAIL_USER` address is also used as the application's public support/contact email in the Terms of Service and Privacy Policy.
+> For privacy and professionalism, using a dedicated Google account is recommended.
+
+---
+
+##### Configure ngrok (required for public callbacks and email links)
+
+The application requires a public HTTPS URL for:
+
+* Google OAuth callbacks
+* email verification links
+* password reset links
+* other external/public redirects
+
+###### Create an ngrok account
+
+1. Sign up:
+   https://dashboard.ngrok.com/signup
+
+2. Get your auth token:
+   https://dashboard.ngrok.com/get-started/your-authtoken
+
+3. Reserve a static domain:
+   https://dashboard.ngrok.com/domains
+
+Example:
+
+```txt
+my-transcendence.ngrok-free.app
+```
+
+---
+
+###### Configure ngrok environment variables
+
+Set the following values inside `.env.shared`:
+
+```env
+NGROK_AUTHTOKEN=your_ngrok_auth_token
+NGROK_DOMAIN=my-transcendence.ngrok-free.app
+```
+
+> The project automatically starts an ngrok container through Docker Compose.
+> No manual ngrok command is required.
+
+---
+
+##### Auth service configuration (`auth-service/.env`)
+
+Edit `auth-service/.env` and configure:
+
+```env
+JWT_EMAIL_SECRET=
+JWT_PASSWORD_RESET_SECRET=
+
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=
+
+# Must match your ngrok domain (or public URL) for OAuth callbacks and email links
+# Example: https://your-domain.ngrok-free.app
+PUBLIC_URL=https://${NGROK_DOMAIN}
+```
+
+---
+
+#### 5. Configure Google OAuth credentials (optional)
+
+Google login is optional but supported.
+
+##### Create Google OAuth credentials
+
+1. Open Google Cloud Console:
+   https://console.cloud.google.com/
+
+2. Create a project
+
+3. Enable:
+
+   * "Google Identity Services"
+   * "OAuth consent screen"
+
+4. Create OAuth credentials:
+
+   * APIs & Services → Credentials
+   * Create Credentials → OAuth Client ID
+
+5. Select:
+
+   * Application Type → Web Application
+
+---
+
+##### Add Authorized JavaScript origins
+
+Add:
+
+```txt
+https://localhost:2443
+https://YOUR_NGROK_DOMAIN.ngrok-free.app
+```
+
+Example:
+
+```txt
+https://my-transcendence.ngrok-free.app
+```
+
+---
+
+##### Add Authorized redirect URIs
+
+Add:
+
+```txt
+https://YOUR_NGROK_DOMAIN.ngrok-free.app/api/auth/google/callback
+```
+
+Example:
+
+```txt
+https://my-transcendence.ngrok-free.app/api/auth/google/callback
+```
+
+---
+
+##### Copy credentials
+
+Set:
+
+```env
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=
+```
+
+inside `auth-service/.env`.
+
+---
+
+#### 6. Start the application
 
 ```bash
 make up
 ```
 
-> TLS certificates are generated automatically on first run. Your browser will show a certificate warning — accept it to proceed (self-signed cert).
+> TLS certificates are generated automatically on first run.
+> Your browser will show a certificate warning because the project uses self-signed certificates locally — accept it to continue.
 
-5. **Access the application:**
+---
 
-- **Frontend:** `https://localhost:2443`
-- **API Docs:** `https://localhost:2443/api/docs`
+#### 7. Access the application
+
+Frontend:
+
+```txt
+https://localhost:2443
+```
+
+API documentation:
+
+```txt
+https://localhost:2443/api/docs
+```
+
 
 ### Makefile reference
 
