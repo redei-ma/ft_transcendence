@@ -26,6 +26,7 @@ import {
   NewEmailDto,
   LoginDto,
   Enable2FADto,
+  ConfirmPasswordDto,
 } from '../../dto/input.dto';
 import { isEmail } from 'class-validator';
 
@@ -451,6 +452,27 @@ export class AuthService {
       message:
         'Confirmation email sent to your new address. By changing email all other Id Provider (es. Google) will be disconnected. ',
     };
+  }
+
+  async deleteAccount(userId: number, dto: ConfirmPasswordDto): Promise<void> {
+    const user = await this.usersService.findUser({ id: userId });
+    if (!user) throw new NotFoundException('User not found');
+
+    const localAccount = user.accounts.find(
+      (a) => a.provider === Provider.LOCAL,
+    );
+    if (!localAccount || !localAccount.passwordHash) {
+      throw new ForbiddenException(
+        'Local account password required to delete account.',
+      );
+    }
+
+    const isMatch = await bcrypt.compare(dto.password, localAccount.passwordHash);
+    if (!isMatch) {
+      throw new UnauthorizedException('Current password incorrect.');
+    }
+
+    await this.usersService.deleteUser(userId);
   }
 
   async confirmEmailChange(token: string) {

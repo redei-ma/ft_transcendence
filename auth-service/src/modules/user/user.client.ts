@@ -140,4 +140,8 @@ export class UserClient {
   async unlinkOAuth(userId: number, provider: string): Promise<void> {
     await this.request(`/${userId}/oauth/${provider}`, { method: 'DELETE' });
   }
+
+  async deleteUser(userId: number): Promise<void> {
+    await this.request(`/${userId}`, { method: 'DELETE' });
+  }
 }

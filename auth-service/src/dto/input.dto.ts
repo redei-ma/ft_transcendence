@@ -77,3 +77,12 @@ export class TokenQueryDto {
   @IsNotEmpty()
   token: string;
 }
+
+/**
+ * Input DTO for actions that require password confirmation (e.g. delete account).
+ */
+export class ConfirmPasswordDto {
+  @IsString()
+  @MinLength(1)
+  password: string;
+}

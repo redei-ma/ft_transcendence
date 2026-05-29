@@ -2,7 +2,6 @@ import {
 	Controller,
 	Get,
 	Patch,
-	Delete,
 	Body,
 	Param,
 	Query,
@@ -193,28 +192,6 @@ export class ProfileController {
 		@CurrentUser("sub") userId: number,
 	): Promise<UserProfileResponseDto> {
 		return this.profileService.acceptPrivacyPolicy(userId);
-	}
-
-	// ─── Delete account ────────────────────────────────────────────────────────
-
-	/**
-	 * Permanently delete the current user's account and all associated data.
-	 */
-	@Delete("me")
-	@HttpCode(HttpStatus.NO_CONTENT)
-	@UseGuards(JwtAuthGuard)
-	@ApiBearerAuth()
-	@ApiOperation({ summary: "Delete account permanently" })
-	@ApiResponse({
-		status: HttpStatus.NO_CONTENT,
-		description: "Account and all associated data deleted successfully",
-	})
-	@ApiResponse({
-		status: HttpStatus.UNAUTHORIZED,
-		description: "Missing or invalid JWT",
-	})
-	async deleteMyAccount(@CurrentUser("sub") userId: number): Promise<void> {
-		return this.profileService.deleteUser(userId);
 	}
 
 	// ─── Check availability ────────────────────────────────────────────────────────────────────────

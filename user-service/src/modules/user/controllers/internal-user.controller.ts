@@ -33,6 +33,7 @@ import {
 	UpdateStatusDto,
 } from "@transcendence/dto";
 import { InternalUserService } from "../services/internal-user.service";
+import { ProfileService } from "../services/profile.service";
 import {
 	UserEloResponseDto,
 	CreateNotificationDto,
@@ -49,6 +50,7 @@ export class InternalUserController {
 	constructor(
 		private readonly internalUserService: InternalUserService,
 		private readonly notificationService: NotificationService,
+		private readonly profileService: ProfileService,
 	) {}
 
 	// ─── Create user ───────────────────────────────────────────────────────────────────────────────
@@ -454,6 +456,28 @@ export class InternalUserController {
 	})
 	async disable2fa(@Param("id", ParseIntPipe) id: number): Promise<void> {
 		return this.internalUserService.disable2fa(id);
+	}
+
+	// ─── Delete user ──────────────────────────────────────────────────────────
+
+	/**
+	 * Permanently delete a user and all associated data.
+	 * Called by auth-service after verifying the user's password.
+	 */
+	@Delete(":id")
+	@HttpCode(HttpStatus.NO_CONTENT)
+	@ApiOperation({ summary: "Permanently delete a user (internal)" })
+	@ApiParam({ name: "id", type: Number })
+	@ApiResponse({
+		status: HttpStatus.NO_CONTENT,
+		description: "User and all associated data deleted",
+	})
+	@ApiResponse({
+		status: HttpStatus.NOT_FOUND,
+		description: "User not found",
+	})
+	async deleteUser(@Param("id", ParseIntPipe) id: number): Promise<void> {
+		return this.profileService.deleteUser(id);
 	}
 
 	// ─── Notifications ────────────────────────────────────────────────────────

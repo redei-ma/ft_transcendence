@@ -2,11 +2,14 @@ import {
   Body,
   Controller,
   Post,
+  Delete,
   Res,
   Req,
   UseGuards,
   Get,
   Query,
+  HttpCode,
+  HttpStatus,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import type { Request, Response } from 'express';
@@ -16,7 +19,7 @@ import { JwtRefreshGuard } from './jwt/jwt-refresh.guard';
 import { ConfigService } from '@nestjs/config';
 import { GoogleAuthGuard } from './jwt/google.guard';
 import { CreateLocalUserNoHashDto, CreateOAuthUserDto } from '@transcendence/dto';
-import { ResetPasswordDto, ChangePasswordDto, EmailDto, NewEmailDto, LoginDto, Enable2FADto, TokenQueryDto } from '../../dto/input.dto';
+import { ResetPasswordDto, ChangePasswordDto, EmailDto, NewEmailDto, LoginDto, Enable2FADto, TokenQueryDto, ConfirmPasswordDto } from '../../dto/input.dto';
 
 @Controller('api/auth')
 export class AuthController {
@@ -207,6 +210,16 @@ export class AuthController {
   @Get('confirm-email-change')
   async confirmEmailChange(@Query() query: TokenQueryDto) {
     return this.authService.confirmEmailChange(decodeURIComponent(query.token));
+  }
+
+  @Delete('account')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @UseGuards(JwtAuthGuard)
+  async deleteAccount(
+    @Req() req: AuthenticatedRequest,
+    @Body() body: ConfirmPasswordDto,
+  ): Promise<void> {
+    return this.authService.deleteAccount(req.user.sub, body);
   }
 
   @UseGuards(JwtAuthGuard)

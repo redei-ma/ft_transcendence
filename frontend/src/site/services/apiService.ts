@@ -577,9 +577,13 @@ export async function getMyMatches(page = 1, limit = 10, mode?: string): Promise
 // DELETE ACCOUNT
 // ==========================================
 
-export async function deleteAccount(): Promise<boolean> {
+export async function deleteAccount(password: string): Promise<boolean> {
     try {
-        const res = await fetchWithAuthRetry("/api/users/me", { method: "DELETE" });
+        const res = await fetchWithAuthRetry("/api/auth/account", {
+            method: "DELETE",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ password }),
+        });
         return !!res && (res.ok || res.status === 204);
     } catch (error) {
         console.error("[API] Error deleting account:", error);

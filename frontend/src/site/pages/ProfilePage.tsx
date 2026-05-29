@@ -695,13 +695,22 @@ export default function ProfilePage() {
             </div>
           </div>
           <button className="btn-press" onClick={() => {
+            confirmPwdRef.current = '';
+            setConfirmPwdDisplay('');
             setDialog({
               isOpen: true,
               title: "Elimina Account",
-              msg: "Sei sicuro? Questa azione è irreversibile. Il tuo account di gioco e tutti i tuoi dati, statistiche e amicizie verranno eliminati permanentemente.",
+              msg: "Sei sicuro? Questa azione è irreversibile. Inserisci la tua password per confermare.",
+              needsPassword: true,
               action: async () => {
+                if (!confirmPwdRef.current) {
+                  alert("Inserisci la password per confermare.");
+                  return;
+                }
                 setDialog(null);
-                const ok = await api.deleteAccount();
+                const ok = await api.deleteAccount(confirmPwdRef.current);
+                confirmPwdRef.current = '';
+                setConfirmPwdDisplay('');
                 if (ok) {
                   window.location.reload();
                 } else {
