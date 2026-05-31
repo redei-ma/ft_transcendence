@@ -480,6 +480,10 @@ export class AuthService {
       secret: this.config.getOrThrow('JWT_EMAIL_SECRET'),
     });
 
+    if (payload.type !== 'email-change') {
+      throw new ForbiddenException('Invalid token type');
+    }
+
     const user = await this.usersService.findUser({ id: payload.sub });
     if (!user) throw new NotFoundException('User not found. ');
 

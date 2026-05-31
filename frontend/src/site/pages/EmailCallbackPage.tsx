@@ -19,7 +19,7 @@ const TITLES: Record<CallbackType, Record<CallbackStatus, string>> = {
   },
   'email-changed': {
     success: 'Email Updated',
-    error: 'Update Failed',
+    error: 'Email Update Failed',
   },
 };
 
