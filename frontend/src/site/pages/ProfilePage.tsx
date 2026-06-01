@@ -737,7 +737,7 @@ export default function ProfilePage() {
             {dialog.needsPassword && (
               <input
                 type="password"
-                placeholder="Password attuale"
+                placeholder="Your actual password"
                 value={confirmPwdDisplay}
                 onChange={(e) => {
                   confirmPwdRef.current = e.target.value;

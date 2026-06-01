@@ -15,6 +15,7 @@ import { useThree, useFrame } from '@react-three/fiber';
 import { theme } from '../configs/theme';
 import { PillarModel, WallModel } from './entities/mapModels';
 import * as THREE from 'three';
+import SkillHud from './UI/components/SkillHud';
 
 interface GameProps {
   selectedCharacter: CharacterName;
@@ -253,7 +254,6 @@ export default function Game({ selectedCharacter, selectedMode, onPlayAgain, onQ
         <directionalLight position={[50, 100, 50]} intensity={0.8} />
         <CameraController mapWidth={mapWidth} mapDepth={mapDepth} />
         <AimPlane inputManagerRef={inputManagerRef} myUserId={myUsername} />
-        <gridHelper args={[mapWidth, 20, 0xffffff, 0x444444]} position={[centerX, 0, centerZ]} />
 
         {playerIds.map((id) => (
           <PlayerEntity key={id} playerId={id} />
@@ -371,6 +371,10 @@ export default function Game({ selectedCharacter, selectedMode, onPlayAgain, onQ
 
       {!gameOver && (selectedMode === MatchMode.RANKED || selectedMode === MatchMode.UNRANKED) && (
         <GameChat myUserId={myUserId} isVisible={true} />
+      )}
+
+      {!gameOver && (
+        <SkillHud character={selectedCharacter} myUserId={myUserId} myUsername={myUsername} />
       )}
 
       {gameOver && (

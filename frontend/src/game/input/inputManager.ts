@@ -2,6 +2,7 @@ import { socketService } from '../../services/socketServices';
 import { GameEvents } from '@transcendence/types';
 import { AttackType } from '@transcendence/types';
 import { log } from '../../configs/logger';
+import aimCursorUrl from '../../assets/images/AimCursor.png';
 
 interface GameInputPayload {
   x: number;
@@ -54,7 +55,7 @@ export class InputManager {
     // Attiva aim mode quando Shift è premuto (solo single player)
     if (key === 'shiftleft' && !this.isLocalGame) {
       this.isAiming = true;
-      document.body.style.cursor = 'url(/src/assets/images/AimCursor.png) 16 16, crosshair';
+      document.body.style.cursor = `url(${aimCursorUrl}) 16 16, crosshair`;
     }
   };
 
