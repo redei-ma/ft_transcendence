@@ -139,40 +139,6 @@ export default function GameFlow({ userId, username, onExit, sessionId: initialS
     setScene('mode-select');
   };
 
-  // const handleQuit = () => {
-  //   hasResignedRef.current = true;
-    
-  //   const cleanup = () => {
-  //     socketService.disconnect();
-  //     matchmakingSocket.disconnect();
-  //     onExit();
-  //   };
-  
-  //   const safetyTimeout = setTimeout(() => {
-  //     console.warn('[GameFlow] LEAVE_GAME ack timeout — cleanup forzato');
-  //     cleanup();
-  //   }, 1000);
-  
-  //   socketService.emit(
-  //     GameEvents.LEAVE_GAME,
-  //     { userId: String(userId) },
-  //     (response) => {
-  //       clearTimeout(safetyTimeout);
-      
-  //       if (response.status === 'success') {
-  //         console.log('[GameFlow] Leave confermato:', response.message);
-  //       } else {
-  //         console.warn(
-  //           `[GameFlow] Leave fallito lato server [${response.errorCode}]:`,
-  //           response.message
-  //         );
-  //       }
-      
-  //       cleanup();
-  //     }
-  //   );
-  // };
-
   const handleQuit = (isGameOver = false) => {
     hasResignedRef.current = true;
     
