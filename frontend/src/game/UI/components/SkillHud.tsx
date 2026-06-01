@@ -5,18 +5,18 @@ import { theme } from '../../../configs/theme';
 
 import zeusBox from '../../../assets/images/ZeusHUD.png';
 import adeBox from '../../../assets/images/AdeHUD.png';
-import zeusSpell from '../../../assets/images/ZeusSpell.png';
-import zeusMelee from '../../../assets/images/ZeusMelee.png';
-import zeusDef from '../../../assets/images/ZeusShield.png';
-import adeSpell from '../../../assets/images/AdeSpell.png';
-import adeMelee from '../../../assets/images/AdeMelee.png';
-import adeDef from '../../../assets/images/AdeShield.png';
+import zeusSpell from '../../../assets/images/SkillZeusSpell.png';
+import zeusMelee from '../../../assets/images/SkillZeusMelee.png';
+import zeusDef from '../../../assets/images/SkillZeusDef.png';
+import adeSpell from '../../../assets/images/SkillAdeSpell.png';
+import adeMelee from '../../../assets/images/SkillAdeMelee.png';
+import adeDef from '../../../assets/images/SkillAdeDef.png';
 
 // ── CALIBRAZIONE ──────────────────────────────────────────────
 const DEBUG_SLOTS = false;        // true: contorna gli slot in rosso
 const DEBUG_COOLDOWN = false;     // true: simula i cooldown da tastiera (test senza partita)
 
-const HUD_SCALE = 0.45;           // ⬅️ DIMENSIONE COMPLESSIVA.
+const HUD_SCALE = 0.45;           // DIMENSIONE COMPLESSIVA.
 const BOX = { w: 747, h: 408 };
 const SLOT = 90;
 const SLOTS = [
@@ -83,14 +83,14 @@ const HUD: Record<string, { box: string; skills: SkillDef[] }> = {
 // nome + descrizione (testo libero, modificalo); i numeri vengono dal config.
 const SKILL_TEXT: Record<string, Record<string, { name: string; desc: string }>> = {
   [CharacterName.ZEUS]: {
-    spell:   { name: 'Fulmine', desc: 'Scaglia una saetta sul punto mirato.' },
-    melee:   { name: 'Colpo',   desc: 'Attacco ravvicinato.' },
-    defence: { name: 'Egida',   desc: 'Si protegge: annulla i danni mentre e\u2019 attiva.' },
+    spell:   { name: 'Thunder-bolt', desc: 'Una saetta viene scagliata con violenza dall\u2019aura di Zeus verso il punto scelto.' },
+    melee:   { name: 'Thunderstorm',   desc: 'L\u2019aura di Zeus inizia a dilatarsi violentemente facendo danni a qualsiasi bersaglio rientri nella sua area.' },
+    defence: { name: 'Thunder Shell',   desc: 'I fulmini di Zeus si raggruppano in un impenetrabile groviglio elettrico che lo isola completamente dai danni.' },
   },
   [CharacterName.ADE]: {
-    spell:   { name: 'Anime',   desc: 'Proietta energia oscura sul bersaglio.' },
-    melee:   { name: 'Colpo',   desc: 'Attacco ravvicinato.' },
-    defence: { name: 'Velo',    desc: 'Si protegge: annulla i danni mentre e\u2019 attiva.' },
+    spell:   { name: 'Fire-ball',   desc: 'Una sfera infuocata si stacca dall\u2019aura di Ade per essere scagliata sul bersaglio.' },
+    melee:   { name: 'Fire explosion',   desc: 'L\u2019aura di Ade diventa un turbine di fuoco che colpisce tutto intorno a se.' },
+    defence: { name: 'Fire Shell',    desc: 'Il fuoco di Ade si solidifica intorno a lui e annulla tutti i danni subiti per un breve periodo di tempo.' },
   },
 };
 
@@ -101,7 +101,7 @@ function skillRows(character: CharacterName, id: string): { label: string; value
   if (id === 'melee')
     return [
       { label: 'Danno',    value: `${s.damage}` },
-      { label: 'Portata',  value: `${C.MELEE_HITBOX_RADIUS}` },
+      { label: 'Area',  value: `${C.MELEE_HITBOX_RADIUS}` },
       { label: 'Ricarica', value: `${s.cooldown}s` },
     ];
   if (id === 'spell')
