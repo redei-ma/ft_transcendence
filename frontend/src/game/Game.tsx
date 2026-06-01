@@ -23,7 +23,7 @@ interface GameProps {
   p1Character: CharacterName;
   p2Character: CharacterName;
   onPlayAgain: () => void;
-  onQuit: () => void;
+  onQuit: (isGameOver?: boolean) => void;
   myUserId: string;
   myUsername: string;
 }
@@ -158,9 +158,9 @@ export default function Game({ selectedCharacter, selectedMode, onPlayAgain, onQ
     onPlayAgain();
   };
 
-  const handleQuitInternal = () => {
+  const handleQuitInternal = (isGameOver = false) => {
     resetGame();
-    onQuit();
+    onQuit(isGameOver);
   };
 
   const [initialSize] = useState({ w: window.innerWidth, h: window.innerHeight });
@@ -305,7 +305,7 @@ export default function Game({ selectedCharacter, selectedMode, onPlayAgain, onQ
       </Canvas>
       
         {resized && (
-          <ResizeWarning onLeave={handleQuitInternal} />
+          <ResizeWarning onLeave={() => handleQuitInternal(false)} />
         )}
 
         {!gameOver && (
@@ -349,7 +349,7 @@ export default function Game({ selectedCharacter, selectedMode, onPlayAgain, onQ
                 border: '1px solid rgba(200,170,100,0.15)', color: 'rgba(200,170,100,0.35)',
                 cursor: 'pointer', fontFamily: '"Cinzel", serif', letterSpacing: '1px',
               }}>CANCEL</button>
-              <button onClick={() => { setShowLeaveDialog(false); handleQuitInternal(); }} style={{
+              <button onClick={() => { setShowLeaveDialog(false); handleQuitInternal(false); }} style={{
                 padding: '10px 24px', background: '#d44', border: 'none',
                 color: 'white', fontWeight: 'bold', cursor: 'pointer',
                 borderRadius: '2px', fontFamily: '"Cinzel", serif', letterSpacing: '1px',
@@ -378,7 +378,7 @@ export default function Game({ selectedCharacter, selectedMode, onPlayAgain, onQ
       )}
 
       {gameOver && (
-        <GameOverOverlayWrapper gameOver={gameOver} onPlayAgain={handlePlayAgainInternal} onQuit={handleQuitInternal} myUserId={myUsername} />
+        <GameOverOverlayWrapper gameOver={gameOver} onPlayAgain={handlePlayAgainInternal} onQuit={ () => handleQuitInternal(true)} myUserId={myUsername} />
       )}
     </div>
   );
