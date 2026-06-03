@@ -1,91 +1,301 @@
-========== ./.env.example ==========
-# The frontend connects to all services via relative URLs through the Nginx
-# gateway (port 2443). No environment variables are required for local development.
-#
-# If you need to override the API base URL for a standalone frontend build
-# outside of Docker, you can add VITE_ variables here and reference them
-# via import.meta.env in the source code.
+]633;E;for f in package.json tsconfig.json vite.config.ts index.html;745c731f-a614-467d-9cda-74bfb157bb7b]633;C==============================================
+FILE: package.json
+==============================================
+{
+  "name": "frontend",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "type-check": "tsc --noEmit",
+    "format": "prettier --write \"src/**/*.{ts,tsx}\"",
+    "lint": "eslint \"src/**/*.{ts,tsx}\""
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@react-three/drei": "^10.7.7",
+    "@react-three/fiber": "^9.5.0",
+    "@react-three/postprocessing": "^3.0.4",
+    "@transcendence/types": "file:../shared/types",
+    "autoprefixer": "^10.4.23",
+    "postcss": "^8.5.6",
+    "react": "^19.2.3",
+    "react-dom": "^19.2.3",
+    "socket.io-client": "^4.8.3",
+    "socket.io-msgpack-parser": "^3.0.0",
+    "tailwindcss": "^3.4.19",
+    "three": "^0.182.0",
+    "zustand": "^5.0.11"
+  },
+  "devDependencies": {
+    "@types/node": "^25.0.8",
+    "@types/react": "^19.2.8",
+    "@types/react-dom": "^19.2.3",
+    "@types/three": "^0.182.0",
+    "@vitejs/plugin-react": "^5.1.2",
+    "typescript": "^5.9.3",
+    "vite": "^7.3.1",
+    "prettier": "^3.4.2",
+    "@eslint/js": "^9.0.0",
+    "eslint": "^9.0.0",
+    "eslint-plugin-react": "^7.37.0",
+    "eslint-plugin-react-hooks": "^5.0.0",
+    "globals": "^15.0.0",
+    "typescript-eslint": "^8.0.0"
+  }
+}
 
-========== ./Dockerfile ==========
-# --- Stage 1: Build (dev mode uses this stage via target: build) ---
-FROM node:20-alpine AS build
 
-WORKDIR /app/shared
-COPY shared/prisma/schema.prisma ./prisma/schema.prisma
+==============================================
+FILE: tsconfig.json
+==============================================
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "strict": true,
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "jsx": "react-jsx",
+    "types": ["vite/client"]
+  },
+  "include": ["src"],
+  "references": [{ "path": "./tsconfig.node.json" }]
+}
 
-WORKDIR /app/shared/types
-COPY shared/types/ .
-RUN npm install && npm run build
+==============================================
+FILE: vite.config.ts
+==============================================
+import { defineConfig, type Plugin } from "vite";
+import react from "@vitejs/plugin-react";
 
-WORKDIR /app/frontend
-COPY frontend/package*.json ./
-RUN npm install
+const BUILD_HASH = Date.now().toString(36);
 
-COPY frontend/ .
-RUN npm run build
+function buildHashPlugin(): Plugin {
+	const payload = JSON.stringify({ hash: BUILD_HASH });
+	return {
+		name: "build-hash",
+		configureServer(server) {
+			server.middlewares.use("/build-hash.json", (_req, res) => {
+				res.setHeader("Content-Type", "application/json");
+				res.setHeader("Cache-Control", "no-store");
+				res.end(payload);
+			});
+		},
+		generateBundle() {
+			this.emitFile({
+				type: "asset",
+				fileName: "build-hash.json",
+				source: payload,
+			});
+		},
+	};
+}
 
-# --- Stage 2: Production (static files served by nginx unprivileged) ---
-FROM nginxinc/nginx-unprivileged:stable-alpine AS production
+export default defineConfig({
+	plugins: [react(), buildHashPlugin()],
+	define: {
+		__BUILD_HASH__: JSON.stringify(BUILD_HASH),
+	},
+	server: {
+		port: 5173,
+		host: true,
+		hmr: {
+			clientPort: 2443,
+		},
+		watch: {
+			usePolling: process.env.CHOKIDAR_USEPOLLING === "true",
+		},
+		allowedHosts: [
+			"frontend",
+			...(process.env.NGROK_DOMAIN ? [process.env.NGROK_DOMAIN] : []),
+		],
+		proxy: {
+			"/api": {
+				target: "http://localhost:3001",
+				changeOrigin: true,
+			},
+			"/auth": {
+				target: "http://localhost:3002",
+				changeOrigin: true,
+			},
+		},
+	},
+});
 
-COPY --from=build /app/frontend/dist /usr/share/nginx/html
 
-# SPA routing: unknown paths fall back to index.html.
-RUN printf 'server {\n\
-    listen 5173;\n\
-    root /usr/share/nginx/html;\n\
-    index index.html;\n\
-    location / {\n\
-        try_files $uri $uri/ /index.html;\n\
-    }\n\
-}\n' > /etc/nginx/conf.d/default.conf
-
-EXPOSE 5173
-
-CMD ["nginx", "-g", "daemon off;"]
-========== ./index.html ==========
+==============================================
+FILE: index.html
+==============================================
 <!DOCTYPE html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Clash of Olympus</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   </head>
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
-========== ./postcss.config.js ==========
-module.exports = {
-  plugins: {
-    tailwindcss: {},
-    autoprefixer: {},
-  },
-}
 
-========== ./src/App.tsx ==========
-import { useState, useEffect } from "react";
-import "./site/styles/site.css";
-import LoginPage from "./site/pages/LoginPage";
-import DashboardPage from "./site/pages/DashboardPage";
-import LeaderboardPage from "./site/pages/LeaderboardPage";
-import ProfilePage from "./site/pages/ProfilePage";
-import GameFlow from "./site/pages/GameFlow";
-import Navbar from "./site/components/Navbar";
-import { logout } from "./site/services/authService";
-import { getMyProfile, UserProfile } from "./site/services/apiService";
-import { theme } from "./configs/theme";
-import DesktopOnlyGuard from "./site/components/desktopOnlyGuard";
-import FriendsSidebar from "./site/components/FriendSidebar";
-import GameInviteToast from "./site/components/GameInviteToast";
+==============================================
+FILE: src/App.tsx
+==============================================
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { getMyProfile, UserProfile, getGameInvites, GameInvite, respondGameInvite } from './site/services/apiService';
+import './site/styles/site.css';
+import LoginPage from './site/pages/LoginPage';
+import DashboardPage from './site/pages/DashboardPage';
+import LeaderboardPage from './site/pages/LeaderboardPage';
+import ProfilePage from './site/pages/ProfilePage';
+import GameFlow from './site/pages/GameFlow';
+import Navbar from './site/components/Navbar';
+import { logout, refreshToken } from './site/services/authService';
+import { theme } from './configs/theme';
+import DesktopOnlyGuard from './site/components/desktopOnlyGuard';
+import FriendsSidebar from './site/components/FriendSidebar';
+import GameInviteToast from './site/components/GameInviteToast';
 
 export default function App() {
-  const [isLoggedIn, setIsLoggedIn] = useState(true);
+  const [isAuthLoading, setIsAuthLoading] = useState(true);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [user, setUser] = useState<UserProfile | null>(null);
-  const [currentPage, setCurrentPage] = useState("dashboard");
+  const [currentPage, setCurrentPage] = useState('dashboard');
+  const [pendingSessionId, setPendingSessionId] = useState<string | null>(null);
+  const [pendingInviterId, setPendingInviterId] = useState<number | null>(null);
+  const [gameInvites, setGameInvites] = useState<GameInvite[]>([]);
+
+  const fetchGameInvites = useCallback(async () => {
+    const data = await getGameInvites();
+    if (data) setGameInvites(data.invites);
+  }, []);
+
+  // SSE — connessione persistente per notifiche, status amici, inviti
+  const sseRetryDelayRef = useRef(3000);
+  const sseRetryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (!isLoggedIn) return;
+
+    const SSE_URL = '/api/users/me/notifications/stream';
+    let es: EventSource | null = null;
+    let destroyed = false;
+
+    const connect = () => {
+      if (destroyed) return;
+      es = new EventSource(SSE_URL, { withCredentials: true });
+
+      es.addEventListener('notification', (event: MessageEvent) => {
+        try {
+          const data = JSON.parse(event.data);
+          window.dispatchEvent(new CustomEvent('new-notification', { detail: data }));
+          if (data.type === 'FRIEND_ACCEPTED' || data.type === 'FRIEND_REQ') {
+            window.dispatchEvent(new CustomEvent('friend-list-changed'));
+          }
+        } catch {}
+      });
+
+      es.addEventListener('friend_status', (event: MessageEvent) => {
+        try {
+          const data = JSON.parse(event.data);
+          window.dispatchEvent(new CustomEvent('friend-status-update', { detail: data }));
+        } catch {}
+      });
+
+      es.addEventListener('game_invite', (event: MessageEvent) => {
+        try {
+          const data = JSON.parse(event.data);
+          window.dispatchEvent(new CustomEvent('game-invite-received', { detail: data }));
+        } catch {}
+      });
+
+      es.addEventListener('friend_removed', () => {
+        window.dispatchEvent(new CustomEvent('friend-list-changed'));
+      });
+
+      es.addEventListener('game_invite_declined', (event: MessageEvent) => {
+        try {
+          const data = JSON.parse(event.data);
+          window.dispatchEvent(new CustomEvent('game-invite-declined', { detail: data }));
+        } catch {}
+      });
+
+      es.onerror = () => {
+        es?.close();
+        es = null;
+        if (destroyed) return;
+        const delay = sseRetryDelayRef.current;
+        sseRetryDelayRef.current = Math.min(delay * 2, 30000);
+        sseRetryTimerRef.current = setTimeout(connect, delay);
+      };
+
+      es.onopen = () => {
+        sseRetryDelayRef.current = 3000;
+      };
+    };
+
+    connect();
+
+    return () => {
+      destroyed = true;
+      if (sseRetryTimerRef.current) clearTimeout(sseRetryTimerRef.current);
+      es?.close();
+    };
+  }, [isLoggedIn]);
+
+  useEffect(() => {
+    if (!isLoggedIn) return;
+    fetchGameInvites();
+    const handler = (e: Event) => {
+      const invite = (e as CustomEvent<GameInvite>).detail;
+      setGameInvites(prev => {
+        if (prev.some(i => i.id === invite.id)) return prev;
+        return [invite, ...prev];
+      });
+    };
+    window.addEventListener('game-invite-received', handler);
+    return () => window.removeEventListener('game-invite-received', handler);
+  }, [isLoggedIn, fetchGameInvites]);
+
+  const handleAcceptInvite = useCallback(async (invite: GameInvite) => {
+    const result = await respondGameInvite(invite.id, 'ACCEPTED');
+    if (result.ok && result.sessionId) {
+      setGameInvites(prev => prev.filter(i => i.id !== invite.id));
+      setPendingSessionId(result.sessionId);
+      setPendingInviterId(invite.sender.id);
+      setCurrentPage('play');
+    }
+  }, []);
+
+  const handleDeclineInvite = useCallback(async (invite: GameInvite) => {
+    const result = await respondGameInvite(invite.id, 'REJECTED');
+    if (result.ok) {
+      setGameInvites(prev => prev.filter(i => i.id !== invite.id));
+    }
+  }, []);
 
   useEffect(() => {
     const initAuth = async () => {
+      const hasSession = await refreshToken();
+      if (!hasSession) {
+        setIsLoggedIn(false);
+        setIsAuthLoading(false);
+        return;
+      }
       const profile = await getMyProfile();
       if (profile) {
         setUser(profile);
@@ -94,6 +304,7 @@ export default function App() {
         setIsLoggedIn(false);
         setUser(null);
       }
+      setIsAuthLoading(false);
     };
     initAuth();
   }, []);
@@ -103,9 +314,9 @@ export default function App() {
     if (profile) {
       setUser(profile);
       setIsLoggedIn(true);
-      setCurrentPage("dashboard");
+      setCurrentPage('dashboard');
     } else {
-      console.error("Login riuscito, ma impossibile recuperare il profilo.");
+      console.error('Login riuscito, ma impossibile recuperare il profilo.');
       await logout();
       setIsLoggedIn(false);
     }
@@ -115,69 +326,98 @@ export default function App() {
     await logout();
     setIsLoggedIn(false);
     setUser(null);
-    setCurrentPage("dashboard");
+    setCurrentPage('dashboard');
   };
 
-  const handleGameInviteAccepted = (sessionId: string) => {
-    setCurrentPage("play");
-    console.log("[App] Game invite accepted, sessionId:", sessionId);
-  };
+  // const handleGameInviteAccepted = (sessionId: string, inviterId?: number) => {
+  //   setPendingSessionId(sessionId);
+  //   if (inviterId) setPendingInviterId(inviterId);
+  //   setCurrentPage('play');
+  // };
 
   const renderPage = () => {
     switch (currentPage) {
-      case "dashboard":
+      case 'dashboard':
         return <DashboardPage onNavigate={setCurrentPage} />;
-      case "leaderboard":
+      case 'leaderboard':
         return <LeaderboardPage />;
-      case "profile":
+      case 'profile':
         return <ProfilePage />;
       default:
         return <DashboardPage onNavigate={setCurrentPage} />;
     }
   };
 
+  if (isAuthLoading) return null;
+
   if (!isLoggedIn) {
     return <LoginPage onLogin={handleLogin} />;
   }
 
-  if (currentPage === "play") {
+  if (currentPage === 'play') {
     if (!user) {
-      alert("Errore di sessione: Dati utente mancanti. Effettua nuovamente il login.");
+      alert(
+        'Errore di sessione: Dati utente mancanti. Effettua nuovamente il login.',
+      );
       handleLogout();
       return null;
     }
-    
+
     return (
       <>
         <DesktopOnlyGuard>
           <GameFlow
             userId={user.id}
             username={user.username}
-            onExit={() => setCurrentPage("dashboard")}
+            onExit={async () => { await refreshToken(); setPendingSessionId(null); setPendingInviterId(null); setCurrentPage('dashboard'); }}
+            sessionId={pendingSessionId}
+            inviterId={pendingInviterId}
           />
         </DesktopOnlyGuard>
-        <FriendsSidebar onGameInviteAccepted={handleGameInviteAccepted} />
-        <GameInviteToast onAccepted={handleGameInviteAccepted} />
+        <FriendsSidebar
+          onGameInviteAccepted={(sessionId) => { setPendingSessionId(sessionId); setCurrentPage('play'); }}
+          gameInvites={gameInvites}
+          onAcceptInvite={handleAcceptInvite}
+          onDeclineInvite={handleDeclineInvite}
+        />
+        <GameInviteToast
+          invites={gameInvites}
+          onAccept={handleAcceptInvite}
+          onDecline={handleDeclineInvite}
+        />
       </>
     );
   }
 
   return (
-    <div style={{ minHeight: "100vh", backgroundColor: theme.colors.bgDark }}>
+    <div style={{ minHeight: '100vh', backgroundColor: theme.colors.bgDark }}>
       <Navbar
         currentPage={currentPage}
         onNavigate={setCurrentPage}
         onLogout={handleLogout}
-        username={user?.username || ""}
-        avatarUrl={user?.avatarUrl || ""}
+        username={user?.username || ''}
+        avatarUrl={user?.avatarUrl || ''}
       />
       {renderPage()}
-      <FriendsSidebar onGameInviteAccepted={handleGameInviteAccepted} />
-      <GameInviteToast onAccepted={handleGameInviteAccepted} />
+      <FriendsSidebar
+        onGameInviteAccepted={(sessionId) => { setPendingSessionId(sessionId); setCurrentPage('play'); }}
+        gameInvites={gameInvites}
+        onAcceptInvite={handleAcceptInvite}
+        onDeclineInvite={handleDeclineInvite}
+      />
+      <GameInviteToast
+        invites={gameInvites}
+        onAccept={handleAcceptInvite}
+        onDecline={handleDeclineInvite}
+      />
     </div>
   );
 }
-========== ./src/configs/auraConfig.ts ==========
+
+
+==============================================
+FILE: src/configs/auraConfig.ts
+==============================================
 export const AURA_CONFIG = {
   zeus: {
     characterName: 'Zeus' as const,
@@ -264,52 +504,10 @@ export const AURA_CONFIG = {
 
 export type ZeusAuraConfig = typeof AURA_CONFIG.zeus;
 export type AdeAuraConfig = typeof AURA_CONFIG.ade;
-========== ./src/configs/config.ts ==========
-export const GameConfig = {
-	SERVER: {
-		TICK_RATE: 16,
-		MAX_GAME_DURATION: 300.0,
-		MAX_GAME_KILLS: 5,
-		SHUTDOWN_TIMER: 4.0,
-		MAX_INPUT_FOR_TICK: 10.0,
-		MAX_DISCONNECTION_TIMER: 5.0,
-		MAX_INPUT_QUEUE_SIZE: 100,
-	},
 
-	MAP: {
-		CELL_SIZE: 5.0,
-		WIDTH: 130,
-		DEPTH: 130,
-	},
-	PLAYER: {
-		DEFAULT_HP: 100,
-		SPEED: 50.0,
-		RADIUS: 0.8,
-		RESPAWN_TIMER: 5.0,
-		BOT_DB_ID: -1,
-	},
-	MATCH: {
-		DEFAULT_PLAYERS_FOR_TEAM: 2, // Per gestire 2vs2, 2vs2vs2, ecc.
-	},
-	COMBAT: {
-		MELEE_HITBOX_RADIUS: 2.0,
-		SPELL_HITBOX_RADIUS: 0.5,
-		ATTACK_RANGE_OFFSET: 1.5,
-		SPELL_ATTACK_RANGE_OFFSET: 1.0,
-		ATTACK_VISUALIZATION: 0.5,
-		DEFENCE_DURATION: 1.5,
-		BULLET_LIFE: 5.0,
-	},
-	RENDERING: {
-    	CAMERA: {
-      		ZOOM: 1,
-      		HEIGHT: 150,
-      		ANGLE: Math.PI / 4, // 45°
-    	},
-    	INTERPOLATION_SPEED: 0.15,
-  	},
-}
-========== ./src/configs/logger.ts ==========
+==============================================
+FILE: src/configs/logger.ts
+==============================================
 // utils/logger.ts
 // Sistema di logging condizionale.
 // In produzione (e in valutazione) la console resta pulita.
@@ -339,7 +537,10 @@ export const log = {
   warn:   (...args: unknown[]) => DEBUG && console.warn('⚠️', ...args),
   error:  (...args: unknown[]) => console.error('❌', ...args), // sempre attivo
 };
-========== ./src/configs/theme.ts ==========
+
+==============================================
+FILE: src/configs/theme.ts
+==============================================
 export const theme = {
   colors: {
     // Base
@@ -391,11 +592,14 @@ export const theme = {
     xl: '40px',
   },
 };
-========== ./src/game/Game.tsx ==========
+
+==============================================
+FILE: src/game/Game.tsx
+==============================================
 import { Canvas } from '@react-three/fiber';
 import { useGameSocket } from '../hooks/useGameSocket';
 import { InputManager } from './input/inputManager';
-import { useEffect, useRef, useMemo } from 'react';
+import { useEffect, useRef, useMemo, useState} from 'react';
 import { CharacterName, MatchMode, GameConfig } from '@transcendence/types';
 import GameUI from './UI/gameUI';
 import { PlayerEntity } from './entities/PlayerEntity';
@@ -403,8 +607,12 @@ import { BulletEntity } from './entities/BulletEntity';
 import { GameOverOverlay } from './UI/components/GameOverOverlay';
 import GameChat from './UI/components/GameChat';
 import { EffectComposer, Bloom } from '@react-three/postprocessing';
-import mapTexture from '../assets/mapTexture1.png';
+import mapTexture from '../assets/images/mapTexture1.png';
 import { useGameStore } from '../storage/gameStore';
+import { useThree, useFrame } from '@react-three/fiber';
+import { theme } from '../configs/theme';
+import { PillarModel, WallModel } from './entities/mapModels';
+import * as THREE from 'three';
 
 interface GameProps {
   selectedCharacter: CharacterName;
@@ -414,31 +622,122 @@ interface GameProps {
   onPlayAgain: () => void;
   onQuit: () => void;
   myUserId: string;
+  myUsername: string;
 }
 
-export default function Game({ selectedCharacter, selectedMode, onPlayAgain, onQuit, myUserId }: GameProps) {
+function CameraController({ mapWidth, mapDepth }: { mapWidth: number; mapDepth: number }) {
+  const { camera, size } = useThree();
+
+  useEffect(() => {
+    if (size.width === 0 || size.height === 0) return; // Skip se size non è ancora valido
+
+    const mapSize = Math.max(mapWidth, mapDepth);
+    if (size.height < size.width) {
+      camera.zoom = size.height / (mapSize * 0.82);
+    } else {
+      camera.zoom = size.width / (mapSize * 0.82);
+    }
+    camera.updateProjectionMatrix();
+  }, [size.width, size.height, camera, mapWidth, mapDepth]);
+
+  return null;
+}
+
+function AimPlane({ inputManagerRef, myUserId }: { inputManagerRef: React.RefObject<InputManager | null>; myUserId: string }) {
+  useFrame(() => {
+    const player = useGameStore.getState().gameState?.players.find(
+      p => (p as any).userName === myUserId || p.id === myUserId
+    );
+    if (player && inputManagerRef.current) {
+      inputManagerRef.current.setPlayerPosition(player.position.x, player.position.z);
+    }
+  });
+
+  const handleClick = (e: any) => {
+    if (!inputManagerRef.current) return;
+    if (!e.nativeEvent.shiftKey) return;
+    if (inputManagerRef.current.getIsLocal()) return; // Blocca in local
+    e.stopPropagation();
+    inputManagerRef.current.fireSpellAt(e.point.x, e.point.z);
+  };
+
+  const mapWidth = useGameStore.getState().world?.map?.width || 130;
+  const mapDepth = useGameStore.getState().world?.map?.depth || 130;
+
+  return (
+    <mesh
+      rotation={[-Math.PI / 2, 0, 0]}
+      position={[mapWidth / 2, 0, mapDepth / 2]}
+      visible={false}
+      onClick={handleClick}
+    >
+      <planeGeometry args={[mapWidth * 2, mapDepth * 2]} />
+      <meshBasicMaterial transparent opacity={0} />
+    </mesh>
+  );
+}
+
+function ResizeWarning({ onLeave }: { onLeave: () => void }) {
+  const [countdown, setCountdown] = useState(5);
+
+  useEffect(() => {
+    if (countdown <= 0) return;
+    const timer = setTimeout(() => setCountdown(countdown - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [countdown]);
+
+  return (
+    <div style={{
+      position: 'fixed', inset: 0, zIndex: 9999,
+      background: 'rgba(0,0,0,0.95)',
+      display: 'flex', flexDirection: 'column',
+      alignItems: 'center', justifyContent: 'center', gap: '24px',
+    }}>
+      <h2 style={{
+        fontFamily: '"Cinzel", serif', color: '#d44',
+        fontSize: '22px', letterSpacing: '2px', textTransform: 'uppercase',
+      }}>BACK TO FULL-SCREEN MODE</h2>
+      <p style={{
+        fontFamily: '"JetBrains Mono", monospace', fontSize: '13px',
+        color: 'rgba(200,170,100,0.6)', textAlign: 'center', lineHeight: 1.6,
+      }}>
+        Restore the original window size or you will be kicked from the match.
+      </p>
+      <div style={{
+        fontFamily: '"Cinzel", serif', fontSize: '48px', fontWeight: 700,
+        color: countdown <= 2 ? '#d44' : '#e8d5a3',
+        transition: 'color 0.3s',
+      }}>{countdown}</div>
+      <button onClick={onLeave} style={{
+        padding: '10px 24px', background: '#d44', border: 'none',
+        borderRadius: '4px', color: 'white', fontFamily: '"Cinzel", serif',
+        fontSize: '12px', fontWeight: 700, letterSpacing: '1px', cursor: 'pointer',
+      }}>LEAVE NOW</button>
+    </div>
+  );
+}
+
+export default function Game({ selectedCharacter, selectedMode, onPlayAgain, onQuit, myUserId, myUsername }: GameProps) {
   const inputManagerRef = useRef<InputManager | null>(null);
   
-  // Il Socket Hook ora non restituisce nulla, aggiorna solo lo store
   useGameSocket();
 
-  // Estraiamo i dati "lenti" dallo store per l'interfaccia 2D
   const isConnected = useGameStore((state) => state.isConnected);
   const world = useGameStore((state) => state.world);
   const gameOver = useGameStore((state) => state.gameOver);
   const resetGame = useGameStore((state) => state.resetGame);
 
-  // FIX ZUSTAND v5: Estraiamo gli ID come stringa (es. "id1,id2") così non serve la funzione di comparazione!
   const playerIdsStr = useGameStore((state) => state.gameState?.players.map(p => p.id).join(',') || '');
   const bulletIdsStr = useGameStore((state) => state.gameState?.bullets.map(b => b.id).join(',') || '');
 
-  // Ritrasformiamo la stringa in array solo se cambia
   const playerIds = useMemo(() => playerIdsStr ? playerIdsStr.split(',') : [], [playerIdsStr]);
   const bulletIds = useMemo(() => bulletIdsStr ? bulletIdsStr.split(',') : [], [bulletIdsStr]);
 
+  const [showLeaveDialog, setShowLeaveDialog] = useState(false);
+  const isLocal = selectedMode === MatchMode.LOCAL || selectedMode === MatchMode.AI;
+
   useEffect(() => {
-    const isLocal = selectedMode === MatchMode.LOCAL;
-    const inputManager = new InputManager(isLocal);
+    const inputManager = new InputManager(selectedMode === MatchMode.LOCAL);
     inputManagerRef.current = inputManager;
     return () => {
       inputManager.dispose();
@@ -461,6 +760,72 @@ export default function Game({ selectedCharacter, selectedMode, onPlayAgain, onQ
     onQuit();
   };
 
+  const [initialSize] = useState({ w: window.innerWidth, h: window.innerHeight });
+  const [resized, setResized] = useState(false);
+  const handleQuitRef = useRef(handleQuitInternal);
+  handleQuitRef.current = handleQuitInternal;
+
+  useEffect(() => {
+    let kickTimeout: ReturnType<typeof setTimeout> | null = null;
+
+    const handleResize = () => {
+      const diffW = Math.abs(window.innerWidth - initialSize.w);
+      const diffH = Math.abs(window.innerHeight - initialSize.h);
+
+      if (diffW > 50 || diffH > 50) {
+        setResized(true);
+        if (!kickTimeout) {
+          kickTimeout = setTimeout(() => {
+            handleQuitRef.current();
+          }, 5000);
+        }
+      } else {
+        setResized(false);
+        if (kickTimeout) {
+          clearTimeout(kickTimeout);
+          kickTimeout = null;
+        }
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      if (kickTimeout) clearTimeout(kickTimeout);
+    };
+  }, [initialSize]);
+
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (!gameOver) {
+        e.preventDefault();
+      }
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [gameOver]);
+
+  if (!world) {
+    return (
+      <div style={{
+        position: 'fixed', inset: 0,
+        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+        background: theme.colors.bgDark,
+      }}>
+        <p style={{
+          fontFamily: theme.fonts.heading,
+          fontSize: '20px',
+          letterSpacing: '4px',
+          textTransform: 'uppercase',
+          color: theme.colors.textSecondary,
+          margin: 0,
+        }}>
+          Entering the Arena...
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div style={{
       position: 'fixed', inset: 0,
@@ -474,7 +839,7 @@ export default function Game({ selectedCharacter, selectedMode, onPlayAgain, onQ
         orthographic
         camera={{
           position: [centerX + 80, 100, centerZ + 80],
-          zoom: 5, near: 0.1, far: 1000,
+          near: 0.1, far: 1000,
         }}
         onCreated={({ camera }) => {
           camera.lookAt(centerX, 0, centerZ);
@@ -484,10 +849,10 @@ export default function Game({ selectedCharacter, selectedMode, onPlayAgain, onQ
       >
         <ambientLight intensity={0.6} />
         <directionalLight position={[50, 100, 50]} intensity={0.8} />
-
+        <CameraController mapWidth={mapWidth} mapDepth={mapDepth} />
+        <AimPlane inputManagerRef={inputManagerRef} myUserId={myUsername} />
         <gridHelper args={[mapWidth, 20, 0xffffff, 0x444444]} position={[centerX, 0, centerZ]} />
 
-        {/* I componenti 3D estraggono i loro dati live da Zustand usando questi ID */}
         {playerIds.map((id) => (
           <PlayerEntity key={id} playerId={id} />
         ))}
@@ -512,20 +877,22 @@ export default function Game({ selectedCharacter, selectedMode, onPlayAgain, onQ
         );
         })}
 
-        {world?.map?.walls?.map((w: any, i: number) => {
-          const wx = w.position?.x ?? 0;
-          const wz = w.position?.z ?? 0;
-          return (
-            <mesh 
-              key={`wall-${i}`} 
-              position={[wx + w.width/2, 2.5, wz + w.depth/2]}
-            >
-              <boxGeometry args={[w.width, 5, w.depth]} />
-              <meshStandardMaterial color="#1a1a2e" transparent opacity={0.6} />
-            </mesh>
-          );
-        })}
-        
+        {/* {world?.map?.pillars?.map((p: any, i: number) => {
+           const px = p.position?.x ?? p.x ?? 0;
+           const pz = p.position?.z ?? p.z ?? 0;
+           return (
+             <PillarModel key={`pillar-${i}`} position={[px, 0, pz]} radius={p.radius} />
+           );
+         })} */}
+
+         {world?.map?.walls?.map((w: any, i: number) => {
+           const wx = w.position?.x ?? 0;
+           const wz = w.position?.z ?? 0;
+           return (
+             <WallModel key={`wall-${i}`} position={[wx + w.width/2, 0, wz + w.depth/2]} width={w.width} depth={w.depth} />
+           );
+         })}
+
         {bulletIds.map((id) => (
           <BulletEntity key={id} bulletId={id} />
         ))}
@@ -534,6 +901,61 @@ export default function Game({ selectedCharacter, selectedMode, onPlayAgain, onQ
           <Bloom luminanceThreshold={1} luminanceSmoothing={0.9} mipmapBlur intensity={1.5} />
         </EffectComposer>
       </Canvas>
+      
+        {resized && (
+          <ResizeWarning onLeave={handleQuitInternal} />
+        )}
+
+        {!gameOver && (
+        <button onClick={() => setShowLeaveDialog(true)} style={{
+          position: 'absolute', top: 16, left: 16, zIndex: 1000,
+          padding: '8px 16px', background: 'rgba(0,0,0,0.6)',
+          border: '1px solid #d44', borderRadius: '4px',
+          color: '#d44', fontFamily: '"Cinzel", serif',
+          fontSize: '11px', fontWeight: 700, letterSpacing: '1px',
+          cursor: 'pointer', backdropFilter: 'blur(4px)',
+          transition: 'all 0.2s',
+        }}
+          onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(221,68,68,0.2)'}
+          onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(0,0,0,0.6)'}
+        >LEAVE</button>
+      )}
+
+      {showLeaveDialog && (
+        <div style={{
+          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999,
+        }}>
+          <div style={{
+            background: '#0d1a25', border: '1px solid #e8d5a3', borderRadius: '4px',
+            padding: '32px', maxWidth: '420px', textAlign: 'center',
+            boxShadow: '0 0 40px rgba(200,170,100,0.3)',
+          }}>
+            <h3 style={{
+              fontFamily: '"Cinzel", serif', color: '#f0e0b0', fontSize: '18px',
+              marginBottom: '16px', letterSpacing: '1px',
+            }}>Abandon Match</h3>
+            <p style={{
+              fontFamily: '"JetBrains Mono", monospace', fontSize: '13px',
+              color: '#e8d5a3', marginBottom: '32px', lineHeight: 1.6,
+            }}>
+              Are you sure you want to leave?{!isLocal && ' This will count as a loss.'}
+            </p>
+            <div style={{ display: 'flex', gap: '16px', justifyContent: 'center' }}>
+              <button onClick={() => setShowLeaveDialog(false)} style={{
+                padding: '10px 24px', background: 'none',
+                border: '1px solid rgba(200,170,100,0.15)', color: 'rgba(200,170,100,0.35)',
+                cursor: 'pointer', fontFamily: '"Cinzel", serif', letterSpacing: '1px',
+              }}>CANCEL</button>
+              <button onClick={() => { setShowLeaveDialog(false); handleQuitInternal(); }} style={{
+                padding: '10px 24px', background: '#d44', border: 'none',
+                color: 'white', fontWeight: 'bold', cursor: 'pointer',
+                borderRadius: '2px', fontFamily: '"Cinzel", serif', letterSpacing: '1px',
+              }}>LEAVE</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {!gameOver && (
         <GameUI
@@ -550,19 +972,584 @@ export default function Game({ selectedCharacter, selectedMode, onPlayAgain, onQ
       )}
 
       {gameOver && (
-        <GameOverOverlayWrapper gameOver={gameOver} onPlayAgain={handlePlayAgainInternal} onQuit={handleQuitInternal} />
+        <GameOverOverlayWrapper gameOver={gameOver} onPlayAgain={handlePlayAgainInternal} onQuit={handleQuitInternal} myUserId={myUsername} />
       )}
     </div>
   );
 }
 
-function GameOverOverlayWrapper({ gameOver, onPlayAgain, onQuit }: {
-  gameOver: any; onPlayAgain: () => void; onQuit: () => void;
+function GameOverOverlayWrapper({ gameOver, onPlayAgain, onQuit, myUserId }: {
+  gameOver: any; onPlayAgain: () => void; onQuit: () => void; myUserId: string;
 }) {
   const players = useGameStore((state) => state.gameState?.players) || [];
-  return <GameOverOverlay gameOver={gameOver} players={players} onPlayAgain={onPlayAgain} onQuit={onQuit} />;
+  return <GameOverOverlay gameOver={gameOver} players={players} onPlayAgain={onPlayAgain} onQuit={onQuit} myUserId={myUserId} />;
 }
-========== ./src/game/UI/components/GameChat.tsx ==========
+
+==============================================
+FILE: src/game/GameEditor.tsx
+==============================================
+import { Canvas, useThree, useFrame } from '@react-three/fiber';
+import { useGameSocket } from '../hooks/useGameSocket';
+import { InputManager } from './input/inputManager';
+import { useEffect, useRef, useMemo, useState } from 'react';
+import { CharacterName, MatchMode, GameConfig } from '@transcendence/types';
+import GameUI from './UI/gameUI';
+import { PlayerEntity } from './entities/PlayerEntity';
+import { BulletEntity } from './entities/BulletEntity';
+import { GameOverOverlay } from './UI/components/GameOverOverlay';
+import GameChat from './UI/components/GameChat';
+import { EffectComposer, Bloom } from '@react-three/postprocessing';
+import mapTexture from '../assets/images/mapTexture1.png';
+import { useGameStore } from '../storage/gameStore';
+import { theme } from '../configs/theme';
+import { PillarModel, WallModel } from './entities/mapModels';
+import * as THREE from 'three';
+
+interface GameProps {
+  selectedCharacter: CharacterName;
+  selectedMode: MatchMode;
+  p1Character: CharacterName;
+  p2Character: CharacterName;
+  onPlayAgain: () => void;
+  onQuit: () => void;
+  myUserId: string;
+  myUsername: string;
+}
+
+type EditorTool = 'pillar' | 'wall';
+
+function CameraController({ mapWidth, mapDepth }: { mapWidth: number; mapDepth: number }) {
+  const { camera, size } = useThree();
+
+  useEffect(() => {
+    if (size.width === 0 || size.height === 0) return;
+
+    const mapSize = Math.max(mapWidth, mapDepth);
+    if (size.height < size.width) {
+      camera.zoom = size.height / (mapSize * 0.82);
+    } else {
+      camera.zoom = size.width / (mapSize * 0.82);
+    }
+    camera.updateProjectionMatrix();
+  }, [size.width, size.height, camera, mapWidth, mapDepth]);
+
+  return null;
+}
+
+function AimPlane({ inputManagerRef, myUserId }: { inputManagerRef: React.RefObject<InputManager | null>; myUserId: string }) {
+  useFrame(() => {
+    const player = useGameStore.getState().gameState?.players.find(
+      p => (p as any).userName === myUserId || p.id === myUserId
+    );
+    if (player && inputManagerRef.current) {
+      inputManagerRef.current.setPlayerPosition(player.position.x, player.position.z);
+    }
+  });
+
+  const handleClick = (e: any) => {
+    if (!inputManagerRef.current) return;
+    if (!e.nativeEvent.shiftKey) return;
+    if (inputManagerRef.current.getIsLocal()) return;
+    e.stopPropagation();
+    inputManagerRef.current.fireSpellAt(e.point.x, e.point.z);
+  };
+
+  const mapWidth = useGameStore.getState().world?.map?.width || 130;
+  const mapDepth = useGameStore.getState().world?.map?.depth || 130;
+
+  return (
+    <mesh
+      rotation={[-Math.PI / 2, 0, 0]}
+      position={[mapWidth / 2, 0, mapDepth / 2]}
+      visible={false}
+      onClick={handleClick}
+    >
+      <planeGeometry args={[mapWidth * 2, mapDepth * 2]} />
+      <meshBasicMaterial transparent opacity={0} />
+    </mesh>
+  );
+}
+
+function ResizeWarning({ onLeave }: { onLeave: () => void }) {
+  const [countdown, setCountdown] = useState(5);
+
+  useEffect(() => {
+    if (countdown <= 0) return;
+    const timer = setTimeout(() => setCountdown(countdown - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [countdown]);
+
+  return (
+    <div style={{
+      position: 'fixed', inset: 0, zIndex: 9999,
+      background: 'rgba(0,0,0,0.95)',
+      display: 'flex', flexDirection: 'column',
+      alignItems: 'center', justifyContent: 'center', gap: '24px',
+    }}>
+      <h2 style={{
+        fontFamily: '"Cinzel", serif', color: '#d44',
+        fontSize: '22px', letterSpacing: '2px', textTransform: 'uppercase',
+      }}>BACK TO FULL-SCREEN MODE</h2>
+      <p style={{
+        fontFamily: '"JetBrains Mono", monospace', fontSize: '13px',
+        color: 'rgba(200,170,100,0.6)', textAlign: 'center', lineHeight: 1.6,
+      }}>
+        Restore the original window size or you will be kicked from the match.
+      </p>
+      <div style={{
+        fontFamily: '"Cinzel", serif', fontSize: '48px', fontWeight: 700,
+        color: countdown <= 2 ? '#d44' : '#e8d5a3',
+        transition: 'color 0.3s',
+      }}>{countdown}</div>
+      <button onClick={onLeave} style={{
+        padding: '10px 24px', background: '#d44', border: 'none',
+        borderRadius: '4px', color: 'white', fontFamily: '"Cinzel", serif',
+        fontSize: '12px', fontWeight: 700, letterSpacing: '1px', cursor: 'pointer',
+      }}>LEAVE NOW</button>
+    </div>
+  );
+}
+
+export default function Game({ selectedCharacter, selectedMode, onPlayAgain, onQuit, myUserId, myUsername }: GameProps) {
+  const inputManagerRef = useRef<InputManager | null>(null);
+  
+  useGameSocket();
+
+  const isConnected = useGameStore((state) => state.isConnected);
+  const world = useGameStore((state) => state.world);
+  const gameOver = useGameStore((state) => state.gameOver);
+  const resetGame = useGameStore((state) => state.resetGame);
+
+  const playerIdsStr = useGameStore((state) => state.gameState?.players.map(p => p.id).join(',') || '');
+  const bulletIdsStr = useGameStore((state) => state.gameState?.bullets.map(b => b.id).join(',') || '');
+
+  const playerIds = useMemo(() => playerIdsStr ? playerIdsStr.split(',') : [], [playerIdsStr]);
+  const bulletIds = useMemo(() => bulletIdsStr ? bulletIdsStr.split(',') : [], [bulletIdsStr]);
+
+  const [showLeaveDialog, setShowLeaveDialog] = useState(false);
+  const isLocal = selectedMode === MatchMode.LOCAL;
+
+  // ==========================================
+  // 🛠️ EDITOR STATE & LOGIC
+  // ==========================================
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [activeTool, setActiveTool] = useState<EditorTool>('pillar');
+  
+  const [customPillars, setCustomPillars] = useState<{id: string, x: number, z: number, radius: number}[]>([]);
+  const [customWalls, setCustomWalls] = useState<{id: string, x: number, z: number, width: number, depth: number}[]>([]);
+  
+  // Stati per il disegno dei muri (2 click)
+  const [wallStart, setWallStart] = useState<{x: number, z: number} | null>(null);
+  const [cursorPos, setCursorPos] = useState<{x: number, z: number} | null>(null);
+
+  const handleExportJSON = () => {
+    const exportedMap = {
+      ...world?.map,
+      walls: [
+        ...(world?.map?.walls || []),
+        ...customWalls
+      ],
+      pillars: [
+        ...(world?.map?.pillars || []),
+        ...customPillars
+      ]
+    };
+    
+    const jsonString = JSON.stringify(exportedMap, null, 2);
+    navigator.clipboard.writeText(jsonString).then(() => {
+      alert("JSON copiato negli appunti! Incollalo nel tuo server.");
+      console.log("Mappa esportata:", jsonString);
+    }).catch(err => {
+      console.error("Errore copia:", err);
+      alert("Errore durante la copia negli appunti.");
+    });
+  };
+
+  const handleUndo = () => {
+    if (activeTool === 'pillar') {
+      setCustomPillars(prev => prev.slice(0, -1));
+    } else {
+      setCustomWalls(prev => prev.slice(0, -1));
+      setWallStart(null);
+    }
+  };
+
+  const handleClear = () => {
+    if (window.confirm("Sicuro di voler cancellare TUTTE le modifiche custom?")) {
+      setCustomPillars([]);
+      setCustomWalls([]);
+      setWallStart(null);
+    }
+  };
+  // ==========================================
+
+  useEffect(() => {
+    const inputManager = new InputManager(selectedMode === MatchMode.LOCAL);
+    inputManagerRef.current = inputManager;
+    return () => {
+      inputManager.dispose();
+      inputManagerRef.current = null;
+    };
+  }, [selectedMode]);
+
+  const mapWidth = world?.map?.width || GameConfig.MAP.WIDTH;
+  const mapDepth = world?.map?.depth || GameConfig.MAP.DEPTH;
+  const centerX = mapWidth / 2;
+  const centerZ = mapDepth / 2;
+
+  const handlePlayAgainInternal = () => {
+    resetGame();
+    onPlayAgain();
+  };
+
+  const handleQuitInternal = () => {
+    resetGame();
+    onQuit();
+  };
+
+  const [initialSize] = useState({ w: window.innerWidth, h: window.innerHeight });
+  const [resized, setResized] = useState(false);
+  const handleQuitRef = useRef(handleQuitInternal);
+  handleQuitRef.current = handleQuitInternal;
+
+  useEffect(() => {
+    let kickTimeout: ReturnType<typeof setTimeout> | null = null;
+
+    const handleResize = () => {
+      const diffW = Math.abs(window.innerWidth - initialSize.w);
+      const diffH = Math.abs(window.innerHeight - initialSize.h);
+
+      if (diffW > 50 || diffH > 50) {
+        setResized(true);
+        if (!kickTimeout) {
+          kickTimeout = setTimeout(() => {
+            handleQuitRef.current();
+          }, 5000);
+        }
+      } else {
+        setResized(false);
+        if (kickTimeout) {
+          clearTimeout(kickTimeout);
+          kickTimeout = null;
+        }
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      if (kickTimeout) clearTimeout(kickTimeout);
+    };
+  }, [initialSize]);
+
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (!gameOver) {
+        e.preventDefault();
+      }
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [gameOver]);
+
+  if (!world) {
+    return (
+      <div style={{
+        position: 'fixed', inset: 0,
+        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+        background: theme.colors.bgDark,
+      }}>
+        <p style={{
+          fontFamily: theme.fonts.heading,
+          fontSize: '20px',
+          letterSpacing: '4px',
+          textTransform: 'uppercase',
+          color: theme.colors.textSecondary,
+          margin: 0,
+        }}>
+          Entering the Arena...
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{
+      position: 'fixed', inset: 0,
+      display: 'flex', flexDirection: 'column',
+      alignItems: 'center', justifyContent: 'center',
+      backgroundImage: `url(${mapTexture})`,
+      backgroundSize: 'cover', backgroundPosition: 'center',
+      backgroundRepeat: 'no-repeat', overflow: 'hidden',
+    }}>
+      
+      {/* 🛠️ PANNELLO EDITOR */}
+      <div style={{ position: 'absolute', top: 20, left: 20, zIndex: 1000, background: 'rgba(0,0,0,0.85)', padding: '15px', borderRadius: '8px', color: 'white', display: 'flex', flexDirection: 'column', gap: '10px', boxShadow: '0 4px 6px rgba(0,0,0,0.3)', width: '220px' }}>
+        <h3 style={{ margin: 0, fontSize: '16px', textAlign: 'center' }}>Map Editor</h3>
+        <button 
+          onClick={() => { setIsEditMode(!isEditMode); setWallStart(null); }} 
+          style={{ padding: '8px', background: isEditMode ? '#dc3545' : '#198754', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}
+        >
+          {isEditMode ? "Chiudi Editor" : "Attiva Editor"}
+        </button>
+        
+        {isEditMode && (
+          <>
+            <div style={{ display: 'flex', gap: '5px' }}>
+              <button 
+                onClick={() => { setActiveTool('pillar'); setWallStart(null); }}
+                style={{ flex: 1, padding: '6px', cursor: 'pointer', border: 'none', borderRadius: '4px', background: activeTool === 'pillar' ? '#0d6efd' : '#444', color: 'white' }}
+              >
+                Pillars
+              </button>
+              <button 
+                onClick={() => setActiveTool('wall')}
+                style={{ flex: 1, padding: '6px', cursor: 'pointer', border: 'none', borderRadius: '4px', background: activeTool === 'wall' ? '#0d6efd' : '#444', color: 'white' }}
+              >
+                Walls
+              </button>
+            </div>
+
+            <div style={{ fontSize: '12px', borderBottom: '1px solid #555', paddingBottom: '10px', marginTop: '5px' }}>
+              {activeTool === 'pillar' ? (
+                "Clicca sulla mappa per piazzare."
+              ) : (
+                wallStart ? "Clicca di nuovo per finire il muro." : "Clicca per iniziare un muro."
+              )}
+              <br/><br/>
+              <b>Pillars: {customPillars.length} | Walls: {customWalls.length}</b>
+            </div>
+            
+            <button onClick={handleUndo} style={{ padding: '6px', cursor: 'pointer', borderRadius: '4px', border: 'none', background: '#6c757d', color: 'white' }}>
+              Annulla Ultimo
+            </button>
+            <button onClick={handleClear} style={{ padding: '6px', cursor: 'pointer', borderRadius: '4px', border: 'none', background: '#6c757d', color: 'white' }}>
+              Pulisci Tutto
+            </button>
+            <button onClick={handleExportJSON} style={{ padding: '10px', background: '#0d6efd', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', marginTop: '5px' }}>
+              Esporta JSON
+            </button>
+          </>
+        )}
+      </div>
+
+      <Canvas
+        orthographic
+        camera={{
+          position: [centerX + 80, 100, centerZ + 80],
+          near: 0.1, far: 1000,
+        }}
+        onCreated={({ camera }) => {
+          camera.lookAt(centerX, 0, centerZ);
+          camera.updateProjectionMatrix();
+        }}
+        style={{ width: '100%', height: '100%' }}
+      >
+        <ambientLight intensity={0.6} />
+        <directionalLight position={[50, 100, 50]} intensity={0.8} />
+        <CameraController mapWidth={mapWidth} mapDepth={mapDepth} />
+        
+        {!isEditMode && <AimPlane inputManagerRef={inputManagerRef} myUserId={myUsername} />}
+        
+        <gridHelper args={[mapWidth, 20, 0xffffff, 0x444444]} position={[centerX, 0, centerZ]} />
+
+        {/* 🛠️ PIANO DI CLICK (Raycasting) PER L'EDITOR */}
+        {isEditMode && (
+          <mesh 
+            position={[centerX, 0, centerZ]} 
+            rotation={[-Math.PI / 2, 0, 0]}
+            onPointerMove={(e) => {
+              if (activeTool === 'wall' && wallStart) {
+                setCursorPos({ x: Math.round(e.point.x), z: Math.round(e.point.z) });
+              }
+            }}
+            onClick={(e) => {
+              e.stopPropagation();
+              const x = Math.round(e.point.x);
+              const z = Math.round(e.point.z);
+
+              if (activeTool === 'pillar') {
+                setCustomPillars(prev => [...prev, { id: `custom_pil_${prev.length + 1}`, x, z, radius: 4 }]);
+              } 
+              else if (activeTool === 'wall') {
+                if (!wallStart) {
+                  setWallStart({ x, z });
+                  setCursorPos({ x, z });
+                } else {
+                  const x1 = wallStart.x;
+                  const z1 = wallStart.z;
+                  
+                  let w = Math.abs(x - x1);
+                  let d = Math.abs(z - z1);
+                  
+                  if (w === 0) w = 5;
+                  if (d === 0) d = 5;
+
+                  const finalX = Math.min(x1, x);
+                  const finalZ = Math.min(z1, z);
+
+                  setCustomWalls(prev => [...prev, { id: `custom_wal_${prev.length + 1}`, x: finalX, z: finalZ, width: w, depth: d }]);
+                  setWallStart(null);
+                  setCursorPos(null);
+                }
+              }
+            }}
+          >
+            <planeGeometry args={[mapWidth, mapDepth]} />
+            <meshBasicMaterial color="#00ff00" transparent opacity={0.1} />
+          </mesh>
+        )}
+
+        {/* 🛠️ ANTEPRIMA DEL MURO IN FASE DI DISEGNO */}
+        {isEditMode && activeTool === 'wall' && wallStart && cursorPos && (
+          <mesh 
+            position={[
+              Math.min(wallStart.x, cursorPos.x) + Math.max(Math.abs(cursorPos.x - wallStart.x), 5)/2, 
+              2.5, 
+              Math.min(wallStart.z, cursorPos.z) + Math.max(Math.abs(cursorPos.z - wallStart.z), 5)/2
+            ]}
+          >
+            <boxGeometry args={[Math.max(Math.abs(cursorPos.x - wallStart.x), 5), 5, Math.max(Math.abs(cursorPos.z - wallStart.z), 5)]} />
+            <meshBasicMaterial color="#00ffff" transparent opacity={0.5} wireframe />
+          </mesh>
+        )}
+
+        {/* Giocatori */}
+        {playerIds.map((id) => (
+          <PlayerEntity key={id} playerId={id} />
+        ))}
+
+        {/* Muri Originali + Custom */}
+        {[...(world?.map?.walls || []), ...customWalls].map((w: any, i: number) => {
+          const wx = w.position?.x ?? w.x ?? 0;
+          const wz = w.position?.z ?? w.z ?? 0;
+          const isCustom = w.id?.startsWith('custom_');
+          return (
+            <mesh key={`wall-${i}`} position={[wx + w.width/2, 2.5, wz + w.depth/2]}>
+              <boxGeometry args={[w.width, 5, w.depth]} />
+              <meshStandardMaterial 
+                color={isCustom ? "#00ffff" : "#1a1a2e"} 
+                emissive={isCustom ? "#005555" : "#000000"}
+                transparent opacity={isCustom ? 0.8 : 0.6} 
+              />
+            </mesh>
+          );
+        })}
+
+        {/* Pilastri Originali + Custom */}
+        {[...(world?.map?.pillars || []), ...customPillars].map((p: any, i: number) => {
+          const px = p.position?.x ?? p.x ?? 0;
+          const pz = p.position?.z ?? p.z ?? 0;
+          const isCustom = p.id?.startsWith('custom_');
+          return (
+            <mesh key={`pillar-${i}`} position={[px, 2.5, pz]}>
+              <cylinderGeometry args={[p.radius, p.radius, 5, 16]} />
+              <meshStandardMaterial 
+                color={isCustom ? "#00ff00" : "#1a1a2e"} 
+                emissive={isCustom ? "#00ff00" : "#d4af37"} 
+                emissiveIntensity={isCustom ? 0.6 : 0.1}
+                transparent opacity={isCustom ? 0.9 : 0.7} 
+              />
+            </mesh>
+          );
+        })}
+
+        {/* Proiettili */}
+        {bulletIds.map((id) => (
+          <BulletEntity key={id} bulletId={id} />
+        ))}
+
+        <EffectComposer>
+          <Bloom luminanceThreshold={1} luminanceSmoothing={0.9} mipmapBlur intensity={1.5} />
+        </EffectComposer>
+      </Canvas>
+      
+      {resized && !isEditMode && (
+        <ResizeWarning onLeave={handleQuitInternal} />
+      )}
+
+      {!gameOver && !isEditMode && (
+        <button onClick={() => setShowLeaveDialog(true)} style={{
+          position: 'absolute', top: 16, left: 16, zIndex: 1000,
+          padding: '8px 16px', background: 'rgba(0,0,0,0.6)',
+          border: '1px solid #d44', borderRadius: '4px',
+          color: '#d44', fontFamily: '"Cinzel", serif',
+          fontSize: '11px', fontWeight: 700, letterSpacing: '1px',
+          cursor: 'pointer', backdropFilter: 'blur(4px)',
+          transition: 'all 0.2s',
+        }}
+          onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(221,68,68,0.2)'}
+          onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(0,0,0,0.6)'}
+        >LEAVE</button>
+      )}
+
+      {showLeaveDialog && (
+        <div style={{
+          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999,
+        }}>
+          <div style={{
+            background: '#0d1a25', border: '1px solid #e8d5a3', borderRadius: '4px',
+            padding: '32px', maxWidth: '420px', textAlign: 'center',
+            boxShadow: '0 0 40px rgba(200,170,100,0.3)',
+          }}>
+            <h3 style={{
+              fontFamily: '"Cinzel", serif', color: '#f0e0b0', fontSize: '18px',
+              marginBottom: '16px', letterSpacing: '1px',
+            }}>Abandon Match</h3>
+            <p style={{
+              fontFamily: '"JetBrains Mono", monospace', fontSize: '13px',
+              color: '#e8d5a3', marginBottom: '32px', lineHeight: 1.6,
+            }}>
+              Are you sure you want to leave?{!isLocal && ' This will count as a loss.'}
+            </p>
+            <div style={{ display: 'flex', gap: '16px', justifyContent: 'center' }}>
+              <button onClick={() => setShowLeaveDialog(false)} style={{
+                padding: '10px 24px', background: 'none',
+                border: '1px solid rgba(200,170,100,0.15)', color: 'rgba(200,170,100,0.35)',
+                cursor: 'pointer', fontFamily: '"Cinzel", serif', letterSpacing: '1px',
+              }}>CANCEL</button>
+              <button onClick={() => { setShowLeaveDialog(false); handleQuitInternal(); }} style={{
+                padding: '10px 24px', background: '#d44', border: 'none',
+                color: 'white', fontWeight: 'bold', cursor: 'pointer',
+                borderRadius: '2px', fontFamily: '"Cinzel", serif', letterSpacing: '1px',
+              }}>LEAVE</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {!gameOver && !isEditMode && (
+        <GameUI
+          character={selectedCharacter}
+          isConnected={isConnected}
+          mapData={world}
+          maxPlayers={world?.map?.maxPlayers || 2}
+          gameOver={gameOver}
+        />
+      )}
+
+      {!gameOver && !isEditMode && (selectedMode === MatchMode.RANKED || selectedMode === MatchMode.UNRANKED) && (
+        <GameChat myUserId={myUserId} isVisible={true} />
+      )}
+
+      {gameOver && !isEditMode && (
+        <GameOverOverlayWrapper gameOver={gameOver} onPlayAgain={handlePlayAgainInternal} onQuit={handleQuitInternal} myUserId={myUsername} />
+      )}
+    </div>
+  );
+}
+
+function GameOverOverlayWrapper({ gameOver, onPlayAgain, onQuit, myUserId }: {
+  gameOver: any; onPlayAgain: () => void; onQuit: () => void; myUserId: string;
+}) {
+  const players = useGameStore((state) => state.gameState?.players) || [];
+  return <GameOverOverlay gameOver={gameOver} players={players} onPlayAgain={onPlayAgain} onQuit={onQuit} myUserId={myUserId} />;
+}
+
+==============================================
+FILE: src/game/UI/components/GameChat.tsx
+==============================================
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { socketService } from '../../../services/socketServices';
 import { GameEvents } from '@transcendence/types';
@@ -625,7 +1612,7 @@ export default function GameChat({ myUserId, isVisible }: GameChatProps) {
   const sendMessage = useCallback(() => {
     const text = inputText.trim();
     if (!text) return;
-
+    
     const newMsg: ChatMessage = {
       id: `${Date.now()}-me`,
       sender: 'me',
@@ -644,7 +1631,8 @@ export default function GameChat({ myUserId, isVisible }: GameChatProps) {
     if (!isVisible) return;
 
   const handler = (data: { message: string; author: string }) => {
-    if (data.author === myUserId) return; // ignora i miei, già aggiunti localmente
+    console.log("[Chat] received:", data.author, "myUserId:", myUserId, "match:", data.author === myUserId);
+    if (String(data.author) === String(myUserId)) return; // ignora i miei, già aggiunti localmente
     
     const newMsg: ChatMessage = {
         id: `${Date.now()}-${data.author}`,
@@ -816,31 +1804,32 @@ export default function GameChat({ myUserId, isVisible }: GameChatProps) {
   );
 }
 
-========== ./src/game/UI/components/GameOverOverlay.tsx ==========
+
+==============================================
+FILE: src/game/UI/components/GameOverOverlay.tsx
+==============================================
 import { GameOverPayload } from '../../../types/game.types';
-import {PlayerSnapshot} from '@transcendence/types';
+import { PlayerSnapshot } from '@transcendence/types';
 import { theme } from '../../../configs/theme';
-import {CharacterName} from '@transcendence/types';
 
 interface GameOverOverlayProps {
   gameOver: GameOverPayload;
   players: PlayerSnapshot[];
   onPlayAgain: () => void;
   onQuit: () => void;
+  myUserId?: string;
 }
 
-export function GameOverOverlay({ gameOver, players, onPlayAgain, onQuit }: GameOverOverlayProps) {
-  const winnerIds = new Set(gameOver.winnerData?.winnerPlayersIds || []);
+export function GameOverOverlay({ gameOver, players, onPlayAgain, onQuit, myUserId }: GameOverOverlayProps) {
+  const winnerStats: any[] = gameOver.finalData?.winnerPlayerStats || [];
+  const loserStats: any[] = gameOver.finalData?.loserPlayerStats || [];
 
-  const winners = players.filter(p => winnerIds.has(p.id));
-  const losers = players.filter(p => !winnerIds.has(p.id));
+  const isDraw = winnerStats.length === 0;
+  const amIWinner = winnerStats.some((s: any) => s.userName === myUserId);
 
-  const winnerName = winners.length > 0 ? winners[0].characterName : 'unknown';
-  const displayName = winnerName.charAt(0).toUpperCase() + winnerName.slice(1);
-  const isDraw = winners.length === 0;
-
-  const color = winnerName === CharacterName.ZEUS ? theme.colors.zeus : theme.colors.ade;
-  const glow = winnerName === CharacterName.ZEUS ? theme.colors.zeusGlow : theme.colors.adeGlow;
+  const resultText = isDraw ? 'Draw' : (amIWinner ? 'You Win' : 'You Lose');
+  const resultColor = isDraw ? theme.colors.textSecondary : (amIWinner ? theme.colors.zeus : theme.colors.dead);
+  const resultGlow = isDraw ? 'none' : `0 0 20px ${resultColor}, 0 0 60px ${resultColor}`;
 
   return (
     <div style={{
@@ -858,14 +1847,14 @@ export function GameOverOverlay({ gameOver, players, onPlayAgain, onQuit }: Game
         fontSize: '72px',
         fontFamily: theme.fonts.heading,
         fontWeight: 'bold',
-        color: isDraw ? theme.colors.textSecondary : color,
-        textShadow: isDraw ? 'none' : `0 0 20px ${color}, 0 0 60px ${color}`,
+        color: resultColor,
+        textShadow: resultGlow,
         letterSpacing: '6px',
         textTransform: 'uppercase',
         margin: 0,
         animation: 'scaleIn 0.6s ease-out',
       }}>
-        {isDraw ? 'Draw' : `${displayName} Wins`}
+        {resultText}
       </h1>
 
       <p style={{
@@ -881,10 +1870,10 @@ export function GameOverOverlay({ gameOver, players, onPlayAgain, onQuit }: Game
 
       <div style={{
         backgroundColor: theme.colors.bgDark,
-        border: `1px solid ${isDraw ? theme.colors.border : color}`,
+        border: `1px solid ${resultColor}`,
         borderRadius: '12px',
         minWidth: '420px',
-        boxShadow: isDraw ? 'none' : `0 0 30px ${glow}`,
+        boxShadow: resultGlow,
         overflow: 'hidden',
       }}>
         <div style={{
@@ -899,29 +1888,58 @@ export function GameOverOverlay({ gameOver, players, onPlayAgain, onQuit }: Game
           <HeaderCell center>DEATHS</HeaderCell>
         </div>
 
-        {winners.map((p) => (
-          <PlayerRow key={p.id} player={p} isWinner />
-        ))}
+        {winnerStats.map((s: any, i: number) => {
+          const player = players.find(p => (p as any).userName === s.userName);
+          const isMe = s.userName === myUserId;
+          return (
+            <div key={`w-${i}`} style={{
+              display: 'grid', gridTemplateColumns: '1fr 80px 80px',
+              padding: '12px 24px', backgroundColor: 'rgba(255,255,255,0.02)',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <span>👑</span>
+                <span style={{
+                  color: isMe ? '#66B2FF' : '#FF6666', fontSize: '16px',
+                  fontWeight: 'bold', fontFamily: theme.fonts.heading,
+                }}>{s.userName}</span>
+                <span style={{ color: theme.colors.textMuted, fontSize: '11px', fontFamily: theme.fonts.mono }}>
+                  ({player ? player.characterName.charAt(0).toUpperCase() + player.characterName.slice(1) : '?'})
+                </span>
+              </div>
+              <StatCell>{String(s.kill)}</StatCell>
+              <StatCell>{String(s.dead)}</StatCell>
+            </div>
+          );
+        })}
 
-        {losers.length > 0 && winners.length > 0 && (
+        {winnerStats.length > 0 && loserStats.length > 0 && (
           <div style={{ height: '1px', backgroundColor: theme.colors.border }} />
         )}
 
-        {losers.map((p) => (
-          <PlayerRow key={p.id} player={p} isWinner={false} />
-        ))}
+        {loserStats.map((s: any, i: number) => {
+          const player = players.find(p => (p as any).userName === s.userName);
+          const isMe = s.userName === myUserId;
+          return (
+            <div key={`l-${i}`} style={{
+              display: 'grid', gridTemplateColumns: '1fr 80px 80px',
+              padding: '12px 24px',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <span style={{
+                  color: isMe ? '#66B2FF' : '#FF6666', fontSize: '16px',
+                  fontFamily: theme.fonts.heading,
+                }}>{s.userName}</span>
+                <span style={{ color: theme.colors.textMuted, fontSize: '11px', fontFamily: theme.fonts.mono }}>
+                  ({player ? player.characterName.charAt(0).toUpperCase() + player.characterName.slice(1) : '?'})
+                </span>
+              </div>
+              <StatCell>{String(s.kill)}</StatCell>
+              <StatCell>{String(s.dead)}</StatCell>
+            </div>
+          );
+        })}
       </div>
 
-      <p style={{
-        marginTop: theme.spacing.xl,
-        color: theme.colors.textMuted,
-        fontSize: '12px',
-        fontFamily: theme.fonts.mono,
-      }}>
-        [ victory artwork placeholder ]
-      </p>
-      
-      {/* Actions */}
       <div style={{
         marginTop: '40px',
         display: 'flex',
@@ -1002,42 +2020,6 @@ function HeaderCell({ children, center }: { children: string; center?: boolean }
   );
 }
 
-function PlayerRow({ player, isWinner }: { player: PlayerSnapshot; isWinner: boolean }) {
-  const playerColor = player.characterName === CharacterName.ZEUS ? theme.colors.zeus : theme.colors.ade;
-  const displayName = player.characterName.charAt(0).toUpperCase() + player.characterName.slice(1);
-
-  return (
-    <div style={{
-      display: 'grid',
-      gridTemplateColumns: '1fr 80px 80px',
-      padding: '12px 24px',
-      backgroundColor: isWinner ? 'rgba(255,255,255,0.02)' : 'transparent',
-    }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-        {isWinner && <span>👑</span>}
-        <span style={{
-          color: playerColor,
-          fontSize: '16px',
-          fontWeight: isWinner ? 'bold' : 'normal',
-          fontFamily: theme.fonts.heading,
-        }}>
-          {displayName}
-        </span>
-        <span style={{
-          color: theme.colors.textMuted,
-          fontSize: '11px',
-          fontFamily: theme.fonts.mono,
-        }}>
-          (Team {player.teamId})
-        </span>
-      </div>
-
-      <StatCell>—</StatCell>
-      <StatCell>—</StatCell>
-    </div>
-  );
-}
-
 function StatCell({ children }: { children: string }) {
   return (
     <span style={{
@@ -1051,13 +2033,17 @@ function StatCell({ children }: { children: string }) {
     </span>
   );
 }
-========== ./src/game/UI/components/HPBar.tsx ==========
+
+==============================================
+FILE: src/game/UI/components/HPBar.tsx
+==============================================
 import { Vector } from '../../../types/game.types';
 import { theme } from '../../../configs/theme';
 import { CharacterName } from '@transcendence/types';
 
 interface HPBarProps {
   characterName: string;
+  displayName?: string;
   maxHP: number;
   currentHP: number;
   isDisconnected?: boolean;
@@ -1068,6 +2054,7 @@ interface HPBarProps {
 
 export default function HPBar({
   characterName,
+  displayName,
   maxHP,
   currentHP,
   isDisconnected = false,
@@ -1100,7 +2087,7 @@ export default function HPBar({
         color: theme.colors.goldDim, fontSize: '13px', fontWeight: 'bold',
         marginBottom: '4px', textAlign: 'center', textShadow: `0 0 8px ${theme.colors.goldDim}`,
       }}>
-        {characterName}
+        {displayName || characterName}
       </div>
 
       {/* Bar container */}
@@ -1138,11 +2125,15 @@ export default function HPBar({
     </div>
   );
 }
-========== ./src/game/UI/gameUI.tsx ==========
+
+==============================================
+FILE: src/game/UI/gameUI.tsx
+==============================================
 import { MapEmitPayload } from '../../types/game.types';
 import { theme } from '../../configs/theme';
 import { CharacterName } from '@transcendence/types';
 import { useGameStore } from '../../storage/gameStore';
+import { GameConfig } from '@transcendence/types';
 
 interface GameUIProps {
   character: string;
@@ -1162,12 +2153,13 @@ export default function GameUI({
   
   const players = useGameStore((state) => state.gameState?.players) || [];
   const playersCount = players.length;
+  const gameTime = useGameStore((state) => state.gameState?.time) || 0;
+  const remaining = Math.max(0, gameTime);
+  const mins = Math.floor(remaining / 60);
+  const secs = Math.floor(remaining % 60);
 
   return (
     <>
-      {/* ⚡ RIMOSSO: Il blocco <HPBar /> che era qui è stato cancellato 
-          perché ora vive in PlayerEntity.tsx sopra i modelli 3D! */}
-
       {players.map((player) => {
         if (!player.isDead) return null;
         return (
@@ -1199,6 +2191,18 @@ export default function GameUI({
           </div>
         );
       })}
+
+      {/* Timer */}
+      <div style={{
+        position: 'absolute', top: 20, left: '50%', transform: 'translateX(-50%)',
+        fontFamily: theme.fonts.heading, fontSize: '28px', fontWeight: 700,
+        color: remaining <= 10 ? theme.colors.dead : theme.colors.gold,
+        letterSpacing: '4px', zIndex: 100,
+        textShadow: '0 0 10px rgba(0,0,0,0.8)',
+        transition: 'color 0.3s',
+      }}>
+        {mins}:{secs.toString().padStart(2, '0')}
+      </div>
 
       {/* ⚡ SPOSTATO: Messo a right: 20 per non accavallarsi con i testi a sinistra */}
       <div style={{
@@ -1235,7 +2239,10 @@ export default function GameUI({
     </>
   );
 }
-========== ./src/game/core/gameCamera.ts ==========
+
+==============================================
+FILE: src/game/core/gameCamera.ts
+==============================================
 import * as THREE from 'three';
 import { GameConfig } from '@transcendence/types';
 
@@ -1276,7 +2283,10 @@ export class GameCamera {
     this.camera.updateProjectionMatrix();
   }
 }
-========== ./src/game/core/gameScene.ts ==========
+
+==============================================
+FILE: src/game/core/gameScene.ts
+==============================================
 /**
  * GameScene: Setup e gestione della scena Three.js.
  * 
@@ -1379,7 +2389,10 @@ export class GameScene {
     this.renderer.dispose();
   }
 }
-========== ./src/game/entities/AdeAura.tsx ==========
+
+==============================================
+FILE: src/game/entities/AdeAura.tsx
+==============================================
 import { useRef, useMemo, useEffect } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
@@ -1647,7 +2660,10 @@ function respawnEmber(pos: Float32Array, vel: Float32Array, life: Float32Array, 
   const l = 0.3+Math.random()*0.6;
   life[i] = l; maxLife[i] = l;
 }
-========== ./src/game/entities/BulletEntity.tsx ==========
+
+==============================================
+FILE: src/game/entities/BulletEntity.tsx
+==============================================
 import { useRef, useMemo, useEffect } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
@@ -2106,7 +3122,10 @@ function AdeBullet({ bulletId, initialSnapshot }: { bulletId: string, initialSna
     </group>
   );
 }
-========== ./src/game/entities/GameArena.tsx ==========
+
+==============================================
+FILE: src/game/entities/GameArena.tsx
+==============================================
 import { Vector } from '../../types/game.types';
 
 interface WallData {
@@ -2148,7 +3167,10 @@ export function GameArena({ mapData }: GameArenaProps) {
     </group>
   );
 }
-========== ./src/game/entities/ImpactEffect.tsx ==========
+
+==============================================
+FILE: src/game/entities/ImpactEffect.tsx
+==============================================
 import { useRef, useMemo, useState } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
@@ -2332,7 +3354,10 @@ export function ImpactEffect({ snapshot }: ImpactEffectProps) {
   );
 }
 
-========== ./src/game/entities/PlayerEntity.tsx ==========
+
+==============================================
+FILE: src/game/entities/PlayerEntity.tsx
+==============================================
 import { useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { Html } from '@react-three/drei'; 
@@ -2389,10 +3414,11 @@ export function PlayerEntity({ playerId }: PlayerEntityProps) {
         <div style={{ transform: 'scale(0.8)' }}>
           <HPBar 
             characterName={initialPlayer.characterName}
+            displayName={(initialPlayer as any).userName}
             currentHP={currentHP}
             maxHP={maxHP}
             isDisconnected={isDisconnected}
-            isFloating={true} 
+            isFloating={true}
           />
         </div>
       </Html>
@@ -2413,7 +3439,10 @@ export function PlayerEntity({ playerId }: PlayerEntityProps) {
     </group>
   );
 }
-========== ./src/game/entities/PlayerModel.tsx ==========
+
+==============================================
+FILE: src/game/entities/PlayerModel.tsx
+==============================================
 import { useRef, useMemo, useEffect } from 'react';
 import { useGLTF, useAnimations } from '@react-three/drei';
 import { useFrame } from '@react-three/fiber';
@@ -2421,10 +3450,12 @@ import * as THREE from 'three';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 import { CharacterName, GameConfig } from '@transcendence/types';
 import { useGameStore } from '../../storage/gameStore';
+import zeusModelUrl from '../../assets/models/ZeusWalking.glb?url';
+import hadesModelUrl from '../../assets/models/HadesWalking.glb?url';
 
 const MODEL_PATHS: Record<string, string> = {
-  [CharacterName.ZEUS]: '/models/ZeusWalking.glb', // Assicurati di puntare ai file con le animazioni
-  [CharacterName.ADE]: '/models/HadesWalking.glb',
+  [CharacterName.ZEUS]: zeusModelUrl,
+  [CharacterName.ADE]: hadesModelUrl,
 };
 
 const MODEL_HEIGHT = GameConfig.PLAYER.RADIUS * 3;
@@ -2482,14 +3513,17 @@ export function PlayerModel({ characterName, playerId }: PlayerModelProps) {
     const player = useGameStore.getState().gameState?.players.find(p => p.id === playerId);
     if (!player || !groupRef.current) return;
 
-    // --- GESTIONE OPACITÀ (Tuo codice originale) ---
+    // --- GESTIONE OPACITÀ ---
     const targetOpacity = player.isDead ? 0.2 : 1;
     if (Math.abs(currentOpacity.current - targetOpacity) > 0.01) {
       currentOpacity.current += (targetOpacity - currentOpacity.current) * 0.1;
       applyOpacity(clonedScene, currentOpacity.current);
+    } else if (currentOpacity.current !== targetOpacity) {
+      currentOpacity.current = targetOpacity;
+      applyOpacity(clonedScene, targetOpacity)
     }
 
-    // --- GESTIONE ANIMAZIONI (Nuovo!) ---
+    // --- GESTIONE ANIMAZIONI ---
     // Otteniamo la posizione globale reale del modello nel mondo 3D
     const currentWorldPos = new THREE.Vector3();
     groupRef.current.getWorldPosition(currentWorldPos);
@@ -2546,9 +3580,12 @@ function applyOpacity(scene: THREE.Object3D, opacity: number) {
 }
 
 // Preload dei file
-useGLTF.preload(MODEL_PATHS[CharacterName.ZEUS]);
-useGLTF.preload(MODEL_PATHS[CharacterName.ADE]);
-========== ./src/game/entities/ZeusAura.tsx ==========
+useGLTF.preload(zeusModelUrl);
+useGLTF.preload(hadesModelUrl);
+
+==============================================
+FILE: src/game/entities/ZeusAura.tsx
+==============================================
 
 import { useRef, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
@@ -2703,7 +3740,58 @@ function regenerateBolts(geometries: THREE.BufferGeometry[], segments: number, j
     posAttr.needsUpdate = true;
   }
 }
-========== ./src/game/input/inputManager.ts ==========
+
+==============================================
+FILE: src/game/entities/mapModels.tsx
+==============================================
+import { useGLTF, Clone } from '@react-three/drei';
+import pillarModelUrl from '../../assets/models/PillarOpt.glb?url';
+import wallModelUrl from '../../assets/models/Wall.glb?url';
+
+interface WallModelProps {
+  position: [number, number, number];
+  width: number;
+  depth: number;
+}
+
+interface PillarModelProps {
+  position: [number, number, number];
+  radius: number;
+}
+
+export function WallModel({ position, width, depth }: WallModelProps) {
+  const { scene } = useGLTF(wallModelUrl);
+  const cloned = scene.clone();
+  
+  return (
+    <Clone
+      object={cloned}
+      position={position}
+      scale={[width, 5, depth]}
+    />
+  );
+}
+
+useGLTF.preload(wallModelUrl);
+
+export function PillarModel({ position, radius }: PillarModelProps) {
+  const { scene } = useGLTF(pillarModelUrl);
+  const cloned = scene.clone();
+  
+  return (
+    <Clone
+      object={cloned}
+      position={position}
+      scale={[radius * 2, radius * 2, radius * 2]}
+    />
+  );
+}
+
+useGLTF.preload(pillarModelUrl);
+
+==============================================
+FILE: src/game/input/inputManager.ts
+==============================================
 import { socketService } from '../../services/socketServices';
 import { GameEvents } from '@transcendence/types';
 import { AttackType } from '@transcendence/types';
@@ -2720,10 +3808,11 @@ export class InputManager {
   private keys: Set<string> = new Set();
   private intervalId: ReturnType<typeof setInterval> | null = null;
   private isLocalGame: boolean;
-
-  // Traccia quali attacchi sono già stati inviati
-  // Viene resettato al keyup — così l'attacco parte UNA volta per pressione
   private attackSent: { [playerIndex: number]: boolean } = { 0: false, 1: false };
+  
+  // Mouse aim
+  private isAiming: boolean = false;
+  private pendingSpellDirection: { x: number; z: number } | null = null;
 
   constructor(isLocalGame: boolean = true) {
     this.isLocalGame = isLocalGame;
@@ -2737,20 +3826,17 @@ export class InputManager {
     this.intervalId = setInterval(() => this.sendInputs(), 50);
   }
 
-   private handleKeyDown = (e: KeyboardEvent): void => {
-    // Blocca TUTTI i default del browser durante il gioco
-    const key = e.key.toLowerCase();
-    
-    // Blocca combinazioni con Ctrl (Ctrl+S, Ctrl+W, ecc.)
+  private handleKeyDown = (e: KeyboardEvent): void => {
+    const key = e.code.startsWith('Shift') ? e.code.toLowerCase() : e.key.toLowerCase();
+
     if (e.ctrlKey || e.metaKey) {
       e.preventDefault();
       e.stopPropagation();
     }
 
-    // Blocca tasti singoli problematici
     if ([
       'arrowup', 'arrowdown', 'arrowleft', 'arrowright',
-      ' ', 'shift', 'control', 'tab', 'alt', 'meta',
+      ' ', 'shiftleft', 'shiftright', 'control', 'tab', 'alt', 'meta',
       'f1', 'f2', 'f3', 'f4', 'f5', 'f6', 'f7', 'f8', 'f9', 'f10', 'f11', 'f12',
       'p', 'o', 'i',
     ].includes(key)) {
@@ -2758,33 +3844,74 @@ export class InputManager {
     }
 
     this.keys.add(key);
+
+    // Attiva aim mode quando Shift è premuto (solo single player)
+    if (key === 'shiftleft' && !this.isLocalGame) {
+      this.isAiming = true;
+      document.body.style.cursor = 'url(/src/assets/images/AimCursor.png) 16 16, crosshair';
+    }
   };
 
   private handleKeyUp = (e: KeyboardEvent): void => {
-    const key = e.key.toLowerCase();
+    const key = e.code.startsWith('Shift') ? e.code.toLowerCase() : e.key.toLowerCase();
     this.keys.delete(key);
 
-    // Reset attack sent per P0
-    if (key === ' ' || key === 'shift' || key === 'control') {
+    if (key === ' ' || key === 'shiftleft' || key === 'c') {
       this.attackSent[0] = false;
     }
-    // Reset attack sent per P1
     if (key === 'p' || key === 'o' || key === 'i') {
       this.attackSent[1] = false;
     }
+
+    // Disattiva aim mode
+    if (key === 'shiftleft') {
+      this.isAiming = false;
+      document.body.style.cursor = '';
+    }
   };
 
+  
+  private playerPosition: { x: number; z: number } | null = null;
+  
+  public setPlayerPosition(x: number, z: number): void {
+    this.playerPosition = { x, z };
+  }
+  
+  public fireSpellAt(worldX: number, worldZ: number): void {
+    console.log("[InputManager] fireSpellAt:", worldX, worldZ, "playerPos:", this.playerPosition);
+    if (!this.playerPosition) return;
+    
+    const dx = worldX - this.playerPosition.x;
+    const dz = worldZ - this.playerPosition.z;
+    const length = Math.sqrt(dx * dx + dz * dz);
+    if (length < 0.1) return;
+    
+    this.pendingSpellDirection = {
+      x: Math.max(-1, Math.min(1, dx / length)),
+      z: Math.max(-1, Math.min(1, dz / length)),
+    };
+  }
+  
   private sendInputs(): void {
-    // P1: WASD + Space(melee) / Shift(spell) / Ctrl(defence)
+    if (!socketService.isConnected()) return;
+    
     const p0 = this.buildPayload(
       'w', 's', 'a', 'd',
-      ' ', 'shift', 'control',
+      ' ', 'shiftleft', 'c',
       0
     );
-    if (p0.attackType) console.log('P0 attack:', p0.attackType);
+    
+    // Se c'è uno spell pendente dal mouse, sovrascrivilo
+    if (this.pendingSpellDirection) {
+      p0.x = this.pendingSpellDirection.x;
+      p0.z = this.pendingSpellDirection.z;
+      p0.attackType = AttackType.SPELL_ATTACK;
+      this.pendingSpellDirection = null;
+    }
+    
+    if (p0.attackType) console.log('P0 attack payload:', JSON.stringify(p0));
     socketService.emit(GameEvents.INPUT, p0);
-
-    // P2: Frecce + 1(melee) / 2(spell) / 3(defence)
+    
     if (this.isLocalGame) {
       const p1 = this.buildPayload(
         'arrowup', 'arrowdown', 'arrowleft', 'arrowright',
@@ -2795,7 +3922,11 @@ export class InputManager {
       socketService.emit(GameEvents.INPUT, p1);
     }
   }
-
+  
+  public getIsLocal(): boolean {
+    return this.isLocalGame;
+  }
+  
   private buildPayload(
     upKey: string, downKey: string, leftKey: string, rightKey: string,
     meleeKey: string, spellKey: string, defenceKey: string,
@@ -2813,21 +3944,20 @@ export class InputManager {
     const mapX = screenX * Math.cos(angle) + screenZ * Math.sin(angle);
     const mapZ = -screenX * Math.sin(angle) + screenZ * Math.cos(angle);
 
-    // Attacco: manda SOLO una volta per pressione
     let attackType: AttackType | undefined = undefined;
 
     if (!this.attackSent[playerIndex]) {
-      if (this.keys.has(defenceKey)) {
-        attackType = AttackType.DEFENCE_ATTACK;
-        this.attackSent[playerIndex] = true;
-      } else if (this.keys.has(meleeKey)) {
-        attackType = AttackType.MELEE_ATTACK;
-        this.attackSent[playerIndex] = true;
-      } else if (this.keys.has(spellKey)) {
-        attackType = AttackType.SPELL_ATTACK;
-        this.attackSent[playerIndex] = true;
-      }
+    if (this.keys.has(defenceKey)) {
+      attackType = AttackType.DEFENCE_ATTACK;
+      this.attackSent[playerIndex] = true;
+    } else if (this.keys.has(meleeKey)) {
+      attackType = AttackType.MELEE_ATTACK;
+      this.attackSent[playerIndex] = true;
+    } else if (this.keys.has(spellKey) && (this.isLocalGame || playerIndex === 1)) {
+      attackType = AttackType.SPELL_ATTACK;
+      this.attackSent[playerIndex] = true;
     }
+  }
 
     const payload: GameInputPayload = {
       x: Math.round(mapX),
@@ -2835,7 +3965,6 @@ export class InputManager {
       playerIndex,
     };
 
-    // Manda attackType solo se presente — @IsOptional nel DTO
     if (attackType) {
       payload.attackType = attackType;
     }
@@ -2851,9 +3980,14 @@ export class InputManager {
       clearInterval(this.intervalId);
       this.intervalId = null;
     }
+    // Ripristina cursore
+    document.body.style.cursor = '';
   }
 }
-========== ./src/hooks/useGameSocket.ts ==========
+
+==============================================
+FILE: src/hooks/useGameSocket.ts
+==============================================
 import { useEffect } from 'react';
 import { socketService } from '../services/socketServices';
 import { PlayerSnapshot, BulletSnapshot, GameEvents } from '@transcendence/types';
@@ -2892,9 +4026,10 @@ export function useGameSocket() {
     };
 
     const handleGameOver = (payload: any) => {
+      console.log("[GameOver] payload:", JSON.stringify(payload));
       log.game('Game over:', payload);
-      const winnerData = payload.entities || payload.winnerData || undefined;
-      useGameStore.getState().setGameOver({ winnerData, time: payload.time || 0 });
+      const finalData = payload.entities || payload.finalData || undefined;
+      useGameStore.getState().setGameOver({ finalData, time: payload.time || 0 });
     };
 
     socket.on('connect', handleConnect);
@@ -2915,7 +4050,10 @@ export function useGameSocket() {
     };
   }, []);
 }
-========== ./src/index.css ==========
+
+==============================================
+FILE: src/index.css
+==============================================
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -2950,23 +4088,57 @@ body {
   color: #ffffff;
   overflow-x: hidden;
 }
-========== ./src/main.tsx ==========
+
+body {
+  cursor: url('/src/assets/images/Cursor.png') 2 2, auto;
+}
+
+a, button, [onclick], input, select, textarea,
+input[type="submit"], [role="button"], .btn-press,
+[style*="cursor: pointer"], [style*="cursor:pointer"] {
+  cursor: url('/src/assets/images/SelectCursor.png') 16 16, pointer !important;
+}
+
+==============================================
+FILE: src/main.tsx
+==============================================
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App'
 import './index.css'
 
-ReactDOM.createRoot(document.getElementById('root')!).render(
-    <App />
-)
+async function checkVersion(): Promise<void> {
+  try {
+    const resp = await fetch('/build-hash.json', { cache: 'no-store' });
+    if (!resp.ok) return;
+    const { hash } = await resp.json() as { hash: string };
+    if (hash !== __BUILD_HASH__) {
+      window.location.href = '/?_v=' + hash;
+    }
+  } catch {
+    // network error: proceed normally
+  }
+}
 
-========== ./src/scenes/characterSelectScene.tsx ==========
+checkVersion().then(() => {
+  if (window.location.search.startsWith('?_v=')) {
+    window.history.replaceState(null, '', window.location.pathname);
+  }
+  ReactDOM.createRoot(document.getElementById('root')!).render(
+    <App />
+  );
+});
+
+
+==============================================
+FILE: src/scenes/characterSelectScene.tsx
+==============================================
 import { useState, useEffect, useRef } from 'react';
 import { matchmakingSocket } from '../services/matchmakingSocket';
 import { CharacterName, MatchMode, MatchType, GameEvents } from '@transcendence/types';
 import { theme } from '../configs/theme';
-import zeusImg from '../assets/ZeusSelection.png';
-import adeImg from '../assets/AdeSelection.png'; // Cambia in .png se necessario
+import zeusImg from '../assets/images/ZeusSelection.png';
+import adeImg from '../assets/images/AdeSelection.png'; // Cambia in .png se necessario
 
 type Character = typeof CharacterName[keyof typeof CharacterName];
 
@@ -2975,6 +4147,7 @@ interface CharacterSelectSceneProps {
   userDbId: string;
   onConfirm: (p1: Character, p2: Character) => void;
   onBack: () => void;
+  sessionId?: string | null;
 }
 
 const CHARACTERS: Character[] = [CharacterName.ZEUS, CharacterName.ADE];
@@ -2993,6 +4166,7 @@ export default function CharacterSelectScene({
   userDbId,
   onConfirm,
   onBack,
+  sessionId,
 }: CharacterSelectSceneProps) {
   const isLocal = mode === MatchMode.LOCAL;
   const isAI = mode === MatchMode.AI;
@@ -3075,23 +4249,30 @@ export default function CharacterSelectScene({
       const finalP1 = CHARACTERS[p1Index];
       const finalP2 = CHARACTERS[p2Index];
       
-    const payload = {
-      characterName: isSplitScreen ? [finalP1, finalP2] : [finalP1],
-      rank: (mode === MatchMode.RANKED || mode === MatchMode.UNRANKED) ? 500 : null,
-      rankRange: (mode === MatchMode.RANKED || mode === MatchMode.UNRANKED) ? 100 : null,
-      matchType: MatchType.FFA,
-      matchMode: mode,
-      isAiPlayer: isAI,
-    };
-      
-      let event: GameEvents;
-      if (isLocal) event = GameEvents.JOIN_LOCAL;
-      else if (isAI) event = GameEvents.JOIN_AI;
-      else if (mode === MatchMode.RANKED) event = GameEvents.JOIN_RANKED;
-      else event = GameEvents.JOIN_UNRANKED;
+    if (sessionId) {
+        // Direct invite — join alla sessione privata
+        console.log(`[CharSelect] Emitting JOIN_DIRECT_SESSION:`, { sessionId, characterName: finalP1 });
+        matchmakingSocket.emit(GameEvents.JOIN_DIRECT_SESSION, { sessionId, characterName: finalP1 });
+      } else {
+        // Flusso normale — coda pubblica
+        const payload = {
+          characterName: isSplitScreen ? [finalP1, finalP2] : [finalP1],
+          rank: (mode === MatchMode.RANKED || mode === MatchMode.UNRANKED) ? 500 : null,
+          rankRange: (mode === MatchMode.RANKED || mode === MatchMode.UNRANKED) ? 100 : null,
+          matchType: MatchType.FFA,
+          matchMode: mode,
+          isAiPlayer: isAI,
+        };
 
-      console.log(`[CharSelect] Emitting ${event}:`, payload);
-      matchmakingSocket.emit(event, payload);
+        let event: GameEvents;
+        if (isLocal) event = GameEvents.JOIN_LOCAL;
+        else if (isAI) event = GameEvents.JOIN_AI;
+        else if (mode === MatchMode.RANKED) event = GameEvents.JOIN_RANKED;
+        else event = GameEvents.JOIN_UNRANKED;
+
+        console.log(`[CharSelect] Emitting ${event}:`, payload);
+        matchmakingSocket.emit(event, payload);
+      }
 
       onConfirm(finalP1, finalP2);
     }, 600);
@@ -3619,11 +4800,14 @@ export default function CharacterSelectScene({
     </div>
   );
 }
-========== ./src/scenes/modeSelectScene.tsx ==========
+
+==============================================
+FILE: src/scenes/modeSelectScene.tsx
+==============================================
 import { useState } from 'react';
 import { MatchMode } from '@transcendence/types';
 import { theme } from '../configs/theme';
-import Cerberus from '../assets/Cerberus.png';
+import Cerberus from '../assets/images/Cerberus.png';
 
 interface ModeSelectSceneProps {
   onModeSelect: (mode: MatchMode) => void;
@@ -3831,8 +5015,12 @@ export default function ModeSelectScene({ onModeSelect, onBack }: ModeSelectScen
   );
 }
 
-========== ./src/scenes/queueScene.tsx ==========
+
+==============================================
+FILE: src/scenes/queueScene.tsx
+==============================================
 import { useEffect, useState } from 'react';
+import { GameEvents } from '@transcendence/types';
 import { matchmakingSocket } from '../services/matchmakingSocket';
 import { theme } from '../configs/theme';
 
@@ -3851,7 +5039,7 @@ export default function QueueScene({ onCancel }: QueueSceneProps) {
   }, []);
 
   const handleCancel = () => {
-    matchmakingSocket.disconnect(); // disconnessione = leave queue
+    matchmakingSocket.emit(GameEvents.LEAVE_QUEUE, {}); // Per abbandonare la coda
     onCancel();
   };
 
@@ -4005,7 +5193,10 @@ export default function QueueScene({ onCancel }: QueueSceneProps) {
     </div>
   );
 }
-========== ./src/scenes/welcomeScene.tsx ==========
+
+==============================================
+FILE: src/scenes/welcomeScene.tsx
+==============================================
 // import { useState } from 'react';
 // import { theme } from '../configs/theme';
 // import welcomeScene from '../assets/welcomeScene.png';
@@ -4141,7 +5332,10 @@ export default function QueueScene({ onCancel }: QueueSceneProps) {
 //   );
 // }
 
-========== ./src/services/matchmakingSocket.ts ==========
+
+==============================================
+FILE: src/services/matchmakingSocket.ts
+==============================================
 import { io, Socket } from "socket.io-client";
 import { GameEvents } from '@transcendence/types';
 import { refreshToken } from "../site/services/authService";
@@ -4205,8 +5399,23 @@ class MatchmakingSocket {
 			}
 		});
 
-		this.socket.on("exception", (data: { status: string; errorCode: string; message: string }) => {
+		this.socket.on("exception", async (data: { status: string; errorCode: string; message: string }) => {
 			console.error(`🚨 [Matchmaking] Exception from server: [${data.errorCode}] ${data.message}`);
+
+			if (data.errorCode === "UNAUTHORIZED_TOKEN") {
+				console.log("🔄 [Matchmaking] Token expired, attempting refresh...");
+				const refreshed = await refreshToken();
+				if (refreshed) {
+					console.log("✅ [Matchmaking] Token refreshed, reconnecting...");
+					this.socket?.disconnect();
+					this.socket?.connect();
+				} else {
+					console.error("🚫 [Matchmaking] Refresh failed, bubbling to handler.");
+					this.onMatchError?.(data.errorCode, data.message);
+				}
+				return;
+			}
+
 			if (this.onMatchError) {
 				this.onMatchError(data.errorCode, data.message);
 			}
@@ -4261,14 +5470,34 @@ class MatchmakingSocket {
 	getSocket(): Socket | null {
 		return this.socket;
 	}
+
+	connectAndEmit(event: GameEvents, data?: any): void {
+	  const socket = this.connect();
+	  if (socket.connected) {
+	    this.emit(event, data);
+	  } else {
+	    socket.once('connect', () => {
+	      this.emit(event, data);
+	    });
+	  }
+	}
 }
 
 export const matchmakingSocket = new MatchmakingSocket();
-========== ./src/services/socketServices.ts ==========
+
+==============================================
+FILE: src/services/socketServices.ts
+==============================================
 import { io, Socket } from "socket.io-client";
 import * as msgpackParser from "socket.io-msgpack-parser";
 import { GameEvents } from '@transcendence/types';
 import { refreshToken } from "../site/services/authService";
+
+export interface AckResponse {
+  status: 'success' | 'error';
+  message: string;
+  errorCode?: string;
+}
 
 export class SocketService {
 	private socket: Socket | null = null;
@@ -4334,38 +5563,29 @@ export class SocketService {
 		});
 
 		this.socket.on("exception", async (data: { status: string; errorCode: string; message: string }) => {
-			console.error(`🚨 [GameSocket] Exception from server: [${data.errorCode}] ${data.message}`);
-			switch (data.errorCode) {
-				case "UNAUTHORIZED_TOKEN":
-			      	console.log("🔄 [GameSocket] Token expired, attempting refresh...");
-      				const refreshed = await refreshToken();
-      				if (refreshed) {
-        				console.log("✅ [GameSocket] Token refreshed, reconnecting...");
-        				this.socket?.disconnect();
-        				this.socket?.connect();
-      				} else {
-        				console.error("🚫 [GameSocket] Refresh failed, bubbling to handler.");
-        				this.onGameError?.(data.errorCode, data.message);
-      				}
-					break;
-				case "UNAUTHORIZED":
-					
-					break;
-				case "PLAYER_NOT_FOUND":
-					break;
-				case "SESSION_NOT_FOUND":
-					break;
-				case "MATCH_ALREADY_STARTED":
-					break;
-				case "SERVER_SHUTDOWN":
-					break;
-				case "INVALID_INPUT":
-					break;
-				default:
-				    console.warn(`[GameSocket] Unhandled error code: ${data.errorCode}`);
-				    this.onGameError?.(data.errorCode, data.message);
-				    break;
-			}
+    		console.error(`🚨 [GameSocket] Exception from server: [${data.errorCode}] ${data.message}`);
+
+    		if (data.errorCode === "UNAUTHORIZED_TOKEN") {
+    		    console.log("🔄 [GameSocket] Token expired, attempting refresh...");
+    		    const refreshed = await refreshToken();
+    		    if (refreshed) {
+    		        console.log("✅ [GameSocket] Token refreshed, reconnecting...");
+    		        this.socket?.disconnect();
+    		        this.socket?.connect();
+    		    } else {
+    		        console.error("🚫 [GameSocket] Refresh failed, bubbling to handler.");
+    		        this.onGameError?.(data.errorCode, data.message);
+    		    }
+    		    return;
+    		}
+		
+    		if (data.errorCode === "INVALID_INPUT") {
+    		    console.warn(`[GameSocket] Invalid input: ${data.message}`);
+    		    return;
+    		}
+		
+    		// Tutti gli altri errori → notifica GameFlow
+    		this.onGameError?.(data.errorCode, data.message);
 		});
 
 		return this.socket;
@@ -4381,15 +5601,23 @@ export class SocketService {
 		}
 	}
 
-	emit(event: GameEvents, data?: any) {
-		if (!this.socket) {
-			console.error(`⚠️ [GameSocket] Cannot emit '${event}': not connected.`);
-			return;
-		}
-		if (event !== GameEvents.INPUT) {
-			console.log(`↗️ [GameSocket] Emitting [${event}]:`, data);
-		}
-		this.socket.emit(event, data);
+	isConnected(): boolean {
+		return !!this.socket?.connected;
+	}
+
+	emit(event: GameEvents, data?: any, ack?: (response: AckResponse) => void) {
+	  if (!this.socket?.connected) {
+	    console.error(`⚠️ [GameSocket] Cannot emit '${event}': not connected.`);
+	    return;
+	  }
+	  if (event !== GameEvents.INPUT) {
+	    console.log(`↗️ [GameSocket] Emitting [${event}]:`, data);
+	  }
+	  if (ack) {
+	    this.socket.emit(event, data, ack);
+	  } else {
+	    this.socket.emit(event, data);
+	  }
 	}
 
 	on(event: GameEvents, callback: (data: any) => void) {
@@ -4421,7 +5649,10 @@ export class SocketService {
 }
 
 export const socketService = new SocketService();
-========== ./src/site/components/Dropdown.tsx ==========
+
+==============================================
+FILE: src/site/components/Dropdown.tsx
+==============================================
 import React, { useState, useEffect, useRef } from 'react';
 import { dropdownItemBase } from '../styles/shared';
 import { theme } from '../../configs/theme';
@@ -4481,15 +5712,19 @@ export function DropdownItem({ icon: Icon, label, onClick }: {
     </button>
   );
 }
-========== ./src/site/components/FriendSidebar.tsx ==========
+
+==============================================
+FILE: src/site/components/FriendSidebar.tsx
+==============================================
 import { useState, useEffect, useCallback } from 'react';
 import * as api from '../services/apiService';
 import * as Icons from './Icons';
 import { theme } from '../../configs/theme';
+import { matchmakingSocket } from '../../services/matchmakingSocket';
+import { GameEvents } from '@transcendence/types';
+
 
 const SIDEBAR_WIDTH = 300;
-const FRIENDS_POLL = 30000;
-const INVITES_POLL = 5000;
 
 type Tab = 'friends' | 'requests' | 'add';
 
@@ -4506,22 +5741,23 @@ const statusLabel = (s: string) =>
   : 'Offline';
 
 interface FriendsSidebarProps {
-  onGameInviteAccepted: (sessionId: string) => void;
+  onGameInviteAccepted: (sessionId: string, inviterId?: number) => void;
+  gameInvites: api.GameInvite[];
+  onAcceptInvite: (invite: api.GameInvite) => void;
+  onDeclineInvite: (invite: api.GameInvite) => void;
 }
 
-export default function FriendsSidebar({ onGameInviteAccepted }: FriendsSidebarProps) {
+export default function FriendsSidebar({ onGameInviteAccepted, gameInvites, onAcceptInvite, onDeclineInvite }: FriendsSidebarProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [tab, setTab] = useState<Tab>('friends');
   const [friends, setFriends] = useState<api.FriendEntry[]>([]);
   const [requests, setRequests] = useState<api.FriendRequestsResponse | null>(null);
   const [loading, setLoading] = useState(true);
-
-  // Game invites
-  const [gameInvites, setGameInvites] = useState<api.GameInvite[]>([]);
+  
   const [now, setNow] = useState(Date.now());
 
   // Add friend
-  const [addId, setAddId] = useState('');
+  const [addUser, setAddUser] = useState('');
   const [addMsg, setAddMsg] = useState('');
   const [addError, setAddError] = useState('');
 
@@ -4538,19 +5774,43 @@ export default function FriendsSidebar({ onGameInviteAccepted }: FriendsSidebarP
     setLoading(false);
   }, []);
 
-  const fetchInvites = useCallback(async () => {
-    const data = await api.getGameInvites();
-    if (data) setGameInvites(data.invites);
-  }, []);
-
-  // Polling amici (30s) + inviti (5s)
+  // Caricamento iniziale
   useEffect(() => {
     fetchFriends();
-    fetchInvites();
-    const friendsInterval = setInterval(fetchFriends, FRIENDS_POLL);
-    const invitesInterval = setInterval(fetchInvites, INVITES_POLL);
-    return () => { clearInterval(friendsInterval); clearInterval(invitesInterval); };
-  }, [fetchFriends, fetchInvites]);
+  }, [fetchFriends]);
+
+  // Aggiornamento lista amici via SSE quando cambia una friendship
+  useEffect(() => {
+    const handler = () => fetchFriends();
+    window.addEventListener('friend-list-changed', handler);
+    return () => window.removeEventListener('friend-list-changed', handler);
+  }, [fetchFriends]);
+
+  // Ricezione live degli status amici via SSE (propagato dalla Navbar tramite CustomEvent)
+  //    Aggiorna lo status dell'amico nella lista locale senza rifare il fetch.
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const { userId, status } = (e as CustomEvent).detail;
+      setFriends(prev => prev.map(f =>
+        f.friend.id === userId ? { ...f, friend: { ...f.friend, status } } : f
+      ));
+    };
+    window.addEventListener('friend-status-update', handler);
+    return () => window.removeEventListener('friend-status-update', handler);
+  }, []);
+
+  // 6. Il nostro invite è stato rifiutato — aggiorna il messaggio e rimuovi l'invite
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const { receiverId } = (e as CustomEvent).detail;
+      setInviteMsg(prev => ({ ...prev, [receiverId]: 'Declined' }));
+      setTimeout(() => {
+        setInviteMsg(prev => { const n = { ...prev }; delete n[receiverId]; return n; });
+      }, 3000);
+    };
+    window.addEventListener('game-invite-declined', handler);
+    return () => window.removeEventListener('game-invite-declined', handler);
+  }, []);
 
   // Countdown timer
   useEffect(() => {
@@ -4562,7 +5822,7 @@ export default function FriendsSidebar({ onGameInviteAccepted }: FriendsSidebarP
   const receivedCount = requests?.received?.length || 0;
   const activeInvites = gameInvites.filter(inv => new Date(inv.expiresAt).getTime() > now);
   const badgeCount = receivedCount + activeInvites.length;
-  const onlineCount = friends.filter(f => f.friend.status === 'ONLINE').length;
+  const onlineCount = friends.filter(f => f.friend.status === 'ONLINE' || f.friend.status === 'IN_GAME' || f.friend.status === 'IN_QUEUE').length;
 
   // Ordina: online first
   const sortedFriends = [...friends].sort((a, b) => {
@@ -4571,57 +5831,62 @@ export default function FriendsSidebar({ onGameInviteAccepted }: FriendsSidebarP
   });
 
   const handleAddFriend = async () => {
-    setAddMsg('');
-    setAddError('');
-    const id = parseInt(addId.trim(), 10);
-    if (isNaN(id) || id <= 0) return setAddError('Inserisci un ID valido.');
-    const result = await api.sendFriendRequest(id);
-    if (result.ok) {
-      setAddMsg('Richiesta inviata!');
-      setAddId('');
-      fetchFriends();
-    } else {
-      setAddError(result.message || 'Errore');
-    }
+  setAddMsg('');
+  setAddError('');
+  const input = addUser.trim();
+  if (!input) return setAddError('Enter a username.');
+
+  const found = await api.searchUserByUsername(input);
+  if (!found) return setAddError(`User "${input}" not found.`);
+
+  const result = await api.sendFriendRequest(found.id);
+  if (result.ok) {
+    setAddMsg('Request sent!');
+    setAddUser('');
+    fetchFriends();
+  } else {
+    setAddError(result.message || 'Error');
+  }
+};
+
+const handleAcceptFriend = async (targetId: number) => {
+  if (await api.respondFriendRequest(targetId, 'ACCEPTED')) fetchFriends();
+};
+const handleRejectFriend = async (targetId: number) => {
+  if (await api.respondFriendRequest(targetId, 'REJECTED')) fetchFriends();
+};
+const handleRemove = async (targetId: number) => {
+  if (await api.removeFriend(targetId)) fetchFriends();
+};
+
+const handleSendInvite = async (targetId: number) => {
+  const socket = matchmakingSocket.connect();
+
+  const registerListener = () => {
+    socket.once(GameEvents.DIRECT_SESSION_READY, (data: { sessionId?: string }) => {
+      if (data?.sessionId) onGameInviteAccepted(data.sessionId);
+    });
   };
 
-  const handleAcceptFriend = async (targetId: number) => {
-    if (await api.respondFriendRequest(targetId, 'ACCEPTED')) fetchFriends();
-  };
+  if (socket.connected) {
+    registerListener();
+  } else {
+    socket.once('connect', registerListener);
+  }
 
-  const handleRejectFriend = async (targetId: number) => {
-    if (await api.respondFriendRequest(targetId, 'REJECTED')) fetchFriends();
-  };
+  const result = await api.sendGameInvite(targetId);
+  setInviteMsg(prev => ({
+    ...prev,
+    [targetId]: result.ok ? 'Invited!' : (result.message || 'Error'),
+  }));
+  setTimeout(() => {
+    setInviteMsg(prev => { const n = { ...prev }; delete n[targetId]; return n; });
+  }, 3000);
+};
 
-  const handleRemove = async (targetId: number) => {
-    if (await api.removeFriend(targetId)) fetchFriends();
-  };
+const handleAcceptInvite = (invite: api.GameInvite) => onAcceptInvite(invite);
+const handleRejectInvite = (invite: api.GameInvite) => onDeclineInvite(invite);
 
-  const handleSendInvite = async (targetId: number) => {
-    const result = await api.sendGameInvite(targetId);
-    setInviteMsg(prev => ({
-      ...prev,
-      [targetId]: result.ok ? 'Invited!' : (result.message || 'Error'),
-    }));
-    setTimeout(() => {
-      setInviteMsg(prev => { const n = { ...prev }; delete n[targetId]; return n; });
-    }, 3000);
-  };
-
-  const handleAcceptInvite = async (invite: api.GameInvite) => {
-    const result = await api.respondGameInvite(invite.id, 'ACCEPTED');
-    if (result.ok && result.sessionId) {
-      setGameInvites(prev => prev.filter(i => i.id !== invite.id));
-      onGameInviteAccepted(result.sessionId);
-    }
-  };
-
-  const handleRejectInvite = async (invite: api.GameInvite) => {
-    const result = await api.respondGameInvite(invite.id, 'REJECTED');
-    if (result.ok) {
-      setGameInvites(prev => prev.filter(i => i.id !== invite.id));
-    }
-  };
 
   // ─── Tab button ───
   const TabBtn = ({ id, label, badge }: { id: Tab; label: string; badge?: number }) => (
@@ -4957,9 +6222,9 @@ export default function FriendsSidebar({ onGameInviteAccepted }: FriendsSidebarP
               <div style={{ display: 'flex', gap: '6px', marginBottom: '12px' }}>
                 <input
                   type="text"
-                  placeholder="Player ID"
-                  value={addId}
-                  onChange={(e) => setAddId(e.target.value.replace(/\D/g, ''))}
+                  placeholder="Type an Username"
+                  value={addUser}
+                  onChange={(e) => setAddUser(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleAddFriend()}
                   style={{
                     flex: 1, padding: '8px 12px', background: theme.colors.bgDark,
@@ -4980,7 +6245,7 @@ export default function FriendsSidebar({ onGameInviteAccepted }: FriendsSidebarP
 
               <div style={{ marginTop: '16px', padding: '12px', background: 'rgba(200,170,100,0.04)', borderRadius: '4px', border: `1px solid ${theme.colors.border}` }}>
                 <p style={{ fontSize: '10px', color: theme.colors.textMuted, lineHeight: 1.5 }}>
-                  Your ID is visible on your profile page. Share it with friends so they can add you too!
+                  Your Username is visible on your profile page. Share it with friends so they can add you too!
                 </p>
               </div>
             </div>
@@ -4990,36 +6255,24 @@ export default function FriendsSidebar({ onGameInviteAccepted }: FriendsSidebarP
     </>
   );
 }
-========== ./src/site/components/GameInviteToast.tsx ==========
-import { useState, useEffect, useCallback } from 'react';
+
+==============================================
+FILE: src/site/components/GameInviteToast.tsx
+==============================================
+import { useState, useEffect } from 'react';
 import * as api from '../services/apiService';
 import * as Icons from './Icons';
 import { theme } from '../../configs/theme';
 
-const POLL_INTERVAL = 5000;
-
 interface GameInviteToastProps {
-  onAccepted: (sessionId: string) => void;
+  invites: api.GameInvite[];
+  onAccept: (invite: api.GameInvite) => void;
+  onDecline: (invite: api.GameInvite) => void;
 }
 
-export default function GameInviteToast({ onAccepted }: GameInviteToastProps) {
-  const [invites, setInvites] = useState<api.GameInvite[]>([]);
+export default function GameInviteToast({ invites, onAccept, onDecline }: GameInviteToastProps) {
   const [dismissed, setDismissed] = useState<Set<number>>(new Set());
   const [now, setNow] = useState(Date.now());
-
-  // Polling inviti pendenti
-  const fetchInvites = useCallback(async () => {
-    const data = await api.getGameInvites();
-    if (data) {
-      setInvites(data.invites);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchInvites();
-    const interval = setInterval(fetchInvites, POLL_INTERVAL);
-    return () => clearInterval(interval);
-  }, [fetchInvites]);
 
   // Countdown timer — aggiorna ogni secondo
   useEffect(() => {
@@ -5027,22 +6280,8 @@ export default function GameInviteToast({ onAccepted }: GameInviteToastProps) {
     return () => clearInterval(timer);
   }, []);
 
-  const handleAccept = async (invite: api.GameInvite) => {
-    const result = await api.respondGameInvite(invite.id, 'ACCEPTED');
-    if (result.ok && result.sessionId) {
-      // Rimuovi l'invito dalla lista
-      setInvites(prev => prev.filter(i => i.id !== invite.id));
-      // Notifica App.tsx per avviare il gioco
-      onAccepted(result.sessionId);
-    }
-  };
-
-  const handleReject = async (invite: api.GameInvite) => {
-    const result = await api.respondGameInvite(invite.id, 'REJECTED');
-    if (result.ok) {
-      setInvites(prev => prev.filter(i => i.id !== invite.id));
-    }
-  };
+  const handleAccept = (invite: api.GameInvite) => onAccept(invite);
+  const handleReject = (invite: api.GameInvite) => onDecline(invite);
 
   const handleDismiss = (inviteId: number) => {
     setDismissed(prev => new Set(prev).add(inviteId));
@@ -5167,7 +6406,10 @@ export default function GameInviteToast({ onAccepted }: GameInviteToastProps) {
     </div>
   );
 }
-========== ./src/site/components/Icons.tsx ==========
+
+==============================================
+FILE: src/site/components/Icons.tsx
+==============================================
 import React from 'react';
 
 interface IconProps {
@@ -5315,7 +6557,10 @@ export const Menu = ({ size = 24 }: IconProps) => (
     <line x1="3" y1="18" x2="21" y2="18" />
   </svg>
 );
-========== ./src/site/components/Navbar.tsx ==========
+
+==============================================
+FILE: src/site/components/Navbar.tsx
+==============================================
 import { useState, useEffect } from 'react';
 import { navLinkBase } from '../styles/shared';
 import { useDropdown, DropdownPanel, DropdownItem } from './Dropdown';
@@ -5370,49 +6615,20 @@ export default function Navbar({ currentPage, onNavigate, onLogout, username, av
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Integrazione SSE (Server-Sent Events) per le Notifiche Live
   useEffect(() => {
     if (!username) return;
-
-    // 1. Carica lo storico iniziale
     fetchNotifications();
-
-    // 2. Apri il canale SSE per ricevere le nuove in tempo reale
-    // ASSICURATI CHE L'URL SIA QUELLO DEL BACKEND
-    const SSE_URL = '/api/users/me/notification/stream'; 
-    
-    const eventSource = new EventSource(SSE_URL, {
-      withCredentials: true // FONDAMENTALE per far leggere i cookie di sessione a NestJS
-    });
-
-    // Quando il backend "spinge" un nuovo dato (messaggio generico)
-    eventSource.onmessage = (event) => {
-      try {
-        const newNotif: NotificationItem = JSON.parse(event.data);
-        
-        // Aggiungiamo la nuova notifica in cima alla lista
-        setNotifications(prev => [newNotif, ...prev]);
-        
-        // Aumentiamo il contatore dei non letti se necessario
-        if (!newNotif.isRead) {
-          setUnreadCount(prev => prev + 1);
-        }
-      } catch (err) {
-        console.error("[SSE] Errore nel parsing della notifica:", err);
-      }
-    };
-
-    eventSource.onerror = (err) => {
-      console.error("[SSE] Errore di connessione al flusso notifiche. Tentativo di riconnessione automatico...", err);
-      // L'EventSource del browser proverà a riconnettersi automaticamente, 
-      // non c'è bisogno di logiche astruse di reconnect.
-    };
-
-    // Cleanup: chiudiamo il "tubo" se cambiamo utente o il componente viene smontato
-    return () => {
-      eventSource.close();
-    };
   }, [username]);
+
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const newNotif = (e as CustomEvent<NotificationItem>).detail;
+      setNotifications(prev => [newNotif, ...prev]);
+      if (!newNotif.isRead) setUnreadCount(prev => prev + 1);
+    };
+    window.addEventListener('new-notification', handler);
+    return () => window.removeEventListener('new-notification', handler);
+  }, []);
 
   const handleMarkAllRead = async () => {
     if (await api.markAllNotificationsRead()) {
@@ -5435,7 +6651,7 @@ export default function Navbar({ currentPage, onNavigate, onLogout, username, av
     if (n.type === 'FRIEND_REQ' || n.type === 'FRIEND_ACCEPTED') {
       scrollTo('profile', 'profile-friends');
     } else if (n.type === 'ACHV_UNLOCKED') {
-      scrollTo('profile', 'profile-stats');
+      scrollTo('profile', 'profile-achievements');
     }
   };
 
@@ -5632,7 +6848,6 @@ export default function Navbar({ currentPage, onNavigate, onLogout, username, av
                     <DropdownItem icon={Icons.BarChart} label="Statistics" onClick={() => scrollTo('profile', 'profile-stats')} />
                     <DropdownItem icon={Icons.BarChart} label="Match History" onClick={() => scrollTo('profile', 'profile-matches')} />
                     <DropdownItem icon={Icons.Trophy} label="Achievements" onClick={() => scrollTo('profile', 'profile-achievements')} />
-                    <DropdownItem icon={Icons.Users} label="Friends" onClick={() => scrollTo('profile', 'profile-friends')} />
                     <div style={{ height: '1px', background: theme.colors.border, margin: '4px 12px' }} />
                     <DropdownItem icon={Icons.Shield} label="Security & 2FA" onClick={() => scrollTo('profile', 'profile-security')} />
                   </DropdownPanel>
@@ -5751,10 +6966,13 @@ export default function Navbar({ currentPage, onNavigate, onLogout, username, av
     </>
   );
 }
-========== ./src/site/components/desktopOnlyGuard.tsx ==========
+
+==============================================
+FILE: src/site/components/desktopOnlyGuard.tsx
+==============================================
 import { useState, useEffect } from 'react';
 import { theme } from '../../configs/theme';
-import welcomeScene from '../../assets/welcomeScene.png';
+import welcomeScene from '../../assets/images/welcomeScene.png';
 
 export default function DesktopOnlyGuard({ children }: { children: React.ReactNode }) {
   const [isBlocked, setIsBlocked] = useState(false);
@@ -5767,16 +6985,14 @@ export default function DesktopOnlyGuard({ children }: { children: React.ReactNo
       const isMobileUA = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/.test(ua);
       
       // 2. Il dispositivo usa principalmente il touch (es. smartphone/tablet)
+      // pointer: coarse = touch è il pointer primario (phone/tablet). I laptop con touchscreen
+      // hanno il mouse come primario → pointer: fine → non bloccati.
       const isCoarsePointer = window.matchMedia("(pointer: coarse)").matches;
-      
-      // 3. Controllo ibrido: ha il touch ed è uno schermo piccolo
-      const isSmallScreenTouch = navigator.maxTouchPoints > 0 && window.innerWidth < 1024;
-      
-      // 4. "Trappola iPad": l'iPad Pro si finge un Mac, ma ha il touch
+
+      // 3. "Trappola iPad": l'iPad Pro si finge un Mac, ma ha il touch
       const isMacTouch = ua.includes("mac") && navigator.maxTouchPoints > 2;
 
-      // Se uno di questi controlli risulta vero, blocchiamo l'accesso
-      if (isMobileUA || isCoarsePointer || isSmallScreenTouch || isMacTouch) {
+      if (isMobileUA || isCoarsePointer || isMacTouch) {
         setIsBlocked(true);
       } else {
         setIsBlocked(false);
@@ -5839,29 +7055,34 @@ export default function DesktopOnlyGuard({ children }: { children: React.ReactNo
   // Se passa tutti i controlli, carica il gioco!
   return <>{children}</>;
 }
-========== ./src/site/pages/DashboardPage.tsx ==========
+
+==============================================
+FILE: src/site/pages/DashboardPage.tsx
+==============================================
 import { sectionTitleStyle } from '../styles/shared';
 import { theme } from '../../configs/theme';
 import { NAVBAR_HEIGHT } from '../components/Navbar';
+import { useState } from 'react';
 import * as Icons from '../components/Icons';
-
-import zeusDescImg from '../../assets/ZeusDescription.png';
-import adeDescImg from '../../assets/AdeDescription.png';
+import zeusDescImg from '../../assets/images/ZeusDescription.png';
+import adeDescImg from '../../assets/images/AdeDescription.png';
+import zeusDetailImg from '../../assets/images/ZeusDetail.png';
+import adeDetailImg from '../../assets/images/AdeDetail.png';
 
 interface DashboardPageProps {
   onNavigate: (page: string) => void;
 }
 
-// ⚡ Componente di supporto per renderizzare i tasti in modo ordinato
+//  Componente di supporto per renderizzare i tasti in modo ordinato
 const ControlRow = ({ keys, action, stacked = false }: { keys: string[], action: string, stacked?: boolean }) => (
   <div style={{
-    display: "flex", 
-    flexDirection: stacked ? "column" : "row", 
-    alignItems: stacked ? "flex-start" : "center", 
-    gap: stacked ? "8px" : "16px", 
+    display: "flex",
+    flexDirection: stacked ? "column" : "row",
+    alignItems: stacked ? "flex-start" : "center",
+    gap: stacked ? "8px" : "16px",
     padding: "12px 16px",
-    background: theme.colors.bgDark, 
-    border: `1px solid ${theme.colors.border}`, 
+    background: theme.colors.bgDark,
+    border: `1px solid ${theme.colors.border}`,
     borderRadius: "4px",
   }}>
     <div style={{ display: "flex", gap: "6px", alignItems: "center", flexWrap: "wrap" }}>
@@ -5870,7 +7091,7 @@ const ControlRow = ({ keys, action, stacked = false }: { keys: string[], action:
           <kbd style={{
             padding: "4px 10px", background: theme.colors.bgPanel,
             border: `1px solid ${theme.colors.textMuted}`, borderRadius: "3px",
-            color: theme.colors.gold, fontFamily: theme.fonts.heading, fontSize: "11px", 
+            color: theme.colors.gold, fontFamily: theme.fonts.heading, fontSize: "11px",
             fontWeight: 700, letterSpacing: "1px", whiteSpace: "nowrap",
           }}>{k}</kbd>
           {i < keys.length - 1 && <span style={{color: theme.colors.textMuted, fontSize: "12px", fontFamily: theme.fonts.mono}}>+</span>}
@@ -5883,27 +7104,29 @@ const ControlRow = ({ keys, action, stacked = false }: { keys: string[], action:
 
 
 export default function DashboardPage({ onNavigate }: DashboardPageProps) {
+  const [footerModal, setFooterModal] = useState<'privacy' | 'terms' | null>(null);
+  const [charModal, setCharModal] = useState<string | null>(null);
   return (
     <div className="animate-fadeIn" style={{ paddingTop: `${NAVBAR_HEIGHT}px` }}>
-      
+
       {/* ================= SECTION CON BACKGROUND VIDEO ================= */}
       <div id="section-game" style={{
         position: "relative",
         minHeight: `calc(100vh - ${NAVBAR_HEIGHT}px)`,
-        display: "flex", 
-        flexDirection: "column", 
-        alignItems: "center", 
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
         justifyContent: "center",
         overflow: "hidden",
         scrollMarginTop: `${NAVBAR_HEIGHT}px`,
       }}>
-        
+
         {/* Sfondo Video Assoluto */}
-        <video 
-          src="/videos/video1.mp4" 
-          autoPlay 
-          loop 
-          muted 
+        <video
+          src="/videos/video1.mp4"
+          autoPlay
+          loop
+          muted
           playsInline
           style={{
             position: "absolute",
@@ -5941,31 +7164,31 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
           width: "100%"
         }}>
           <h1 style={{
-            fontSize: "clamp(42px, 8vw, 86px)", 
+            fontSize: "clamp(42px, 8vw, 86px)",
             fontFamily: theme.fonts.heading,
             fontWeight: 900,
             background: `linear-gradient(180deg, ${theme.colors.goldBright}, ${theme.colors.gold}, ${theme.colors.goldDark})`,
-            WebkitBackgroundClip: "text", 
+            WebkitBackgroundClip: "text",
             WebkitTextFillColor: "transparent",
-            letterSpacing: "6px", 
-            lineHeight: 1.1, 
-            marginBottom: "16px", 
+            letterSpacing: "6px",
+            lineHeight: 1.1,
+            marginBottom: "16px",
             textTransform: "uppercase",
             textShadow: "0 4px 20px rgba(0,0,0,0.8)"
           }}>Clash of<br />Olympus</h1>
-          
-          <p style={{ 
-            color: theme.colors.textSecondary, 
+
+          <p style={{
+            color: theme.colors.textSecondary,
             fontFamily: theme.fonts.heading,
-            fontSize: "clamp(12px, 2vw, 16px)", 
-            letterSpacing: "6px", 
-            textTransform: "uppercase", 
+            fontSize: "clamp(12px, 2vw, 16px)",
+            letterSpacing: "6px",
+            textTransform: "uppercase",
             marginBottom: "48px",
             textShadow: "0 2px 10px rgba(0,0,0,0.9)"
           }}>
             An Isometric Mythological Brawler
           </p>
-          
+
           {/* BOTTONE TONDO */}
           <button className="btn-press" onClick={() => onNavigate("play")} style={{
             marginTop: "20px",
@@ -5979,12 +7202,12 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
             gap: "8px",
             background: `radial-gradient(circle at center, rgba(232,213,163,0.15) 0%, rgba(62,52,26,0.6) 80%, rgba(6,14,20,0.9) 100%)`,
             border: `2px solid ${theme.colors.goldBright}`,
-            color: theme.colors.goldBright, 
-            fontFamily: theme.fonts.heading, 
+            color: theme.colors.goldBright,
+            fontFamily: theme.fonts.heading,
             fontSize: "14px",
-            fontWeight: 800, 
-            letterSpacing: "2px", 
-            textTransform: "uppercase", 
+            fontWeight: 800,
+            letterSpacing: "2px",
+            textTransform: "uppercase",
             cursor: "pointer",
             transition: "all 0.3s",
             boxShadow: `0 0 50px ${theme.colors.goldGlow}, inset 0 0 30px rgba(232,213,163,0.2)`,
@@ -6002,52 +7225,52 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
       <div id="section-characters" style={{
         padding: "80px 48px",
         background: `linear-gradient(180deg, ${theme.colors.bgDark} 0%, ${theme.colors.bg} 100%)`,
-        borderTop: `1px solid ${theme.colors.border}`, 
+        borderTop: `1px solid ${theme.colors.border}`,
         scrollMarginTop: `${NAVBAR_HEIGHT}px`,
       }}>
         <h2 style={sectionTitleStyle}>CHARACTERS</h2>
-        
-        <div style={{ 
-          display: "grid", 
+
+        <div style={{
+          display: "grid",
           gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
-          gap: "40px", 
-          maxWidth: "1400px", 
-          margin: "0 auto" 
+          gap: "40px",
+          maxWidth: "1400px",
+          margin: "0 auto"
         }}>
-          {[
+        {[
             { name: "HADES", img: adeDescImg },
             { name: "ZEUS", img: zeusDescImg },
           ].map((c) => (
-            <div key={c.name} style={{
+            <div key={c.name} onClick={() => setCharModal(c.name)} style={{
               background: theme.colors.bgPanel,
-              border: `1px solid ${theme.colors.border}`, 
+              border: `1px solid ${theme.colors.border}`,
               borderRadius: "8px",
               overflow: "hidden",
-              transition: "all 0.3s ease", 
+              transition: "all 0.3s ease",
               cursor: "pointer",
               boxShadow: `0 10px 30px rgba(0,0,0,0.5)`,
               display: "flex",
             }}
-              onMouseEnter={(e) => { 
-                e.currentTarget.style.borderColor = theme.colors.gold; 
-                e.currentTarget.style.transform = "translateY(-6px)"; 
-                e.currentTarget.style.boxShadow = `0 15px 40px rgba(0,0,0,0.7), 0 0 25px ${theme.colors.goldGlow}`; 
+              onMouseEnter={(e) => {
+                e.currentTarget.style.borderColor = theme.colors.gold;
+                e.currentTarget.style.transform = "translateY(-6px)";
+                e.currentTarget.style.boxShadow = `0 15px 40px rgba(0,0,0,0.7), 0 0 25px ${theme.colors.goldGlow}`;
               }}
-              onMouseLeave={(e) => { 
-                e.currentTarget.style.borderColor = theme.colors.border; 
-                e.currentTarget.style.transform = "translateY(0)"; 
-                e.currentTarget.style.boxShadow = `0 10px 30px rgba(0,0,0,0.5)`; 
+              onMouseLeave={(e) => {
+                e.currentTarget.style.borderColor = theme.colors.border;
+                e.currentTarget.style.transform = "translateY(0)";
+                e.currentTarget.style.boxShadow = `0 10px 30px rgba(0,0,0,0.5)`;
               }}>
-              
-              <img 
-                src={c.img} 
-                alt={`${c.name} Character Card`} 
+
+              <img
+                src={c.img}
+                alt={`${c.name} Character Card`}
                 style={{
                   width: "100%",
                   height: "auto",
                   display: "block",
                   objectFit: "cover"
-                }} 
+                }}
               />
             </div>
           ))}
@@ -6057,16 +7280,16 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
 
       {/* ================= CONTROLS SECTION ===================== */}
       <div id="section-commands" style={{
-        padding: "80px 48px", 
+        padding: "80px 48px",
         borderTop: `1px solid ${theme.colors.border}`,
         maxWidth: "1100px", // ⚡ Allargato per fare spazio a 2 colonne
-        margin: "0 auto", 
+        margin: "0 auto",
         scrollMarginTop: `${NAVBAR_HEIGHT}px`,
       }}>
         <h2 style={sectionTitleStyle}>Controls</h2>
-        
+
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: "32px" }}>
-          
+
           {/* PANNELLO 1: Single Player / Online */}
           <div style={{ background: theme.colors.bgPanel, border: `1px solid ${theme.colors.border}`, borderRadius: "8px", padding: "24px" }}>
             <h3 style={{ fontFamily: theme.fonts.heading, color: theme.colors.goldBright, fontSize: "16px", letterSpacing: "2px", marginBottom: "20px", textTransform: "uppercase", textAlign: "center", borderBottom: `1px solid ${theme.colors.border}`, paddingBottom: "12px" }}>
@@ -6075,8 +7298,9 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
             <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
               <ControlRow keys={["W A S D"]} action="Movement" />
               <ControlRow keys={["SPACE"]} action="Melee Attack" />
-              <ControlRow keys={["SHIFT", "L-CLICK"]} action="Aim & Shoot Spell" />
-              <ControlRow keys={["CTRL"]} action="Defense Stance" />
+              <ControlRow keys={["SHIFT"]} action="Press/Release for enable or disable Aim-Mode" />
+              <ControlRow keys={["L-CLICK"]} action="Shoot a Spell at click location (Aim-Mode enabled ONLY)" />
+              <ControlRow keys={["C"]} action="Defense Stance" />
               <ControlRow keys={["ENTER"]} action="Open Game Chat" />
             </div>
           </div>
@@ -6086,17 +7310,17 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
             <h3 style={{ fontFamily: theme.fonts.heading, color: theme.colors.goldBright, fontSize: "16px", letterSpacing: "2px", marginBottom: "20px", textTransform: "uppercase", textAlign: "center", borderBottom: `1px solid ${theme.colors.border}`, paddingBottom: "12px" }}>
               Local Game (Shared Keyboard)
             </h3>
-            
+
             <div style={{ display: "flex", gap: "16px" }}>
               {/* Player 1 */}
               <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: "10px" }}>
                 <span style={{ fontFamily: theme.fonts.heading, color: theme.colors.zeus, fontSize: "13px", letterSpacing: "1px", textTransform: "uppercase", textAlign: "center", marginBottom: "8px", fontWeight: "bold" }}>Player 1</span>
                 <ControlRow keys={["W A S D"]} action="Move" stacked />
                 <ControlRow keys={["SPACE"]} action="Melee" stacked />
-                <ControlRow keys={["SHIFT"]} action="Spell" stacked />
-                <ControlRow keys={["CTRL"]} action="Defense" stacked />
+                <ControlRow keys={["SHIFT"]} action="Spell (Where you look at)" stacked />
+                <ControlRow keys={["C"]} action="Defense" stacked />
               </div>
-              
+
               {/* Divisore */}
               <div style={{ width: "1px", background: theme.colors.border }} />
 
@@ -6104,9 +7328,9 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
               <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: "10px" }}>
                 <span style={{ fontFamily: theme.fonts.heading, color: theme.colors.ade, fontSize: "13px", letterSpacing: "1px", textTransform: "uppercase", textAlign: "center", marginBottom: "8px", fontWeight: "bold" }}>Player 2</span>
                 <ControlRow keys={["ARROWS"]} action="Move" stacked />
-                <ControlRow keys={["NUM 1"]} action="Melee" stacked />
-                <ControlRow keys={["NUM 2"]} action="Spell" stacked />
-                <ControlRow keys={["NUM 3"]} action="Defense" stacked />
+                <ControlRow keys={["P"]} action="Melee" stacked />
+                <ControlRow keys={["O"]} action="Spell (Where you look at)" stacked />
+                <ControlRow keys={["I"]} action="Defense" stacked />
               </div>
             </div>
           </div>
@@ -6115,20 +7339,225 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
       </div>
       {/* ========================================================================= */}
 
-      {/* Footer */}
+      {/* Character Detail Modal */}
+      {charModal && (
+        <div style={{
+          position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)",
+          display: "flex", alignItems: "center", justifyContent: "center", zIndex: 9999,
+        }} onClick={() => setCharModal(null)}>
+          <div onClick={(e) => e.stopPropagation()} style={{
+            background: theme.colors.bgPanel, border: `1px solid ${theme.colors.gold}`,
+            borderRadius: "4px", padding: "24px", maxWidth: "700px", width: "90%",
+            maxHeight: "85vh", overflowY: "auto",
+            boxShadow: `0 0 40px ${theme.colors.goldGlow}`,
+            textAlign: "center",
+          }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
+              <h2 style={{ fontFamily: theme.fonts.heading, color: theme.colors.goldBright, fontSize: "24px", letterSpacing: "4px" }}>
+                {charModal}
+              </h2>
+              <button onClick={() => setCharModal(null)} style={{
+                background: "none", border: "none", color: theme.colors.textMuted, cursor: "pointer",
+              }}><Icons.X size={20} /></button>
+            </div>
+            <img
+              src={charModal === "ZEUS" ? zeusDetailImg : adeDetailImg}
+              alt={charModal}
+              style={{ width: "100%", borderRadius: "4px" }}
+            />
+          </div>
+        </div>
+      )}
+
+    {/* Footer */}
       <footer style={{
         padding: "24px 48px", borderTop: `1px solid ${theme.colors.border}`,
         display: "flex", justifyContent: "space-between", alignItems: "center",
       }}>
+        <div style={{ display: "flex", gap: "24px" }}>
+          <span onClick={() => setFooterModal('privacy')} style={{
+            fontFamily: theme.fonts.heading, color: theme.colors.textMuted, fontSize: "11px",
+            letterSpacing: "1px", cursor: "pointer", transition: "color 0.2s",
+          }}
+            onMouseEnter={(e) => e.currentTarget.style.color = theme.colors.gold}
+            onMouseLeave={(e) => e.currentTarget.style.color = theme.colors.textMuted}
+          >PRIVACY POLICY</span>
+          <span onClick={() => setFooterModal('terms')} style={{
+            fontFamily: theme.fonts.heading, color: theme.colors.textMuted, fontSize: "11px",
+            letterSpacing: "1px", cursor: "pointer", transition: "color 0.2s",
+          }}
+            onMouseEnter={(e) => e.currentTarget.style.color = theme.colors.gold}
+            onMouseLeave={(e) => e.currentTarget.style.color = theme.colors.textMuted}
+          >TERMS OF SERVICE</span>
+        </div>
         <span style={{ fontFamily: theme.fonts.heading, color: theme.colors.textMuted, fontSize: "11px", letterSpacing: "1px" }}>
           CLASH OF OLYMPUS © 2026
         </span>
       </footer>
+
+      {/* Footer Modal */}
+      {footerModal && (
+        <div style={{
+          position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)",
+          display: "flex", alignItems: "center", justifyContent: "center", zIndex: 9999,
+        }} onClick={() => setFooterModal(null)}>
+          <div onClick={(e) => e.stopPropagation()} style={{
+            background: theme.colors.bgPanel, border: `1px solid ${theme.colors.gold}`,
+            borderRadius: "4px", padding: "40px", maxWidth: "600px", width: "90%",
+            maxHeight: "80vh", overflowY: "auto",
+            boxShadow: `0 0 40px ${theme.colors.goldGlow}`,
+          }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "24px" }}>
+              <h2 style={{ fontFamily: theme.fonts.heading, color: theme.colors.goldBright, fontSize: "20px", letterSpacing: "2px" }}>
+                {footerModal === 'privacy' ? 'Privacy Policy' : 'Terms of Service'}
+              </h2>
+              <button onClick={() => setFooterModal(null)} style={{
+                background: "none", border: "none", color: theme.colors.textMuted, cursor: "pointer",
+              }}><Icons.X size={20} /></button>
+            </div>
+            <div style={{ fontFamily: theme.fonts.mono, fontSize: "12px", color: theme.colors.textSecondary, lineHeight: 1.8, whiteSpace: "pre-wrap" }}>
+              {footerModal === 'privacy' ? PRIVACY_TEXT : TERMS_TEXT}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
-========== ./src/site/pages/GameFlow.tsx ==========
-import { useState, useEffect } from 'react';
+
+const EMAIL_USER = import.meta.env.VITE_EMAIL_USER || 'email not currently available';
+// Costanti contenenti il testo per il Modal Footer
+
+const PRIVACY_TEXT =
+
+`1. Introduction
+
+This application ("the Service") respects your privacy and is committed to protecting your personal data in accordance with applicable laws, including the General Data Protection Regulation (GDPR).
+
+2. Data We Collect
+
+We may collect the following personal data:
+  • Username
+  • Email address
+  • Password (stored securely as a hash)
+  • OAuth account data (e.g., Google account ID and email)
+  • Game-related data (scores, matches, statistics)
+  • Technical data such as IP address and login activity
+
+3. Purpose of Data Processing
+
+We process your data for the following purposes:
+  • To create and manage your account
+  • To authenticate users and maintain sessions
+  • To provide gameplay features and statistics
+  • To ensure security and prevent abuse
+
+4. Legal Basis
+
+Your data is processed on the basis of:
+  • Performance of a contract (providing the Service)
+  • Legitimate interest (security and fraud prevention)
+
+5. Data Storage and Security
+
+  • Passwords are securely hashed using industry-standard methods
+  • Authentication tokens are stored in HTTP-only cookies
+  • Reasonable technical measures are used to protect your data
+
+6. Data Retention
+
+  • We retain your data as long as your account is active.
+  • We may delete inactive accounts after an extended period of inactivity.
+  • You may request deletion of your account at any time.
+
+7. Your Rights
+
+Under GDPR, you have the right to:
+  • Access your personal data
+  • Correct inaccurate data
+  • Delete your data ("right to be forgotten")
+
+These rights can be exercised through your account settings or by contacting us.
+
+8. Cookies
+
+This Service uses strictly necessary cookies for authentication purposes.
+
+These include:
+  • Access token cookies
+  • Refresh token cookies
+
+These cookies are required for the proper functioning of the Service and do not require user consent.
+
+9. Third-Party Services
+
+We may use third-party services such as:
+  • Google OAuth for authentication
+
+These services may process your data according to their own privacy policies.
+
+10. Contact
+
+For any privacy-related requests, contact:
+${EMAIL_USER}
+
+11. Changes
+
+We may update this Privacy Policy at any time. Continued use of the Service implies acceptance of the updated policy.`;
+
+const TERMS_TEXT =
+
+`1. Acceptance of Terms
+
+By using this Service, you agree to these Terms of Service.
+
+2. User Accounts
+
+  • You are responsible for maintaining the confidentiality of your account credentials.
+  • You agree to provide accurate information when registering.
+
+3. Acceptable Use
+
+You agree not to:
+  • Use the Service for unlawful purposes
+  • Attempt to gain unauthorized access
+  • Exploit bugs or cheat in the game
+  • Harass or abuse other users
+
+4. Service Availability
+
+  • The Service is provided "as is" without guarantees of availability or performance.
+  • We may modify or discontinue the Service at any time.
+
+5. Account Termination
+
+  • We reserve the right to suspend or delete accounts that violate these terms.
+  • Users may delete their account at any time.
+
+6. Limitation of Liability
+
+We are not responsible for:
+  • Data loss
+  • Service interruptions
+  • Any damages arising from the use of the Service
+
+7. Intellectual Property
+
+All content and code of the Service remain the property of the developer unless otherwise stated.
+
+8. Governing Law
+
+These Terms are governed by the laws of Italy.
+
+9. Changes
+
+We may update these Terms at any time. Continued use of the Service implies acceptance of the updated Terms.`;
+
+
+==============================================
+FILE: src/site/pages/GameFlow.tsx
+==============================================
+import { useState, useEffect, useRef } from 'react';
 import ModeSelectScene from '../../scenes/modeSelectScene';
 import CharacterSelectScene from '../../scenes/characterSelectScene';
 import QueueScene from '../../scenes/queueScene';
@@ -6144,6 +7573,8 @@ interface GameFlowProps {
   userId: number;
   username: string;
   onExit: () => void;
+  sessionId?: string | null;
+  inviterId?: number | null;
 }
 
 const ERROR_MESSAGES: Record<string, string> = {
@@ -6157,56 +7588,72 @@ const ERROR_MESSAGES: Record<string, string> = {
   MAP_LOAD_FAILED: 'Failed to load the game map.',
 };
 
-export default function GameFlow({ userId, username, onExit }: GameFlowProps) {
-  const [scene, setScene] = useState<GameScene>('mode-select');
-  const [selectedMode, setSelectedMode] = useState<MatchMode>(MatchMode.RANKED);
+export default function GameFlow({ userId, username, onExit, sessionId: initialSessionId, inviterId }: GameFlowProps) {
+  const [scene, setScene] = useState<GameScene>(initialSessionId ? 'character-select' : 'mode-select');
+  const [selectedMode, setSelectedMode] = useState<MatchMode>(initialSessionId ? MatchMode.UNRANKED : MatchMode.RANKED);
   const [p1Character, setP1Character] = useState<CharacterName>(CharacterName.ZEUS);
   const [p2Character, setP2Character] = useState<CharacterName>(CharacterName.ADE);
-  
-  // Stato per la schermata di riconnessione
+  const [sessionId, setSessionId] = useState<string | null>(initialSessionId || null);
   const [isReconnecting, setIsReconnecting] = useState(false);
+  const hasResignedRef = useRef(false);
+  const [cancelMessage, setCancelMessage] = useState<string | null>(null);
 
   useEffect(() => {
     matchmakingSocket.connect();
-
-    // Ascolto GLOBALE dell'evento MATCH_FOUND
-    const handleMatchFound = () => {
-      setScene((prevScene) => {
-        // 1. Se siamo già in gioco, ignoriamo l'evento per non interrompere la partita!
-        if (prevScene === 'game') {
-          return prevScene;
+    const handleMatchFound = (data: any) => {
+      console.log("[GameFlow] MATCH_FOUND data:", JSON.stringify(data));
+      if (hasResignedRef.current) return;
+        
+      if (data?.status === 'MATCH_CANCELLED') {
+        setCancelMessage(data?.message || "L'avversario ha abbandonato. Partita annullata.");
+        setTimeout(() => onExit(), 3000);
+        return;
+      }
+      // Deduce il matchMode dal matchId per la riconnessione
+      if (data?.matchId) {
+        if (data.matchId.startsWith('local_')) {
+          setSelectedMode(MatchMode.LOCAL);
+        } else if (data.matchId.startsWith('ai_')) {
+          setSelectedMode(MatchMode.AI);
         }
-
-        // 2. Se riceviamo MATCH_FOUND ma non stavamo cercando partita (queue),
-        // significa che il server ci sta riconnettendo a una partita in corso!
+      }
+      
+      setScene((prevScene) => {
+        if (prevScene === 'game') return prevScene;
         if (prevScene !== 'queue') {
           setIsReconnecting(true);
-          
-          // Attendiamo 3 secondi per mostrare il messaggio all'utente
           setTimeout(() => {
             socketService.connect('/', String(userId));
             setIsReconnecting(false);
             setScene('game');
           }, 3000);
-          
-          return prevScene; // Manteniamo la scena visiva attuale sotto l'overlay
-        } 
-        
-        // 3. Flusso normale: eravamo in coda e abbiamo trovato partita
+          return prevScene;
+        }
         socketService.connect('/', String(userId));
         return 'game';
       });
     };
 
+    // SENDER: Matchamking ci avvisa che l'invitato ha accettato
+    const handleDirectSessionReady = (data: any) => {
+      console.log("[GameFlow] DIRECT_SESSION_READY:", data);
+      if (data?.sessionId) {
+        setSessionId(data.sessionId);
+        setSelectedMode(MatchMode.UNRANKED);
+        setScene('character-select');
+      }
+    };
+
     matchmakingSocket.on(GameEvents.MATCH_FOUND, handleMatchFound);
+    matchmakingSocket.on(GameEvents.DIRECT_SESSION_READY, handleDirectSessionReady);
 
     return () => {
       matchmakingSocket.off(GameEvents.MATCH_FOUND, handleMatchFound);
+      matchmakingSocket.off(GameEvents.DIRECT_SESSION_READY, handleDirectSessionReady);
       matchmakingSocket.disconnect();
     };
   }, [userId]);
 
-  // Registra handler errori da entrambi i socket
   useEffect(() => {
     const handleError = (code: string, message: string) => {
       if (code === 'INVALID_INPUT') {
@@ -6217,7 +7664,11 @@ export default function GameFlow({ userId, username, onExit }: GameFlowProps) {
       alert(display);
       socketService.disconnect();
       matchmakingSocket.disconnect();
-      onExit();
+      if (code === 'UNAUTHORIZED' || code === 'UNAUTHORIZED_TOKEN') {
+        window.location.reload();
+      } else {
+        onExit();
+      }
     };
 
     socketService.setOnGameError(handleError);
@@ -6243,19 +7694,47 @@ export default function GameFlow({ userId, username, onExit }: GameFlowProps) {
   const handlePlayAgain = () => {
     socketService.disconnect();
     matchmakingSocket.connect();
+    setSessionId(null);
     setScene('mode-select');
   };
 
   const handleQuit = () => {
-    socketService.disconnect();
-    matchmakingSocket.disconnect();
-    onExit();
+    hasResignedRef.current = true;
+    
+    const cleanup = () => {
+      socketService.disconnect();
+      matchmakingSocket.disconnect();
+      onExit();
+    };
+  
+    const safetyTimeout = setTimeout(() => {
+      console.warn('[GameFlow] LEAVE_GAME ack timeout — cleanup forzato');
+      cleanup();
+    }, 1000);
+  
+    socketService.emit(
+      GameEvents.LEAVE_GAME,
+      { userId: String(userId) },
+      (response) => {
+        clearTimeout(safetyTimeout);
+      
+        if (response.status === 'success') {
+          console.log('[GameFlow] Leave confermato:', response.message);
+        } else {
+          console.warn(
+            `[GameFlow] Leave fallito lato server [${response.errorCode}]:`,
+            response.message
+          );
+        }
+      
+        cleanup();
+      }
+    );
   };
 
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 2000 }}>
       
-      {/* OVERLAY RICONNESSIONE */}
       {isReconnecting && (
         <div className="animate-fadeIn" style={{
           position: 'fixed', inset: 0, zIndex: 3000,
@@ -6274,19 +7753,13 @@ export default function GameFlow({ userId, username, onExit }: GameFlowProps) {
               fontFamily: theme.fonts.heading, color: theme.colors.goldBright,
               fontSize: '24px', letterSpacing: '2px', marginBottom: '16px',
               textTransform: 'uppercase'
-            }}>
-              Match In Corso
-            </h2>
+            }}>Match In Corso</h2>
             <p style={{
               fontFamily: theme.fonts.mono, color: theme.colors.textPrimary,
               fontSize: '14px', lineHeight: 1.6
             }}>
-              Stavi gia' partecipando ad una partita.
-              <br/>
-              <span style={{ 
-                color: theme.colors.gold, marginTop: '12px', display: 'block', 
-                animation: 'pulse 1.5s infinite', fontWeight: 'bold' 
-              }}>
+              Stavi gia' partecipando ad una partita.<br/>
+              <span style={{ color: theme.colors.gold, marginTop: '12px', display: 'block', animation: 'pulse 1.5s infinite', fontWeight: 'bold' }}>
                 Riconnessione in corso . . .
               </span>
             </p>
@@ -6294,11 +7767,32 @@ export default function GameFlow({ userId, username, onExit }: GameFlowProps) {
         </div>
       )}
 
+      {cancelMessage && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 3000,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          backgroundColor: 'rgba(10, 15, 25, 0.90)', backdropFilter: 'blur(10px)',
+        }}>
+          <div style={{
+            padding: '40px 60px', background: theme.colors.bgPanel,
+            border: `1px solid ${theme.colors.dead}`, borderRadius: '4px',
+            textAlign: 'center', boxShadow: '0 0 50px rgba(221,68,68,0.3)',
+          }}>
+            <h2 style={{
+              fontFamily: theme.fonts.heading, color: theme.colors.dead,
+              fontSize: '20px', letterSpacing: '2px', marginBottom: '16px',
+              textTransform: 'uppercase',
+            }}>Match Cancelled</h2>
+            <p style={{
+              fontFamily: theme.fonts.mono, color: theme.colors.textPrimary,
+              fontSize: '13px', lineHeight: 1.6,
+            }}>{cancelMessage}</p>
+          </div>
+        </div>
+      )}
+
       {scene === 'mode-select' && (
-        <ModeSelectScene
-          onModeSelect={handleModeSelect}
-          onBack={onExit}
-        />
+        <ModeSelectScene onModeSelect={handleModeSelect} onBack={onExit} />
       )}
 
       {scene === 'character-select' && (
@@ -6306,18 +7800,23 @@ export default function GameFlow({ userId, username, onExit }: GameFlowProps) {
           mode={selectedMode}
           userDbId={String(userId)}
           onConfirm={handleCharConfirm}
-          onBack={() => setScene('mode-select')}
+          onBack={() => {
+            if (sessionId) {
+              matchmakingSocket.emit(GameEvents.CANCEL_DIRECT_SESSION, { sessionId });
+              onExit();
+            } else {
+              setScene('mode-select');
+            }
+          }}
+          sessionId={sessionId}
         />
       )}
 
       {scene === 'queue' && (
-        <QueueScene
-          onCancel={() => {
-            matchmakingSocket.disconnect();
-            matchmakingSocket.connect();
-            setScene('character-select');
-          }}
-        />
+        <QueueScene onCancel={() => {
+          matchmakingSocket.emit(GameEvents.LEAVE_QUEUE, {});
+          setScene('character-select');
+        }} />
       )}
 
       {scene === 'game' && (
@@ -6329,13 +7828,16 @@ export default function GameFlow({ userId, username, onExit }: GameFlowProps) {
           onPlayAgain={handlePlayAgain}
           onQuit={handleQuit}
           myUserId={String(userId)}
+          myUsername={username}
         />
       )}
-
     </div>
   );
 }
-========== ./src/site/pages/LeaderboardPage.tsx ==========
+
+==============================================
+FILE: src/site/pages/LeaderboardPage.tsx
+==============================================
 import { useState, useEffect } from 'react';
 import { inputStyle } from '../styles/shared';
 import * as Icons from '../components/Icons';
@@ -6483,13 +7985,16 @@ export default function LeaderboardPage() {
     </div>
   );
 }
-========== ./src/site/pages/LoginPage.tsx ==========
+
+==============================================
+FILE: src/site/pages/LoginPage.tsx
+==============================================
 import React, { useState, useCallback, useEffect } from 'react';
 import { inputStyle } from '../styles/shared';
 import * as Icons from '../components/Icons';
 import * as authService from '../services/authService';
 import { toErrorString } from '../services/authService';
-import welcomeScene from '../../assets/welcomeScene.png';
+import welcomeScene from '../../assets/images/welcomeScene.png';
 import { theme } from '../../configs/theme';
 
 interface LoginPageProps {
@@ -6816,7 +8321,10 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
     </div>
   );
 }
-========== ./src/site/pages/ProfilePage.tsx ==========
+
+==============================================
+FILE: src/site/pages/ProfilePage.tsx
+==============================================
 import { useState, useEffect, useRef } from 'react';
 import { inputStyle, sectionTitleStyle } from '../styles/shared';
 import * as Icons from '../components/Icons';
@@ -6826,6 +8334,8 @@ import { UserProfile, UserStats, UserSettings, UserAchievementsResponse, MatchHi
 import { theme } from '../../configs/theme';
 import { NAVBAR_HEIGHT } from '../components/Navbar';
 import { CharacterName } from '@transcendence/types';
+import AdeHistory from '../../assets/images/AdeHistory.png';
+import ZeusHistory from '../../assets/images/ZeusHistory.png';
 
 const statusColor = (s: string) => 
   s === 'ONLINE' ? theme.colors.hpHigh : 
@@ -6904,12 +8414,14 @@ export default function ProfilePage() {
   const [pwdError, setPwdError] = useState('');
   const [msg, setMsg] = useState(''); 
 
-  const confirmPwdRef = useRef('');
+  const confirmPwdRef = useRef(''); // Per la password
   const [confirmPwdDisplay, setConfirmPwdDisplay] = useState('');
 
   const [achievements, setAchievements] = useState<UserAchievementsResponse | null>(null);
 
   const [matches, setMatches] = useState<MatchHistoryResponse | null>(null);
+
+  const fileInputRef = useRef<HTMLInputElement>(null);// per file nascosto di uploadAvatar
 
   const [dialog, setDialog] = useState<{ 
     isOpen: boolean; 
@@ -7053,17 +8565,94 @@ export default function ProfilePage() {
   return (
     <div className="animate-fadeIn" style={{ paddingTop: `${NAVBAR_HEIGHT}px`, maxWidth: '800px', margin: '0 auto', paddingBottom: '60px', paddingLeft: '24px', paddingRight: '24px' }}>
       
-      {/* Settings & Personalization */}
+    {/* Settings & Personalization */}
       <div id="profile-settings" style={{ paddingTop: '40px', scrollMarginTop: `${NAVBAR_HEIGHT}px` }}>
         <div style={{ textAlign: 'center', marginBottom: '40px' }}>
           <div style={{ position: 'relative', display: 'inline-block', marginBottom: '16px' }}>
-            <img src={avatarUrl} alt="avatar" style={{ width: '120px', height: '120px', borderRadius: '50%', border: `3px solid ${theme.colors.gold}`, boxShadow: `0 0 30px ${theme.colors.goldGlow}` }} />
-            <div style={{ position: 'absolute', bottom: '4px', right: '4px', width: '20px', height: '20px', borderRadius: '50%', background: statusColor(userStatus), border: `3px solid ${theme.colors.bgDark}` }} />
+            <img
+              src={avatarUrl} alt="avatar"
+              style={{ width: '120px', height: '120px', borderRadius: '50%', border: `3px solid ${theme.colors.gold}`, boxShadow: `0 0 30px ${theme.colors.goldGlow}`, cursor: 'pointer' }}
+              onClick={() => {
+                setDialog({
+                  isOpen: true,
+                  title: "Modifica Avatar",
+                  msg: "Vuoi caricare una nuova immagine per il tuo avatar? Formati accettati: JPEG, PNG, WebP (max 5MB).",
+                  action: () => {
+                    setDialog(null);
+                    fileInputRef.current?.click();
+                  }
+                });
+              }}
+            />
+            <div style={{
+              position: 'absolute', bottom: '4px', right: '4px', width: '20px', height: '20px',
+              borderRadius: '50%', background: statusColor(userStatus), border: `3px solid ${theme.colors.bgDark}`,
+            }} />
+            <div
+              onClick={() => {
+                setDialog({
+                  isOpen: true,
+                  title: "Modifica Avatar",
+                  msg: "Vuoi caricare una nuova immagine per il tuo avatar? Formati accettati: JPEG, PNG, WebP (max 5MB).",
+                  action: () => {
+                    setDialog(null);
+                    fileInputRef.current?.click();
+                  }
+                });
+              }}
+              style={{
+                position: 'absolute', inset: 0, borderRadius: '50%', background: 'rgba(0,0,0,0.5)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                opacity: 0, transition: 'opacity 0.2s', cursor: 'pointer',
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.opacity = '1'}
+              onMouseLeave={(e) => e.currentTarget.style.opacity = '0'}
+            >
+              <Icons.Edit size={24} />
+            </div>
+            <input
+              ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp"
+              style={{ display: 'none' }}
+              onChange={async (e) => {
+                const file = e.target.files?.[0];
+                if (!file) return;
+                if (file.size > 5 * 1024 * 1024) { alert("Max 5MB"); return; }
+                const result = await api.uploadAvatar(file);
+                if (result) {
+                  setProfile(prev => prev ? { ...prev, avatarUrl: result.avatarUrl } : null);
+                  setMsg("Avatar aggiornato con successo!");
+                  setTimeout(() => setMsg(''), 3000);
+                } else {
+                  alert("Upload fallito.");
+                }
+                e.target.value = '';
+              }}
+            />
           </div>
           <h1 style={{ fontFamily: theme.fonts.heading, fontSize: '28px', fontWeight: 700, color: theme.colors.goldBright, letterSpacing: '2px' }}>{username}</h1>
           <p style={{ fontFamily: theme.fonts.heading, color: theme.colors.textMuted, fontSize: '12px', letterSpacing: '1px', marginTop: '4px' }}>
             Member since {new Date(createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long' })}
           </p>
+          <button onClick={() => {
+            setDialog({
+              isOpen: true,
+              title: "Reset Avatar",
+              msg: "Vuoi ripristinare l'avatar predefinito?",
+              action: async () => {
+                setDialog(null);
+                const result = await api.resetAvatar();
+                if (result) {
+                  setProfile(prev => prev ? { ...prev, avatarUrl: result.avatarUrl } : null);
+                  setMsg("Avatar ripristinato!");
+                  setTimeout(() => setMsg(''), 3000);
+                }
+              }
+            });
+          }} style={{
+            background: 'none', border: 'none', color: theme.colors.textMuted,
+            fontFamily: theme.fonts.mono, fontSize: '11px', cursor: 'pointer',
+            textDecoration: 'underline', marginTop: '8px',
+          }}>Reset avatar to default</button>
         </div>
         
         <h2 style={{ ...sectionTitleStyle, fontSize: '22px', marginBottom: '24px' }}>Settings & Personalization</h2>
@@ -7072,7 +8661,7 @@ export default function ProfilePage() {
 
         <EditableField label="USERNAME" value={username} isEditing={editingUsername} tempVal={tempVal} setTempVal={setTempVal} onEdit={() => setEditingUsername(true)} onSave={handleSaveUsername} onCancel={() => setEditingUsername(false)} />
         <EditableField label="EMAIL" value={email} isEditing={editingEmail} tempVal={tempVal} setTempVal={setTempVal} onEdit={() => setEditingEmail(true)} onSave={handleSaveEmail} onCancel={() => setEditingEmail(false)} />
-
+        
         {/* Blocco Cambio Password */}
         <div style={{ padding: '16px 20px', background: theme.colors.bgPanel, border: `1px solid ${theme.colors.border}`, borderRadius: '4px', marginTop: '16px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -7148,78 +8737,91 @@ export default function ProfilePage() {
       </div>
 
 {/* Match History */}
-      <div id="profile-matches" style={{ paddingTop: '80px', scrollMarginTop: `${NAVBAR_HEIGHT}px` }}>
-        <h2 style={{ ...sectionTitleStyle, fontSize: '22px', marginBottom: '24px' }}>Match History</h2>
+     <div id="profile-matches" style={{ paddingTop: '80px', scrollMarginTop: `${NAVBAR_HEIGHT}px` }}>
+  <h2 style={{ ...sectionTitleStyle, fontSize: '22px', marginBottom: '24px' }}>
+    Match History
+  </h2>
 
-        {(!matches?.entries || matches.entries.length === 0) ? (
-          <div style={{ textAlign: 'center', padding: '32px', background: theme.colors.bgPanel, border: `1px solid ${theme.colors.border}`, borderRadius: '4px' }}>
-            <p style={{ fontFamily: theme.fonts.heading, color: theme.colors.textMuted, fontSize: '13px', letterSpacing: '1px' }}>
-              No matches played yet. Start fighting!
-            </p>
+  {(!matches?.entries || matches.entries.length === 0) ? (
+    <div style={{ textAlign: 'center', padding: '32px', background: theme.colors.bgPanel, border: `1px solid ${theme.colors.border}`, borderRadius: '4px' }}>
+      <p style={{ fontFamily: theme.fonts.heading, color: theme.colors.textMuted, fontSize: '13px', letterSpacing: '1px' }}>
+        No matches played yet. Start fighting!
+      </p>
+    </div>
+  ) : (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+      {matches.entries.map((m) => {
+        const resultColor =
+          m.result === 'WIN' ? theme.colors.hpHigh :
+          m.result === 'LOSS' ? theme.colors.dead :
+          theme.colors.hpMid;
+
+        const mins = Math.floor(m.durationSeconds / 60);
+        const secs = m.durationSeconds % 60;
+
+        const me = m.participants.find(p => p.userId === profile?.id);
+        const opponent = m.participants.find(p => p.userId !== profile?.id);
+
+        const myIcon = me?.characterName === 'ZEUS' ? ZeusHistory : AdeHistory;
+        const oppIcon = opponent?.characterName === 'ZEUS' ? ZeusHistory : AdeHistory;
+
+        return (
+          <div key={m.matchId} style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '12px',
+            padding: '14px 20px',
+            background: theme.colors.bgPanel,
+            border: `1px solid ${theme.colors.border}`,
+            borderRadius: '4px',
+            borderLeft: `3px solid ${resultColor}`,
+          }}>
+            {/* Result */}
+            <div style={{
+              fontFamily: theme.fonts.heading,
+              fontSize: '13px',
+              fontWeight: 700,
+              color: resultColor,
+              letterSpacing: '1px',
+              width: '40px',
+              textAlign: 'center',
+            }}>
+              {m.result}
+            </div>
+            <img src={myIcon} alt="" style={{ width: 28, height: 28, borderRadius: '4px' }} />
+            <span style={{ fontFamily: theme.fonts.heading, fontSize: '13px', fontWeight: 600, color: theme.colors.textPrimary }}>
+              {me?.username || profile?.username || '?'}
+            </span>
+            <span style={{ fontFamily: theme.fonts.mono, fontSize: '10px', color: theme.colors.textMuted }}>
+              vs
+            </span>
+            <span style={{ fontFamily: theme.fonts.heading, fontSize: '13px' }}>
+              {opponent?.username || 'Deleted User'}
+            </span>
+            <img src={oppIcon} alt="" style={{ width: 28, height: 28, borderRadius: '4px' }} />
+            <div style={{ flex: 1 }} />
+           <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+              <span style={{ fontFamily: theme.fonts.mono, fontSize: '10px', color: theme.colors.textSecondary }}>{m.mode}</span>
+              <span style={{ fontFamily: theme.fonts.mono, fontSize: '10px' }}>
+                {mins}:{secs.toString().padStart(2, '0')}
+              </span>
+              <span style={{ fontFamily: theme.fonts.mono, fontSize: '10px' }}>
+                {new Date(m.playedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+              </span>
+            </div>
+
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontFamily: theme.fonts.mono, fontSize: '14px', fontWeight: 700, color: theme.colors.textSecondary }}>
+                {me?.kills || 0}/{me?.deaths || 0}
+              </div>
+              <div style={{ fontFamily: theme.fonts.heading, fontSize: '9px' }}>K/D</div>
+            </div>
           </div>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            {matches.entries.map((m) => {
-              const resultColor = m.result === 'WIN' ? theme.colors.hpHigh
-                : m.result === 'LOSS' ? theme.colors.dead
-                : theme.colors.hpMid;
-              const mins = Math.floor(m.durationSeconds / 60);
-              const secs = m.durationSeconds % 60;
-              const me = m.participants.find(p => p.userId === profile?.id);
-              const opponent = m.participants.find(p => p.userId !== profile?.id);
-
-              return (
-                <div key={m.matchId} style={{
-                  display: 'flex', alignItems: 'center', gap: '16px',
-                  padding: '14px 20px', background: theme.colors.bgPanel,
-                  border: `1px solid ${theme.colors.border}`, borderRadius: '4px',
-                  borderLeft: `3px solid ${resultColor}`,
-                }}>
-                  {/* Result */}
-                  <div style={{
-                    fontFamily: theme.fonts.heading, fontSize: '13px', fontWeight: 700,
-                    color: resultColor, letterSpacing: '1px', width: '40px', textAlign: 'center',
-                  }}>{m.result}</div>
-
-                  {/* Character + Mode */}
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <span style={{ fontSize: '16px' }}>{me?.characterName === 'ZEUS' ? '⚡' : '🔥'}</span>
-                      <span style={{ fontFamily: theme.fonts.heading, fontSize: '13px', fontWeight: 600, color: theme.colors.textPrimary }}>
-                        {me?.characterName || '?'}
-                      </span>
-                      <span style={{ fontFamily: theme.fonts.mono, fontSize: '10px', color: theme.colors.textMuted }}>vs</span>
-                      <span style={{ fontFamily: theme.fonts.heading, fontSize: '13px', color: theme.colors.textSecondary }}>
-                        {opponent?.username || 'Deleted User'}
-                      </span>
-                      <span style={{ fontSize: '14px' }}>{opponent?.characterName === 'ZEUS' ? '⚡' : '🔥'}</span>
-                    </div>
-                    <div style={{ display: 'flex', gap: '12px', marginTop: '4px' }}>
-                      <span style={{ fontFamily: theme.fonts.mono, fontSize: '10px', color: theme.colors.textMuted }}>
-                        {m.mode}
-                      </span>
-                      <span style={{ fontFamily: theme.fonts.mono, fontSize: '10px', color: theme.colors.textMuted }}>
-                        {mins}:{secs.toString().padStart(2, '0')}
-                      </span>
-                      <span style={{ fontFamily: theme.fonts.mono, fontSize: '10px', color: theme.colors.textMuted }}>
-                        {new Date(m.playedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* K/D */}
-                  <div style={{ textAlign: 'center' }}>
-                    <div style={{ fontFamily: theme.fonts.mono, fontSize: '14px', fontWeight: 700, color: theme.colors.textPrimary }}>
-                      {me?.kills || 0}/{me?.deaths || 0}
-                    </div>
-                    <div style={{ fontFamily: theme.fonts.heading, fontSize: '9px', color: theme.colors.textMuted }}>K/D</div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
+        );
+      })}
+    </div>
+  )}
+</div> 
 
 
       {/* Achievements */}
@@ -7294,7 +8896,7 @@ export default function ProfilePage() {
         )}
       </div>
 
-      {/* Friends */}
+    {/* Friends
       <div id="profile-friends" style={{ paddingTop: '80px', scrollMarginTop: `${NAVBAR_HEIGHT}px` }}>
         <h2 style={{ ...sectionTitleStyle, fontSize: '22px', marginBottom: '24px' }}>Friends</h2>
         <div style={{ textAlign: 'center', padding: '24px', background: theme.colors.bgPanel, border: `1px solid ${theme.colors.border}`, borderRadius: '4px' }}>
@@ -7306,7 +8908,7 @@ export default function ProfilePage() {
             Your ID: <span style={{ color: theme.colors.gold, fontWeight: 700, fontSize: '14px' }}>{profile?.id}</span> — share it with friends!
           </p>
         </div>
-      </div>
+      </div> */}
 
       {/* Security */}
       <div id="profile-security" style={{ paddingTop: '80px', paddingBottom: '40px', scrollMarginTop: `${NAVBAR_HEIGHT}px` }}>
@@ -7354,8 +8956,8 @@ export default function ProfilePage() {
                 maxLength={6} 
                 value={setupCode}
                 onChange={(e) => setSetupCode(e.target.value.replace(/\D/g, ''))}
-                placeholder="— — — — — —"
-                style={{ ...inputStyle, width: '140px', textAlign: 'center', letterSpacing: '8px', fontSize: '18px', fontWeight: 'bold' }} 
+                placeholder="- - - - - -"
+                style={{ ...inputStyle, width: '140px', textAlign: 'center', letterSpacing: '1px', fontSize: '15px', fontWeight: 'bold' }} 
               />
               
               {error2fa && <div style={{ color: theme.colors.dead, fontFamily: theme.fonts.mono, fontSize: '12px' }}>{error2fa}</div>}
@@ -7410,6 +9012,47 @@ export default function ProfilePage() {
         </div>
       </div>
 
+      {/* Delete Account */}
+      <div style={{ padding: '24px', background: 'rgba(232,64,87,0.05)', border: `1px solid ${theme.colors.dead}`, borderRadius: '4px', marginTop: '24px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div>
+            <div style={{ fontFamily: theme.fonts.heading, fontSize: '14px', fontWeight: 600, color: theme.colors.dead, marginBottom: '4px' }}>Delete Account</div>
+            <div style={{ fontFamily: theme.fonts.mono, fontSize: '12px', color: theme.colors.textMuted }}>
+              Permanently delete your account and all associated data.
+            </div>
+          </div>
+          <button className="btn-press" onClick={() => {
+            confirmPwdRef.current = '';
+            setConfirmPwdDisplay('');
+            setDialog({
+              isOpen: true,
+              title: "Elimina Account",
+              msg: "Sei sicuro? Questa azione è irreversibile. Inserisci la tua password per confermare.",
+              needsPassword: true,
+              action: async () => {
+                if (!confirmPwdRef.current) {
+                  alert("Inserisci la password per confermare.");
+                  return;
+                }
+                setDialog(null);
+                const ok = await api.deleteAccount(confirmPwdRef.current);
+                confirmPwdRef.current = '';
+                setConfirmPwdDisplay('');
+                if (ok) {
+                  window.location.reload();
+                } else {
+                  alert("Errore durante l'eliminazione dell'account.");
+                }
+              }
+            });
+          }} style={{
+            padding: '8px 20px', background: 'none', border: `1px solid ${theme.colors.dead}`,
+            borderRadius: '2px', color: theme.colors.dead, fontFamily: theme.fonts.heading,
+            fontSize: '11px', fontWeight: 700, letterSpacing: '1px', cursor: 'pointer',
+          }}>DELETE</button>
+        </div>
+      </div>
+
       {/* POPUP MODAL */}
       {dialog && dialog.isOpen && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }}>
@@ -7421,7 +9064,7 @@ export default function ProfilePage() {
             {dialog.needsPassword && (
               <input
                 type="password"
-                placeholder="Password attuale"
+                placeholder="Your actual password"
                 value={confirmPwdDisplay}
                 onChange={(e) => {
                   confirmPwdRef.current = e.target.value;
@@ -7442,9 +9085,13 @@ export default function ProfilePage() {
     </div>
   );
 }
-========== ./src/site/services/apiService.ts ==========
+
+==============================================
+FILE: src/site/services/apiService.ts
+==============================================
 
 import { fetchWithAuthRetry } from "./authService";
+import { refreshToken } from "../services/authService";
 
 export interface UserProfile {
     id: number;
@@ -7641,6 +9288,7 @@ export async function updateUsername(username: string): Promise<boolean> {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ username }),
         });
+        refreshToken();
         return !!res && res.ok;
     } catch (error) {
         console.error("[API] Error updating username:", error);
@@ -7662,17 +9310,31 @@ export async function updateEmail(email: string): Promise<boolean> {
     }
 }
 
-export async function updateAvatar(avatarUrl: string | null): Promise<boolean> {
+export async function uploadAvatar(file: File): Promise<UserProfile | null> {
     try {
+        const formData = new FormData();
+        formData.append('avatar', file);
         const res = await fetchWithAuthRetry("/api/users/me/avatar", {
-            method: "PATCH",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ avatarUrl }),
+            method: "POST",
+            body: formData,
+            // NON impostare Content-Type — il browser lo setta con il boundary corretto
         });
-        return !!res && res.ok;
+        if (!res || !res.ok) return null;
+        return (await res.json()) as UserProfile;
     } catch (error) {
-        console.error("[API] Error updating avatar:", error);
-        return false;
+        console.error("[API] Error uploading avatar:", error);
+        return null;
+    }
+}
+
+export async function resetAvatar(): Promise<UserProfile | null> {
+    try {
+        const res = await fetchWithAuthRetry("/api/users/me/avatar", { method: "DELETE" });
+        if (!res || !res.ok) return null;
+        return (await res.json()) as UserProfile;
+    } catch (error) {
+        console.error("[API] Error resetting avatar:", error);
+        return null;
     }
 }
 
@@ -7696,11 +9358,24 @@ export async function getPublicProfile(
     userId: number,
 ): Promise<UserProfile | null> {
     try {
-        const res = await fetchWithAuthRetry(`/api/users/${userId}`);
+        const res = await fetchWithAuthRetry(`/api/users/profile?id=${userId}`);
         if (!res || !res.ok) return null;
         return (await res.json()) as UserProfile;
     } catch (error) {
         console.error("[API] Error fetching public profile:", error);
+        return null;
+    }
+}
+
+export async function searchUserByUsername(
+    username: string,
+): Promise<{ id: number; username: string; avatarUrl: string; status: string } | null> {
+    try {
+        const res = await fetchWithAuthRetry(`/api/users/search/${encodeURIComponent(username)}`);
+        if (!res || !res.ok) return null;
+        return await res.json();
+    } catch (error) {
+        console.error("[API] Error searching user by username:", error);
         return null;
     }
 }
@@ -7741,7 +9416,7 @@ export async function generate2fa() {
   try {
     const res = await fetchWithAuthRetry("/api/auth/2fa/setup", { method: "POST" });
     if (!res || !res.ok) return null;
-    return await res.json(); 
+    return await res.json();
   } catch (error) {
     console.error("[API] Error generating 2FA:", error);
     return null;
@@ -7777,7 +9452,7 @@ export async function requestEmailChange(password: string, newEmail: string): Pr
     const res = await fetchWithAuthRetry("/api/auth/change-email-request", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ password, newEmail }), 
+      body: JSON.stringify({ password, newEmail }),
     });
 
     if (!res) return { ok: false, message: "Connessione al server fallita" };
@@ -7796,7 +9471,7 @@ export async function changePassword(oldPass: string, newPass: string): Promise<
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ oldPass, newPass }),
     });
-    
+
     if (!res) return { ok: false, message: "Connessione al server fallita" };
 
     const data = await res.json().catch(() => ({}));
@@ -7981,14 +9656,36 @@ export async function getMyMatches(page = 1, limit = 10, mode?: string): Promise
         if (mode) url += `&mode=${mode}`;
         const res = await fetchWithAuthRetry(url);
         if (!res || !res.ok) return null;
-        return (await res.json()) as MatchHistoryResponse; 
+        return (await res.json()) as MatchHistoryResponse;
     }
     catch (error) {
         console.error("[API] Error fetching matches:", error);
         return null;
     }
 }
-========== ./src/site/services/authService.ts ==========
+
+// ==========================================
+// DELETE ACCOUNT
+// ==========================================
+
+export async function deleteAccount(password: string): Promise<boolean> {
+    try {
+        const res = await fetchWithAuthRetry("/api/auth/account", {
+            method: "DELETE",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ password }),
+        });
+        return !!res && (res.ok || res.status === 204);
+    } catch (error) {
+        console.error("[API] Error deleting account:", error);
+        return false;
+    }
+}
+
+
+==============================================
+FILE: src/site/services/authService.ts
+==============================================
 /**
  * Auth service — basato sui prototipi di Ale (authFetch.js, socketAuth.js)
  * Gestisce: login, register, logout, refresh, forgot/reset password, 2FA, OAuth
@@ -8020,10 +9717,10 @@ export async function fetchWithAuthRetry(
   options: RequestInit = {},
 ): Promise<Response | null> {
   try {
-    const fetchOptions: RequestInit = {  // Pparametri anti-cache: evitano che utenti diversi sullo stesso PC vedano i dati dell'altro.
+    const fetchOptions: RequestInit = { // Parametri anti-cache: evitano che utenti diversi sullo stesso PC vedano i dati dell'altro.
       ...options,
       credentials: "include",
-      cache: "no-store", // Dice al browser di bypassare la cache locale
+      cache: "no-store",  // Dice al browser di bypassare la cache locale
       headers: {
         "Cache-Control": "no-cache, no-store, must-revalidate",
         "Pragma": "no-cache",
@@ -8034,21 +9731,16 @@ export async function fetchWithAuthRetry(
 
     let res = await fetch(url, fetchOptions);
 
+    // If we get a 401, we try to refresh ONLY if we think we have a session
     if (res.status === 401) {
-      const refreshed = await fetch("/api/auth/refresh", {
-        method: "POST",
-        credentials: "include",
-      });
+      const success = await refreshToken(); // This now uses our safe check
+      if (!success) return null;
 
-      if (!refreshed.ok) {
-        return null;
-      }
       res = await fetch(url, fetchOptions);
     }
 
     return res;
   } catch (error) {
-    console.error("[Auth] Fetch error:", error);
     return null;
   }
 }
@@ -8125,22 +9817,28 @@ export function redirectToGoogle(): void {
   window.location.href = "/api/auth/google";
 }
 
+let refreshPromise: Promise<boolean> | null = null;
+
 export async function refreshToken(): Promise<boolean> {
-  try {
-    const res = await fetch("/api/auth/refresh", {
-      method: "POST",
-      credentials: "include",
-    });
-    if (!res.ok) {
-      console.warn("❌ Refresh failed");
+  if (refreshPromise) return refreshPromise;
+  refreshPromise = (async () => {
+    try {
+      const checkRes = await fetch("/api/auth/session-check");
+      const { hasSession } = await checkRes.json();
+      if (!hasSession) return false;
+
+      const res = await fetch("/api/auth/refresh", {
+        method: "POST",
+        credentials: "include",
+      });
+      return res.ok;
+    } catch {
       return false;
+    } finally {
+      refreshPromise = null;
     }
-    console.log("🔄 Token refreshed");
-    return true;
-  } catch (error) {
-    console.error("Refresh error:", error);
-    return false;
-  }
+  })();
+  return refreshPromise;
 }
 
 export async function resendVerification(email: string): Promise<{ ok: boolean; message?: string }> {
@@ -8170,7 +9868,10 @@ export async function resetPassword(token: string, newPassword: string): Promise
     return { ok: false, message: "Network error" };
   }
 }
-========== ./src/site/styles/shared.ts ==========
+
+==============================================
+FILE: src/site/styles/shared.ts
+==============================================
 import React from 'react';
 import { theme } from '../../configs/theme';
 
@@ -8231,7 +9932,10 @@ export const sectionTitleStyle: React.CSSProperties = {
   textAlign: "center",
   fontFamily: theme.fonts.heading,
 };
-========== ./src/site/styles/site.css ==========
+
+==============================================
+FILE: src/site/styles/site.css
+==============================================
 /* ─── Clash of Olympus — Global Site CSS ─── */
 @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;700&display=swap');
 
@@ -8273,7 +9977,10 @@ body {
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes badgePop { 0% { transform: scale(0); } 50% { transform: scale(1.3); } 100% { transform: scale(1); } }
-========== ./src/storage/gameStore.ts ==========
+
+==============================================
+FILE: src/storage/gameStore.ts
+==============================================
 import { create } from 'zustand';
 import { GameStatePayload, GameOverPayload, MapEmitPayload } from '../types/game.types';
 
@@ -8302,8 +10009,11 @@ export const useGameStore = create<GameStore>((set) => ({
   setGameOver: (gameOver) => set({ gameOver }),
   resetGame: () => set({ world: null, gameState: null, gameOver: null }),
 }));
-========== ./src/types/game.types.ts ==========
-import { CharacterName, EndReason, MatchMode, MatchType, Pillar, PlayerSnapshot, BulletSnapshot, WinnerData } from '@transcendence/types';
+
+==============================================
+FILE: src/types/game.types.ts
+==============================================
+import { CharacterName, EndReason, MatchMode, MatchType, Pillar, PlayerSnapshot, BulletSnapshot, FinalData } from '@transcendence/types';
 export { CharacterName, EndReason, MatchMode, MatchType };
 
 export interface Vector {
@@ -8320,7 +10030,7 @@ export interface GameStatePayload {
 }
 
 export interface GameOverPayload {
-  winnerData: WinnerData | undefined;
+  finalData: FinalData | undefined;
   time: number;
 }
 
@@ -8344,8 +10054,11 @@ export interface MapEmitPayload {
     playerSpeed: number;
   };
 }
-========== ./src/types/socket.types.ts ==========
-import { PlayerSnapshot, BulletSnapshot, WinnerData, CharacterName } from '@transcendence/types';
+
+==============================================
+FILE: src/types/socket.types.ts
+==============================================
+import { PlayerSnapshot, BulletSnapshot, FinalData, CharacterName } from '@transcendence/types';
 
 export interface JoinLobbyPayload {
   characterName: CharacterName;
@@ -8366,54 +10079,15 @@ export interface GameStatePayload {
 }
 
 export interface GameOverPayload {
-  winnerData: WinnerData;
+  finalData: FinalData;
   time: number;
 }
-========== ./src/vite-env.d.ts ==========
+
+==============================================
+FILE: src/vite-env.d.ts
+==============================================
 // src/vite-env.d.ts
 /// <reference types="vite/client" />
-========== ./tailwind.config.js ==========
-/** @type {import('tailwindcss').Config} */
-export default {
-  content: [
-    "./index.html",
-    "./src/**/*.{js,ts,jsx,tsx}",
-  ],
-  theme: {
-    extend: {},
-  },
-  plugins: [],
-}
 
-========== ./vite.config.ts ==========
-import { defineConfig } from "vite";
-import react from "@vitejs/plugin-react";
-
-export default defineConfig({
-	plugins: [react()],
-	server: {
-		port: 5173,
-		host: true,
-		hmr: {
-			clientPort: 2443,
-		},
-		watch: {
-			usePolling: process.env.CHOKIDAR_USEPOLLING === "true",
-		},
-		allowedHosts: [
-			"frontend",
-			...(process.env.NGROK_DOMAIN ? [process.env.NGROK_DOMAIN] : []),
-		],
-		proxy: {
-			"/api": {
-				target: "http://localhost:3001",
-				changeOrigin: true,
-			},
-			"/auth": {
-				target: "http://localhost:3002",
-				changeOrigin: true,
-			},
-		},
-	},
-});
+declare const __BUILD_HASH__: string;
 

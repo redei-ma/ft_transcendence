@@ -139,7 +139,7 @@ export default function GameFlow({ userId, username, onExit, sessionId: initialS
     setScene('mode-select');
   };
 
-  const handleQuit = () => {
+  const handleQuit = (isGameOver = false) => {
     hasResignedRef.current = true;
     
     const cleanup = () => {
@@ -147,6 +147,12 @@ export default function GameFlow({ userId, username, onExit, sessionId: initialS
       matchmakingSocket.disconnect();
       onExit();
     };
+  
+    // A game over la sessione è già in stato END: niente LEAVE_GAME, solo cleanup.
+    if (isGameOver) {
+      cleanup();
+      return;
+    }
   
     const safetyTimeout = setTimeout(() => {
       console.warn('[GameFlow] LEAVE_GAME ack timeout — cleanup forzato');
@@ -158,16 +164,11 @@ export default function GameFlow({ userId, username, onExit, sessionId: initialS
       { userId: String(userId) },
       (response) => {
         clearTimeout(safetyTimeout);
-      
         if (response.status === 'success') {
           console.log('[GameFlow] Leave confermato:', response.message);
         } else {
-          console.warn(
-            `[GameFlow] Leave fallito lato server [${response.errorCode}]:`,
-            response.message
-          );
+          console.warn(`[GameFlow] Leave fallito [${response.errorCode}]:`, response.message);
         }
-      
         cleanup();
       }
     );
