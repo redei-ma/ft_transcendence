@@ -204,7 +204,7 @@ export default function App() {
       case 'leaderboard':
         return <LeaderboardPage />;
       case 'profile':
-        return <ProfilePage />;
+        return <ProfilePage onProfileUpdate={(updates) => setUser(prev => prev ? { ...prev, ...updates } : null)} />;
       default:
         return <DashboardPage onNavigate={setCurrentPage} />;
     }

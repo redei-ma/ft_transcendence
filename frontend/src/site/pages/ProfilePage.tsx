@@ -67,7 +67,7 @@ function EditableField({ label, value, isEditing, onEdit, onSave, onCancel, temp
   );
 }
 
-export default function ProfilePage() {
+export default function ProfilePage({ onProfileUpdate }: { onProfileUpdate?: (updates: Partial<UserProfile>) => void }) {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [stats, setStats] = useState<UserStats | null>(null);
   const [settings, setSettings] = useState<UserSettings | null>(null);
@@ -90,6 +90,10 @@ export default function ProfilePage() {
   const [isChangingPwd, setIsChangingPwd] = useState(false);
   const [pwdData, setPwdData] = useState({ old: '', new: '', confirm: '' });
   const [pwdError, setPwdError] = useState('');
+  const [showOldPwd, setShowOldPwd] = useState(false);
+  const [showNewPwd, setShowNewPwd] = useState(false);
+  const [showConfirmPwd, setShowConfirmPwd] = useState(false);
+  const [showDialogPwd, setShowDialogPwd] = useState(false);
   const [msg, setMsg] = useState('');
 
   const confirmPwdRef = useRef(''); // Per la password
@@ -138,6 +142,7 @@ export default function ProfilePage() {
         const result = await api.updateUsername(tempUsername);
         if (result.ok) {
           setProfile((p) => p ? { ...p, username: tempUsername } : null);
+          onProfileUpdate?.({ username: tempUsername });
         } else {
           setUsernameError(result.message || "Failed to update username.");
         }
@@ -313,6 +318,7 @@ export default function ProfilePage() {
                 const result = await api.uploadAvatar(file);
                 if (result.ok && result.profile) {
                   setProfile(prev => prev ? { ...prev, avatarUrl: result.profile!.avatarUrl } : null);
+                  onProfileUpdate?.({ avatarUrl: result.profile!.avatarUrl });
                   setMsg("Avatar updated successfully!");
                   setTimeout(() => setMsg(''), 3000);
                 } else {
@@ -336,6 +342,7 @@ export default function ProfilePage() {
                 const result = await api.resetAvatar();
                 if (result) {
                   setProfile(prev => prev ? { ...prev, avatarUrl: result.avatarUrl } : null);
+                  onProfileUpdate?.({ avatarUrl: result.avatarUrl });
                   setMsg("Avatar reset to default!");
                   setTimeout(() => setMsg(''), 3000);
                 }
@@ -366,14 +373,29 @@ export default function ProfilePage() {
 
           {isChangingPwd && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '12px' }} className="animate-slideUp">
-              <input type="password" placeholder="Current Password" autoComplete="current-password" value={pwdData.old} onChange={e => setPwdData({...pwdData, old: e.target.value})} style={inputStyle} />
-              <input type="password" placeholder="New Password" autoComplete="new-password" value={pwdData.new} onChange={e => setPwdData({...pwdData, new: e.target.value})} style={inputStyle} />
-              <input type="password" placeholder="Confirm New Password" autoComplete="new-password" value={pwdData.confirm} onChange={e => setPwdData({...pwdData, confirm: e.target.value})} style={inputStyle} />
+              <div style={{ position: 'relative' }}>
+                <input className="input-glow" type={showOldPwd ? 'text' : 'password'} placeholder="Current Password" autoComplete="current-password" value={pwdData.old} onChange={e => setPwdData({...pwdData, old: e.target.value})} style={{ ...inputStyle, paddingRight: '44px' }} />
+                <button type="button" onClick={() => setShowOldPwd(v => !v)} style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: theme.colors.textMuted, cursor: 'pointer', padding: '4px', display: 'flex' }}>
+                  {showOldPwd ? <Icons.EyeOff size={18} /> : <Icons.Eye size={18} />}
+                </button>
+              </div>
+              <div style={{ position: 'relative' }}>
+                <input className="input-glow" type={showNewPwd ? 'text' : 'password'} placeholder="New Password" autoComplete="new-password" value={pwdData.new} onChange={e => setPwdData({...pwdData, new: e.target.value})} style={{ ...inputStyle, paddingRight: '44px' }} />
+                <button type="button" onClick={() => setShowNewPwd(v => !v)} style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: theme.colors.textMuted, cursor: 'pointer', padding: '4px', display: 'flex' }}>
+                  {showNewPwd ? <Icons.EyeOff size={18} /> : <Icons.Eye size={18} />}
+                </button>
+              </div>
+              <div style={{ position: 'relative' }}>
+                <input className="input-glow" type={showConfirmPwd ? 'text' : 'password'} placeholder="Confirm New Password" autoComplete="new-password" value={pwdData.confirm} onChange={e => setPwdData({...pwdData, confirm: e.target.value})} style={{ ...inputStyle, paddingRight: '44px' }} />
+                <button type="button" onClick={() => setShowConfirmPwd(v => !v)} style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: theme.colors.textMuted, cursor: 'pointer', padding: '4px', display: 'flex' }}>
+                  {showConfirmPwd ? <Icons.EyeOff size={18} /> : <Icons.Eye size={18} />}
+                </button>
+              </div>
               
               {pwdError && <span style={{ color: theme.colors.dead, fontSize: '12px', fontFamily: theme.fonts.mono }}>{pwdError}</span>}
               
               <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', marginTop: '8px' }}>
-                <button onClick={() => { setIsChangingPwd(false); setPwdError(''); setPwdData({ old: '', new: '', confirm: '' }); }} style={{ padding: '6px 12px', background: 'none', border: `1px solid ${theme.colors.border}`, color: theme.colors.textMuted, cursor: 'pointer' }}>Cancel</button>
+                <button onClick={() => { setIsChangingPwd(false); setPwdError(''); setPwdData({ old: '', new: '', confirm: '' }); setShowOldPwd(false); setShowNewPwd(false); setShowConfirmPwd(false); }} style={{ padding: '6px 12px', background: 'none', border: `1px solid ${theme.colors.border}`, color: theme.colors.textMuted, cursor: 'pointer' }}>Cancel</button>
                 <button onClick={handleSavePassword} style={{ padding: '6px 12px', background: theme.colors.zeus, border: 'none', color: 'white', fontWeight: 'bold', cursor: 'pointer', borderRadius: '2px' }}>Save</button>
               </div>
             </div>
@@ -759,22 +781,28 @@ export default function ProfilePage() {
               {dialog.msg}
             </p>
             {dialog.needsPassword && (
-              <input
-                type="password"
-                placeholder="Your actual password"
-                value={confirmPwdDisplay}
-                onChange={(e) => {
-                  confirmPwdRef.current = e.target.value;
-                  setConfirmPwdDisplay(e.target.value);
-                  if (dialog.error) setDialog(prev => prev ? { ...prev, error: undefined } : null);
-                }}
-                style={{ ...inputStyle, marginBottom: dialog.error ? '12px' : '24px', textAlign: 'center' }}
-                autoFocus
-              />
+              <div style={{ position: 'relative', marginBottom: dialog.error ? '12px' : '24px' }}>
+                <input
+                  className="input-glow"
+                  type={showDialogPwd ? 'text' : 'password'}
+                  placeholder="Your actual password"
+                  value={confirmPwdDisplay}
+                  onChange={(e) => {
+                    confirmPwdRef.current = e.target.value;
+                    setConfirmPwdDisplay(e.target.value);
+                    if (dialog.error) setDialog(prev => prev ? { ...prev, error: undefined } : null);
+                  }}
+                  style={{ ...inputStyle, paddingRight: '44px', textAlign: 'center' }}
+                  autoFocus
+                />
+                <button type="button" onClick={() => setShowDialogPwd(v => !v)} style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: theme.colors.textMuted, cursor: 'pointer', padding: '4px', display: 'flex' }}>
+                  {showDialogPwd ? <Icons.EyeOff size={18} /> : <Icons.Eye size={18} />}
+                </button>
+              </div>
             )}
             {dialog.error && <span style={{ color: theme.colors.dead, fontSize: '12px', fontFamily: theme.fonts.mono, display: 'block', marginBottom: '16px' }}>{dialog.error}</span>}
             <div style={{ display: 'flex', gap: '16px', justifyContent: 'center' }}>
-              <button onClick={() => { setDialog(null); confirmPwdRef.current = ''; setConfirmPwdDisplay(''); }} style={{ padding: '10px 24px', background: 'none', border: `1px solid ${theme.colors.border}`, color: theme.colors.textMuted, cursor: 'pointer', fontFamily: theme.fonts.heading, letterSpacing: '1px' }}>CANCEL</button>
+              <button onClick={() => { setDialog(null); confirmPwdRef.current = ''; setConfirmPwdDisplay(''); setShowDialogPwd(false); }} style={{ padding: '10px 24px', background: 'none', border: `1px solid ${theme.colors.border}`, color: theme.colors.textMuted, cursor: 'pointer', fontFamily: theme.fonts.heading, letterSpacing: '1px' }}>CANCEL</button>
               <button onClick={dialog.action} style={{ padding: '10px 24px', background: theme.colors.dead, border: 'none', color: 'white', fontWeight: 'bold', cursor: 'pointer', borderRadius: '2px', fontFamily: theme.fonts.heading, letterSpacing: '1px' }}>CONFIRM</button>
             </div>
           </div>
