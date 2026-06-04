@@ -3,6 +3,10 @@
  * Gestisce: login, register, logout, refresh, forgot/reset password, 2FA, OAuth
  */
 
+export class RateLimitError extends Error {
+  constructor() { super('rate_limited'); }
+}
+
 export interface AuthResponseData {
   requires2fa?: boolean;
   message?: string;
@@ -43,16 +47,20 @@ export async function fetchWithAuthRetry(
 
     let res = await fetch(url, fetchOptions);
 
+    if (res.status === 429) throw new RateLimitError();
+
     // If we get a 401, we try to refresh ONLY if we think we have a session
     if (res.status === 401) {
       const success = await refreshToken(); // This now uses our safe check
       if (!success) return null;
 
       res = await fetch(url, fetchOptions);
+      if (res.status === 429) throw new RateLimitError();
     }
 
     return res;
   } catch (error) {
+    if (error instanceof RateLimitError) throw error;
     return null;
   }
 }

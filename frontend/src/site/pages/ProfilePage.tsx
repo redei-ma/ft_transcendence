@@ -6,7 +6,7 @@ import * as authService from '../services/authService';
 import { UserProfile, UserStats, UserSettings, UserAchievementsResponse, MatchHistoryResponse, generate2fa, turnOn2fa, turnOff2fa } from '../services/apiService';
 import { theme } from '../../configs/theme';
 import { NAVBAR_HEIGHT } from '../components/Navbar';
-import { CharacterName, PASSWORD_REGEX, PASSWORD_ERROR_MESSAGE } from '@transcendence/types';
+import { CharacterName, PASSWORD_REGEX, PASSWORD_ERROR_MESSAGE, EMAIL_REGEX, USERNAME_REGEX, USERNAME_MIN, USERNAME_MAX, USERNAME_ERROR_MESSAGE } from '@transcendence/types';
 import AdeHistory from '../../assets/images/AdeHistory.png';
 import ZeusHistory from '../../assets/images/ZeusHistory.png';
 
@@ -80,12 +80,17 @@ export default function ProfilePage() {
 
   const [editingUsername, setEditingUsername] = useState(false);
   const [editingEmail, setEditingEmail] = useState(false);
-  const [tempVal, setTempVal] = useState('');
+  const [tempUsername, setTempUsername] = useState('');
+  const [tempEmail, setTempEmail] = useState('');
   
+  const [usernameError, setUsernameError] = useState('');
+  const [emailError, setEmailError] = useState('');
+  const [deleteError, setDeleteError] = useState('');
+
   const [isChangingPwd, setIsChangingPwd] = useState(false);
   const [pwdData, setPwdData] = useState({ old: '', new: '', confirm: '' });
   const [pwdError, setPwdError] = useState('');
-  const [msg, setMsg] = useState(''); 
+  const [msg, setMsg] = useState('');
 
   const confirmPwdRef = useRef(''); // Per la password
   const [confirmPwdDisplay, setConfirmPwdDisplay] = useState('');
@@ -96,12 +101,13 @@ export default function ProfilePage() {
 
   const fileInputRef = useRef<HTMLInputElement>(null);// per file nascosto di uploadAvatar
 
-  const [dialog, setDialog] = useState<{ 
-    isOpen: boolean; 
-    title: string; 
-    msg: string; 
+  const [dialog, setDialog] = useState<{
+    isOpen: boolean;
+    title: string;
+    msg: string;
     action: () => void;
     needsPassword?: boolean;
+    error?: string;
   } | null>(null);
 
   useEffect(() => {
@@ -116,43 +122,57 @@ export default function ProfilePage() {
       .finally(() => setLoading(false));
   }, []);
 
-  const handleSaveUsername = () => { 
+  const handleSaveUsername = () => {
+    const val = tempUsername.trim();
+    if (!val) return setUsernameError("Enter a username.");
+    if (val.length < USERNAME_MIN) return setUsernameError(`Username too short (min ${USERNAME_MIN} characters).`);
+    if (val.length > USERNAME_MAX) return setUsernameError(`Username too long (max ${USERNAME_MAX} characters).`);
+    if (!USERNAME_REGEX.test(val)) return setUsernameError(USERNAME_ERROR_MESSAGE);
+    setUsernameError('');
     setDialog({
       isOpen: true,
-      title: "Conferma Cambio Username",
-      msg: `Vuoi davvero cambiare il tuo username in "${tempVal}"?`,
+      title: "Confirm Username Change",
+      msg: `Are you sure you want to change your username to "${tempUsername}"?`,
       action: async () => {
         setDialog(null);
-        if (await api.updateUsername(tempVal)) {
-          setProfile((p) => p ? { ...p, username: tempVal } : null); 
+        const result = await api.updateUsername(tempUsername);
+        if (result.ok) {
+          setProfile((p) => p ? { ...p, username: tempUsername } : null);
+        } else {
+          setUsernameError(result.message || "Failed to update username.");
         }
-        setEditingUsername(false); 
+        setEditingUsername(false);
       }
     });
   };
   
-  const handleSaveEmail = () => { 
+  const handleSaveEmail = () => {
+    const val = tempEmail.trim();
+    if (!val) return setEmailError("Enter an email address.");
+    if (!EMAIL_REGEX.test(val)) return setEmailError("Invalid email format.");
+    setEmailError('');
     confirmPwdRef.current = '';
     setConfirmPwdDisplay('');
     setDialog({
       isOpen: true,
-      title: "Conferma Cambio Email",
-      msg: `Per cambiare la tua email in "${tempVal}", inserisci la tua password attuale.`,
+      title: "Confirm Email Change",
+      msg: `To change your email to "${tempEmail}", enter your current password.`,
       needsPassword: true,
       action: async () => {
         if (!confirmPwdRef.current) {
-          alert("Inserisci la password per confermare.");
+          setDialog(prev => prev ? { ...prev, error: "Please enter your password to confirm." } : null);
           return;
         }
         setDialog(null);
-        const result = await api.requestEmailChange(confirmPwdRef.current, tempVal);
+        const result = await api.requestEmailChange(confirmPwdRef.current, tempEmail);
         if (result.ok) {
-          setMsg("Link di conferma inviato alla nuova email!");
+          setEmailError('');
+          setMsg("Confirmation link sent to the new email!");
           setEditingEmail(false);
           confirmPwdRef.current = '';
           setConfirmPwdDisplay('');
         } else {
-          alert("Errore: " + (result.message || "Richiesta fallita"));
+          setEmailError(result.message || "Request failed");
         }
       }
     });
@@ -160,6 +180,7 @@ export default function ProfilePage() {
 
   const handleSavePassword = () => {
     setPwdError('');
+    if (!pwdData.old) return setPwdError("Enter your current password.");
     if (pwdData.new !== pwdData.confirm) return setPwdError("Passwords do not match.");
     if (!PASSWORD_REGEX.test(pwdData.new)) return setPwdError(PASSWORD_ERROR_MESSAGE);
 
@@ -191,20 +212,21 @@ export default function ProfilePage() {
       setQrCodeUrl(data.qrCode);
       setIsSettingUp2fa(true);
     } else {
-      setError2fa("Errore nella generazione del QR Code.");
+      setError2fa("Error generating QR Code.");
     }
   };
 
   const handleConfirm2fa = async () => {
     setError2fa('');
-    const success = await turnOn2fa(setupCode);
-    if (success) {
+    if (setupCode.length !== 6 || !/^\d{6}$/.test(setupCode)) return setError2fa("The 2FA code must be exactly 6 digits.");
+    const result = await turnOn2fa(setupCode);
+    if (result.ok) {
       setIsSettingUp2fa(false);
       setQrCodeUrl(null);
       setSetupCode('');
       setSettings(prev => prev ? { ...prev, is2faEnabled: true } : null);
     } else {
-      setError2fa("Codice errato. Riprova.");
+      setError2fa(result.message || "Incorrect code. Please try again.");
     }
   };
 
@@ -246,8 +268,8 @@ export default function ProfilePage() {
               onClick={() => {
                 setDialog({
                   isOpen: true,
-                  title: "Modifica Avatar",
-                  msg: "Vuoi caricare una nuova immagine per il tuo avatar? Formati accettati: JPEG, PNG, WebP (max 5MB).",
+                  title: "Edit Avatar",
+                  msg: "Do you want to upload a new avatar? Accepted formats: JPEG, PNG, WebP (max 5MB).",
                   action: () => {
                     setDialog(null);
                     fileInputRef.current?.click();
@@ -263,8 +285,8 @@ export default function ProfilePage() {
               onClick={() => {
                 setDialog({
                   isOpen: true,
-                  title: "Modifica Avatar",
-                  msg: "Vuoi caricare una nuova immagine per il tuo avatar? Formati accettati: JPEG, PNG, WebP (max 5MB).",
+                  title: "Edit Avatar",
+                  msg: "Do you want to upload a new avatar? Accepted formats: JPEG, PNG, WebP (max 5MB).",
                   action: () => {
                     setDialog(null);
                     fileInputRef.current?.click();
@@ -287,14 +309,14 @@ export default function ProfilePage() {
               onChange={async (e) => {
                 const file = e.target.files?.[0];
                 if (!file) return;
-                if (file.size > 5 * 1024 * 1024) { alert("Max 5MB"); return; }
+                if (file.size > 5 * 1024 * 1024) { alert("File too large. Max 5MB."); return; }
                 const result = await api.uploadAvatar(file);
-                if (result) {
-                  setProfile(prev => prev ? { ...prev, avatarUrl: result.avatarUrl } : null);
-                  setMsg("Avatar aggiornato con successo!");
+                if (result.ok && result.profile) {
+                  setProfile(prev => prev ? { ...prev, avatarUrl: result.profile!.avatarUrl } : null);
+                  setMsg("Avatar updated successfully!");
                   setTimeout(() => setMsg(''), 3000);
                 } else {
-                  alert("Upload fallito.");
+                  alert(result.message || "Upload failed.");
                 }
                 e.target.value = '';
               }}
@@ -308,13 +330,13 @@ export default function ProfilePage() {
             setDialog({
               isOpen: true,
               title: "Reset Avatar",
-              msg: "Vuoi ripristinare l'avatar predefinito?",
+              msg: "Do you want to reset your avatar to default?",
               action: async () => {
                 setDialog(null);
                 const result = await api.resetAvatar();
                 if (result) {
                   setProfile(prev => prev ? { ...prev, avatarUrl: result.avatarUrl } : null);
-                  setMsg("Avatar ripristinato!");
+                  setMsg("Avatar reset to default!");
                   setTimeout(() => setMsg(''), 3000);
                 }
               }
@@ -330,8 +352,10 @@ export default function ProfilePage() {
         
         {msg && <div style={{ color: theme.colors.hpHigh, marginBottom: '16px', textAlign: 'center', fontFamily: theme.fonts.mono }}>{msg}</div>}
 
-        <EditableField label="USERNAME" value={username} isEditing={editingUsername} tempVal={tempVal} setTempVal={setTempVal} onEdit={() => setEditingUsername(true)} onSave={handleSaveUsername} onCancel={() => setEditingUsername(false)} />
-        <EditableField label="EMAIL" value={email} isEditing={editingEmail} tempVal={tempVal} setTempVal={setTempVal} onEdit={() => setEditingEmail(true)} onSave={handleSaveEmail} onCancel={() => setEditingEmail(false)} />
+        <EditableField label="USERNAME" value={username} isEditing={editingUsername} tempVal={tempUsername} setTempVal={setTempUsername} onEdit={() => { setUsernameError(''); setEditingUsername(true); }} onSave={handleSaveUsername} onCancel={() => { setUsernameError(''); setEditingUsername(false); }} />
+        {usernameError && <span style={{ color: theme.colors.dead, fontSize: '12px', fontFamily: theme.fonts.mono, display: 'block', marginTop: '-4px', marginBottom: '4px' }}>{usernameError}</span>}
+        <EditableField label="EMAIL" value={email} isEditing={editingEmail} tempVal={tempEmail} setTempVal={setTempEmail} onEdit={() => { setEmailError(''); setEditingEmail(true); }} onSave={handleSaveEmail} onCancel={() => { setEmailError(''); setEditingEmail(false); }} />
+        {emailError && <span style={{ color: theme.colors.dead, fontSize: '12px', fontFamily: theme.fonts.mono, display: 'block', marginTop: '-4px', marginBottom: '4px' }}>{emailError}</span>}
         
         {/* Blocco Cambio Password */}
         <div style={{ padding: '16px 20px', background: theme.colors.bgPanel, border: `1px solid ${theme.colors.border}`, borderRadius: '4px', marginTop: '16px' }}>
@@ -608,7 +632,7 @@ export default function ProfilePage() {
           {isSettingUp2fa && (
             <div style={{ marginTop: '24px', padding: '20px', border: `1px dashed ${theme.colors.goldDim}`, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px' }}>
               <p style={{ fontFamily: theme.fonts.mono, fontSize: '12px', color: theme.colors.textPrimary, textAlign: 'center' }}>
-                1. Inquadra questo QR con un'app come Google Authenticator o Authy.
+                1. Scan this QR code with an app like Google Authenticator or Authy.
               </p>
               
               {qrCodeUrl && (
@@ -618,7 +642,7 @@ export default function ProfilePage() {
               )}
 
               <p style={{ fontFamily: theme.fonts.mono, fontSize: '12px', color: theme.colors.textPrimary, textAlign: 'center' }}>
-                2. Inserisci il codice a 6 cifre generato dall'app per confermare.
+                2. Enter the 6-digit code generated by the app to confirm.
               </p>
               
               <input 
@@ -634,8 +658,8 @@ export default function ProfilePage() {
               {error2fa && <div style={{ color: theme.colors.dead, fontFamily: theme.fonts.mono, fontSize: '12px' }}>{error2fa}</div>}
 
               <div style={{ display: 'flex', gap: '12px', marginTop: '8px' }}>
-                <button onClick={() => setIsSettingUp2fa(false)} style={{ padding: '8px 20px', background: 'none', border: `1px solid ${theme.colors.border}`, color: theme.colors.textMuted, cursor: 'pointer' }}>Annulla</button>
-                <button onClick={handleConfirm2fa} style={{ padding: '8px 20px', background: theme.colors.hpHigh, border: 'none', color: theme.colors.bgDark, fontWeight: 'bold', cursor: 'pointer' }}>Conferma</button>
+                <button onClick={() => setIsSettingUp2fa(false)} style={{ padding: '8px 20px', background: 'none', border: `1px solid ${theme.colors.border}`, color: theme.colors.textMuted, cursor: 'pointer' }}>Cancel</button>
+                <button onClick={handleConfirm2fa} style={{ padding: '8px 20px', background: theme.colors.hpHigh, border: 'none', color: theme.colors.bgDark, fontWeight: 'bold', cursor: 'pointer' }}>Confirm</button>
               </div>
             </div>
           )}
@@ -655,8 +679,8 @@ export default function ProfilePage() {
                 className="btn-press"
                 onClick={async () => {
                   const result = await authService.resendVerification(email);
-                  if (result.ok) setMsg("Email di verifica inviata!");
-                  else alert("Errore: " + (result.message || "Invio fallito"));
+                  if (result.ok) setMsg("Verification email sent!");
+                  else alert("Error: " + (result.message || "Failed to send"));
                 }}
                 style={{ padding: '8px 20px', background: 'none', border: `1px solid ${theme.colors.gold}`, borderRadius: '2px', color: theme.colors.gold, fontFamily: theme.fonts.heading, fontSize: '11px', fontWeight: 700, letterSpacing: '1px', cursor: 'pointer' }}
               >
@@ -693,26 +717,27 @@ export default function ProfilePage() {
             </div>
           </div>
           <button className="btn-press" onClick={() => {
+            setDeleteError('');
             confirmPwdRef.current = '';
             setConfirmPwdDisplay('');
             setDialog({
               isOpen: true,
-              title: "Elimina Account",
-              msg: "Sei sicuro? Questa azione è irreversibile. Inserisci la tua password per confermare.",
+              title: "Delete Account",
+              msg: "Are you sure? This action is irreversible. Enter your password to confirm.",
               needsPassword: true,
               action: async () => {
                 if (!confirmPwdRef.current) {
-                  alert("Inserisci la password per confermare.");
+                  setDialog(prev => prev ? { ...prev, error: "Please enter your password to confirm." } : null);
                   return;
                 }
                 setDialog(null);
-                const ok = await api.deleteAccount(confirmPwdRef.current);
+                const result = await api.deleteAccount(confirmPwdRef.current);
                 confirmPwdRef.current = '';
                 setConfirmPwdDisplay('');
-                if (ok) {
+                if (result.ok) {
                   window.location.reload();
                 } else {
-                  alert("Errore durante l'eliminazione dell'account.");
+                  setDeleteError(result.message || "Error deleting account. Please try again.");
                 }
               }
             });
@@ -722,6 +747,7 @@ export default function ProfilePage() {
             fontSize: '11px', fontWeight: 700, letterSpacing: '1px', cursor: 'pointer',
           }}>DELETE</button>
         </div>
+        {deleteError && <span style={{ color: theme.colors.dead, fontSize: '12px', fontFamily: theme.fonts.mono, display: 'block', marginTop: '12px' }}>{deleteError}</span>}
       </div>
 
       {/* POPUP MODAL */}
@@ -740,14 +766,16 @@ export default function ProfilePage() {
                 onChange={(e) => {
                   confirmPwdRef.current = e.target.value;
                   setConfirmPwdDisplay(e.target.value);
+                  if (dialog.error) setDialog(prev => prev ? { ...prev, error: undefined } : null);
                 }}
-                style={{ ...inputStyle, marginBottom: '24px', textAlign: 'center' }}
+                style={{ ...inputStyle, marginBottom: dialog.error ? '12px' : '24px', textAlign: 'center' }}
                 autoFocus
               />
             )}
+            {dialog.error && <span style={{ color: theme.colors.dead, fontSize: '12px', fontFamily: theme.fonts.mono, display: 'block', marginBottom: '16px' }}>{dialog.error}</span>}
             <div style={{ display: 'flex', gap: '16px', justifyContent: 'center' }}>
-              <button onClick={() => { setDialog(null); confirmPwdRef.current = ''; setConfirmPwdDisplay(''); }} style={{ padding: '10px 24px', background: 'none', border: `1px solid ${theme.colors.border}`, color: theme.colors.textMuted, cursor: 'pointer', fontFamily: theme.fonts.heading, letterSpacing: '1px' }}>ANNULLA</button>
-              <button onClick={dialog.action} style={{ padding: '10px 24px', background: theme.colors.dead, border: 'none', color: 'white', fontWeight: 'bold', cursor: 'pointer', borderRadius: '2px', fontFamily: theme.fonts.heading, letterSpacing: '1px' }}>PROCEDI</button>
+              <button onClick={() => { setDialog(null); confirmPwdRef.current = ''; setConfirmPwdDisplay(''); }} style={{ padding: '10px 24px', background: 'none', border: `1px solid ${theme.colors.border}`, color: theme.colors.textMuted, cursor: 'pointer', fontFamily: theme.fonts.heading, letterSpacing: '1px' }}>CANCEL</button>
+              <button onClick={dialog.action} style={{ padding: '10px 24px', background: theme.colors.dead, border: 'none', color: 'white', fontWeight: 'bold', cursor: 'pointer', borderRadius: '2px', fontFamily: theme.fonts.heading, letterSpacing: '1px' }}>CONFIRM</button>
             </div>
           </div>
         </div>

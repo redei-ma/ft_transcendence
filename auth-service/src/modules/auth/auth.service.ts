@@ -390,7 +390,7 @@ export class AuthService {
     });
 
     if (!verified) {
-      throw new UnauthorizedException('Invalid 2FA code');
+      throw new BadRequestException('Invalid 2FA code');
     }
 
     await this.usersService.enable2fa(userId);

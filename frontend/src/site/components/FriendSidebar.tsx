@@ -3,7 +3,7 @@ import * as api from '../services/apiService';
 import * as Icons from './Icons';
 import { theme } from '../../configs/theme';
 import { matchmakingSocket } from '../../services/matchmakingSocket';
-import { GameEvents } from '@transcendence/types';
+import { GameEvents, USERNAME_REGEX, USERNAME_MIN, USERNAME_MAX, USERNAME_ERROR_MESSAGE } from '@transcendence/types';
 
 
 const SIDEBAR_WIDTH = 300;
@@ -127,6 +127,9 @@ export default function FriendsSidebar({ onGameInviteAccepted, gameInvites, onAc
   setAddError('');
   const input = addUser.trim();
   if (!input) return setAddError('Enter a username.');
+  if (input.length < USERNAME_MIN) return setAddError(`Username too short (min ${USERNAME_MIN} characters).`);
+  if (input.length > USERNAME_MAX) return setAddError(`Username too long (max ${USERNAME_MAX} characters).`);
+  if (!USERNAME_REGEX.test(input)) return setAddError(USERNAME_ERROR_MESSAGE);
 
   const found = await api.searchUserByUsername(input);
   if (!found) return setAddError(`User "${input}" not found.`);

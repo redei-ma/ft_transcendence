@@ -5,15 +5,11 @@ import * as authService from '../services/authService';
 import { toErrorString } from '../services/authService';
 import welcomeScene from '../../assets/images/welcomeScene.png';
 import { theme } from '../../configs/theme';
-import { PASSWORD_REGEX, PASSWORD_ERROR_MESSAGE, EMAIL_REGEX, RATE_LIMIT_ERROR_MESSAGE } from '@transcendence/types';
+import { PASSWORD_REGEX, PASSWORD_ERROR_MESSAGE, EMAIL_REGEX, RATE_LIMIT_ERROR_MESSAGE, USERNAME_REGEX, USERNAME_MIN, USERNAME_MAX, USERNAME_ERROR_MESSAGE } from '@transcendence/types';
 
 interface LoginPageProps {
   onLogin: () => void;
 }
-
-// Validazione
-const USERNAME_MIN = 3;
-const USERNAME_MAX = 20;
 
 export default function LoginPage({ onLogin }: LoginPageProps) {
   const [mode, setMode] = useState<"login" | "register" | "forgot" | "reset">("login");
@@ -54,6 +50,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
       if (!formData.username.trim()) return "Enter a username.";
       if (formData.username.trim().length < USERNAME_MIN) return `Username too short (min ${USERNAME_MIN} characters).`;
       if (formData.username.trim().length > USERNAME_MAX) return `Username too long (max ${USERNAME_MAX} characters).`;
+      if (!USERNAME_REGEX.test(formData.username.trim())) return USERNAME_ERROR_MESSAGE;
       if (!formData.email.trim()) return "Enter an email address.";
       if (!EMAIL_REGEX.test(formData.email.trim())) return "Invalid email format.";
       if (!formData.password) return "Enter a password.";

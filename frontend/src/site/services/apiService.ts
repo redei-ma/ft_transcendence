@@ -1,6 +1,6 @@
 
-import { fetchWithAuthRetry } from "./authService";
-import { refreshToken } from "../services/authService";
+import { fetchWithAuthRetry, refreshToken, RateLimitError } from "./authService";
+import { RATE_LIMIT_ERROR_MESSAGE } from '@transcendence/types';
 
 export interface UserProfile {
     id: number;
@@ -190,7 +190,7 @@ export async function getMySettings(): Promise<UserSettings | null> {
     }
 }
 
-export async function updateUsername(username: string): Promise<boolean> {
+export async function updateUsername(username: string): Promise<{ ok: boolean; message?: string }> {
     try {
         const res = await fetchWithAuthRetry("/api/users/me/username", {
             method: "PATCH",
@@ -198,10 +198,17 @@ export async function updateUsername(username: string): Promise<boolean> {
             body: JSON.stringify({ username }),
         });
         refreshToken();
-        return !!res && res.ok;
+        if (!res) return { ok: false, message: "Connection failed" };
+        if (res.ok) return { ok: true };
+        const data = await res.json().catch(() => ({}));
+        const msg = res.status === 409 ? "Username already taken"
+            : res.status === 400 ? (data.message || "Invalid username")
+            : data.message || "Failed to update username";
+        return { ok: false, message: msg };
     } catch (error) {
+        if (error instanceof RateLimitError) return { ok: false, message: RATE_LIMIT_ERROR_MESSAGE };
         console.error("[API] Error updating username:", error);
-        return false;
+        return { ok: false, message: "Network error" };
     }
 }
 
@@ -219,7 +226,7 @@ export async function updateEmail(email: string): Promise<boolean> {
     }
 }
 
-export async function uploadAvatar(file: File): Promise<UserProfile | null> {
+export async function uploadAvatar(file: File): Promise<{ ok: boolean; profile?: UserProfile; message?: string }> {
     try {
         const formData = new FormData();
         formData.append('avatar', file);
@@ -228,11 +235,13 @@ export async function uploadAvatar(file: File): Promise<UserProfile | null> {
             body: formData,
             // NON impostare Content-Type — il browser lo setta con il boundary corretto
         });
-        if (!res || !res.ok) return null;
-        return (await res.json()) as UserProfile;
+        if (!res) return { ok: false, message: "Connection failed" };
+        if (res.ok) return { ok: true, profile: (await res.json()) as UserProfile };
+        const data = await res.json().catch(() => ({}));
+        return { ok: false, message: data.message || "Upload failed" };
     } catch (error) {
         console.error("[API] Error uploading avatar:", error);
-        return null;
+        return { ok: false, message: "Network error" };
     }
 }
 
@@ -332,17 +341,21 @@ export async function generate2fa() {
   }
 }
 
-export async function turnOn2fa(code: string): Promise<boolean> {
+export async function turnOn2fa(code: string): Promise<{ ok: boolean; message?: string }> {
   try {
     const res = await fetchWithAuthRetry("/api/auth/2fa/enable", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ code }),
     });
-    return !!res && res.ok;
+    if (!res) return { ok: false, message: "Connection failed" };
+    if (res.ok) return { ok: true };
+    const data = await res.json().catch(() => ({}));
+    return { ok: false, message: data.message || "Incorrect code. Please try again." };
   } catch (error) {
+    if (error instanceof RateLimitError) return { ok: false, message: RATE_LIMIT_ERROR_MESSAGE };
     console.error("[API] Error turning on 2FA:", error);
-    return false;
+    return { ok: false, message: "Network error" };
   }
 }
 
@@ -364,11 +377,12 @@ export async function requestEmailChange(password: string, newEmail: string): Pr
       body: JSON.stringify({ password, newEmail }),
     });
 
-    if (!res) return { ok: false, message: "Connessione al server fallita" };
+    if (!res) return { ok: false, message: "Server connection failed" };
 
     const data = await res.json().catch(() => ({}));
     return { ok: res.ok, message: data.message || data.error };
   } catch (error) {
+    if (error instanceof RateLimitError) return { ok: false, message: RATE_LIMIT_ERROR_MESSAGE };
     return { ok: false, message: "Network error" };
   }
 }
@@ -381,11 +395,12 @@ export async function changePassword(oldPass: string, newPass: string): Promise<
       body: JSON.stringify({ oldPass, newPass }),
     });
 
-    if (!res) return { ok: false, message: "Connessione al server fallita" };
+    if (!res) return { ok: false, message: "Server connection failed" };
 
     const data = await res.json().catch(() => ({}));
     return { ok: res.ok, message: data.message || data.error };
   } catch (error) {
+    if (error instanceof RateLimitError) return { ok: false, message: RATE_LIMIT_ERROR_MESSAGE };
     return { ok: false, message: "Network error" };
   }
 }
@@ -464,15 +479,16 @@ export async function getFriendRequests(): Promise<FriendRequestsResponse | null
 export async function sendFriendRequest(targetId: number): Promise<{ ok: boolean; message?: string }> {
     try {
         const res = await fetchWithAuthRetry(`/api/users/me/friends/${targetId}`, { method: "POST" });
-        if (!res) return { ok: false, message: "Connessione fallita" };
+        if (!res) return { ok: false, message: "Connection failed" };
         if (res.ok) return { ok: true };
         const data = await res.json().catch(() => ({}));
-        const msg = res.status === 400 ? "Non puoi aggiungerti da solo"
-            : res.status === 404 ? "Utente non trovato"
-            : res.status === 409 ? "Richiesta già inviata o già amici"
-            : data.message || "Errore";
+        const msg = res.status === 400 ? "You cannot add yourself"
+            : res.status === 404 ? "User not found"
+            : res.status === 409 ? "Request already sent or already friends"
+            : data.message || "Error";
         return { ok: false, message: msg };
     } catch (error) {
+        if (error instanceof RateLimitError) return { ok: false, message: RATE_LIMIT_ERROR_MESSAGE };
         return { ok: false, message: "Network error" };
     }
 }
@@ -508,12 +524,13 @@ export async function sendGameInvite(targetId: number, expiresInSeconds = 60): P
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ expiresInSeconds }),
         });
-        if (!res) return { ok: false, message: "Connessione fallita" };
+        if (!res) return { ok: false, message: "Connection failed" };
         if (res.ok) return { ok: true };
         const data = await res.json().catch(() => ({}));
-        const msg = res.status === 409 ? "Invito già inviato" : data.message || "Errore";
+        const msg = res.status === 409 ? "Invite already sent" : data.message || "Error";
         return { ok: false, message: msg };
     } catch (error) {
+        if (error instanceof RateLimitError) return { ok: false, message: RATE_LIMIT_ERROR_MESSAGE };
         return { ok: false, message: "Network error" };
     }
 }
@@ -577,16 +594,20 @@ export async function getMyMatches(page = 1, limit = 10, mode?: string): Promise
 // DELETE ACCOUNT
 // ==========================================
 
-export async function deleteAccount(password: string): Promise<boolean> {
+export async function deleteAccount(password: string): Promise<{ ok: boolean; message?: string }> {
     try {
         const res = await fetchWithAuthRetry("/api/auth/account", {
             method: "DELETE",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ password }),
         });
-        return !!res && (res.ok || res.status === 204);
+        if (!res) return { ok: false, message: "Connection failed" };
+        if (res.ok || res.status === 204) return { ok: true };
+        const data = await res.json().catch(() => ({}));
+        return { ok: false, message: data.message || "Failed to delete account" };
     } catch (error) {
+        if (error instanceof RateLimitError) return { ok: false, message: RATE_LIMIT_ERROR_MESSAGE };
         console.error("[API] Error deleting account:", error);
-        return false;
+        return { ok: false, message: "Network error" };
     }
 }
