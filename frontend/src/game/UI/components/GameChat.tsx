@@ -159,7 +159,7 @@ export default function GameChat({ myUserId, isVisible }: GameChatProps) {
 
   if (!isVisible) return null;
 
-  const visibleMessages = isActive ? messages.slice(-10) : messages.slice(-4);
+  const visibleMessages = isActive ? messages.slice(-8) : messages.slice(-4);
 
   return (
     <div

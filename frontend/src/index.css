@@ -37,6 +37,11 @@ body {
   cursor: url('/src/assets/images/Cursor.png') 2 2, auto;
 }
 
+body {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
 a, button, [onclick], input, select, textarea,
 input[type="submit"], [role="button"], .btn-press,
 [style*="cursor: pointer"], [style*="cursor:pointer"] {
