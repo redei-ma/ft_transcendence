@@ -61,6 +61,16 @@ export default function FriendsSidebar({ onGameInviteAccepted, gameInvites, onAc
     fetchFriends();
   }, [fetchFriends]);
 
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const tab = (e as CustomEvent).detail?.tab as Tab | undefined;
+      if (tab) setTab(tab);
+      setIsOpen(true);
+    };
+    window.addEventListener('open-friends-sidebar', handler);
+    return () => window.removeEventListener('open-friends-sidebar', handler);
+  }, []);
+
   // Aggiornamento lista amici via SSE quando cambia una friendship
   useEffect(() => {
     const handler = () => fetchFriends();

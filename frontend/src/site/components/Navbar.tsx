@@ -85,8 +85,10 @@ export default function Navbar({ currentPage, onNavigate, onLogout, username, av
     notif.setOpen(false);
     
     // Indirizzamento specifico in base al tipo di notifica
-    if (n.type === 'FRIEND_REQ' || n.type === 'FRIEND_ACCEPTED') {
-      scrollTo('profile', 'profile-friends');
+    if (n.type === 'FRIEND_REQ') {
+      window.dispatchEvent(new CustomEvent('open-friends-sidebar', { detail: { tab: 'requests' } }));
+    } else if (n.type === 'FRIEND_ACCEPTED') {
+      window.dispatchEvent(new CustomEvent('open-friends-sidebar', { detail: { tab: 'friends' } }));
     } else if (n.type === 'ACHV_UNLOCKED') {
       scrollTo('profile', 'profile-achievements');
     }
