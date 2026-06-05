@@ -311,7 +311,9 @@ export class AuthService {
     return username;
   }
 
-  async loginWithGoogle(googleUser: CreateOAuthUserDto) {
+  async loginWithGoogle(googleUser: CreateOAuthUserDto): Promise<{ accessToken: string; refreshToken: string; wasLinked: boolean }> {
+    let wasLinked = false;
+
     let user = await this.usersService.findByProvider(
       googleUser.provider,
       googleUser.oauthId,
@@ -326,6 +328,7 @@ export class AuthService {
           oauthId: googleUser.oauthId,
           avatarUrl: googleUser.avatarUrl,
         });
+        wasLinked = true;
       } else {
         const uniqueUsername = await this.generateUniqueUsername(
           googleUser.username,
@@ -357,7 +360,16 @@ export class AuthService {
       },
     );
 
-    return { accessToken, refreshToken };
+    return { accessToken, refreshToken, wasLinked };
+  }
+
+  async unlinkProvider(userId: number, provider: Provider): Promise<void> {
+    if (provider === Provider.LOCAL) {
+      throw new BadRequestException('Cannot unlink local account via this endpoint.');
+    }
+    const user = await this.usersService.findUser({ id: userId });
+    if (!user) throw new NotFoundException('User not found');
+    await this.usersService.unlinkOAuth(userId, provider);
   }
 
   async setup2fa(userId: number) {
@@ -502,7 +514,7 @@ export class AuthService {
     };
   }
 
-  async changePassword(userId: number, body: ChangePasswordDto) {
+  async changePassword(userId: number, body: ChangePasswordDto): Promise<{ requiresLogout: boolean }> {
     const user = await this.usersService.findUser({ id: userId });
     if (!user) throw new NotFoundException();
 
@@ -510,8 +522,13 @@ export class AuthService {
       (a) => a.provider === Provider.LOCAL,
     );
 
+    const isFirstTimeSet = !localAccount?.passwordHash;
+
     // If they have a password, they MUST verify the old one
     if (localAccount?.passwordHash) {
+      if (!body.oldPass) {
+        throw new UnauthorizedException('Current password required.');
+      }
       const isMatch = await bcrypt.compare(
         body.oldPass,
         localAccount.passwordHash,
@@ -542,10 +559,14 @@ export class AuthService {
       await this.usersService.setPassword(userId, { passwordHash: hashed });
     }
 
-    // Invalidate sessions
-    await this.usersService.invalidateRefreshTokens(userId);
+    // Only invalidate sessions when changing an existing password (security measure).
+    // Setting a password for the first time on an OAuth account does not require logout.
+    if (!isFirstTimeSet) {
+      await this.usersService.invalidateRefreshTokens(userId);
+      const status = UserStatus.OFFLINE;
+      await this.usersService.updateStatus(userId, { status });
+    }
 
-    const status = UserStatus.OFFLINE;
-    await this.usersService.updateStatus(userId, { status });
+    return { requiresLogout: !isFirstTimeSet };
   }
 }

@@ -8,6 +8,8 @@ import {
   UseGuards,
   Get,
   Query,
+  Param,
+  ParseEnumPipe,
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
@@ -19,6 +21,7 @@ import { JwtRefreshGuard } from './jwt/jwt-refresh.guard';
 import { ConfigService } from '@nestjs/config';
 import { GoogleAuthGuard } from './jwt/google.guard';
 import { CreateLocalUserNoHashDto, CreateOAuthUserDto } from '@transcendence/dto';
+import { Provider } from '@transcendence/types';
 import { ResetPasswordDto, ChangePasswordDto, EmailDto, NewEmailDto, LoginDto, Enable2FADto, TokenQueryDto, ConfirmPasswordDto } from '../../dto/input.dto';
 
 @Controller('api/auth')
@@ -89,7 +92,7 @@ export class AuthController {
         `${this.config.getOrThrow('PUBLIC_URL')}/index.html?error=google_failed`,
       );
     }
-    const { accessToken, refreshToken } =
+    const { accessToken, refreshToken, wasLinked } =
       await this.authService.loginWithGoogle(req.user);
 
     res.cookie(AUTH_COOKIE_NAME || 'auth_token', accessToken, {
@@ -106,7 +109,8 @@ export class AuthController {
       path: '/',
     });
 
-    return res.redirect(`${this.config.getOrThrow('PUBLIC_URL')}/dashboard.html`);
+    const redirectPath = wasLinked ? '/dashboard.html?linked=GOOGLE' : '/dashboard.html';
+    return res.redirect(`${this.config.getOrThrow('PUBLIC_URL')}${redirectPath}`);
   }
 
   @Post('refresh')
@@ -235,6 +239,16 @@ export class AuthController {
     return this.authService.deleteAccount(req.user.sub, body);
   }
 
+  @Delete('provider/:provider')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @UseGuards(JwtAuthGuard)
+  async unlinkProvider(
+    @Req() req: AuthenticatedRequest,
+    @Param('provider', new ParseEnumPipe(Provider)) provider: Provider,
+  ): Promise<void> {
+    return this.authService.unlinkProvider(req.user.sub, provider);
+  }
+
   @UseGuards(JwtAuthGuard)
   @Post('change-password')
   async changePassword(
@@ -242,11 +256,13 @@ export class AuthController {
     @Body() body: ChangePasswordDto,
     @Res({ passthrough: true }) res: Response,
   ) {
-    await this.authService.changePassword(req.user.sub, body);
+    const { requiresLogout } = await this.authService.changePassword(req.user.sub, body);
 
-    res.clearCookie('auth_token');
-    res.clearCookie('refresh_token');
+    if (requiresLogout) {
+      res.clearCookie('auth_token');
+      res.clearCookie('refresh_token');
+    }
 
-    return { message: 'Password updated successfully' };
+    return { message: 'Password updated successfully', requiresLogout };
   }
 }

@@ -23,7 +23,7 @@ export default function App() {
   const [pendingInviterId, setPendingInviterId] = useState<number | null>(null);
   const [gameInvites, setGameInvites] = useState<GameInvite[]>([]);
 
-  type EmailCallback = { type: 'verified' | 'email-changed'; status: 'success' | 'error'; message: string } | null;
+  type EmailCallback = { type: 'verified' | 'email-changed' | 'provider-linked'; status: 'success' | 'error'; message: string } | null;
   const [emailCallback, setEmailCallback] = useState<EmailCallback>(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.has('verified')) {
@@ -37,6 +37,11 @@ export default function App() {
       const message = decodeURIComponent(params.get('msg') ?? '');
       window.history.replaceState({}, document.title, '/');
       return { type: 'email-changed', status, message };
+    }
+    if (params.has('linked')) {
+      const provider = params.get('linked') ?? '';
+      window.history.replaceState({}, document.title, '/');
+      return { type: 'provider-linked', status: 'success', message: provider };
     }
     return null;
   });

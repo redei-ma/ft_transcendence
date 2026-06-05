@@ -327,7 +327,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
           {/* Google OAuth -> type="button" fondamentale qui, per non inviare il form normale! */}
           {mode !== "forgot" && mode !== "reset" && (
             <button type="button" className="btn-press" onClick={authService.redirectToGoogle} style={{
-              width: "100%", padding: "10px", background: "rgba(255,255,255,0.05)", border: `1px solid ${theme.colors.border}`, borderRadius: "2px", color: theme.colors.goldDark, fontFamily: theme.fonts.heading, fontSize: "11px", fontWeight: 600, letterSpacing: "1px", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "10px", transition: "all 0.2s",
+              width: "100%", padding: "10px", background: `linear-gradient(180deg, ${theme.colors.gold}, ${theme.colors.goldDark})`, border: "none", borderRadius: "2px", color: theme.colors.goldDark, fontFamily: theme.fonts.heading, fontSize: "11px", fontWeight: 700, letterSpacing: "1px", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "10px", transition: "all 0.2s",
             }}>
               <Icons.Google size={16} /> Continue with Google
             </button>

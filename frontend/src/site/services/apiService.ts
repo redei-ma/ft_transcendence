@@ -35,6 +35,7 @@ export interface UserStats {
 export interface UserSettings {
     is2faEnabled: boolean;
     isEmailVerified: boolean;
+    hasLocalAccount: boolean;
     linkedProviders: string[];
 }
 
@@ -387,7 +388,7 @@ export async function requestEmailChange(password: string, newEmail: string): Pr
   }
 }
 
-export async function changePassword(oldPass: string, newPass: string): Promise<{ok: boolean, message?: string}> {
+export async function changePassword(oldPass: string, newPass: string): Promise<{ok: boolean, requiresLogout?: boolean, message?: string}> {
   try {
     const res = await fetchWithAuthRetry("/api/auth/change-password", {
       method: "POST",
@@ -398,10 +399,23 @@ export async function changePassword(oldPass: string, newPass: string): Promise<
     if (!res) return { ok: false, message: "Server connection failed" };
 
     const data = await res.json().catch(() => ({}));
-    return { ok: res.ok, message: data.message || data.error };
+    return { ok: res.ok, requiresLogout: data.requiresLogout, message: data.message || data.error };
   } catch (error) {
     if (error instanceof RateLimitError) return { ok: false, message: RATE_LIMIT_ERROR_MESSAGE };
     return { ok: false, message: "Network error" };
+  }
+}
+
+export async function unlinkProvider(provider: string): Promise<{ ok: boolean; message?: string }> {
+  try {
+    const res = await fetchWithAuthRetry(`/api/auth/provider/${provider}`, { method: 'DELETE' });
+    if (!res) return { ok: false, message: 'Connection failed' };
+    if (res.ok) return { ok: true };
+    const data = await res.json().catch(() => ({}));
+    return { ok: false, message: data.message || 'Failed to unlink provider' };
+  } catch (error) {
+    if (error instanceof RateLimitError) return { ok: false, message: RATE_LIMIT_ERROR_MESSAGE };
+    return { ok: false, message: 'Network error' };
   }
 }
 
