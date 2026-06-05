@@ -29,38 +29,6 @@ export default function GameUI({
 
   return (
     <>
-      {players.map((player) => {
-        if (!player.isDead) return null;
-        return (
-          <div
-            key={`death-${player.id}`}
-            style={{
-              position: 'absolute',
-              top: player.characterName === CharacterName.ZEUS ? '60px' : 'auto',
-              bottom: player.characterName === CharacterName.ADE ? '60px' : 'auto',
-              left: '20px',
-              pointerEvents: 'none',
-              zIndex: 1001,
-              fontFamily: theme.fonts.mono,
-            }}
-          >
-            <div style={{
-              color: theme.colors.dead, fontSize: '20px', fontWeight: 'bold',
-              textShadow: '2px 2px 6px rgba(0,0,0,1)',
-              animation: 'pulse 1s infinite', marginBottom: '4px',
-            }}>
-              {player.characterName} DEAD
-            </div>
-            <div style={{
-              color: theme.colors.afk, fontSize: '14px', fontWeight: 'bold',
-              textShadow: '2px 2px 4px rgba(0,0,0,1)', textAlign: 'center',
-            }}>
-              Respawn in: {Math.ceil(5 - player.respawnTimer)}s
-            </div>
-          </div>
-        );
-      })}
-
       {/* Timer */}
       <div style={{
         position: 'absolute', top: 20, left: '50%', transform: 'translateX(-50%)',
@@ -73,7 +41,7 @@ export default function GameUI({
         {mins}:{secs.toString().padStart(2, '0')}
       </div>
 
-      {/* ⚡ SPOSTATO: Messo a right: 20 per non accavallarsi con i testi a sinistra */}
+      {/* riquadro di info sulla connessione */}
       <div style={{
         position: 'absolute', top: 20, right: 20, 
         color: theme.colors.textPrimary, fontFamily: theme.fonts.mono,

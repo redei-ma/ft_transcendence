@@ -123,13 +123,16 @@ interface SkillHudProps {
   character: CharacterName;
   myUserId: string;
   myUsername: string;
+  teamId?: number;              // se passato, seleziona il player per teamId (local)
+  side?: 'left' | 'right';      // angolo dello schermo
 }
 
-export default function SkillHud({ character, myUserId, myUsername }: SkillHudProps) {
+export default function SkillHud({ character, myUserId, myUsername, teamId, side = 'left' }: SkillHudProps) {
   const cfg = HUD[character];
   const players = useGameStore((s) => s.gameState?.players) || [];
-  const me = players.find((p) => (p as any).userName === myUsername || p.id === myUserId);
-
+  const me = teamId !== undefined
+    ? players.find((p) => (p as any).teamId === teamId)
+    : players.find((p) => (p as any).userName === myUsername || p.id === myUserId);
   const k = HUD_SCALE;
   const [hovered, setHovered] = useState<string | null>(null);
 
@@ -178,9 +181,11 @@ export default function SkillHud({ character, myUserId, myUsername }: SkillHudPr
   return (
     <>
     <div style={{
-      position: 'fixed', left: 16, bottom: 16, zIndex: 500,
+      position: 'fixed', bottom: 16, zIndex: 500,
+      ...(side === 'right' ? { right: 16 } : { left: 16 }),
       width: BOX.w, height: BOX.h,
-      transform: `scale(${k})`, transformOrigin: 'bottom left',
+      transform: `scale(${k})`,
+      transformOrigin: side === 'right' ? 'bottom right' : 'bottom left',
       pointerEvents: 'none',
     }}>
       <img src={cfg.box} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }} />
@@ -269,7 +274,8 @@ export default function SkillHud({ character, myUserId, myUsername }: SkillHudPr
     {/* Tooltip skill (fuori dal container scalato, font leggibile) */}
     {hovered && SKILL_TEXT[character]?.[hovered] && (
       <div style={{
-        position: 'fixed', left: 16, bottom: 16 + BOX.h * HUD_SCALE + 10, zIndex: 501,
+        position: 'fixed', bottom: 16 + BOX.h * HUD_SCALE + 10, zIndex: 501,
+        ...(side === 'right' ? { right: 16 } : { left: 16 }),
         width: 320, padding: '14px 16px',
         background: 'rgba(8,16,22,0.96)',
         border: `1px solid ${theme.colors.border}`,

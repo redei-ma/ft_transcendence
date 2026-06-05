@@ -120,7 +120,7 @@ function ResizeWarning({ onLeave }: { onLeave: () => void }) {
   );
 }
 
-export default function Game({ selectedCharacter, selectedMode, onPlayAgain, onQuit, myUserId, myUsername }: GameProps) {
+export default function Game({ selectedCharacter, selectedMode, p1Character, p2Character, onPlayAgain, onQuit, myUserId, myUsername }: GameProps) {
   const inputManagerRef = useRef<InputManager | null>(null);
   
   useGameSocket();
@@ -138,7 +138,7 @@ export default function Game({ selectedCharacter, selectedMode, onPlayAgain, onQ
 
   const [showLeaveDialog, setShowLeaveDialog] = useState(false);
   const isLocal = selectedMode === MatchMode.LOCAL || selectedMode === MatchMode.AI;
-
+  const doubleHUD = selectedMode === MatchMode.LOCAL;
   useEffect(() => {
     const inputManager = new InputManager(selectedMode === MatchMode.LOCAL);
     inputManagerRef.current = inputManager;
@@ -373,9 +373,29 @@ export default function Game({ selectedCharacter, selectedMode, onPlayAgain, onQ
         <GameChat myUserId={myUserId} isVisible={true} />
       )}
 
-      {!gameOver && (
+      {/* {!gameOver && (
         <SkillHud character={selectedCharacter} myUserId={myUserId} myUsername={myUsername} />
-      )}
+      )} */}
+      {!gameOver && (
+  <>
+    <SkillHud
+          character={p1Character}
+          myUserId={myUserId}
+          myUsername={myUsername}
+          teamId={isLocal ? 0 : undefined}
+          side="left"
+        />
+        {doubleHUD && (
+          <SkillHud
+            character={p2Character}
+            myUserId=""
+            myUsername=""
+            teamId={1}
+            side="right"
+          />
+        )}
+      </>
+    )}
 
       {gameOver && (
         <GameOverOverlayWrapper gameOver={gameOver} onPlayAgain={handlePlayAgainInternal} onQuit={ () => handleQuitInternal(true)} myUserId={myUsername} />
