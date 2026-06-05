@@ -58,6 +58,8 @@ interface RedisUserStatus {
 @Injectable()
 export class MatchmakingService implements OnModuleDestroy {
 	private readonly logger = new Logger(MatchmakingService.name);
+	private readonly GAME_SERVICE_URL = 'http://game-service:3000';
+	private readonly USER_SERVICE_URL = 'http://user-service:3001';
 
 	constructor(
 		@InjectRedis() private readonly redis: Redis,
@@ -102,7 +104,7 @@ export class MatchmakingService implements OnModuleDestroy {
 				dbStatus = UserStatus.ONLINE;
 			}
 
-			const url = `http://user-service:3001/internal/users/${userId}/status`;
+			const url = `${this.USER_SERVICE_URL}/internal/users/${userId}/status`;
 
 			await fetch(url, {
 				method: 'PATCH',
@@ -122,7 +124,7 @@ export class MatchmakingService implements OnModuleDestroy {
 		userId: string | number,
 	): Promise<number | null> {
 		try {
-			const url = `http://user-service:3001/internal/users/${userId}/elo`;
+			const url = `${this.USER_SERVICE_URL}/internal/users/${userId}/elo`;
 			const response = await fetch(url);
 			if (!response.ok) throw new Error(`HTTP ${response.status}`);
 			const data = await response.json() as { eloCurrent: number };
@@ -392,7 +394,7 @@ export class MatchmakingService implements OnModuleDestroy {
 
 		try {
 			this.logger.log(`[ExecuteMatch] Invio payload: ${JSON.stringify(payload)}`);
-			const res = await fetch("http://game-service:3000/matchmaking/create-match", {
+			const res = await fetch(`${this.GAME_SERVICE_URL}/matchmaking/create-match`, {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify(payload),
@@ -653,7 +655,7 @@ export class MatchmakingService implements OnModuleDestroy {
 		};
 
 		try {
-			const res = await fetch("http://game-service:3000/matchmaking/create-match", {
+			const res = await fetch(`${this.GAME_SERVICE_URL}/matchmaking/create-match`, {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify(payload),
@@ -789,7 +791,7 @@ export class MatchmakingService implements OnModuleDestroy {
 		};
 
 		try {
-			const res = await fetch("http://game-service:3000/matchmaking/create-match", {
+			const res = await fetch(`${this.GAME_SERVICE_URL}/matchmaking/create-match`, {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify(payload),
