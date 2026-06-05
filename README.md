@@ -327,7 +327,16 @@ User ──< Notification     (persistent, typed: FRIEND_REQ / GAME_INVITE / ACH
 - Managed TLS certificate generation and ngrok tunnel for OAuth development
 - Contributed to Docker infrastructure setup alongside Renato
 
-**Challenge:** > TODO — Alessandro: descrivi una sfida tecnica che hai affrontato e come l'hai risolta.
+**Challenge: Authentication Architecture Decision**
+
+One of the key architectural decisions I faced was choosing the right authentication strategy for our platform: **Session-based authentication** vs. **Token-based authentication (JWT)**. 
+
+To make an informed choice, I evaluated both approaches based on our project requirements:
+* **Session-Based Authentication:** Offers high security and immediate token revocation capabilities, but requires the server to maintain state, increasing database overhead and limiting horizontal scalability.
+* **Token-Based Authentication (JWT):** Provides a completely stateless architecture, drastically reducing server overhead—ideal for a real-time browser game. The trade-off is a minor delay in immediate revocation, as valid access tokens must be short-lived to minimize abuse.
+
+##### **The Resolution**
+Given that our project is a lightweight, browser-based game, the scalability and performance benefits of a stateless architecture far outweighed the need for heavy, server-side session tracking. Therefore, I implemented a robust **Token-Based Auth System** using short-lived access tokens, refresh tokens, and 2FA, proving that we could achieve high scalability without compromising on the security standards required for our gaming platform.
 
 ### Leonardo (Developer - Matchmaking)
 

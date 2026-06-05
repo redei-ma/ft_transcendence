@@ -43,9 +43,8 @@ export async function fetchWithAuthRetry(
 
     let res = await fetch(url, fetchOptions);
 
-    // If we get a 401, we try to refresh ONLY if we think we have a session
     if (res.status === 401) {
-      const success = await refreshToken(); // This now uses our safe check
+      const success = await refreshToken();
       if (!success) return null;
 
       res = await fetch(url, fetchOptions);
