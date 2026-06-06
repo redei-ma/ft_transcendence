@@ -8,7 +8,7 @@ import { World } from "../../game.world";
 import { PathFinder } from "../pathFinder/ai.PathFinder";
 
 export class KiteState implements IAiStates{
-    logger: Logger = new Logger(KiteState.name);
+    private readonly logger: Logger = new Logger(KiteState.name);
     name: string = 'KiteState';
     private murderer: Player;
     private moveInput: Vector = new Vector(0, 0);

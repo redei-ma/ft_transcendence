@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Logger,
   Post,
   Delete,
   Res,
@@ -26,6 +27,8 @@ import { ResetPasswordDto, ChangePasswordDto, EmailDto, NewEmailDto, LoginDto, E
 
 @Controller('api/auth')
 export class AuthController {
+  private readonly logger = new Logger(AuthController.name);
+
   constructor(
     private readonly authService: AuthService,
     private readonly config: ConfigService,
@@ -35,6 +38,7 @@ export class AuthController {
   async register(
     @Body() body: CreateLocalUserNoHashDto,
   ) {
+    this.logger.log(`[HTTP] POST /register username=${body.username}`);
     return await this.authService.registerAndSendVerification(body);
   }
 
@@ -48,6 +52,7 @@ export class AuthController {
     @Body() body: LoginDto,
     @Res({ passthrough: true }) res: Response,
   ) {
+    this.logger.log(`[HTTP] POST /login identifier=${body.identifier}`);
     const result = await this.authService.login(body);
 
     if ('requires2fa' in result) {
@@ -147,6 +152,7 @@ export class AuthController {
     @Req() req: AuthenticatedRequest,
     @Res({ passthrough: true }) res: Response,
   ) {
+    this.logger.log(`[HTTP] POST /logout userId=${req.user.sub}`);
     await this.authService.logout(req.user.sub);
 
     res.clearCookie('auth_token');

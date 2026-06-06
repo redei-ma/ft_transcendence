@@ -91,7 +91,7 @@ export class MatchmakingGateway
 	async handleDisconnect(client: Socket) {
 		const userId = this.socketToUser.get(client.id);
 		if (userId) {
-			this.logger.log(`[Disconnect] Pulizia per utente ${userId} (Socket: ${client.id})`);
+			this.logger.debug(`[Disconnect] Pulizia per utente ${userId} (Socket: ${client.id})`);
 			
 			// Avviamo la logica di pulizia nel service (se era in pre_match annullerà la partita)
 			await this.matchmakingService.handleUserDisconnect(userId);
@@ -99,7 +99,7 @@ export class MatchmakingGateway
 			// Rimuoviamo il mapping
 			this.socketToUser.delete(client.id);
 		} else {
-			this.logger.log(`Client disconnected without active session mapping: ${client.id}`);
+			this.logger.debug(`Client disconnected without active session mapping: ${client.id}`);
 		}
 	}
 
@@ -108,7 +108,7 @@ export class MatchmakingGateway
 		const clientSocket = this.server.sockets.sockets.get(payload.socketId);
 		if (clientSocket) {
 			clientSocket.emit(GameEvents.MATCH_FOUND, payload.data);
-			this.logger.log(`[Socket] Notifica inviata al socket: ${payload.socketId}`);
+			this.logger.debug(`[Socket] Notifica inviata al socket: ${payload.socketId}`);
 		} else {
 			this.logger.warn(`[Socket] Impossibile trovare il socket ${payload.socketId} per inviare il match`);
 		}
@@ -174,7 +174,7 @@ export class MatchmakingGateway
 		if (clientSocket) {
 
 			clientSocket.emit(GameEvents.DIRECT_SESSION_READY, payload.data);
-			this.logger.log(`[Socket] JOIN_DIRECT_SESSION inviato al socket: ${payload.socketId}`);
+			this.logger.debug(`[Socket] JOIN_DIRECT_SESSION inviato al socket: ${payload.socketId}`);
 		}
 	}
 	

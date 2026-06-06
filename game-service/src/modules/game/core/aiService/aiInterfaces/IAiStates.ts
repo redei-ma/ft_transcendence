@@ -1,10 +1,7 @@
-import { Logger } from '@nestjs/common'
 import { Player } from '@transcendence/types'
 import { World } from '../../game.world';
 
 export interface IAiStates{
-    logger: Logger;
-    
     name: string;
 
     onEnter(bot: Player, gameWorld?: World): void;

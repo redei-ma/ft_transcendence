@@ -1,5 +1,6 @@
 import {
   Injectable,
+  Logger,
   UnauthorizedException,
   ForbiddenException,
   BadRequestException,
@@ -32,6 +33,8 @@ import { isEmail } from 'class-validator';
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+
   constructor(
     private readonly config: ConfigService,
     private readonly jwtService: JwtService,
@@ -45,6 +48,7 @@ export class AuthService {
       email: dto.email,
     });
     if (existingEmail) {
+      this.logger.warn(`[Register] Registration failed: email already in use (${dto.email})`);
       throw new BadRequestException('Registration failed. Please check your details.');
     }
 
@@ -53,6 +57,7 @@ export class AuthService {
       username: dto.username,
     });
     if (existingUsername) {
+      this.logger.warn(`[Register] Registration failed: username already in use (${dto.username})`);
       throw new BadRequestException('Registration failed. Please check your details.');
     }
 
@@ -73,6 +78,7 @@ export class AuthService {
 
       await this.mailService.sendVerifyEmail(user.email, verifyUrl);
 
+      this.logger.log(`[Register] New user registered: ${user.username} (id=${user.id})`);
       return {
         message: `Welcome ${user.username}! Please check your email.`,
         user: { username: user.username, email: user.email },
@@ -121,6 +127,7 @@ export class AuthService {
     }
 
     if (!user) {
+      this.logger.warn(`[Login] Failed login attempt: user not found (identifier=${dto.identifier})`);
       throw new UnauthorizedException('invalid credentials');
     }
 
@@ -128,6 +135,7 @@ export class AuthService {
       (a) => a.provider === Provider.LOCAL,
     );
     if (!localAccount?.passwordHash) {
+      this.logger.warn(`[Login] Failed login: OAuth-only account tried local login (userId=${user.id})`);
       throw new UnauthorizedException('This account uses Google login');
     }
 
@@ -136,10 +144,12 @@ export class AuthService {
       localAccount.passwordHash,
     );
     if (!isMatch) {
+      this.logger.warn(`[Login] Failed login: wrong password (userId=${user.id})`);
       throw new UnauthorizedException('invalid credentials');
     }
 
     if (!user.isEmailVerified) {
+      this.logger.warn(`[Login] Failed login: email not verified (userId=${user.id})`);
       throw new ForbiddenException(
         'please verify your email before logging in',
       );
@@ -158,11 +168,13 @@ export class AuthService {
       });
 
       if (!valid) {
+        this.logger.warn(`[Login] Failed login: invalid 2FA code (userId=${user.id})`);
         throw new UnauthorizedException('Invalid 2FA code');
       }
     }
 
     if (user.status !== UserStatus.OFFLINE) {
+      this.logger.warn(`[Login] Failed login: account already online (userId=${user.id})`);
       throw new ForbiddenException('This account is already logged in');
     }
 
@@ -191,6 +203,7 @@ export class AuthService {
     const status = UserStatus.ONLINE;
     await this.usersService.updateStatus(user.id, { status });
 
+    this.logger.log(`[Login] User logged in: ${user.username} (id=${user.id})`);
     return {
       accessToken,
       refreshToken,
@@ -225,6 +238,7 @@ export class AuthService {
 
     await this.usersService.markEmailVerified(payload.sub);
 
+    this.logger.log(`[EmailVerify] Email verified for userId=${payload.sub}`);
     return { message: 'Email successfully verified. You can now log in.' };
   }
 
@@ -245,6 +259,7 @@ export class AuthService {
     const status = UserStatus.OFFLINE;
     await this.usersService.updateStatus(userId, { status });
 
+    this.logger.log(`[Logout] User logged out: userId=${userId}`);
     return { ok: true };
   }
 
@@ -360,6 +375,7 @@ export class AuthService {
       },
     );
 
+    this.logger.log(`[OAuth] Google login: userId=${user.id} username=${user.username} wasLinked=${wasLinked}`);
     return { accessToken, refreshToken, wasLinked };
   }
 
@@ -370,6 +386,7 @@ export class AuthService {
     const user = await this.usersService.findUser({ id: userId });
     if (!user) throw new NotFoundException('User not found');
     await this.usersService.unlinkOAuth(userId, provider);
+    this.logger.log(`[Provider] Provider ${provider} unlinked for userId=${userId}`);
   }
 
   async setup2fa(userId: number) {
@@ -406,10 +423,12 @@ export class AuthService {
     }
 
     await this.usersService.enable2fa(userId);
+    this.logger.log(`[2FA] 2FA enabled for userId=${userId}`);
   }
 
   async disable2fa(userId: number) {
     await this.usersService.disable2fa(userId);
+    this.logger.log(`[2FA] 2FA disabled for userId=${userId}`);
   }
 
   async requestEmailChange(userId: number, dto: NewEmailDto) {
@@ -460,6 +479,7 @@ export class AuthService {
     const verifyUrl = `${this.config.getOrThrow('PUBLIC_URL')}/api/auth/confirm-email-change?token=${encodeURIComponent(token)}`;
     await this.mailService.sendVerifyEmail(dto.newEmail, verifyUrl);
 
+    this.logger.log(`[EmailChange] Email change requested for userId=${userId} → ${dto.newEmail}`);
     return {
       message:
         'Confirmation email sent to your new address. By changing email all other Id Provider (es. Google) will be disconnected. ',
@@ -485,6 +505,7 @@ export class AuthService {
     }
 
     await this.usersService.deleteUser(userId);
+    this.logger.log(`[Account] Account deleted for userId=${userId}`);
   }
 
   async confirmEmailChange(token: string) {
@@ -508,6 +529,7 @@ export class AuthService {
     // Update the actual email (user-service handles OAuth unlinking internally)
     await this.usersService.updateEmail(user.id, { email: payload.newEmail });
 
+    this.logger.log(`[EmailChange] Email updated for userId=${user.id} → ${payload.newEmail}`);
     return {
       message:
         'Email updated successfully. OAuth accounts have been unlinked for security. If you re-enter through Google with the old email a new account will be created. ',
@@ -567,6 +589,7 @@ export class AuthService {
       await this.usersService.updateStatus(userId, { status });
     }
 
+    this.logger.log(`[Password] Password ${isFirstTimeSet ? 'set' : 'changed'} for userId=${userId} (requiresLogout=${!isFirstTimeSet})`);
     return { requiresLogout: !isFirstTimeSet };
   }
 }

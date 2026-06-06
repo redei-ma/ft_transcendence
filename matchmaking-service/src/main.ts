@@ -6,7 +6,12 @@ import { AppModule } from "./app.module";
 
 async function bootstrap() {
 	// creo l'app come applicazione Web standard , ovvero per il browser
-	const app = await NestFactory.create(AppModule);
+	const app = await NestFactory.create(AppModule, {
+		logger:
+			process.env.NODE_ENV === 'production'
+				? ['error', 'warn', 'log']
+				: ['error', 'warn', 'log', 'debug', 'verbose'],
+	});
 
 	app.enableShutdownHooks();
 
@@ -27,6 +32,6 @@ async function bootstrap() {
 	await app.startAllMicroservices();
 	const port = configService.get<number>("MATCHMAKING_SERVICE_PORT")!
 	await app.listen(port, "0.0.0.0");
-	Logger.log(`MATCHMAKING SERVICE ONLINE: HTTP su porta ${port} e Redis collegato`, 'Bootstrap');
+	new Logger('Bootstrap').log(`Matchmaking Service running on port ${port}`);
 }
 bootstrap();

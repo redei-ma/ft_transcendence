@@ -1,10 +1,7 @@
-import { Logger } from "@nestjs/common";
 import { Vector, AttackType, ExitStatus } from "@transcendence/types";
 import { MatchMakingData } from "../game-interfaces";
 
 export interface IGameState{
-
-	logger: Logger;
 
 	name: string;
 

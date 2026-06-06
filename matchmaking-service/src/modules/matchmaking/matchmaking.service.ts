@@ -204,7 +204,7 @@ export class MatchmakingService implements OnModuleDestroy {
 					socketId: player.socketId,
 					data: matchFoundData,
 				});
-				this.logger.log(
+				this.logger.debug(
 					`[ProcessQueue] Notifica RECONNECTED inviata al socket ${player.socketId}`,
 				);
 			}
@@ -250,7 +250,7 @@ export class MatchmakingService implements OnModuleDestroy {
 		const playersInQueue = await this.redis.zrange(QUEUE_KEY, 0, -1);
 		if (playersInQueue.length < 2) return;
 
-		this.logger.log(
+		this.logger.debug(
 			`[Worker] --- Inizio Ciclo Scansione --- (${playersInQueue.length} in coda)`,
 		);
 
@@ -393,7 +393,7 @@ export class MatchmakingService implements OnModuleDestroy {
 		};
 
 		try {
-			this.logger.log(`[ExecuteMatch] Invio payload: ${JSON.stringify(payload)}`);
+			this.logger.debug(`[ExecuteMatch] Invio payload: ${JSON.stringify(payload)}`);
 			const res = await fetch(`${this.GAME_SERVICE_URL}/matchmaking/create-match`, {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
@@ -700,7 +700,7 @@ export class MatchmakingService implements OnModuleDestroy {
 		const statusData = currentStatusRaw
 			? JSON.parse(currentStatusRaw)
 			: null;
-		this.logger.log(`[Logic] Matchmode attuale: ${statusData?.matchMode}`);
+		this.logger.debug(`[Logic] Matchmode attuale: ${statusData?.matchMode}`);
 		if (
 			statusData &&
 			statusData.state === INGAME &&
@@ -1221,7 +1221,7 @@ export class MatchmakingService implements OnModuleDestroy {
 						socketId: socketId,
 						data: matchFoundData,
 					});
-					this.logger.log(`[Delayed Reconnect] Evento interno emesso per il match ${statusData.matchId}`);
+					this.logger.debug(`[Delayed Reconnect] Evento interno emesso per il match ${statusData.matchId}`);
 				}, 1000);
 			}
 			
@@ -1250,7 +1250,7 @@ export class MatchmakingService implements OnModuleDestroy {
 
 		for (const userId of playerIds) {
 			if (userId.includes("ai_bot") || userId.includes("guest_")) {
-				this.logger.log(
+				this.logger.debug(
 					`[Cleanup] Skippato ripristino per entità non-user: ${userId}`,
 				);
 				continue;

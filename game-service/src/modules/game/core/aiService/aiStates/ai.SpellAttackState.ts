@@ -6,7 +6,7 @@ import { World } from "../../game.world";
 
 export class SpellAttackState implements IAiStates{
 
-    logger: Logger = new Logger(SpellAttackState.name);
+    private readonly logger: Logger = new Logger(SpellAttackState.name);
     name: string = 'SpellAttackState';
 
     private victim: Player;
