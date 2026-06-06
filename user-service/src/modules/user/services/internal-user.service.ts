@@ -29,6 +29,9 @@ import {
 	ensureUserExists,
 	ensureEmailAndUsernameAvailable,
 } from "../helpers";
+import { join, extname } from 'path';
+import { readFile } from 'fs/promises';
+import { existsSync } from 'fs';
 
 @Injectable()
 export class InternalUserService {
@@ -37,7 +40,7 @@ export class InternalUserService {
 	constructor(
 		private readonly prisma: PrismaService,
 		private readonly sseService: SseService,
-	) {}
+	) { }
 
 	// ─── SSE event handlers ────────────────────────────────────────────────────
 
@@ -405,10 +408,10 @@ export class InternalUserService {
 		await this.prisma.$transaction([
 			...(oauthAccountIds.length > 0
 				? [
-						this.prisma.account.deleteMany({
-							where: { id: { in: oauthAccountIds } },
-						}),
-					]
+					this.prisma.account.deleteMany({
+						where: { id: { in: oauthAccountIds } },
+					}),
+				]
 				: []),
 			this.prisma.user.update({
 				where: { id: userId },
@@ -611,4 +614,431 @@ export class InternalUserService {
 			},
 		});
 	}
+
+	/**
+	 * Get full GDPR profile data dump for a user.
+	 * Includes User, Account, UserStats, CharacterStats, Friendship, GameInvite, UserAchievement, Notification, and Match history.
+	 * If the avatar is locally uploaded, read the image file from disk and return its base64 string.
+	 * If the avatar is external, fetch it and return its base64 string.
+	 */
+	async getGdprData(userId: number): Promise<any> {
+	const user = await this.prisma.user.findUnique({
+		where: { id: userId },
+		include: {
+			accounts: { select: { provider: true, oauthId: true } },
+			stats: true,
+			characterStats: true,
+			sentFriendships: { include: { receiver: { select: { username: true } } } },
+			receivedFriendships: { include: { sender: { select: { username: true } } } },
+			sentInvites: { include: { receiver: { select: { username: true } } } },
+			receivedInvites: { include: { sender: { select: { username: true } } } },
+			achievements: { include: { achievement: true } },
+			notifications: true,
+			matchHistory: {
+				include: {
+					match: {
+						include: {
+							participants: { include: { user: { select: { username: true } } } }
+						}
+					}
+				}
+			}
+		}
+	});
+
+	if (!user) {
+		throw new NotFoundException("User not found");
+	}
+
+	let avatarBase64: string | null = null;
+	let avatarMimeType: string | null = null;
+
+	if (user.avatarUrl) {
+		// Handle Local Upload Paths safely
+		if (user.avatarUrl.startsWith("/uploads/") || user.avatarUrl.startsWith("uploads/")) {
+			try {
+				// Ensure the path maps correctly to your project directory, not the OS root "/"
+				// e.g., converts '/uploads/pic.png' to './uploads/pic.png' or processes relative to process.cwd()
+				const cleanUrl = user.avatarUrl.startsWith('/') ? user.avatarUrl.substring(1) : user.avatarUrl;
+				const filePath = join(process.cwd(), cleanUrl);
+
+				if (existsSync(filePath)) {
+					const buffer = await readFile(filePath);
+					avatarBase64 = buffer.toString("base64");
+
+					// Dynamically map MIME type based on real extension
+					const ext = extname(filePath).toLowerCase();
+					const mimeMap: Record<string, string> = {
+						'.jpg': 'image/jpeg',
+						'.jpeg': 'image/jpeg',
+						'.png': 'image/png',
+						'.gif': 'image/gif',
+						'.svg': 'image/svg+xml'
+					};
+					avatarMimeType = mimeMap[ext] || "image/jpeg";
+				} else {
+					this.logger.warn(`Avatar file path does not exist on disk: ${filePath}`);
+				}
+			} catch (error: any) {
+				this.logger.error(`Failed to read local avatar file for GDPR export: ${error.message}`);
+			}
+		}
+		// Handle External URLs
+		else if (user.avatarUrl.startsWith("http://") || user.avatarUrl.startsWith("https://")) {
+			try {
+				// Set an intentional timeout so your microservice doesn't hang indefinitely
+				const controller = new AbortController();
+				const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+
+				const response = await fetch(user.avatarUrl, { signal: controller.signal });
+				clearTimeout(timeoutId);
+
+				if (response.ok) {
+					const arrayBuffer = await response.arrayBuffer();
+					avatarBase64 = Buffer.from(arrayBuffer).toString("base64");
+					avatarMimeType = response.headers.get("content-type") || "image/png";
+				}
+			} catch (error: any) {
+				this.logger.error(`Failed to fetch external avatar for GDPR export: ${error.message}`);
+			}
+		}
+	}
+
+		// Re-organize friendship list
+		const friendships = [
+			...user.sentFriendships.map((f) => ({
+				friendUsername: f.receiver.username,
+				status: f.status,
+				direction: "SENT",
+				createdAt: f.createdAt,
+				updatedAt: f.updatedAt,
+			})),
+			...user.receivedFriendships.map((f) => ({
+				friendUsername: f.sender.username,
+				status: f.status,
+				direction: "RECEIVED",
+				createdAt: f.createdAt,
+				updatedAt: f.updatedAt,
+			})),
+		];
+
+		// Re-organize game invites
+		const gameInvites = [
+			...user.sentInvites.map((i) => ({
+				friendUsername: i.receiver.username,
+				status: i.status,
+				createdAt: i.createdAt,
+				expiresAt: i.expiresAt,
+				direction: "SENT",
+			})),
+			...user.receivedInvites.map((i) => ({
+				friendUsername: i.sender.username,
+				status: i.status,
+				createdAt: i.createdAt,
+				expiresAt: i.expiresAt,
+				direction: "RECEIVED",
+			})),
+		];
+
+		// Re-organize match history
+		const matchHistory = user.matchHistory.map((h) => {
+			const m = h.match;
+			const outcome = m.winningTeamId === null ? "DRAW" : h.teamId === m.winningTeamId ? "WIN" : "LOSS";
+			return {
+				matchId: m.id,
+				playedAt: m.playedAt,
+				mode: m.mode,
+				type: m.type,
+				durationSeconds: m.durationSeconds,
+				endReason: m.endReason,
+				result: outcome,
+				participants: m.participants.map((p) => ({
+					username: p.user?.username || "Deleted User",
+					teamId: p.teamId,
+					characterName: p.characterName,
+					kills: p.kills,
+					deaths: p.deaths,
+				})),
+			};
+		});
+
+		// Re-organize achievements
+		const achievements = user.achievements.map((a) => ({
+			name: a.achievement.name,
+			description: a.achievement.description,
+			tier: a.achievement.tier,
+			unlockedAt: a.unlockedAt,
+		}));
+
+	return {
+		exportedAt: new Date().toISOString(),
+		profile: {
+			id: user.id,
+			username: user.username,
+			email: user.email,
+			avatarUrl: user.avatarUrl,
+			isEmailVerified: user.isEmailVerified,
+			is2faEnabled: user.is2faEnabled,
+			status: user.status,
+			privacyPolicyAcceptedAt: user.privacyPolicyAcceptedAt,
+			createdAt: user.createdAt,
+		},
+		linkedAccounts: user.accounts,
+		statistics: user.stats ? {
+			eloCurrent: user.stats.eloCurrent,
+			eloPeak: user.stats.eloPeak,
+			totalWins: user.stats.totalWins,
+			totalLosses: user.stats.totalLosses,
+			totalDraws: user.stats.totalDraws,
+			currentWinStreak: user.stats.currentWinStreak,
+			bestWinStreak: user.stats.bestWinStreak,
+			currentLoseStreak: user.stats.currentLoseStreak,
+			totalKills: user.stats.totalKills,
+			totalDeaths: user.stats.totalDeaths,
+		} : null,
+		characterStatistics: user.characterStats.map((c) => ({
+			characterName: c.characterName,
+			wins: c.wins,
+			losses: c.losses,
+			draws: c.draws,
+			kills: c.kills,
+			deaths: c.deaths,
+		})),
+		friends: friendships,
+		gameInvites,
+		achievements,
+		notifications: user.notifications.map((n) => ({
+				type: n.type,
+				message: n.message,
+				isRead: n.isRead,
+				createdAt: n.createdAt,
+		})),
+		matchHistory,
+		avatarImage: avatarBase64 ? {
+			mimeType: avatarMimeType,
+			base64: avatarBase64,
+		} : null,
+	};
+}
+
+/*oldd*/
+/* 	async getGdprData(userId: number): Promise<any> {
+		const user = await this.prisma.user.findUnique({
+			where: { id: userId },
+			include: {
+				accounts: {
+					select: {
+						provider: true,
+						oauthId: true,
+					},
+				},
+				stats: true,
+				characterStats: true,
+				sentFriendships: {
+					include: {
+						receiver: {
+							select: {
+								username: true,
+							},
+						},
+					},
+				},
+				receivedFriendships: {
+					include: {
+						sender: {
+							select: {
+								username: true,
+							},
+						},
+					},
+				},
+				sentInvites: {
+					include: {
+						receiver: {
+							select: {
+								username: true,
+							},
+						},
+					},
+				},
+				receivedInvites: {
+					include: {
+						sender: {
+							select: {
+								username: true,
+							},
+						},
+					},
+				},
+				achievements: {
+					include: {
+						achievement: true,
+					},
+				},
+				notifications: true,
+				matchHistory: {
+					include: {
+						match: {
+							include: {
+								participants: {
+									include: {
+										user: {
+											select: {
+												username: true,
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		});
+
+		if (!user) {
+			throw new NotFoundException("User not found");
+		}
+
+		let avatarBase64: string | null = null;
+		let avatarMimeType: string | null = null;
+
+		if (user.avatarUrl && user.avatarUrl.startsWith("/uploads/")) {
+			try {
+				const filePath = join("/", user.avatarUrl);
+				const buffer = await readFile(filePath);
+				avatarBase64 = buffer.toString("base64");
+				avatarMimeType = "image/jpeg";
+			} catch (error: any) {
+				this.logger.error(`Failed to read avatar file for GDPR export: ${error.message}`);
+			}
+		} else if (user.avatarUrl && (user.avatarUrl.startsWith("http://") || user.avatarUrl.startsWith("https://"))) {
+			try {
+				const response = await fetch(user.avatarUrl);
+				if (response.ok) {
+					const arrayBuffer = await response.arrayBuffer();
+					avatarBase64 = Buffer.from(arrayBuffer).toString("base64");
+					const contentType = response.headers.get("content-type");
+					avatarMimeType = contentType || "image/png";
+				}
+			} catch (error: any) {
+				this.logger.error(`Failed to fetch external avatar for GDPR export: ${error.message}`);
+			}
+		}
+
+		// Re-organize friendship list
+		const friendships = [
+			...user.sentFriendships.map((f) => ({
+				friendUsername: f.receiver.username,
+				status: f.status,
+				direction: "SENT",
+				createdAt: f.createdAt,
+				updatedAt: f.updatedAt,
+			})),
+			...user.receivedFriendships.map((f) => ({
+				friendUsername: f.sender.username,
+				status: f.status,
+				direction: "RECEIVED",
+				createdAt: f.createdAt,
+				updatedAt: f.updatedAt,
+			})),
+		];
+
+		// Re-organize game invites
+		const gameInvites = [
+			...user.sentInvites.map((i) => ({
+				friendUsername: i.receiver.username,
+				status: i.status,
+				createdAt: i.createdAt,
+				expiresAt: i.expiresAt,
+				direction: "SENT",
+			})),
+			...user.receivedInvites.map((i) => ({
+				friendUsername: i.sender.username,
+				status: i.status,
+				createdAt: i.createdAt,
+				expiresAt: i.expiresAt,
+				direction: "RECEIVED",
+			})),
+		];
+
+		// Re-organize match history
+		const matchHistory = user.matchHistory.map((h) => {
+			const m = h.match;
+			const outcome = m.winningTeamId === null ? "DRAW" : h.teamId === m.winningTeamId ? "WIN" : "LOSS";
+			return {
+				matchId: m.id,
+				playedAt: m.playedAt,
+				mode: m.mode,
+				type: m.type,
+				durationSeconds: m.durationSeconds,
+				endReason: m.endReason,
+				result: outcome,
+				participants: m.participants.map((p) => ({
+					username: p.user?.username || "Deleted User",
+					teamId: p.teamId,
+					characterName: p.characterName,
+					kills: p.kills,
+					deaths: p.deaths,
+				})),
+			};
+		});
+
+		// Re-organize achievements
+		const achievements = user.achievements.map((a) => ({
+			name: a.achievement.name,
+			description: a.achievement.description,
+			tier: a.achievement.tier,
+			unlockedAt: a.unlockedAt,
+		}));
+		return {
+			exportedAt: new Date().toISOString(),
+			profile: {
+				id: user.id,
+				username: user.username,
+				email: user.email,
+				avatarUrl: user.avatarUrl,
+				isEmailVerified: user.isEmailVerified,
+				is2faEnabled: user.is2faEnabled,
+				status: user.status,
+				privacyPolicyAcceptedAt: user.privacyPolicyAcceptedAt,
+				createdAt: user.createdAt,
+			},
+			linkedAccounts: user.accounts,
+			statistics: user.stats ? {
+				eloCurrent: user.stats.eloCurrent,
+				eloPeak: user.stats.eloPeak,
+				totalWins: user.stats.totalWins,
+				totalLosses: user.stats.totalLosses,
+				totalDraws: user.stats.totalDraws,
+				currentWinStreak: user.stats.currentWinStreak,
+				bestWinStreak: user.stats.bestWinStreak,
+				currentLoseStreak: user.stats.currentLoseStreak,
+				totalKills: user.stats.totalKills,
+				totalDeaths: user.stats.totalDeaths,
+			} : null,
+			characterStatistics: user.characterStats.map((c) => ({
+				characterName: c.characterName,
+				wins: c.wins,
+				losses: c.losses,
+				draws: c.draws,
+				kills: c.kills,
+				deaths: c.deaths,
+			})),
+			friends: friendships,
+			gameInvites,
+			achievements,
+			notifications: user.notifications.map((n) => ({
+				type: n.type,
+				message: n.message,
+				isRead: n.isRead,
+				createdAt: n.createdAt,
+			})),
+			matchHistory,
+			avatarImage: avatarBase64 ? {
+				mimeType: avatarMimeType,
+				base64: avatarBase64,
+			} : null,
+		};
+	} */
 }
