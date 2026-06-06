@@ -158,6 +158,35 @@ export default function ProfilePage() {
     });
   };
 
+  const handleExportDataClick = () => {
+    confirmPwdRef.current = '';
+    setConfirmPwdDisplay('');
+    setDialog({
+      isOpen: true,
+      title: "Esporta Dati Profilo (GDPR)",
+      msg: sec.hasLocalAccount 
+        ? "Per motivi di sicurezza, inserisci la tua password per ricevere via email il link per scaricare il ZIP con tutti i tuoi dati."
+        : "Procedi per ricevere via email il link per scaricare il ZIP con tutti i tuoi dati di profilo.",
+      needsPassword: sec.hasLocalAccount,
+      action: async () => {
+        if (sec.hasLocalAccount && !confirmPwdRef.current) {
+          alert("Inserisci la password per confermare.");
+          return;
+        }
+        setDialog(null);
+        const result = await api.requestGdprExport(confirmPwdRef.current);
+        confirmPwdRef.current = '';
+        setConfirmPwdDisplay('');
+        if (result.ok) {
+          setMsg("Richiesta di esportazione inviata! Controlla la tua email per scaricare i dati.");
+          setTimeout(() => setMsg(''), 5000);
+        } else {
+          alert("Errore: " + (result.message || "Impossibile inviare la richiesta."));
+        }
+      }
+    });
+  };
+
   const handleSavePassword = () => {
     setPwdError('');
     if (pwdData.new !== pwdData.confirm) return setPwdError("Passwords do not match.");
@@ -231,7 +260,7 @@ export default function ProfilePage() {
   const total = s.totalWins + s.totalLosses + s.totalDraws;
   const winRate = total > 0 ? Math.round((s.totalWins / total) * 100) : 0;
   
-  const sec: UserSettings = settings || { is2faEnabled: false, isEmailVerified: false, linkedProviders: [] };
+  const sec: UserSettings = settings || { is2faEnabled: false, isEmailVerified: false, linkedProviders: [], hasLocalAccount: false };
 
   return (
     <div className="animate-fadeIn" style={{ paddingTop: `${NAVBAR_HEIGHT}px`, maxWidth: '800px', margin: '0 auto', paddingBottom: '60px', paddingLeft: '24px', paddingRight: '24px' }}>
@@ -683,8 +712,25 @@ export default function ProfilePage() {
         </div>
       </div>
 
+      {/* GDPR Data Export */}
+      <div style={{ padding: '24px', background: theme.colors.bgPanel, border: `1px solid ${theme.colors.border}`, borderRadius: '4px', marginTop: '24px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div>
+            <div style={{ fontFamily: theme.fonts.heading, fontSize: '14px', fontWeight: 600, color: theme.colors.goldBright, marginBottom: '4px' }}>Export Profile Data (GDPR)</div>
+            <div style={{ fontFamily: theme.fonts.mono, fontSize: '12px', color: theme.colors.textMuted }}>
+              Download a copy of all your profile information, statistics, match history, and avatar.
+            </div>
+          </div>
+          <button className="btn-press" onClick={handleExportDataClick} style={{
+            padding: '8px 20px', background: 'none', border: `1px solid ${theme.colors.gold}`,
+            borderRadius: '2px', color: theme.colors.gold, fontFamily: theme.fonts.heading,
+            fontSize: '11px', fontWeight: 700, letterSpacing: '1px', cursor: 'pointer',
+          }}>EXPORT DATA</button>
+        </div>
+      </div>
+
       {/* Delete Account */}
-      <div style={{ padding: '24px', background: 'rgba(232,64,87,0.05)', border: `1px solid ${theme.colors.dead}`, borderRadius: '4px', marginTop: '24px' }}>
+      <div style={{ padding: '24px', background: 'rgba(232,64,87,0.05)', border: `1px solid ${theme.colors.dead}`, borderRadius: '4px', marginTop: '16px' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div>
             <div style={{ fontFamily: theme.fonts.heading, fontSize: '14px', fontWeight: 600, color: theme.colors.dead, marginBottom: '4px' }}>Delete Account</div>
@@ -698,10 +744,12 @@ export default function ProfilePage() {
             setDialog({
               isOpen: true,
               title: "Elimina Account",
-              msg: "Sei sicuro? Questa azione è irreversibile. Inserisci la tua password per confermare.",
-              needsPassword: true,
+              msg: sec.hasLocalAccount
+                ? "Sei sicuro? Questa azione è irreversibile. Inserisci la tua password per ricevere l'email di conferma."
+                : "Sei sicuro? Questa azione è irreversibile. Procedi per ricevere l'email di conferma per l'eliminazione dell'account.",
+              needsPassword: sec.hasLocalAccount,
               action: async () => {
-                if (!confirmPwdRef.current) {
+                if (sec.hasLocalAccount && !confirmPwdRef.current) {
                   alert("Inserisci la password per confermare.");
                   return;
                 }
@@ -710,7 +758,8 @@ export default function ProfilePage() {
                 confirmPwdRef.current = '';
                 setConfirmPwdDisplay('');
                 if (ok) {
-                  window.location.reload();
+                  setMsg("Richiesta di eliminazione inviata! Controlla la tua email per confermare.");
+                  setTimeout(() => setMsg(''), 5000);
                 } else {
                   alert("Errore durante l'eliminazione dell'account.");
                 }

@@ -15,9 +15,9 @@ export class MailService {
         user: this.config.getOrThrow<string>('EMAIL_USER'),
         pass: this.config.getOrThrow<string>('EMAIL_PASS'),
       },
-    tls: {
-      rejectUnauthorized: false,
-    },
+      tls: {
+        rejectUnauthorized: false,
+      },
     });
   }
 
@@ -47,4 +47,29 @@ export class MailService {
     });
   }
 
+  async sendGdprExportEmail(email: string, link: string) {
+    await this.transporter.sendMail({
+      from: `"Transcendence Game" <${this.config.getOrThrow('EMAIL_USER')}>`,
+      to: email,
+      subject: 'Confirm your GDPR data export request',
+      html: `
+        <p>You requested an export of all your profile data.</p>
+        <p>Click the link below to verify your request and download your data:</p>
+        <a href="${link}">${link}</a>
+        <p>This link is valid for 15 minutes.</p>`,
+    });
+  }
+  async sendDeleteAccountConfirmEmail(email: string, link: string) {
+    await this.transporter.sendMail({
+      from: `"Transcendence Game" <${this.config.getOrThrow('EMAIL_USER')}>`,
+      to: email,
+      subject: 'Confirm your account deletion request',
+      html: `
+        <p>You requested to permanently delete your account.</p>
+        <p>This action is irreversible and all your data will be permanently removed.</p>
+        <p>Click the link below to confirm this request and permanently delete your account:</p>
+        <a href="${link}">${link}</a>
+        <p>This link is valid for 15 minutes.</p>`,
+    });
+  }
 }

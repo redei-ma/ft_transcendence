@@ -144,4 +144,8 @@ export class UserClient {
   async deleteUser(userId: number): Promise<void> {
     await this.request(`/${userId}`, { method: 'DELETE' });
   }
+
+  async getGdprData(userId: number): Promise<any> {
+    return this.request<any>(`/${userId}/gdpr-data`, { method: 'GET' });
+  }
 }

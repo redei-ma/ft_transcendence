@@ -23,7 +23,7 @@ export default function App() {
   const [pendingInviterId, setPendingInviterId] = useState<number | null>(null);
   const [gameInvites, setGameInvites] = useState<GameInvite[]>([]);
 
-  type EmailCallback = { type: 'verified' | 'email-changed'; status: 'success' | 'error'; message: string } | null;
+  type EmailCallback = { type: 'verified' | 'email-changed' | 'gdpr-export' | 'delete-account'; status: 'success' | 'error'; message: string } | null;
   const [emailCallback, setEmailCallback] = useState<EmailCallback>(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.has('verified')) {
@@ -37,6 +37,18 @@ export default function App() {
       const message = decodeURIComponent(params.get('msg') ?? '');
       window.history.replaceState({}, document.title, '/');
       return { type: 'email-changed', status, message };
+    }
+    if (params.has('gdpr-export')) {
+      const status = params.get('gdpr-export') as 'success' | 'error';
+      const message = decodeURIComponent(params.get('msg') ?? '');
+      window.history.replaceState({}, document.title, '/');
+      return { type: 'gdpr-export', status, message };
+    }
+    if (params.has('delete-account')) {
+      const status = params.get('delete-account') as 'success' | 'error';
+      const message = decodeURIComponent(params.get('msg') ?? '');
+      window.history.replaceState({}, document.title, '/');
+      return { type: 'delete-account', status, message };
     }
     return null;
   });
@@ -68,21 +80,21 @@ export default function App() {
           if (data.type === 'FRIEND_ACCEPTED' || data.type === 'FRIEND_REQ') {
             window.dispatchEvent(new CustomEvent('friend-list-changed'));
           }
-        } catch {}
+        } catch { }
       });
 
       es.addEventListener('friend_status', (event: MessageEvent) => {
         try {
           const data = JSON.parse(event.data);
           window.dispatchEvent(new CustomEvent('friend-status-update', { detail: data }));
-        } catch {}
+        } catch { }
       });
 
       es.addEventListener('game_invite', (event: MessageEvent) => {
         try {
           const data = JSON.parse(event.data);
           window.dispatchEvent(new CustomEvent('game-invite-received', { detail: data }));
-        } catch {}
+        } catch { }
       });
 
       es.addEventListener('friend_removed', () => {
@@ -93,7 +105,7 @@ export default function App() {
         try {
           const data = JSON.parse(event.data);
           window.dispatchEvent(new CustomEvent('game-invite-declined', { detail: data }));
-        } catch {}
+        } catch { }
       });
 
       es.onerror = () => {

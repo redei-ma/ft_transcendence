@@ -36,6 +36,7 @@ export interface UserSettings {
     is2faEnabled: boolean;
     isEmailVerified: boolean;
     linkedProviders: string[];
+    hasLocalAccount: boolean;
 }
 
 export interface LeaderboardEntry {
@@ -322,72 +323,72 @@ export async function checkEmailAvailable(email: string): Promise<boolean> {
 // --- 2FA & AUTH SETUP ---
 
 export async function generate2fa() {
-  try {
-    const res = await fetchWithAuthRetry("/api/auth/2fa/setup", { method: "POST" });
-    if (!res || !res.ok) return null;
-    return await res.json();
-  } catch (error) {
-    console.error("[API] Error generating 2FA:", error);
-    return null;
-  }
+    try {
+        const res = await fetchWithAuthRetry("/api/auth/2fa/setup", { method: "POST" });
+        if (!res || !res.ok) return null;
+        return await res.json();
+    } catch (error) {
+        console.error("[API] Error generating 2FA:", error);
+        return null;
+    }
 }
 
 export async function turnOn2fa(code: string): Promise<boolean> {
-  try {
-    const res = await fetchWithAuthRetry("/api/auth/2fa/enable", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ code }),
-    });
-    return !!res && res.ok;
-  } catch (error) {
-    console.error("[API] Error turning on 2FA:", error);
-    return false;
-  }
+    try {
+        const res = await fetchWithAuthRetry("/api/auth/2fa/enable", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ code }),
+        });
+        return !!res && res.ok;
+    } catch (error) {
+        console.error("[API] Error turning on 2FA:", error);
+        return false;
+    }
 }
 
 export async function turnOff2fa(): Promise<boolean> {
-  try {
-    const res = await fetchWithAuthRetry("/api/auth/2fa/disable", { method: "POST" });
-    return !!res && res.ok;
-  } catch (error) {
-    console.error("[API] Error turning off 2FA:", error);
-    return false;
-  }
+    try {
+        const res = await fetchWithAuthRetry("/api/auth/2fa/disable", { method: "POST" });
+        return !!res && res.ok;
+    } catch (error) {
+        console.error("[API] Error turning off 2FA:", error);
+        return false;
+    }
 }
 
-export async function requestEmailChange(password: string, newEmail: string): Promise<{ok: boolean, message?: string}> {
-  try {
-    const res = await fetchWithAuthRetry("/api/auth/change-email-request", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ password, newEmail }),
-    });
+export async function requestEmailChange(password: string, newEmail: string): Promise<{ ok: boolean, message?: string }> {
+    try {
+        const res = await fetchWithAuthRetry("/api/auth/change-email-request", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ password, newEmail }),
+        });
 
-    if (!res) return { ok: false, message: "Connessione al server fallita" };
+        if (!res) return { ok: false, message: "Connessione al server fallita" };
 
-    const data = await res.json().catch(() => ({}));
-    return { ok: res.ok, message: data.message || data.error };
-  } catch (error) {
-    return { ok: false, message: "Network error" };
-  }
+        const data = await res.json().catch(() => ({}));
+        return { ok: res.ok, message: data.message || data.error };
+    } catch (error) {
+        return { ok: false, message: "Network error" };
+    }
 }
 
-export async function changePassword(oldPass: string, newPass: string): Promise<{ok: boolean, message?: string}> {
-  try {
-    const res = await fetchWithAuthRetry("/api/auth/change-password", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ oldPass, newPass }),
-    });
+export async function changePassword(oldPass: string, newPass: string): Promise<{ ok: boolean, message?: string }> {
+    try {
+        const res = await fetchWithAuthRetry("/api/auth/change-password", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ oldPass, newPass }),
+        });
 
-    if (!res) return { ok: false, message: "Connessione al server fallita" };
+        if (!res) return { ok: false, message: "Connessione al server fallita" };
 
-    const data = await res.json().catch(() => ({}));
-    return { ok: res.ok, message: data.message || data.error };
-  } catch (error) {
-    return { ok: false, message: "Network error" };
-  }
+        const data = await res.json().catch(() => ({}));
+        return { ok: res.ok, message: data.message || data.error };
+    } catch (error) {
+        return { ok: false, message: "Network error" };
+    }
 }
 
 // ==========================================
@@ -469,8 +470,8 @@ export async function sendFriendRequest(targetId: number): Promise<{ ok: boolean
         const data = await res.json().catch(() => ({}));
         const msg = res.status === 400 ? "Non puoi aggiungerti da solo"
             : res.status === 404 ? "Utente non trovato"
-            : res.status === 409 ? "Richiesta già inviata o già amici"
-            : data.message || "Errore";
+                : res.status === 409 ? "Richiesta già inviata o già amici"
+                    : data.message || "Errore";
         return { ok: false, message: msg };
     } catch (error) {
         return { ok: false, message: "Network error" };
@@ -588,5 +589,20 @@ export async function deleteAccount(password: string): Promise<boolean> {
     } catch (error) {
         console.error("[API] Error deleting account:", error);
         return false;
+    }
+}
+
+export async function requestGdprExport(password: string): Promise<{ ok: boolean; message?: string }> {
+    try {
+        const res = await fetchWithAuthRetry("/api/auth/gdpr/export-request", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ password }),
+        });
+        if (!res) return { ok: false, message: "Server connection failed" };
+        const data = await res.json().catch(() => ({}));
+        return { ok: res.ok, message: data.message || data.error };
+    } catch (error) {
+        return { ok: false, message: "Network error" };
     }
 }

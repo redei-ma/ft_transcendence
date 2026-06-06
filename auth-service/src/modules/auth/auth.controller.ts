@@ -26,7 +26,7 @@ export class AuthController {
   constructor(
     private readonly authService: AuthService,
     private readonly config: ConfigService,
-  ) {}
+  ) { }
 
   @Post('register')
   async register(
@@ -132,7 +132,7 @@ export class AuthController {
   async sessionCheck(@Req() req: Request) {
     // Check if the refresh cookie exists in the request
     const hasRefreshToken = !!req.cookies?.[REFRESH_COOKIE_NAME || 'refresh_token'];
-    
+
     // We return 200 OK even if false, so the console stays clean!
     return { hasSession: hasRefreshToken };
   }
@@ -167,7 +167,7 @@ export class AuthController {
   }
 
   @Post('forgot-password')
-  async forgotPassword(@Body() body: EmailDto ) {
+  async forgotPassword(@Body() body: EmailDto) {
     await this.authService.sendPasswordReset({ email: body.email });
     return { ok: true };
   }
@@ -226,13 +226,67 @@ export class AuthController {
   }
 
   @Delete('account')
-  @HttpCode(HttpStatus.NO_CONTENT)
   @UseGuards(JwtAuthGuard)
   async deleteAccount(
     @Req() req: AuthenticatedRequest,
     @Body() body: ConfirmPasswordDto,
+  ) {
+    await this.authService.deleteAccount(req.user.sub, body);
+    return { ok: true, message: 'Account deletion confirmation email sent.' };
+  }
+
+  @Post('gdpr/export-request')
+  @UseGuards(JwtAuthGuard)
+  async requestGdprExport(
+    @Req() req: AuthenticatedRequest,
+    @Body() body: ConfirmPasswordDto,
+  ) {
+    await this.authService.requestGdprExport(req.user.sub, body);
+    return { ok: true, message: 'GDPR export confirmation email sent.' };
+  }
+
+  @Get('gdpr/export')
+  async exportGdprData(
+    @Query() query: TokenQueryDto,
+    @Res() res: Response,
+  ) {
+    try {
+      const { zipBuffer, username } = await this.authService.getGdprExportZip(query.token);
+      res.setHeader('Content-Type', 'application/zip');
+      res.setHeader('Content-Disposition', `attachment; filename="transcendence_gdpr_export_${username}.zip"`);
+      return res.status(HttpStatus.OK).send(zipBuffer);
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : 'Export failed.';
+      const frontendUrl = this.config.getOrThrow('PUBLIC_URL');
+      return res.redirect(`${frontendUrl}/?gdpr-export=error&msg=${encodeURIComponent(msg)}`);
+    }
+  }
+
+  @Get('gdpr/delete-confirm')
+  async confirmDeleteAccount(
+    @Query() query: TokenQueryDto,
+    @Res() res: Response,
   ): Promise<void> {
-    return this.authService.deleteAccount(req.user.sub, body);
+    const frontendUrl = this.config.getOrThrow('PUBLIC_URL');
+    try {
+      await this.authService.confirmDeleteAccount(decodeURIComponent(query.token));
+      res.clearCookie('auth_token', {
+        httpOnly: true,
+        secure: true,
+        sameSite: 'none',
+        path: '/',
+      });
+      res.clearCookie('refresh_token', {
+        httpOnly: true,
+        secure: true,
+        sameSite: 'none',
+        path: '/',
+      });
+      res.redirect(`${frontendUrl}/?delete-account=success`);
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : 'Account deletion failed.';
+      res.redirect(`${frontendUrl}/?delete-account=error&msg=${encodeURIComponent(msg)}`);
+    }
   }
 
   @UseGuards(JwtAuthGuard)

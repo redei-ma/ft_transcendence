@@ -9,6 +9,7 @@ import {
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
 import { JwtAccessPayloadDto, JwtRefreshPayloadDto } from '@transcendence/auth';
+import JSZip from 'jszip';
 import { ConfigService } from '@nestjs/config';
 import { MailService } from './mail/mail.service';
 import { UserClient } from '../user/user.client';
@@ -37,7 +38,7 @@ export class AuthService {
     private readonly jwtService: JwtService,
     private readonly mailService: MailService,
     private usersService: UserClient,
-  ) {}
+  ) { }
 
   async registerAndSendVerification(dto: CreateLocalUserNoHashDto) {
     // Check if email already exists
@@ -461,18 +462,23 @@ export class AuthService {
     const localAccount = user.accounts.find(
       (a) => a.provider === Provider.LOCAL,
     );
-    if (!localAccount || !localAccount.passwordHash) {
-      throw new ForbiddenException(
-        'Local account password required to delete account.',
-      );
+    if (localAccount && localAccount.passwordHash) {
+      const isMatch = await bcrypt.compare(dto.password, localAccount.passwordHash);
+      if (!isMatch) {
+        throw new UnauthorizedException('Current password incorrect.');
+      }
     }
 
-    const isMatch = await bcrypt.compare(dto.password, localAccount.passwordHash);
-    if (!isMatch) {
-      throw new UnauthorizedException('Current password incorrect.');
-    }
+    const token = this.jwtService.sign(
+      { sub: userId, type: 'account-deletion' },
+      {
+        secret: this.config.getOrThrow<string>('JWT_EMAIL_SECRET'),
+        expiresIn: '15m',
+      },
+    );
 
-    await this.usersService.deleteUser(userId);
+    const verifyUrl = `${this.config.getOrThrow('PUBLIC_URL')}/api/auth/gdpr/delete-confirm?token=${encodeURIComponent(token)}`;
+    await this.mailService.sendDeleteAccountConfirmEmail(user.email, verifyUrl);
   }
 
   async confirmEmailChange(token: string) {
@@ -548,4 +554,133 @@ export class AuthService {
     const status = UserStatus.OFFLINE;
     await this.usersService.updateStatus(userId, { status });
   }
+
+  async confirmDeleteAccount(token: string): Promise<void> {
+    let payload: { sub: number; type: string };
+    try {
+      payload = this.jwtService.verify(token, {
+        secret: this.config.getOrThrow<string>('JWT_EMAIL_SECRET'),
+      });
+    } catch {
+      throw new BadRequestException('Invalid or expired token');
+    }
+    if (payload.type !== 'account-deletion') {
+      throw new ForbiddenException('Invalid token type');
+    }
+    const user = await this.usersService.findUser({ id: payload.sub });
+    if (!user) throw new NotFoundException('User not found');
+    await this.usersService.deleteUser(payload.sub);
+  }
+
+  async requestGdprExport(userId: number, dto: ConfirmPasswordDto): Promise<void> {
+    const user = await this.usersService.findUser({ id: userId });
+    if (!user) throw new NotFoundException('User not found');
+    const localAccount = user.accounts.find(
+      (a) => a.provider === Provider.LOCAL,
+    );
+    if (localAccount && localAccount.passwordHash) {
+      const isMatch = await bcrypt.compare(dto.password, localAccount.passwordHash);
+      if (!isMatch) {
+        throw new UnauthorizedException('Current password incorrect.');
+      }
+    }
+    const token = this.jwtService.sign(
+      { sub: userId, type: 'gdpr-export' },
+      {
+        secret: this.config.getOrThrow<string>('JWT_EMAIL_SECRET'),
+        expiresIn: '15m',
+      },
+    );
+    const verifyUrl = `${this.config.getOrThrow('PUBLIC_URL')}/api/auth/gdpr/export?token=${encodeURIComponent(token)}`;
+    await this.mailService.sendGdprExportEmail(user.email, verifyUrl);
+  }
+
+  async getGdprExportZip(token: string): Promise<{ zipBuffer: Buffer; username: string }> {
+    let payload: { sub: number; type: string };
+    try {
+      payload = this.jwtService.verify(token, {
+        secret: this.config.getOrThrow<string>('JWT_EMAIL_SECRET'),
+      });
+      console.log('[GDPR DEBUG] Decoded Token Payload:', payload); // Log payload
+    } catch (err: any) {
+      console.error('[GDPR DEBUG] JWT Verification Failed:', err.message);
+      throw new BadRequestException('Invalid or expired token');
+    }
+
+    if (payload.type !== 'gdpr-export') {
+      throw new ForbiddenException('Invalid token type');
+    }
+
+    const user = await this.usersService.findUser({ id: payload.sub });
+    if (!user) throw new NotFoundException('User not found');
+
+    console.log(`[GDPR DEBUG] Fetching data from user-container for ID: ${payload.sub}`);
+
+    try {
+      const gdprData = await this.usersService.getGdprData(payload.sub);
+      console.log('[GDPR DEBUG] Received data from user-container successfully.');
+
+      const zip = new JSZip();
+
+      if (gdprData.avatarImage) {
+        const imgData = gdprData.avatarImage;
+
+        // Derive accurate file extension extension from the dynamic MIME type
+        let extension = 'jpg';
+        if (imgData.mimeType === 'image/svg+xml') extension = 'svg';
+        else if (imgData.mimeType === 'image/png') extension = 'png';
+        else if (imgData.mimeType === 'image/gif') extension = 'gif';
+
+        const imgBuffer = Buffer.from(imgData.base64, 'base64');
+        zip.file(`avatar.${extension}`, imgBuffer);
+
+        // Delete base64 payload string out of JSON data structure
+        delete gdprData.avatarImage;
+      }
+
+      zip.file('data.json', JSON.stringify(gdprData, null, 2));
+      const zipBuffer = await zip.generateAsync({ type: 'nodebuffer' });
+
+      return { zipBuffer, username: user.username };
+    } catch (error: any) {
+      // Capture the detailed internal microservice response here
+      console.error('[GDPR DEBUG] user.client communication failed:', {
+        message: error.message,
+        response: error.response?.data || error.response || 'No response body',
+        status: error.response?.status
+      });
+      throw error;
+    }
+  }
+
+/*oldd*/
+/*   async getGdprExportZip(token: string): Promise<{ zipBuffer: Buffer; username: string }> {
+    let payload: { sub: number; type: string };
+    try {
+      payload = this.jwtService.verify(token, {
+        secret: this.config.getOrThrow<string>('JWT_EMAIL_SECRET'),
+      });
+    } catch {
+      throw new BadRequestException('Invalid or expired token');
+    }
+    if (payload.type !== 'gdpr-export') {
+      throw new ForbiddenException('Invalid token type');
+    }
+    const user = await this.usersService.findUser({ id: payload.sub });
+    if (!user) throw new NotFoundException('User not found');
+    const gdprData = await this.usersService.getGdprData(payload.sub);
+    const zip = new JSZip();
+    // Separate avatar image
+    if (gdprData.avatarImage) {
+      const imgData = gdprData.avatarImage;
+      const extension = imgData.mimeType === 'image/svg+xml' ? 'svg' : 'jpg';
+      const imgBuffer = Buffer.from(imgData.base64, 'base64');
+      zip.file(`avatar.${extension}`, imgBuffer);
+      // Remove avatarImage base64 from data.json to keep it clean and save space
+      delete gdprData.avatarImage;
+    }
+    zip.file('data.json', JSON.stringify(gdprData, null, 2));
+    const zipBuffer = await zip.generateAsync({ type: 'nodebuffer' });
+    return { zipBuffer, username: user.username };
+  } */
 }
