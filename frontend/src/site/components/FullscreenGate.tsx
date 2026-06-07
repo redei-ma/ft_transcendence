@@ -43,7 +43,7 @@ export function FullscreenGate({
           letterSpacing: "4px",
           textTransform: "uppercase",
         }}>
-          ATTENZIONE!
+          WAIT A MINUTE!
         </h1>
 
         <p style={{
@@ -54,7 +54,7 @@ export function FullscreenGate({
           textTransform: "uppercase",
           marginBottom: "40px"
         }}>
-          Per continuare nella partita e' necessario attivare la modalita a schermo intero. Puoi farlo premendo il bottone qui sotto.
+          You need to eneble the full-screen mode to continue in the game. Click the button below
         </p>
 
         {/* CTA: il click qui è ciò che il browser richiede per il fullscreen */}
@@ -80,7 +80,7 @@ export function FullscreenGate({
             transition: "all 0.25s ease",
           }}
         >
-            Entra a schermo intero
+            ENABLE FULL-SCREEN
         </button>
 
         {/* Warning sul kick all'uscita */}
@@ -93,7 +93,7 @@ export function FullscreenGate({
           marginTop: "28px",
           opacity: 0.7
         }}>
-          Questo warning ricomparira' se uscirai dallo schermo intero durante una partita.
+          This warning is gonna hunt you every time you disable the full-screen mode in a match. You can leave if you want
         </p>
 
         <button
@@ -102,7 +102,7 @@ export function FullscreenGate({
           onMouseLeave={() => setHoverLeave(false)}
           style={{
             marginTop: '16px',
-            padding: '10px 32px',
+            padding: '8px 26px',
             color: hoverLeave ? theme.colors.ade : theme.colors.goldBright,
             background: hoverLeave
               ? `linear-gradient(180deg, ${theme.colors.goldDark}, ${theme.colors.goldDark})`
@@ -110,14 +110,14 @@ export function FullscreenGate({
             border: `1px solid ${theme.colors.border}`,
             boxShadow: hoverLeave ? `0 0 24px ${theme.colors.ade}` : "none",
             fontFamily: theme.fonts.heading,
-            fontSize: '12px',
+            fontSize: '16px',
             letterSpacing: '3px',
             textTransform: 'uppercase',
             cursor: 'pointer',
             transition: 'all 0.25s ease',
           }}
         >
-          Esci dalla partita
+          LEAVE
         </button>
       </div>
     </div>
