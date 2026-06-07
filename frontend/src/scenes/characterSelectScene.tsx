@@ -5,6 +5,9 @@ import { theme } from '../configs/theme';
 import zeusImg from '../assets/images/ZeusSelection.png';
 import adeImg from '../assets/images/AdeSelection.png'; // Cambia in .png se necessario
 
+import { useFullscreenGuard } from '../hooks/useFullscreenGuard';
+import { FullscreenGate } from '../site/components/FullscreenGate';
+
 type Character = typeof CharacterName[keyof typeof CharacterName];
 
 interface CharacterSelectSceneProps {
@@ -51,6 +54,8 @@ export default function CharacterSelectScene({
   // Calcolo dei personaggi attualmente "attivi" (hover o selezionati) per gli sfondi
   const activeP1 = CHARACTERS[p1Hover ?? p1Index];
   const activeP2 = CHARACTERS[p2Hover ?? p2Index];
+
+  const { isFullscreen, enter } = useFullscreenGuard(false, () => {});
 
   useEffect(() => {
     if (!isSplitScreen) setP2Confirmed(true);
@@ -170,7 +175,7 @@ export default function CharacterSelectScene({
       backgroundColor: theme.colors.bgDark, // Background di base
       overflow: 'hidden',
     }}>
-      
+
       {/* ─── DYNAMIC BACKGROUNDS ─── */}
       <div style={{ position: 'absolute', inset: 0, display: 'flex', zIndex: 0 }}>
         {isSplitScreen ? (
@@ -655,6 +660,13 @@ export default function CharacterSelectScene({
             FIGHT
           </h2>
         </div>
+      )}
+
+      {!isFullscreen && (
+        <FullscreenGate
+          onEnter={enter}
+          onLeave={onBack}
+        />
       )}
 
       <style>{`

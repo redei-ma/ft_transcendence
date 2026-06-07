@@ -509,7 +509,7 @@ const handleRejectInvite = (invite: api.GameInvite) => onDeclineInvite(invite);
           {!loading && tab === 'add' && (
             <div style={{ padding: '16px' }}>
               <p style={{ fontSize: '11px', color: theme.colors.textSecondary, marginBottom: '12px', lineHeight: 1.6 }}>
-                Enter a player's numeric ID to send a friend request. You can find IDs on the leaderboard or after a match.
+                Enter an existing username to send a friend request.
               </p>
               <div style={{ display: 'flex', gap: '6px', marginBottom: '12px' }}>
                 <input
@@ -537,7 +537,7 @@ const handleRejectInvite = (invite: api.GameInvite) => onDeclineInvite(invite);
 
               <div style={{ marginTop: '16px', padding: '12px', background: 'rgba(200,170,100,0.04)', borderRadius: '4px', border: `1px solid ${theme.colors.border}` }}>
                 <p style={{ fontSize: '10px', color: theme.colors.textMuted, lineHeight: 1.5 }}>
-                  Your Username is visible on your profile page. Share it with friends so they can add you too!
+                  Your Username is visible on your profile page. Share it with friends!
                 </p>
               </div>
             </div>
