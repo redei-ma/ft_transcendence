@@ -1,21 +1,27 @@
-import { Canvas } from '@react-three/fiber';
-import { useGameSocket } from '../hooks/useGameSocket';
-import { InputManager } from './input/inputManager';
-import { useEffect, useRef, useMemo, useState} from 'react';
 import { CharacterName, MatchMode, GameConfig } from '@transcendence/types';
-import GameUI from './UI/gameUI';
-import { PlayerEntity } from './entities/PlayerEntity';
-import { BulletEntity } from './entities/BulletEntity';
-import { GameOverOverlay } from './UI/components/GameOverOverlay';
-import GameChat from './UI/components/GameChat';
+import { theme } from '../configs/theme';
+
+import { useEffect, useRef, useMemo, useState} from 'react';
+import { Canvas } from '@react-three/fiber';
+import { useThree, useFrame } from '@react-three/fiber';
 import { EffectComposer, Bloom } from '@react-three/postprocessing';
 import mapTexture from '../assets/images/mapTexture1.png';
+
 import { useGameStore } from '../storage/gameStore';
-import { useThree, useFrame } from '@react-three/fiber';
-import { theme } from '../configs/theme';
+import { useGameSocket } from '../hooks/useGameSocket';
+import { useFullscreenGuard } from '../hooks/useFullscreenGuard';
+
+import { PlayerEntity } from './entities/PlayerEntity';
+import { BulletEntity } from './entities/BulletEntity';
+import { InputManager } from './input/inputManager';
+import { GameOverOverlay } from './UI/components/GameOverOverlay';
+import GameChat from './UI/components/GameChat';
+import GameUI from './UI/gameUI';
 import { PillarModel, WallModel } from './entities/mapModels';
-import * as THREE from 'three';
 import SkillHud from './UI/components/SkillHud';
+import { FullscreenGate } from '../site/components/FullscreenGate';
+
+
 
 interface GameProps {
   selectedCharacter: CharacterName;
@@ -80,47 +86,7 @@ function AimPlane({ inputManagerRef, myUserId }: { inputManagerRef: React.RefObj
   );
 }
 
-function ResizeWarning({ onLeave }: { onLeave: () => void }) {
-  const [countdown, setCountdown] = useState(5);
-
-  useEffect(() => {
-    if (countdown <= 0) return;
-    const timer = setTimeout(() => setCountdown(countdown - 1), 1000);
-    return () => clearTimeout(timer);
-  }, [countdown]);
-
-  return (
-    <div style={{
-      position: 'fixed', inset: 0, zIndex: 9999,
-      background: 'rgba(0,0,0,0.95)',
-      display: 'flex', flexDirection: 'column',
-      alignItems: 'center', justifyContent: 'center', gap: '24px',
-    }}>
-      <h2 style={{
-        fontFamily: '"Cinzel", serif', color: '#d44',
-        fontSize: '22px', letterSpacing: '2px', textTransform: 'uppercase',
-      }}>BACK TO FULL-SCREEN MODE</h2>
-      <p style={{
-        fontFamily: '"JetBrains Mono", monospace', fontSize: '13px',
-        color: 'rgba(200,170,100,0.6)', textAlign: 'center', lineHeight: 1.6,
-      }}>
-        Restore the original window size or you will be kicked from the match.
-      </p>
-      <div style={{
-        fontFamily: '"Cinzel", serif', fontSize: '48px', fontWeight: 700,
-        color: countdown <= 2 ? '#d44' : '#e8d5a3',
-        transition: 'color 0.3s',
-      }}>{countdown}</div>
-      <button onClick={onLeave} style={{
-        padding: '10px 24px', background: '#d44', border: 'none',
-        borderRadius: '4px', color: 'white', fontFamily: '"Cinzel", serif',
-        fontSize: '12px', fontWeight: 700, letterSpacing: '1px', cursor: 'pointer',
-      }}>LEAVE NOW</button>
-    </div>
-  );
-}
-
-export default function Game({ selectedCharacter, selectedMode, onPlayAgain, onQuit, myUserId, myUsername }: GameProps) {
+export default function Game({ selectedCharacter, selectedMode, p1Character, p2Character, onPlayAgain, onQuit, myUserId, myUsername }: GameProps) {
   const inputManagerRef = useRef<InputManager | null>(null);
   
   useGameSocket();
@@ -138,6 +104,12 @@ export default function Game({ selectedCharacter, selectedMode, onPlayAgain, onQ
 
   const [showLeaveDialog, setShowLeaveDialog] = useState(false);
   const isLocal = selectedMode === MatchMode.LOCAL || selectedMode === MatchMode.AI;
+  const doubleHUD = selectedMode === MatchMode.LOCAL;
+  
+  const { isFullscreen, enter } = useFullscreenGuard(
+    !gameOver,
+    () => handleQuitInternal(false),
+  );
 
   useEffect(() => {
     const inputManager = new InputManager(selectedMode === MatchMode.LOCAL);
@@ -163,40 +135,8 @@ export default function Game({ selectedCharacter, selectedMode, onPlayAgain, onQ
     onQuit(isGameOver);
   };
 
-  const [initialSize] = useState({ w: window.innerWidth, h: window.innerHeight });
-  const [resized, setResized] = useState(false);
   const handleQuitRef = useRef(handleQuitInternal);
   handleQuitRef.current = handleQuitInternal;
-
-  useEffect(() => {
-    let kickTimeout: ReturnType<typeof setTimeout> | null = null;
-
-    const handleResize = () => {
-      const diffW = Math.abs(window.innerWidth - initialSize.w);
-      const diffH = Math.abs(window.innerHeight - initialSize.h);
-
-      if (diffW > 50 || diffH > 50) {
-        setResized(true);
-        if (!kickTimeout) {
-          kickTimeout = setTimeout(() => {
-            handleQuitRef.current();
-          }, 5000);
-        }
-      } else {
-        setResized(false);
-        if (kickTimeout) {
-          clearTimeout(kickTimeout);
-          kickTimeout = null;
-        }
-      }
-    };
-
-    window.addEventListener('resize', handleResize);
-    return () => {
-      window.removeEventListener('resize', handleResize);
-      if (kickTimeout) clearTimeout(kickTimeout);
-    };
-  }, [initialSize]);
 
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
@@ -207,6 +147,15 @@ export default function Game({ selectedCharacter, selectedMode, onPlayAgain, onQ
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [gameOver]);
+
+  if (!isFullscreen) {
+    return (
+        <FullscreenGate
+          onEnter={enter}
+          onLeave={() => handleQuitInternal(false)}
+        />
+      );
+    }
 
   if (!world) {
     return (
@@ -259,7 +208,7 @@ export default function Game({ selectedCharacter, selectedMode, onPlayAgain, onQ
           <PlayerEntity key={id} playerId={id} />
         ))}
 
-        {world?.map?.pillars?.map((p: any, i: number) => {
+        {/* {world?.map?.pillars?.map((p: any, i: number) => {
         const px = p.position?.x ?? p.x ?? 0;
         const pz = p.position?.z ?? p.z ?? 0;
         return (
@@ -277,7 +226,7 @@ export default function Game({ selectedCharacter, selectedMode, onPlayAgain, onQ
             />
           </mesh>
         );
-        })}
+        })} */}
 
         {/* {world?.map?.pillars?.map((p: any, i: number) => {
            const px = p.position?.x ?? p.x ?? 0;
@@ -303,11 +252,6 @@ export default function Game({ selectedCharacter, selectedMode, onPlayAgain, onQ
           <Bloom luminanceThreshold={1} luminanceSmoothing={0.9} mipmapBlur intensity={1.5} />
         </EffectComposer>
       </Canvas>
-      
-        {resized && (
-          <ResizeWarning onLeave={() => handleQuitInternal(false)} />
-        )}
-
         {!gameOver && (
         <button onClick={() => setShowLeaveDialog(true)} style={{
           position: 'absolute', top: 16, left: 16, zIndex: 1000,
@@ -374,8 +318,25 @@ export default function Game({ selectedCharacter, selectedMode, onPlayAgain, onQ
       )}
 
       {!gameOver && (
-        <SkillHud character={selectedCharacter} myUserId={myUserId} myUsername={myUsername} />
-      )}
+  <>
+    <SkillHud                                            //Visualizza il componente SkillHUD
+          character={p1Character}
+          myUserId={myUserId}
+          myUsername={myUsername}
+          teamId={isLocal ? 0 : undefined}
+          side="left"
+        />
+        {doubleHUD && (                                  //Se si e' in local abilita la doppia HUD
+          <SkillHud
+            character={p2Character}
+            myUserId=""
+            myUsername=""
+            teamId={1}
+            side="right"
+          />
+        )}
+      </>
+    )}
 
       {gameOver && (
         <GameOverOverlayWrapper gameOver={gameOver} onPlayAgain={handlePlayAgainInternal} onQuit={ () => handleQuitInternal(true)} myUserId={myUsername} />

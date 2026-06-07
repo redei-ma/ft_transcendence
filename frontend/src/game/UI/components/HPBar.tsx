@@ -33,7 +33,7 @@ export default function HPBar({
 
   return (
     <div style={{
-      // ⚡ MODIFICA: Se fluttua usa position 'relative', altrimenti 'absolute' con i suoi angoli
+      // Se fluttua usa position 'relative', altrimenti 'absolute' con i suoi angoli
       position: isFloating ? 'relative' : 'absolute',
       top: isFloating ? 'auto' : (characterName === CharacterName.ZEUS ? '20px' : 'auto'),
       bottom: isFloating ? 'auto' : (characterName === CharacterName.ADE ? '20px' : 'auto'),

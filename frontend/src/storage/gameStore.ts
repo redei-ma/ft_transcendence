@@ -26,3 +26,5 @@ export const useGameStore = create<GameStore>((set) => ({
   setGameOver: (gameOver) => set({ gameOver }),
   resetGame: () => set({ world: null, gameState: null, gameOver: null }),
 }));
+
+if (typeof window !== 'undefined') (window as any).gameStore = useGameStore;
