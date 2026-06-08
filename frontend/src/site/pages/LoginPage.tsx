@@ -6,6 +6,7 @@ import { toErrorString } from '../services/authService';
 import welcomeScene from '../../assets/images/welcomeScene.png';
 import { theme } from '../../configs/theme';
 import { PASSWORD_REGEX, PASSWORD_ERROR_MESSAGE, EMAIL_REGEX, RATE_LIMIT_ERROR_MESSAGE } from '@transcendence/types';
+import LeaderboardPage from './LeaderboardPage';
 
 interface LoginPageProps {
   onLogin: () => void;
@@ -23,7 +24,9 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
-  
+  const [termsAccepted, setTermsAccepted] = useState(false);
+  const [legalDoc, setLegalDoc] = useState<null | "terms" | "privacy">(null);
+
   // Memorizza l'email usata per la registrazione per agevolare il resend
   const [registeredEmail, setRegisteredEmail] = useState("");
 
@@ -60,6 +63,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
       if (!PASSWORD_REGEX.test(formData.password)) return PASSWORD_ERROR_MESSAGE;
       if (!formData.confirmPassword) return "Please confirm your password.";
       if (formData.password !== formData.confirmPassword) return "Passwords do not match.";
+      if (!termsAccepted) return "You must accept the Terms & Conditions and Privacy Policy to register.";
     }
 
     if (mode === "forgot") {
@@ -76,7 +80,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
     return null;
   };
 
-  
+
   const handleSubmit = useCallback(async (e?: React.FormEvent) => { //  'e?: React.FormEvent' per supportare l'invio tramite form
     if (e) e.preventDefault(); // Evita che il browser ricarichi la pagina quando premi Enter
 
@@ -146,7 +150,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
   const handleResend = async () => {
     setError("");
     setSuccessMsg("");
-    
+
     let targetEmail = "";
 
     const cleanRegEmail = registeredEmail.trim();
@@ -183,7 +187,11 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
     setShowPassword(false);
     setShowConfirmPassword(false);
     setFormData(prev => ({ ...prev, username: "", email: "", password: "", confirmPassword: "" }));
+    setTermsAccepted(false);
   };
+
+  // Il submit è bloccato finché, in registrazione, non si spuntano i termini
+  const submitDisabled = loading || (mode === "register" && !termsAccepted);
 
   return (
     <div className="animate-fadeIn" style={{
@@ -251,7 +259,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
               style={inputStyle} />
           )}
 
-          {/* REGISTER: campi separati username + email */}
+          {/* REGISTER: username + email + accettazione termini (un solo blocco) */}
           {mode === "register" && (
             <>
               <input className="input-glow" type="text" placeholder="Username"
@@ -304,6 +312,36 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
             </div>
           )}
 
+          {mode === "register" && (
+            <>
+            <label style={{
+              display: "flex", alignItems: "flex-start", gap: "8px",
+              fontFamily: theme.fonts.mono, fontSize: "12px",
+              color: theme.colors.goldDark, cursor: "pointer", lineHeight: 1.4,
+            }}>
+            <input
+                type="checkbox"
+                checked={termsAccepted}
+                onChange={(e) => setTermsAccepted(e.target.checked)}
+                style={{ marginTop: "2px", cursor: "pointer", accentColor: theme.colors.gold }}
+              />
+              <span>
+                Ho letto e accetto i{" "}
+                <button type="button" onClick={() => {setLegalDoc("terms")}}
+                  style={{ background: "none", border: "none", padding: 0, color: theme.colors.zeus, textDecoration: "underline", cursor: "pointer", font: "inherit" }}>
+                  Termini e Condizioni
+                </button>
+                {" "}e la{" "}
+                <button type="button" onClick={() => {setLegalDoc("privacy")}}
+                  style={{ background: "none", border: "none", padding: 0, color: theme.colors.zeus, textDecoration: "underline", cursor: "pointer", font: "inherit" }}>
+                  Privacy Policy
+                </button>
+                {" "}(obbligatorio)
+              </span>
+            </label>
+          </>
+          )}
+
           {/* 2FA */}
           {show2fa && mode === "login" && (
             <div className="animate-slideUp">
@@ -319,10 +357,10 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
           )}
 
           {/* Submit -> type="submit" in modo che reagisca al tasto ENTER! */}
-          <button className="btn-press" type="submit" disabled={loading} style={{
+          <button className="btn-press" type="submit" disabled={submitDisabled} style={{
             width: "100%", padding: "12px",
-            background: loading ? theme.colors.textMuted : `linear-gradient(180deg, ${theme.colors.gold}, ${theme.colors.goldDark})`,
-            border: "none", borderRadius: "2px", color: theme.colors.goldDark, fontFamily: theme.fonts.heading, fontSize: "13px", fontWeight: 700, letterSpacing: "2px", textTransform: "uppercase", cursor: loading ? "wait" : "pointer", transition: "all 0.2s", marginTop: "4px",
+            background: submitDisabled ? theme.colors.textMuted : `linear-gradient(180deg, ${theme.colors.gold}, ${theme.colors.goldDark})`,
+            border: "none", borderRadius: "2px", color: theme.colors.goldDark, fontFamily: theme.fonts.heading, fontSize: "13px", fontWeight: 700, letterSpacing: "2px", textTransform: "uppercase", cursor: loading ? "wait" : submitDisabled ? "not-allowed" : "pointer", transition: "all 0.2s", marginTop: "4px",
           }}>
             {loading ? "..." : mode === "login" ? "Enter" : mode === "register" ? "Register" : mode === "forgot" ? "Send Link" : "Reset Pwd"}
           </button>
@@ -350,6 +388,179 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
           )}
         </div>
       </div>
+            {legalDoc && (
+        <div
+          onClick={() => setLegalDoc(null)}
+          style={{
+            position: "fixed", inset: 0, zIndex: 10000,
+            display: "flex", alignItems: "center", justifyContent: "center",
+            backgroundColor: "rgba(0,0,0,0.7)", padding: "24px",
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              width: "min(560px, 100%)", maxHeight: "80vh", overflowY: "auto",
+              background: theme.colors.bgPanel, border: `1px solid ${theme.colors.border}`,
+              borderRadius: "4px", padding: "28px",
+            }}
+          >
+            <h2 style={{
+              fontFamily: theme.fonts.heading, fontSize: "18px", letterSpacing: "2px",
+              textTransform: "uppercase", color: theme.colors.goldBright, marginBottom: "16px",
+            }}>
+              {legalDoc === "terms" ? "Termini e Condizioni" : "Privacy Policy"}
+            </h2>
+          
+            <div style={{
+              fontFamily: theme.fonts.mono, fontSize: "13px", lineHeight: 1.6,
+              color: theme.colors.textMuted, whiteSpace: "pre-line", marginBottom: "20px",
+            }}>
+              {legalDoc === "terms" ? TERMS_TEXT : PRIVACY_TEXT}
+            </div>
+          
+            <button
+              type="button"
+              onClick={() => setLegalDoc(null)}
+              style={{
+                padding: "10px 28px", background: "none",
+                border: `1px solid ${theme.colors.goldBright}`, color: theme.colors.goldBright,
+                fontFamily: theme.fonts.heading, fontSize: "12px", letterSpacing: "2px",
+                textTransform: "uppercase", cursor: "pointer", borderRadius: "2px",
+              }}
+            >
+              Chiudi
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
+
+
+const EMAIL_USER = import.meta.env.VITE_EMAIL_USER || 'email not currently available';
+
+const PRIVACY_TEXT =
+`1. Introduction
+
+This application ("the Service") respects your privacy and is committed to protecting your personal data in accordance with applicable laws, including the General Data Protection Regulation (GDPR).
+
+2. Data We Collect
+
+We may collect the following personal data:
+  • Username
+  • Email address
+  • Password (stored securely as a hash)
+  • OAuth account data (e.g., Google account ID and email)
+  • Game-related data (scores, matches, statistics)
+  • Technical data such as IP address and login activity
+
+3. Purpose of Data Processing
+
+We process your data for the following purposes:
+  • To create and manage your account
+  • To authenticate users and maintain sessions
+  • To provide gameplay features and statistics
+  • To ensure security and prevent abuse
+
+4. Legal Basis
+
+Your data is processed on the basis of:
+  • Performance of a contract (providing the Service)
+  • Legitimate interest (security and fraud prevention)
+
+5. Data Storage and Security
+
+  • Passwords are securely hashed using industry-standard methods
+  • Authentication tokens are stored in HTTP-only cookies
+  • Reasonable technical measures are used to protect your data
+
+6. Data Retention
+
+  • We retain your data as long as your account is active.
+  • We may delete inactive accounts after an extended period of inactivity.
+  • You may request deletion of your account at any time.
+
+7. Your Rights
+
+Under GDPR, you have the right to:
+  • Access your personal data
+  • Correct inaccurate data
+  • Delete your data ("right to be forgotten")
+
+These rights can be exercised through your account settings or by contacting us.
+
+8. Cookies
+
+This Service uses strictly necessary cookies for authentication purposes.
+
+These include:
+  • Access token cookies
+  • Refresh token cookies
+
+These cookies are required for the proper functioning of the Service and do not require user consent.
+
+9. Third-Party Services
+
+We may use third-party services such as:
+  • Google OAuth for authentication
+
+These services may process your data according to their own privacy policies.
+
+10. Contact
+
+For any privacy-related requests, contact:
+${EMAIL_USER}
+
+11. Changes
+
+We may update this Privacy Policy at any time. Continued use of the Service implies acceptance of the updated policy.`;
+
+const TERMS_TEXT =
+
+`1. Acceptance of Terms
+
+By using this Service, you agree to these Terms of Service.
+
+2. User Accounts
+
+  • You are responsible for maintaining the confidentiality of your account credentials.
+  • You agree to provide accurate information when registering.
+
+3. Acceptable Use
+
+You agree not to:
+  • Use the Service for unlawful purposes
+  • Attempt to gain unauthorized access
+  • Exploit bugs or cheat in the game
+  • Harass or abuse other users
+
+4. Service Availability
+
+  • The Service is provided "as is" without guarantees of availability or performance.
+  • We may modify or discontinue the Service at any time.
+
+5. Account Termination
+
+  • We reserve the right to suspend or delete accounts that violate these terms.
+  • Users may delete their account at any time.
+
+6. Limitation of Liability
+
+We are not responsible for:
+  • Data loss
+  • Service interruptions
+  • Any damages arising from the use of the Service
+
+7. Intellectual Property
+
+All content and code of the Service remain the property of the developer unless otherwise stated.
+
+8. Governing Law
+
+These Terms are governed by the laws of Italy.
+
+9. Changes
+
+We may update these Terms at any time. Continued use of the Service implies acceptance of the updated Terms.`;
