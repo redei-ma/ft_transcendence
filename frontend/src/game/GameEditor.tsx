@@ -12,6 +12,7 @@ import { EffectComposer, Bloom } from '@react-three/postprocessing';
 import mapTexture from '../assets/images/mapTexture1.png';
 import { useGameStore } from '../storage/gameStore';
 import { theme } from '../configs/theme';
+import { logger } from '../configs/logger';
 import { PillarModel, WallModel } from './entities/mapModels';
 import * as THREE from 'three';
 
@@ -168,9 +169,9 @@ export default function Game({ selectedCharacter, selectedMode, onPlayAgain, onQ
     const jsonString = JSON.stringify(exportedMap, null, 2);
     navigator.clipboard.writeText(jsonString).then(() => {
       alert("JSON copiato negli appunti! Incollalo nel tuo server.");
-      console.log("Mappa esportata:", jsonString);
+      logger.debug("GameEditor", "Mappa esportata:", jsonString);
     }).catch(err => {
-      console.error("Errore copia:", err);
+      logger.error("GameEditor", "Errore copia:", err);
       alert("Errore durante la copia negli appunti.");
     });
   };

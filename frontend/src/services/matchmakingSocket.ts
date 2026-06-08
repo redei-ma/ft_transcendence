@@ -1,10 +1,11 @@
 import { io, Socket } from "socket.io-client";
 import { GameEvents } from '@transcendence/types';
 import { refreshToken } from "../site/services/authService";
+import { logger } from "../configs/logger";
 
 class MatchmakingSocket {
 	private socket: Socket | null = null;
-	private listenerMap = new Map<(data: any) => void, (data: any) => void>();
+	private listenerMap = new Map<(data: unknown) => void, (data: unknown) => void>();
 	private onMatchError: ((code: string, message: string) => void) | null = null;
 
 	setOnMatchError(handler: ((code: string, message: string) => void) | null) {
@@ -14,7 +15,7 @@ class MatchmakingSocket {
 	connect(): Socket {
 		if (this.socket) {
 			if (this.socket.connected) {
-				console.log("🔵 [Matchmaking] Already connected.");
+				logger.debug('Matchmaking', 'Already connected.');
 				return this.socket;
 			}
 			this.socket.removeAllListeners();
@@ -23,7 +24,7 @@ class MatchmakingSocket {
 			this.listenerMap.clear();
 		}
 
-		console.log("🟡 [Matchmaking] Initiating connection...");
+		logger.log('Matchmaking', 'Initiating connection...');
 		this.socket = io("/", {
 			path: "/ws/matchmaking/socket.io",
 			transports: ["websocket", "polling"],
@@ -32,47 +33,47 @@ class MatchmakingSocket {
 		});
 
 		this.socket.on("connect", () =>
-			console.log(`🟢 [Matchmaking] Connected! Socket ID: ${this.socket?.id}`),
+			logger.log('Matchmaking', `Connected. Socket ID: ${this.socket?.id}`),
 		);
 		this.socket.on("disconnect", (reason) =>
-			console.warn(`🔴 [Matchmaking] Disconnected. Reason: ${reason}`),
+			logger.warn('Matchmaking', `Disconnected. Reason: ${reason}`),
 		);
 
 		this.socket.on("connect_error", async (error) => {
-			console.error(`❌ [Matchmaking] Connection Error:`, error.message);
+			logger.error('Matchmaking', `Connection error: ${error.message}`);
 			if (error.message === "unauthorized" || error.message === "Authentication error") {
-				console.log("🔄 [Matchmaking] Attempting token refresh...");
+				logger.debug('Matchmaking', 'Attempting token refresh...');
 				const refreshed = await refreshToken();
 				if (refreshed) {
-					console.log("✅ [Matchmaking] Token refreshed, reconnecting...");
+					logger.log('Matchmaking', 'Token refreshed, reconnecting...');
 					this.socket?.connect();
 				} else {
-					console.error("🚫 [Matchmaking] Token refresh failed.");
+					logger.error('Matchmaking', 'Token refresh failed.');
 				}
 			}
 		});
 
 		this.socket.on("unauthorized", async () => {
-			console.warn("🔐 [Matchmaking] Unauthorized event received.");
+			logger.warn('Matchmaking', 'Unauthorized event received.');
 			const refreshed = await refreshToken();
 			if (refreshed) {
-				console.log("🔄 [Matchmaking] Reconnecting after auth fix...");
+				logger.debug('Matchmaking', 'Reconnecting after auth fix...');
 				this.socket?.connect();
 			}
 		});
 
 		this.socket.on("exception", async (data: { status: string; errorCode: string; message: string }) => {
-			console.error(`🚨 [Matchmaking] Exception from server: [${data.errorCode}] ${data.message}`);
+			logger.error('Matchmaking', `Exception from server: [${data.errorCode}] ${data.message}`);
 
 			if (data.errorCode === "UNAUTHORIZED_TOKEN") {
-				console.log("🔄 [Matchmaking] Token expired, attempting refresh...");
+				logger.debug('Matchmaking', 'Token expired, attempting refresh...');
 				const refreshed = await refreshToken();
 				if (refreshed) {
-					console.log("✅ [Matchmaking] Token refreshed, reconnecting...");
+					logger.log('Matchmaking', 'Token refreshed, reconnecting...');
 					this.socket?.disconnect();
 					this.socket?.connect();
 				} else {
-					console.error("🚫 [Matchmaking] Refresh failed, bubbling to handler.");
+					logger.error('Matchmaking', 'Refresh failed, bubbling to handler.');
 					this.onMatchError?.(data.errorCode, data.message);
 				}
 				return;
@@ -88,7 +89,7 @@ class MatchmakingSocket {
 
 	disconnect() {
 		if (this.socket) {
-			console.log("🟠 [Matchmaking] Manual disconnect triggered (Left queue).");
+			logger.log('Matchmaking', 'Manual disconnect triggered.');
 			this.socket.removeAllListeners();
 			this.socket.disconnect();
 			this.socket = null;
@@ -96,26 +97,26 @@ class MatchmakingSocket {
 		}
 	}
 
-	emit(event: GameEvents, data?: any) {
+	emit(event: GameEvents, data?: unknown) {
 		if (!this.socket) {
-			console.error(`⚠️ [Matchmaking] Cannot emit '${event}': not connected.`);
+			logger.error('Matchmaking', `Cannot emit '${event}': not connected.`);
 			return;
 		}
-		console.log(`↗️ [Matchmaking] Emitting [${event}]:`, data);
+		logger.debug('Matchmaking', `Emitting [${event}]:`, data);
 		this.socket.emit(event, data);
 	}
 
-	on(event: GameEvents | string, callback: (data: any) => void) {
+	on(event: GameEvents | string, callback: (data: unknown) => void) {
 		if (!this.socket) return;
-		const wrapper = (data: any) => {
-			console.log(`↙️ [Matchmaking] Received [${event}]:`, data);
+		const wrapper = (data: unknown) => {
+			logger.debug('Matchmaking', `Received [${event}]:`, data);
 			callback(data);
 		};
 		this.listenerMap.set(callback, wrapper);
 		this.socket.on(event, wrapper);
 	}
 
-	off(event: GameEvents | string, callback?: (data: any) => void) {
+	off(event: GameEvents | string, callback?: (data: unknown) => void) {
 		if (!this.socket) return;
 		if (callback) {
 			const wrapper = this.listenerMap.get(callback);
@@ -126,22 +127,22 @@ class MatchmakingSocket {
 		} else {
 			this.socket.off(event);
 		}
-		console.log(`🔇 [Matchmaking] Removing listener for [${event}]`);
+		logger.debug('Matchmaking', `Removing listener for [${event}]`);
 	}
 
 	getSocket(): Socket | null {
 		return this.socket;
 	}
 
-	connectAndEmit(event: GameEvents, data?: any): void {
-	  const socket = this.connect();
-	  if (socket.connected) {
-	    this.emit(event, data);
-	  } else {
-	    socket.once('connect', () => {
-	      this.emit(event, data);
-	    });
-	  }
+	connectAndEmit(event: GameEvents, data?: unknown): void {
+		const socket = this.connect();
+		if (socket.connected) {
+			this.emit(event, data);
+		} else {
+			socket.once('connect', () => {
+				this.emit(event, data);
+			});
+		}
 	}
 }
 

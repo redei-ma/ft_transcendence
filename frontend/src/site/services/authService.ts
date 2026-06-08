@@ -3,6 +3,8 @@
  * Gestisce: login, register, logout, refresh, forgot/reset password, 2FA, OAuth
  */
 
+import { logger } from '../../configs/logger';
+
 export class RateLimitError extends Error {
   constructor() { super('rate_limited'); }
 }
@@ -84,7 +86,7 @@ export async function login(
     if (res.status === 429) return { ok: false, data: { error: 'rate_limited' } };
     return { ok: res.ok, data: await res.json() };
   } catch (error) {
-    console.error("[Auth] Login error:", error);
+    logger.error("AuthService", "Login error:", error);
     return { ok: false, data: { error: "Network error" } };
   }
 }
@@ -105,7 +107,7 @@ export async function register(
     if (res.status === 429) return { ok: false, data: { error: 'rate_limited' } };
     return { ok: res.ok, data: await res.json() };
   } catch (error) {
-    console.error("[Auth] Register error:", error);
+    logger.error("AuthService", "Register error:", error);
     return { ok: false, data: { error: "Network error" } };
   }
 }
@@ -117,7 +119,7 @@ export async function logout(): Promise<void> {
       credentials: "include",
     });
   } catch (error) {
-    console.error("[Auth] Logout error:", error);
+    logger.error("AuthService", "Logout error:", error);
   }
 }
 
@@ -131,7 +133,7 @@ export async function forgotPassword(email: string): Promise<'ok' | 'rate_limite
     if (res.status === 429) return 'rate_limited';
     return 'ok';
   } catch (error) {
-    console.error("[Auth] Forgot password error:", error);
+    logger.error("AuthService", "Forgot password error:", error);
     return 'error';
   }
 }

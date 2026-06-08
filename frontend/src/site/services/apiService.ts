@@ -1,6 +1,7 @@
 
 import { fetchWithAuthRetry, refreshToken, RateLimitError } from "./authService";
 import { RATE_LIMIT_ERROR_MESSAGE } from '@transcendence/types';
+import { logger } from '../../configs/logger';
 
 export interface UserProfile {
     id: number;
@@ -164,7 +165,7 @@ export async function getMyProfile(): Promise<UserProfile | null> {
         if (!res || !res.ok) return null;
         return (await res.json()) as UserProfile;
     } catch (error) {
-        console.error("[API] Error fetching profile:", error);
+        logger.error("ApiService", "Error fetching profile:", error);
         return null;
     }
 }
@@ -175,7 +176,7 @@ export async function getMyStats(): Promise<UserStats | null> {
         if (!res || !res.ok) return null;
         return (await res.json()) as UserStats;
     } catch (error) {
-        console.error("[API] Error fetching stats:", error);
+        logger.error("ApiService", "Error fetching stats:", error);
         return null;
     }
 }
@@ -186,7 +187,7 @@ export async function getMySettings(): Promise<UserSettings | null> {
         if (!res || !res.ok) return null;
         return (await res.json()) as UserSettings;
     } catch (error) {
-        console.error("[API] Error fetching settings:", error);
+        logger.error("ApiService", "Error fetching settings:", error);
         return null;
     }
 }
@@ -208,7 +209,7 @@ export async function updateUsername(username: string): Promise<{ ok: boolean; m
         return { ok: false, message: msg };
     } catch (error) {
         if (error instanceof RateLimitError) return { ok: false, message: RATE_LIMIT_ERROR_MESSAGE };
-        console.error("[API] Error updating username:", error);
+        logger.error("ApiService", "Error updating username:", error);
         return { ok: false, message: "Network error" };
     }
 }
@@ -222,7 +223,7 @@ export async function updateEmail(email: string): Promise<boolean> {
         });
         return !!res && res.ok;
     } catch (error) {
-        console.error("[API] Error updating email:", error);
+        logger.error("ApiService", "Error updating email:", error);
         return false;
     }
 }
@@ -241,7 +242,7 @@ export async function uploadAvatar(file: File): Promise<{ ok: boolean; profile?:
         const data = await res.json().catch(() => ({}));
         return { ok: false, message: data.message || "Upload failed" };
     } catch (error) {
-        console.error("[API] Error uploading avatar:", error);
+        logger.error("ApiService", "Error uploading avatar:", error);
         return { ok: false, message: "Network error" };
     }
 }
@@ -252,7 +253,7 @@ export async function resetAvatar(): Promise<UserProfile | null> {
         if (!res || !res.ok) return null;
         return (await res.json()) as UserProfile;
     } catch (error) {
-        console.error("[API] Error resetting avatar:", error);
+        logger.error("ApiService", "Error resetting avatar:", error);
         return null;
     }
 }
@@ -268,7 +269,7 @@ export async function getLeaderboard(
         if (!res || !res.ok) return null;
         return (await res.json()) as LeaderboardResponse;
     } catch (error) {
-        console.error("[API] Error fetching leaderboard:", error);
+        logger.error("ApiService", "Error fetching leaderboard:", error);
         return null;
     }
 }
@@ -281,7 +282,7 @@ export async function getPublicProfile(
         if (!res || !res.ok) return null;
         return (await res.json()) as UserProfile;
     } catch (error) {
-        console.error("[API] Error fetching public profile:", error);
+        logger.error("ApiService", "Error fetching public profile:", error);
         return null;
     }
 }
@@ -294,7 +295,7 @@ export async function searchUserByUsername(
         if (!res || !res.ok) return null;
         return await res.json();
     } catch (error) {
-        console.error("[API] Error searching user by username:", error);
+        logger.error("ApiService", "Error searching user by username:", error);
         return null;
     }
 }
@@ -310,7 +311,7 @@ export async function checkUsernameAvailable(
         const data = await res.json();
         return !data.exists;
     } catch (error) {
-        console.error("[API] Error checking username:", error);
+        logger.error("ApiService", "Error checking username:", error);
         return false;
     }
 }
@@ -324,7 +325,7 @@ export async function checkEmailAvailable(email: string): Promise<boolean> {
         const data = await res.json();
         return !data.exists;
     } catch (error) {
-        console.error("[API] Error checking email:", error);
+        logger.error("ApiService", "Error checking email:", error);
         return false;
     }
 }
@@ -337,7 +338,7 @@ export async function generate2fa() {
     if (!res || !res.ok) return null;
     return await res.json();
   } catch (error) {
-    console.error("[API] Error generating 2FA:", error);
+    logger.error("ApiService", "Error generating 2FA:", error);
     return null;
   }
 }
@@ -355,7 +356,7 @@ export async function turnOn2fa(code: string): Promise<{ ok: boolean; message?: 
     return { ok: false, message: data.message || "Incorrect code. Please try again." };
   } catch (error) {
     if (error instanceof RateLimitError) return { ok: false, message: RATE_LIMIT_ERROR_MESSAGE };
-    console.error("[API] Error turning on 2FA:", error);
+    logger.error("ApiService", "Error turning on 2FA:", error);
     return { ok: false, message: "Network error" };
   }
 }
@@ -365,7 +366,7 @@ export async function turnOff2fa(): Promise<boolean> {
     const res = await fetchWithAuthRetry("/api/auth/2fa/disable", { method: "POST" });
     return !!res && res.ok;
   } catch (error) {
-    console.error("[API] Error turning off 2FA:", error);
+    logger.error("ApiService", "Error turning off 2FA:", error);
     return false;
   }
 }
@@ -429,7 +430,7 @@ export async function getNotifications(page = 1, limit = 20, unreadOnly = false)
         if (!res || !res.ok) return null;
         return (await res.json()) as NotificationListResponse;
     } catch (error) {
-        console.error("[API] Error fetching notifications:", error);
+        logger.error("ApiService", "Error fetching notifications:", error);
         return null;
     }
 }
@@ -439,7 +440,7 @@ export async function markAllNotificationsRead(): Promise<boolean> {
         const res = await fetchWithAuthRetry("/api/users/me/notifications/read-all", { method: "PATCH" });
         return !!res && res.ok;
     } catch (error) {
-        console.error("[API] Error marking all read:", error);
+        logger.error("ApiService", "Error marking all read:", error);
         return false;
     }
 }
@@ -449,7 +450,7 @@ export async function markNotificationRead(id: number): Promise<boolean> {
         const res = await fetchWithAuthRetry(`/api/users/me/notifications/${id}/read`, { method: "PATCH" });
         return !!res && res.ok;
     } catch (error) {
-        console.error(`[API] Error marking notif ${id} read:`, error);
+        logger.error("ApiService", `Error marking notif ${id} read:`, error);
         return false;
     }
 }
@@ -459,7 +460,7 @@ export async function deleteNotification(id: number): Promise<boolean> {
         const res = await fetchWithAuthRetry(`/api/users/me/notifications/${id}`, { method: "DELETE" });
         return !!res && res.ok;
     } catch (error) {
-        console.error(`[API] Error deleting notif ${id}:`, error);
+        logger.error("ApiService", `Error deleting notif ${id}:`, error);
         return false;
     }
 }
@@ -474,7 +475,7 @@ export async function getFriends(): Promise<FriendListResponse | null> {
         if (!res || !res.ok) return null;
         return (await res.json()) as FriendListResponse;
     } catch (error) {
-        console.error("[API] Error fetching friends:", error);
+        logger.error("ApiService", "Error fetching friends:", error);
         return null;
     }
 }
@@ -485,7 +486,7 @@ export async function getFriendRequests(): Promise<FriendRequestsResponse | null
         if (!res || !res.ok) return null;
         return (await res.json()) as FriendRequestsResponse;
     } catch (error) {
-        console.error("[API] Error fetching friend requests:", error);
+        logger.error("ApiService", "Error fetching friend requests:", error);
         return null;
     }
 }
@@ -516,7 +517,7 @@ export async function respondFriendRequest(targetId: number, action: 'ACCEPTED' 
         });
         return !!res && res.ok;
     } catch (error) {
-        console.error("[API] Error responding to friend request:", error);
+        logger.error("ApiService", "Error responding to friend request:", error);
         return false;
     }
 }
@@ -526,7 +527,7 @@ export async function removeFriend(targetId: number): Promise<boolean> {
         const res = await fetchWithAuthRetry(`/api/users/me/friends/${targetId}`, { method: "DELETE" });
         return !!res && (res.ok || res.status === 204);
     } catch (error) {
-        console.error("[API] Error removing friend:", error);
+        logger.error("ApiService", "Error removing friend:", error);
         return false;
     }
 }
@@ -555,7 +556,7 @@ export async function getGameInvites(): Promise<GameInviteListResponse | null> {
         if (!res || !res.ok) return null;
         return (await res.json()) as GameInviteListResponse;
     } catch (error) {
-        console.error("[API] Error fetching game invites:", error);
+        logger.error("ApiService", "Error fetching game invites:", error);
         return null;
     }
 }
@@ -581,7 +582,7 @@ export async function getMyAchievements(): Promise<UserAchievementsResponse | nu
         if (!res || !res.ok) return null;
         return (await res.json()) as UserAchievementsResponse;
     } catch (error) {
-        console.error("[API] Error fetching achievements:", error);
+        logger.error("ApiService", "Error fetching achievements:", error);
         return null;
     }
 }
@@ -599,7 +600,7 @@ export async function getMyMatches(page = 1, limit = 10, mode?: string): Promise
         return (await res.json()) as MatchHistoryResponse;
     }
     catch (error) {
-        console.error("[API] Error fetching matches:", error);
+        logger.error("ApiService", "Error fetching matches:", error);
         return null;
     }
 }
@@ -621,7 +622,7 @@ export async function deleteAccount(password: string): Promise<{ ok: boolean; me
         return { ok: false, message: data.message || "Failed to delete account" };
     } catch (error) {
         if (error instanceof RateLimitError) return { ok: false, message: RATE_LIMIT_ERROR_MESSAGE };
-        console.error("[API] Error deleting account:", error);
+        logger.error("ApiService", "Error deleting account:", error);
         return { ok: false, message: "Network error" };
     }
 }

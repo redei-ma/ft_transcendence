@@ -1,24 +1,24 @@
 import { useEffect } from 'react';
 import { socketService } from '../services/socketServices';
 import { PlayerSnapshot, BulletSnapshot, GameEvents } from '@transcendence/types';
-import { log } from '../configs/logger';
+import { logger } from '../configs/logger';
 import { useGameStore } from '../storage/gameStore';
 
 export function useGameSocket() {
   useEffect(() => {
     const socket = socketService.getSocket();
     if (!socket) {
-      log.error('Socket not initialized');
+      logger.error('GameSocket', 'Socket not initialized');
       return;
     }
 
-    log.net('Setting up socket listeners, socket id:', socket.id);
+    logger.debug('GameSocket', 'Setting up socket listeners, socket id:', socket.id);
 
     const handleConnect = () => useGameStore.getState().setIsConnected(true);
     const handleDisconnect = () => useGameStore.getState().setIsConnected(false);
 
     const handleMapEmit = (data: any) => {
-      log.game('Map received:', data);
+      logger.debug('GameSocket', 'Map received:', data);
       useGameStore.getState().setWorld(data);
     };
 
@@ -36,8 +36,7 @@ export function useGameSocket() {
     };
 
     const handleGameOver = (payload: any) => {
-      console.log("[GameOver] payload:", JSON.stringify(payload));
-      log.game('Game over:', payload);
+      logger.debug('GameSocket', 'Game over payload:', JSON.stringify(payload));
       const finalData = payload.entities || payload.finalData || undefined;
       useGameStore.getState().setGameOver({ finalData, time: payload.time || 0 });
     };

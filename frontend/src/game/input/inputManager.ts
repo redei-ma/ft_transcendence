@@ -1,7 +1,7 @@
 import { socketService } from '../../services/socketServices';
 import { GameEvents } from '@transcendence/types';
 import { AttackType } from '@transcendence/types';
-import { log } from '../../configs/logger';
+import { logger } from '../../configs/logger';
 import aimCursorUrl from '../../assets/images/AimCursor.png';
 
 interface GameInputPayload {
@@ -23,7 +23,7 @@ export class InputManager {
 
   constructor(isLocalGame: boolean = true) {
     this.isLocalGame = isLocalGame;
-    log.input('InputManager initialized, local:', isLocalGame);
+    logger.debug('InputManager', 'initialized, local:', isLocalGame);
     this.setupListeners();
   }
 
@@ -85,7 +85,7 @@ export class InputManager {
   }
   
   public fireSpellAt(worldX: number, worldZ: number): void {
-    console.log("[InputManager] fireSpellAt:", worldX, worldZ, "playerPos:", this.playerPosition);
+    logger.debug('[InputManager]', 'fireSpellAt:', worldX, worldZ, 'playerPos:', this.playerPosition);
     if (!this.playerPosition) return;
     
     const dx = worldX - this.playerPosition.x;
@@ -116,7 +116,7 @@ export class InputManager {
       this.pendingSpellDirection = null;
     }
     
-    if (p0.attackType) console.log('P0 attack payload:', JSON.stringify(p0));
+    if (p0.attackType) logger.debug('InputManager', 'P0 attack payload:', JSON.stringify(p0));
     socketService.emit(GameEvents.INPUT, p0);
     
     if (this.isLocalGame) {
@@ -125,7 +125,7 @@ export class InputManager {
         'p', 'o', 'i',
         1
       );
-      if (p1.attackType) console.log('P1 attack:', p1.attackType);
+      if (p1.attackType) logger.debug('InputManager', 'P1 attack:', p1.attackType);
       socketService.emit(GameEvents.INPUT, p1);
     }
   }
@@ -180,7 +180,7 @@ export class InputManager {
   }
 
   public dispose(): void {
-    log.input('InputManager disposing');
+    logger.debug('InputManager', 'disposing');
     window.removeEventListener('keydown', this.handleKeyDown);
     window.removeEventListener('keyup', this.handleKeyUp);
     if (this.intervalId !== null) {

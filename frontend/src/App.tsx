@@ -8,6 +8,7 @@ import ProfilePage from './site/pages/ProfilePage';
 import GameFlow from './site/pages/GameFlow';
 import Navbar from './site/components/Navbar';
 import { logout, refreshToken } from './site/services/authService';
+import { logger } from './configs/logger';
 import { theme } from './configs/theme';
 import DesktopOnlyGuard from './site/components/desktopOnlyGuard';
 import FriendsSidebar from './site/components/FriendSidebar';
@@ -183,7 +184,7 @@ export default function App() {
       setIsLoggedIn(true);
       setCurrentPage('dashboard');
     } else {
-      console.error('Login riuscito, ma impossibile recuperare il profilo.');
+      logger.error('App', 'Login riuscito, ma impossibile recuperare il profilo.');
       await logout();
       setIsLoggedIn(false);
     }
