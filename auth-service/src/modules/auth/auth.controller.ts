@@ -163,28 +163,26 @@ export class AuthController {
   }
 
   @Get('verify-email')
-  // TO RESTORE AT DELIVERY: delete the current implementation and uncomment the block below
-  async verifyEmail(@Query() query: TokenQueryDto): Promise<{ ok: boolean; message: string }> {
-    // -- TEMPORARY: returns plain JSON to avoid loading the full React app via ngrok --
+  async verifyEmail(
+    @Query() query: TokenQueryDto,
+    @Res() res: Response,
+  ): Promise<void> {
+    const isDev = this.config.get('NODE_ENV') !== 'production';
+    const frontendUrl = this.config.getOrThrow('PUBLIC_URL');
     try {
       await this.authService.verifyEmailToken(decodeURIComponent(query.token));
-      return { ok: true, message: 'Email verified successfully. You can now log in.' };
+      if (isDev)
+        res.json({ ok: true, message: 'Email verified successfully. You can now log in.' });
+      else
+        res.redirect(`${frontendUrl}/?verified=success`);
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : 'Verification failed.';
-      return { ok: false, message: msg };
+      if (isDev)
+        res.json({ ok: false, message: msg });
+      else
+        res.redirect(`${frontendUrl}/?verified=error&msg=${encodeURIComponent(msg)}`);
     }
   }
-  // -- ORIGINAL (redirects to frontend EmailCallbackPage) --
-  // async verifyEmail(@Query() query: TokenQueryDto, @Res() res: Response): Promise<void> {
-  //   const frontendUrl = this.config.getOrThrow('PUBLIC_URL');
-  //   try {
-  //     await this.authService.verifyEmailToken(decodeURIComponent(query.token));
-  //     res.redirect(`${frontendUrl}/?verified=success`);
-  //   } catch (e: unknown) {
-  //     const msg = e instanceof Error ? e.message : 'Verification failed.';
-  //     res.redirect(`${frontendUrl}/?verified=error&msg=${encodeURIComponent(msg)}`);
-  //   }
-  // }
 
   @Post('forgot-password')
   async forgotPassword(@Body() body: EmailDto ) {
@@ -231,28 +229,26 @@ export class AuthController {
   }
 
   @Get('confirm-email-change')
-  // TO RESTORE AT DELIVERY: delete the current implementation and uncomment the block below
-  async confirmEmailChange(@Query() query: TokenQueryDto): Promise<{ ok: boolean; message: string }> {
-    // -- TEMPORARY: returns plain JSON to avoid loading the full React app via ngrok --
+  async confirmEmailChange(
+    @Query() query: TokenQueryDto,
+    @Res() res: Response,
+  ): Promise<void> {
+    const isDev = this.config.get('NODE_ENV') !== 'production';
+    const frontendUrl = this.config.getOrThrow('PUBLIC_URL');
     try {
       await this.authService.confirmEmailChange(decodeURIComponent(query.token));
-      return { ok: true, message: 'Email updated successfully.' };
+      if (isDev)
+        res.json({ ok: true, message: 'Email updated successfully.' });
+      else
+        res.redirect(`${frontendUrl}/?email-changed=success`);
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : 'Email change failed.';
-      return { ok: false, message: msg };
+      if (isDev)
+        res.json({ ok: false, message: msg });
+      else
+        res.redirect(`${frontendUrl}/?email-changed=error&msg=${encodeURIComponent(msg)}`);
     }
   }
-  // -- ORIGINAL (redirects to frontend EmailCallbackPage) --
-  // async confirmEmailChange(@Query() query: TokenQueryDto, @Res() res: Response): Promise<void> {
-  //   const frontendUrl = this.config.getOrThrow('PUBLIC_URL');
-  //   try {
-  //     await this.authService.confirmEmailChange(decodeURIComponent(query.token));
-  //     res.redirect(`${frontendUrl}/?email-changed=success`);
-  //   } catch (e: unknown) {
-  //     const msg = e instanceof Error ? e.message : 'Email change failed.';
-  //     res.redirect(`${frontendUrl}/?email-changed=error&msg=${encodeURIComponent(msg)}`);
-  //   }
-  // }
 
   @Delete('account')
   @HttpCode(HttpStatus.NO_CONTENT)
