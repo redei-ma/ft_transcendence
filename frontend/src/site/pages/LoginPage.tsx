@@ -313,32 +313,33 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
           )}
 
           {mode === "register" && (
-            <>
-            <label style={{
+          <>
+            <div style={{
               display: "flex", alignItems: "flex-start", gap: "8px",
               fontFamily: theme.fonts.mono, fontSize: "12px",
-              color: theme.colors.goldDark, cursor: "pointer", lineHeight: 1.4,
+              color: theme.colors.goldDark, lineHeight: 1.4,
             }}>
-            <input
+              <input
                 type="checkbox"
                 checked={termsAccepted}
                 onChange={(e) => setTermsAccepted(e.target.checked)}
                 style={{ marginTop: "2px", cursor: "pointer", accentColor: theme.colors.gold }}
               />
+            
               <span>
                 Ho letto e accetto i{" "}
-                <button type="button" onClick={() => {setLegalDoc("terms")}}
+                <button type="button" onClick={() => setLegalDoc("terms")}
                   style={{ background: "none", border: "none", padding: 0, color: theme.colors.zeus, textDecoration: "underline", cursor: "pointer", font: "inherit" }}>
                   Termini e Condizioni
                 </button>
                 {" "}e la{" "}
-                <button type="button" onClick={() => {setLegalDoc("privacy")}}
+                <button type="button" onClick={() => setLegalDoc("privacy")}
                   style={{ background: "none", border: "none", padding: 0, color: theme.colors.zeus, textDecoration: "underline", cursor: "pointer", font: "inherit" }}>
                   Privacy Policy
                 </button>
                 {" "}(obbligatorio)
               </span>
-            </label>
+            </div>
           </>
           )}
 
