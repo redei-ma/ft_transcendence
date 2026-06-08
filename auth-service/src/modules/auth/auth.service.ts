@@ -595,6 +595,10 @@ export class AuthService {
     await this.mailService.sendGdprExportEmail(user.email, verifyUrl);
   }
 
+  async getGdprExportZipTry(id: number): Promise<any> {
+    return await this.usersService.getGdprData(id);
+  }
+
   async getGdprExportZip(token: string): Promise<{ zipBuffer: Buffer; username: string }> {
     let payload: { sub: number; type: string };
     try {

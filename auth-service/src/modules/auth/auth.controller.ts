@@ -10,6 +10,8 @@ import {
   Query,
   HttpCode,
   HttpStatus,
+  ParseIntPipe,
+  Param
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import type { Request, Response } from 'express';
@@ -259,6 +261,31 @@ export class AuthController {
       const msg = e instanceof Error ? e.message : 'Export failed.';
       const frontendUrl = this.config.getOrThrow('PUBLIC_URL');
       return res.redirect(`${frontendUrl}/?gdpr-export=error&msg=${encodeURIComponent(msg)}`);
+    }
+  }
+
+  @Get('gdpr/export-try/:id')
+  async exportGdprDataTry(
+/*     @Query() query: TokenQueryDto,
+    @Res() res: Response, */
+    @Param("id", ParseIntPipe) id: number,
+  ) {
+    try {
+      //const { zipBuffer, username } = await this.authService.getGdprExportZip(query.token);
+      return await this.authService.getGdprExportZipTry(id);
+      //res.setHeader('Content-Type', 'application/zip');
+      //res.setHeader('Content-Disposition', `attachment; filename="transcendence_gdpr_export_${username}.zip"`);
+      //return res.status(HttpStatus.OK).send(zipBuffer);
+    } catch (error: any) {
+/*       const msg = e instanceof Error ? e.message : 'Export failed.';
+      const frontendUrl = this.config.getOrThrow('PUBLIC_URL');
+      return res.redirect(`${frontendUrl}/?gdpr-export=error&msg=${encodeURIComponent(msg)}`); */
+        console.error('[GDPR DEBUG] ERRORR user.client communication failed:', {
+        message: error.message,
+        response: error.response?.data || error.response || 'No response body',
+        status: error.response?.status
+      });
+      throw error;
     }
   }
 

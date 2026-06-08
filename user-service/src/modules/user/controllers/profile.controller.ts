@@ -8,6 +8,8 @@ import {
 	HttpCode,
 	HttpStatus,
 	UseGuards,
+	Logger,
+	ParseIntPipe,
 } from "@nestjs/common";
 import {
 	ApiTags,
@@ -36,6 +38,7 @@ import {
 	FriendUserDto,
 } from "../dto";
 
+import { InternalUserService } from "../services/internal-user.service";
 /**
  * Controller for public user endpoints.
  * These endpoints are exposed to the frontend and typically require JWT authentication.
@@ -43,7 +46,37 @@ import {
 @ApiTags("Users")
 @Controller("api/users")
 export class ProfileController {
-	constructor(private readonly profileService: ProfileService) {}
+	private readonly logger = new Logger(ProfileController.name);
+	constructor(
+		private readonly internalUserService: InternalUserService,
+		private readonly profileService: ProfileService
+	) {}
+
+	/**
+	 * Get full GDPR profile data dump for a user (internal)
+	 */
+	@Get(":id/gdpr-data")
+/* 	@ApiOperation({ summary: "Get user data dump for GDPR compliance (internal)" })
+	@ApiParam({ name: "id", type: Number })
+	@ApiResponse({
+		status: HttpStatus.OK,
+		description: "GDPR user data retrieved successfully",
+	})
+	@ApiResponse({
+		status: HttpStatus.NOT_FOUND,
+		description: "User not found",
+	}) */
+	async getGdprData(@Param("id", ParseIntPipe) id: number): Promise<any> {
+		this.logger.log(`[USER SERVICE DEBUG] Received internal GDPR data dump request for ID:`, id, `Type of ID:`, typeof id);
+		try {
+			const data = await this.internalUserService.getGdprData(id);
+			this.logger.log(`[USER SERVICE DEBUG] Successfully compiled data for ID: ${id}`);
+			return data;
+		} catch (error: any) {
+			this.logger.log(`[USER SERVICE DEBUG] Failed compiling data for ID: ${id}. Error:`, error);
+			throw error;
+		}
+	}
 
 	// ─── ─────────────────────────────────────────────────────────────────────────────
 	/**
