@@ -188,7 +188,7 @@ export class GameGateway
 	@SubscribeMessage(GameEvents.LEAVE_GAME)
 	handleLeaveGame(
 		@ConnectedSocket() client: Socket,
-	): any {
+	): { status: string; message?: string; errorCode?: string } {
 		const socketId = client.id;
 		if (!socketId) {
 			this.logger.error("invalid socket reached, ignoring");

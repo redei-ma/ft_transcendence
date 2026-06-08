@@ -16,7 +16,7 @@ import {
 import { MatchMakingData } from "../game-interfaces";
 
 export class LobbyState implements IGameState {
-	logger: Logger = new Logger(LobbyState.name);
+	private readonly logger: Logger = new Logger(LobbyState.name);
 
 	name = "LOBBY";
 
@@ -200,7 +200,7 @@ export class LobbyState implements IGameState {
 		});
 
 		this.logger
-			.log(`Transitioning to Play State - event map emit sended - map: ${this.session.gameWorld},
+			.debug(`Transitioning to Play State - event map emit sended - map: ${this.session.gameWorld},
 			PlayerRadius:${GameConfig.PLAYER.RADIUS} PlayerSpeed: ${GameConfig.PLAYER.SPEED}`);
 	}
 }

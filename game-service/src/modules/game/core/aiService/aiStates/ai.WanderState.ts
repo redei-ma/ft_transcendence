@@ -8,7 +8,7 @@ import { PathFinder } from "../pathFinder/ai.PathFinder";
 import { checkVisualForAttack, executePathMovement } from "../ai.tactics.helper";
 
 export class WanderState implements IAiStates{
-    logger: Logger = new Logger(WanderState.name);
+    private readonly logger: Logger = new Logger(WanderState.name);
     name: string = 'WanderState';
 
     private targetPosition: Vector = new Vector(0, 0);

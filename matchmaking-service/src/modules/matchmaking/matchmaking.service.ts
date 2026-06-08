@@ -58,6 +58,8 @@ interface RedisUserStatus {
 @Injectable()
 export class MatchmakingService implements OnModuleDestroy {
 	private readonly logger = new Logger(MatchmakingService.name);
+	private readonly GAME_SERVICE_URL = 'http://game-service:3000';
+	private readonly USER_SERVICE_URL = 'http://user-service:3001';
 
 	constructor(
 		@InjectRedis() private readonly redis: Redis,
@@ -102,7 +104,7 @@ export class MatchmakingService implements OnModuleDestroy {
 				dbStatus = UserStatus.ONLINE;
 			}
 
-			const url = `http://user-service:3001/internal/users/${userId}/status`;
+			const url = `${this.USER_SERVICE_URL}/internal/users/${userId}/status`;
 
 			await fetch(url, {
 				method: 'PATCH',
@@ -122,7 +124,7 @@ export class MatchmakingService implements OnModuleDestroy {
 		userId: string | number,
 	): Promise<number | null> {
 		try {
-			const url = `http://user-service:3001/internal/users/${userId}/elo`;
+			const url = `${this.USER_SERVICE_URL}/internal/users/${userId}/elo`;
 			const response = await fetch(url);
 			if (!response.ok) throw new Error(`HTTP ${response.status}`);
 			const data = await response.json() as { eloCurrent: number };
@@ -202,7 +204,7 @@ export class MatchmakingService implements OnModuleDestroy {
 					socketId: player.socketId,
 					data: matchFoundData,
 				});
-				this.logger.log(
+				this.logger.debug(
 					`[ProcessQueue] Notifica RECONNECTED inviata al socket ${player.socketId}`,
 				);
 			}
@@ -248,7 +250,7 @@ export class MatchmakingService implements OnModuleDestroy {
 		const playersInQueue = await this.redis.zrange(QUEUE_KEY, 0, -1);
 		if (playersInQueue.length < 2) return;
 
-		this.logger.log(
+		this.logger.debug(
 			`[Worker] --- Inizio Ciclo Scansione --- (${playersInQueue.length} in coda)`,
 		);
 
@@ -391,8 +393,8 @@ export class MatchmakingService implements OnModuleDestroy {
 		};
 
 		try {
-			this.logger.log(`[ExecuteMatch] Invio payload: ${JSON.stringify(payload)}`);
-			const res = await fetch("http://game-service:3000/matchmaking/create-match", {
+			this.logger.debug(`[ExecuteMatch] Invio payload: ${JSON.stringify(payload)}`);
+			const res = await fetch(`${this.GAME_SERVICE_URL}/matchmaking/create-match`, {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify(payload),
@@ -653,7 +655,7 @@ export class MatchmakingService implements OnModuleDestroy {
 		};
 
 		try {
-			const res = await fetch("http://game-service:3000/matchmaking/create-match", {
+			const res = await fetch(`${this.GAME_SERVICE_URL}/matchmaking/create-match`, {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify(payload),
@@ -698,7 +700,7 @@ export class MatchmakingService implements OnModuleDestroy {
 		const statusData = currentStatusRaw
 			? JSON.parse(currentStatusRaw)
 			: null;
-		this.logger.log(`[Logic] Matchmode attuale: ${statusData?.matchMode}`);
+		this.logger.debug(`[Logic] Matchmode attuale: ${statusData?.matchMode}`);
 		if (
 			statusData &&
 			statusData.state === INGAME &&
@@ -789,7 +791,7 @@ export class MatchmakingService implements OnModuleDestroy {
 		};
 
 		try {
-			const res = await fetch("http://game-service:3000/matchmaking/create-match", {
+			const res = await fetch(`${this.GAME_SERVICE_URL}/matchmaking/create-match`, {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify(payload),
@@ -1219,7 +1221,7 @@ export class MatchmakingService implements OnModuleDestroy {
 						socketId: socketId,
 						data: matchFoundData,
 					});
-					this.logger.log(`[Delayed Reconnect] Evento interno emesso per il match ${statusData.matchId}`);
+					this.logger.debug(`[Delayed Reconnect] Evento interno emesso per il match ${statusData.matchId}`);
 				}, 1000);
 			}
 			
@@ -1248,7 +1250,7 @@ export class MatchmakingService implements OnModuleDestroy {
 
 		for (const userId of playerIds) {
 			if (userId.includes("ai_bot") || userId.includes("guest_")) {
-				this.logger.log(
+				this.logger.debug(
 					`[Cleanup] Skippato ripristino per entità non-user: ${userId}`,
 				);
 				continue;

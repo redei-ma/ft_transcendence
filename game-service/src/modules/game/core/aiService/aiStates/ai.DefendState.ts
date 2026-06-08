@@ -7,7 +7,7 @@ import { tacticsHelper } from "../ai.tactics.helper";
 import { WanderState } from "./ai.WanderState";
 
 export class DefendState implements IAiStates{
-    logger: Logger = new Logger(DefendState.name);
+    private readonly logger: Logger = new Logger(DefendState.name);
     name: string = 'DefendState';
     private threat: Player | Bullet;
     private hasStartedToDefend: boolean = false;

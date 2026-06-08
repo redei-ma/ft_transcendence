@@ -5,7 +5,7 @@ import { tacticsHelper } from "../ai.tactics.helper";
 import { World } from "../../game.world";
 
 export class MeleeAttackState implements IAiStates{
-    logger: Logger = new Logger(MeleeAttackState.name);
+    private readonly logger: Logger = new Logger(MeleeAttackState.name);
     name: string = 'MeleeAttackState';
 
     private victim: Player;

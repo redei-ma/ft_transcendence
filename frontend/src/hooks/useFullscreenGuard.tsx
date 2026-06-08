@@ -1,5 +1,6 @@
 // src/hooks/useFullscreenGuard.ts
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { logger } from '../configs/logger';
 
 /**
  * Requisito "schermo intero" durante la partita.
@@ -23,7 +24,7 @@ export function useFullscreenGuard(
     }
     document.documentElement
       .requestFullscreen()
-      .catch((e) => console.warn('Fullscreen negato dal browser', e));
+      .catch((e) => logger.warn('FullscreenGuard', 'Fullscreen negato dal browser', e));
   }, []);
 
   useEffect(() => {

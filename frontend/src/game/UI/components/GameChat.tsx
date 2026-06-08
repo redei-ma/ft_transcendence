@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { socketService } from '../../../services/socketServices';
 import { GameEvents } from '@transcendence/types';
 import { theme } from '../../../configs/theme';
+import { logger } from '../../../configs/logger';
 
 interface GameChatProps {
   myUserId: string;
@@ -78,10 +79,11 @@ export default function GameChat({ myUserId, isVisible }: GameChatProps) {
   useEffect(() => {
     if (!isVisible) return;
 
-  const handler = (data: { message: string; author: string }) => {
-    console.log("[Chat] received:", data.author, "myUserId:", myUserId, "match:", data.author === myUserId);
+  const handler = (raw: unknown) => {
+    const data = raw as { message: string; author: string };
+    logger.debug("GameChat", "received:", data.author, "myUserId:", myUserId, "match:", data.author === myUserId);
     if (String(data.author) === String(myUserId)) return; // ignora i miei, già aggiunti localmente
-    
+
     const newMsg: ChatMessage = {
         id: `${Date.now()}-${data.author}`,
         sender: 'enemy',

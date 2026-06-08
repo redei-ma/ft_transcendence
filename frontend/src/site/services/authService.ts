@@ -3,6 +3,12 @@
  * Gestisce: login, register, logout, refresh, forgot/reset password, 2FA, OAuth
  */
 
+import { logger } from '../../configs/logger';
+
+export class RateLimitError extends Error {
+  constructor() { super('rate_limited'); }
+}
+
 export interface AuthResponseData {
   requires2fa?: boolean;
   message?: string;
@@ -43,15 +49,19 @@ export async function fetchWithAuthRetry(
 
     let res = await fetch(url, fetchOptions);
 
+    if (res.status === 429) throw new RateLimitError();
+
     if (res.status === 401) {
       const success = await refreshToken();
       if (!success) return null;
 
       res = await fetch(url, fetchOptions);
+      if (res.status === 429) throw new RateLimitError();
     }
 
     return res;
   } catch (error) {
+    if (error instanceof RateLimitError) throw error;
     return null;
   }
 }
@@ -75,7 +85,7 @@ export async function login(
     if (res.status === 429) return { ok: false, data: { error: 'rate_limited' } };
     return { ok: res.ok, data: await res.json() };
   } catch (error) {
-    console.error("[Auth] Login error:", error);
+    logger.error("AuthService", "Login error:", error);
     return { ok: false, data: { error: "Network error" } };
   }
 }
@@ -96,7 +106,7 @@ export async function register(
     if (res.status === 429) return { ok: false, data: { error: 'rate_limited' } };
     return { ok: res.ok, data: await res.json() };
   } catch (error) {
-    console.error("[Auth] Register error:", error);
+    logger.error("AuthService", "Register error:", error);
     return { ok: false, data: { error: "Network error" } };
   }
 }
@@ -108,7 +118,7 @@ export async function logout(): Promise<void> {
       credentials: "include",
     });
   } catch (error) {
-    console.error("[Auth] Logout error:", error);
+    logger.error("AuthService", "Logout error:", error);
   }
 }
 
@@ -122,7 +132,7 @@ export async function forgotPassword(email: string): Promise<'ok' | 'rate_limite
     if (res.status === 429) return 'rate_limited';
     return 'ok';
   } catch (error) {
-    console.error("[Auth] Forgot password error:", error);
+    logger.error("AuthService", "Forgot password error:", error);
     return 'error';
   }
 }

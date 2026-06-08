@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { matchmakingSocket } from '../services/matchmakingSocket';
 import { CharacterName, MatchMode, MatchType, GameEvents } from '@transcendence/types';
 import { theme } from '../configs/theme';
+import { logger } from '../configs/logger';
 import zeusImg from '../assets/images/ZeusSelection.png';
 import adeImg from '../assets/images/AdeSelection.png'; // Cambia in .png se necessario
 
@@ -121,7 +122,7 @@ export default function CharacterSelectScene({
       
     if (sessionId) {
         // Direct invite — join alla sessione privata
-        console.log(`[CharSelect] Emitting JOIN_DIRECT_SESSION:`, { sessionId, characterName: finalP1 });
+        logger.debug('CharSelect', 'Emitting JOIN_DIRECT_SESSION:', { sessionId, characterName: finalP1 });
         matchmakingSocket.emit(GameEvents.JOIN_DIRECT_SESSION, { sessionId, characterName: finalP1 });
       } else {
         // Flusso normale — coda pubblica
@@ -140,7 +141,7 @@ export default function CharacterSelectScene({
         else if (mode === MatchMode.RANKED) event = GameEvents.JOIN_RANKED;
         else event = GameEvents.JOIN_UNRANKED;
 
-        console.log(`[CharSelect] Emitting ${event}:`, payload);
+        logger.debug('CharSelect', `Emitting ${event}:`, payload);
         matchmakingSocket.emit(event, payload);
       }
 

@@ -5,15 +5,11 @@ import * as authService from '../services/authService';
 import { toErrorString } from '../services/authService';
 import welcomeScene from '../../assets/images/welcomeScene.png';
 import { theme } from '../../configs/theme';
-import { PASSWORD_REGEX, PASSWORD_ERROR_MESSAGE, EMAIL_REGEX, RATE_LIMIT_ERROR_MESSAGE } from '@transcendence/types';
+import { PASSWORD_REGEX, PASSWORD_ERROR_MESSAGE, EMAIL_REGEX, RATE_LIMIT_ERROR_MESSAGE, USERNAME_REGEX, USERNAME_MIN, USERNAME_MAX, USERNAME_ERROR_MESSAGE } from '@transcendence/types';
 
 interface LoginPageProps {
   onLogin: () => void;
 }
-
-// Validazione
-const USERNAME_MIN = 3;
-const USERNAME_MAX = 20;
 
 export default function LoginPage({ onLogin }: LoginPageProps) {
   const [mode, setMode] = useState<"login" | "register" | "forgot" | "reset">("login");
@@ -54,6 +50,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
       if (!formData.username.trim()) return "Enter a username.";
       if (formData.username.trim().length < USERNAME_MIN) return `Username too short (min ${USERNAME_MIN} characters).`;
       if (formData.username.trim().length > USERNAME_MAX) return `Username too long (max ${USERNAME_MAX} characters).`;
+      if (!USERNAME_REGEX.test(formData.username.trim())) return USERNAME_ERROR_MESSAGE;
       if (!formData.email.trim()) return "Enter an email address.";
       if (!EMAIL_REGEX.test(formData.email.trim())) return "Invalid email format.";
       if (!formData.password) return "Enter a password.";
@@ -330,7 +327,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
           {/* Google OAuth -> type="button" fondamentale qui, per non inviare il form normale! */}
           {mode !== "forgot" && mode !== "reset" && (
             <button type="button" className="btn-press" onClick={authService.redirectToGoogle} style={{
-              width: "100%", padding: "10px", background: "rgba(255,255,255,0.05)", border: `1px solid ${theme.colors.border}`, borderRadius: "2px", color: theme.colors.goldDark, fontFamily: theme.fonts.heading, fontSize: "11px", fontWeight: 600, letterSpacing: "1px", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "10px", transition: "all 0.2s",
+              width: "100%", padding: "10px", background: `linear-gradient(180deg, ${theme.colors.gold}, ${theme.colors.goldDark})`, border: "none", borderRadius: "2px", color: theme.colors.goldDark, fontFamily: theme.fonts.heading, fontSize: "11px", fontWeight: 700, letterSpacing: "1px", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "10px", transition: "all 0.2s",
             }}>
               <Icons.Google size={16} /> Continue with Google
             </button>
