@@ -144,7 +144,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
       setError("Network error. Please try again.");
     }
     setLoading(false);
-  }, [mode, formData, show2fa, onLogin]);
+  }, [mode, formData, show2fa, termsAccepted, onLogin]);
 
   // RESEND VERIFICATION
   const handleResend = async () => {
