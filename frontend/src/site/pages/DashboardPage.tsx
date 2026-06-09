@@ -7,6 +7,7 @@ import zeusDescImg from '../../assets/images/ZeusDescription.png';
 import adeDescImg from '../../assets/images/AdeDescription.png';
 import zeusDetailImg from '../../assets/images/ZeusDetail.png';
 import adeDetailImg from '../../assets/images/AdeDetail.png';
+import rulesImg from '../../assets/images/Rules.png';
 
 interface DashboardPageProps {
   onNavigate: (page: string) => void;
@@ -167,7 +168,7 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
         borderTop: `1px solid ${theme.colors.border}`,
         scrollMarginTop: `${NAVBAR_HEIGHT}px`,
       }}>
-        <h2 style={sectionTitleStyle}>CHARACTERS</h2>
+        <h2 style={sectionTitleStyle}>CHARACTERS and RULES</h2>
 
         <div style={{
           display: "grid",
@@ -214,6 +215,26 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
             </div>
           ))}
         </div>
+
+      {/* Rules */}
+        <img
+          src={rulesImg}
+          alt="Regole della partita e sistema di ELO"
+          style={{
+            display: "block",
+            width: "100%",
+            maxWidth: "900px",
+            height: "auto",
+            margin: "48px auto 0",   // stacco dalle card sopra, centrata
+            border: "none",
+            background: "none",
+            borderRadius: 0,
+            boxShadow: "none",
+            userSelect: "none",
+            pointerEvents: "none",
+          }}
+          draggable={false}
+        />
       </div>
       {/* ========================================================================= */}
 
