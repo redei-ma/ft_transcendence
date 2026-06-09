@@ -243,6 +243,11 @@ export class GameService implements OnModuleInit, OnModuleDestroy{
 
 	prepareMatch(gameId: string, players: MatchMakingData[], matchMode: MatchMode, matchType: MatchType): ExitStatus{
 
+		if (this.games.has(gameId)){
+			this.logger.warn(`game ${gameId} is already created`);
+			return {status: ErrorCode.MATCH_ALREADY_STARTED, message: `this game ${gameId} is already created`}
+		}
+
 		for (const player of players) {
 			if (player.userDbId !== null && this.userToGameData.has(player.userDbId)) {
 				const oldGameData: GameData | undefined = this.userToGameData.get(player.userDbId);
