@@ -94,13 +94,14 @@ export async function register(
   username: string,
   email: string,
   password: string,
+  termsAccepted: boolean,
 ): Promise<AuthResult> {
   try {
     const res = await fetch("/api/auth/register", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       credentials: "include",
-      body: JSON.stringify({ username, email, password }),
+      body: JSON.stringify({ username, email, password, termsAccepted }),
     });
 
     if (res.status === 429) return { ok: false, data: { error: 'rate_limited' } };
