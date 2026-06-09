@@ -195,7 +195,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
       backgroundColor: theme.colors.bgDark,
       backgroundImage: `radial-gradient(circle at center, rgba(200,170,110,0.4) 0%, transparent 60%), radial-gradient(circle at 20% 80%, rgba(10,200,185,0.04) 0%, transparent 90%), url(${welcomeScene})`,
       backgroundSize: 'cover', backgroundPosition: 'center', backgroundRepeat: 'no-repeat',
-      position: "relative", overflow: "hidden",
+      position: "relative", paddingTop: "60px", paddingBottom: "100px",
     }}>
       <div style={{
         position: "absolute", inset: 0, pointerEvents: "none",
@@ -206,7 +206,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
       <div style={{
         width: "440px", borderRadius: "50%",
         background: `radial-gradient(circle at center, ${theme.colors.bgPanel}00 20%, ${theme.colors.bgDark}00 70%)`,
-        transform: 'translateY(70px)', border: `1px solid ${theme.colors.border}`,
+        border: `1px solid ${theme.colors.border}`,
         animation: "orbPulse 4s ease-in-out infinite", display: "flex", flexDirection: "column",
         alignItems: "center", justifyContent: "center", padding: "60px 50px", position: "relative",
       }}>
