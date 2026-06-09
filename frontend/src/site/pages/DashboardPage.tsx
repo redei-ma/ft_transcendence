@@ -8,6 +8,7 @@ import adeDescImg from '../../assets/images/AdeDescription.png';
 import zeusDetailImg from '../../assets/images/ZeusDetail.png';
 import adeDetailImg from '../../assets/images/AdeDetail.png';
 import rulesImg from '../../assets/images/Rules.png';
+import rulesOnImg from '../../assets/images/RulesOn.png';
 
 interface DashboardPageProps {
   onNavigate: (page: string) => void;
@@ -216,10 +217,11 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
           ))}
         </div>
 
-      {/* Rules */}
+      {/* Rules — cliccabile ed espandibile, stessa identica posizione */}
         <img
           src={rulesImg}
-          alt="Regole della partita e sistema di ELO"
+          alt="Match rules and ELO system"
+          onClick={() => setCharModal('RULES')}
           style={{
             display: "block",
             width: "100%",
@@ -231,9 +233,12 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
             borderRadius: 0,
             boxShadow: "none",
             userSelect: "none",
-            pointerEvents: "none",
+            cursor: "pointer",
+            transition: "filter 0.3s ease",
           }}
           draggable={false}
+          onMouseEnter={(e) => { e.currentTarget.style.filter = `drop-shadow(0 0 16px ${theme.colors.goldGlow})`; }}
+          onMouseLeave={(e) => { e.currentTarget.style.filter = "none"; }}
         />
       </div>
       {/* ========================================================================= */}
@@ -299,7 +304,7 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
       </div>
       {/* ========================================================================= */}
 
-      {/* Character Detail Modal */}
+      {/* Character / Rules Detail Modal */}
       {charModal && (
         <div style={{
           position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)",
@@ -307,7 +312,9 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
         }} onClick={() => setCharModal(null)}>
           <div onClick={(e) => e.stopPropagation()} style={{
             background: theme.colors.bgPanel, border: `1px solid ${theme.colors.gold}`,
-            borderRadius: "4px", padding: "24px", maxWidth: "700px", width: "90%",
+            borderRadius: "4px", padding: "24px",
+            maxWidth: charModal === "RULES" ? "1800px" : "700px",   // più largo per la pergamena orizzontale delle Rules
+            width: "90%",
             maxHeight: "85vh", overflowY: "auto",
             boxShadow: `0 0 40px ${theme.colors.goldGlow}`,
             textAlign: "center",
@@ -321,7 +328,11 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
               }}><Icons.X size={20} /></button>
             </div>
             <img
-              src={charModal === "ZEUS" ? zeusDetailImg : adeDetailImg}
+              src={
+                charModal === "RULES" ? rulesOnImg
+                : charModal === "ZEUS" ? zeusDetailImg
+                : adeDetailImg
+              }
               alt={charModal}
               style={{ width: "100%", borderRadius: "4px" }}
             />
