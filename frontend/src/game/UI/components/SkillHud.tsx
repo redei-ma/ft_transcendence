@@ -84,13 +84,13 @@ const HUD: Record<string, { box: string; skills: SkillDef[] }> = {
 const SKILL_TEXT: Record<string, Record<string, { name: string; desc: string }>> = {
   [CharacterName.ZEUS]: {
     spell:   { name: 'Thunder-bolt', desc: 'Una saetta viene scagliata con violenza dall\u2019aura di Zeus verso il punto scelto.' },
-    melee:   { name: 'Thunderstorm',   desc: 'L\u2019aura di Zeus inizia a dilatarsi violentemente facendo danni a qualsiasi bersaglio rientri nella sua area.' },
+    melee:   { name: 'Thunderstorm',   desc: 'L\u2019aura di Zeus inizia a espandersi violentemente facendo danni a qualsiasi bersaglio nella sua area.' },
     defence: { name: 'Thunder Shell',   desc: 'I fulmini di Zeus si raggruppano in un impenetrabile groviglio elettrico che lo isola completamente dai danni.' },
   },
   [CharacterName.ADE]: {
     spell:   { name: 'Fire-ball',   desc: 'Una sfera infuocata si stacca dall\u2019aura di Ade per essere scagliata sul bersaglio.' },
     melee:   { name: 'Fire explosion',   desc: 'L\u2019aura di Ade diventa un turbine di fuoco che colpisce tutto intorno a se.' },
-    defence: { name: 'Fire Shell',    desc: 'Il fuoco di Ade si solidifica intorno a lui e annulla tutti i danni subiti per un breve periodo di tempo.' },
+    defence: { name: 'Crystallization',    desc: 'Il fuoco di Ade si solidifica intorno a lui e annulla tutti i danni subiti per un breve periodo di tempo.' },
   },
 };
 
