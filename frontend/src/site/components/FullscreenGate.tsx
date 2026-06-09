@@ -54,7 +54,7 @@ export function FullscreenGate({
           textTransform: "uppercase",
           marginBottom: "40px"
         }}>
-          You need to eneble the full-screen mode to continue in the game. Click the button below
+          You need to enable the full-screen mode to continue in the game. Click the button below
         </p>
 
         {/* CTA: il click qui è ciò che il browser richiede per il fullscreen */}
