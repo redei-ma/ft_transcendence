@@ -84,7 +84,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
     setSuccessMsg("");
 
     const validationError = validate();
-    if (validationError) { setError(validationError); return; }
+    if (validationError) { showTimed(setError, validationError); return; }
 
     setLoading(true);
 
@@ -93,8 +93,8 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
         if (show2fa) {
           const { ok, data } = await authService.login(formData.identifier.trim(), formData.password, formData.totp);
           if (ok) return onLogin();
-          if (data.error === 'rate_limited') setError(RATE_LIMIT_ERROR_MESSAGE);
-          else setError(toErrorString(data.message || data.error || "Invalid 2FA code"));
+          if (data.error === 'rate_limited') showTimed(setError, RATE_LIMIT_ERROR_MESSAGE);
+          else showTimed(setError, toErrorString(data.message || data.error || "Invalid 2FA code"));
         } else {
           const { ok, data } = await authService.login(formData.identifier.trim(), formData.password);
 
@@ -104,8 +104,8 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
             return;
           }
           if (ok) return onLogin();
-          if (data.error === 'rate_limited') setError(RATE_LIMIT_ERROR_MESSAGE);
-          else setError(toErrorString(data.message || data.error || "Login failed"));
+          if (data.error === 'rate_limited') showTimed(setError, RATE_LIMIT_ERROR_MESSAGE);
+          else showTimed(setError, toErrorString(data.message || data.error || "Login failed"));
         }
 
       } else if (mode === "register") {
@@ -116,28 +116,28 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
           setMode("login");
           setFormData(prev => ({ ...prev, password: "", confirmPassword: "" }));
         } else if (data.error === 'rate_limited') {
-          setError(RATE_LIMIT_ERROR_MESSAGE);
+          showTimed(setError, RATE_LIMIT_ERROR_MESSAGE);
         } else {
-          setError(toErrorString(data.message || data.error || "Registration failed"));
+          showTimed(setError, toErrorString(data.message || data.error || "Registration failed"));
         }
 
       } else if (mode === "forgot") {
         const forgotResult = await authService.forgotPassword(formData.email.trim());
-        if (forgotResult === 'rate_limited') setError(RATE_LIMIT_ERROR_MESSAGE);
-        else setSuccessMsg("If this email is registered, we sent you a password reset link.");
+        if (forgotResult === 'rate_limited') showTimed(setError, RATE_LIMIT_ERROR_MESSAGE);
+        else showTimed(setSuccessMsg, "If this email is registered, we sent you a password reset link.");
 
       } else if (mode === "reset") {
         const result = await authService.resetPassword(formData.resetToken, formData.password);
         if (result.ok) {
-          setSuccessMsg("Password reset successfully! You can now log in.");
+          showTimed(setSuccessMsg, "Password reset successfully! You can now log in.");
           setFormData(prev => ({ ...prev, password: "", confirmPassword: "" }));
           setMode("login");
         } else {
-          setError(toErrorString(result.message || "Password reset failed. The link may have expired."));
+          showTimed(setError, toErrorString(result.message || "Password reset failed. The link may have expired."));
         }
       }
     } catch {
-      setError("Network error. Please try again.");
+      showTimed(setError, "Network error. Please try again.");
     }
     setLoading(false);
   }, [mode, formData, show2fa, termsAccepted, onLogin]);
@@ -162,7 +162,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
     }
 
     if (!targetEmail) {
-      return setError("To resend the verification link, enter your email address in the text field.");
+      return showTimed(setError, "To resend the verification link, enter your email address in the text field.");
     }
 
     setLoading(true);
@@ -170,7 +170,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
     if (result.ok) {
       setSuccessMsg(`Verification email resent to: ${targetEmail}`);
     } else {
-      setError(toErrorString(result.message || "Failed to send email. Please try again."));
+      showTimed(setError, toErrorString(result.message || "Failed to send email. Please try again."));
     }
     setLoading(false);
   };
@@ -184,6 +184,11 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
     setShowConfirmPassword(false);
     setFormData(prev => ({ ...prev, username: "", email: "", password: "", confirmPassword: "" }));
     setTermsAccepted(false);
+  };
+
+  const showTimed = (setter: (v: string) => void, text: string) => {
+    setter(text);
+    setTimeout(() => setter(''), 5000);
   };
 
   // Il submit è bloccato finché, in registrazione, non si spuntano i termini

@@ -493,15 +493,12 @@ export class AuthService {
     const localAccount = user.accounts.find(
       (a) => a.provider === Provider.LOCAL,
     );
-    if (!localAccount || !localAccount.passwordHash) {
-      throw new ForbiddenException(
-        'Local account password required to delete account.',
-      );
-    }
 
-    const isMatch = await bcrypt.compare(dto.password, localAccount.passwordHash);
-    if (!isMatch) {
-      throw new UnauthorizedException('Current password incorrect.');
+    if (localAccount && localAccount.passwordHash) {
+      const isMatch = await bcrypt.compare(dto.password ?? '', localAccount.passwordHash);
+      if (!isMatch) {
+        throw new UnauthorizedException('Current password incorrect.');
+      }
     }
 
     await this.usersService.deleteUser(userId);

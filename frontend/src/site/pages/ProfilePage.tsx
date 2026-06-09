@@ -141,10 +141,10 @@ export default function ProfilePage({ onProfileUpdate }: { onProfileUpdate?: (up
 
   const handleSaveUsername = () => {
     const val = tempUsername.trim();
-    if (!val) return setUsernameError("Enter a username.");
-    if (val.length < USERNAME_MIN) return setUsernameError(`Username too short (min ${USERNAME_MIN} characters).`);
-    if (val.length > USERNAME_MAX) return setUsernameError(`Username too long (max ${USERNAME_MAX} characters).`);
-    if (!USERNAME_REGEX.test(val)) return setUsernameError(USERNAME_ERROR_MESSAGE);
+    if (!val) return showMsg(setUsernameError, "Enter a username.");
+    if (val.length < USERNAME_MIN) return showMsg(setUsernameError, `Username too short (min ${USERNAME_MIN} characters).`);
+    if (val.length > USERNAME_MAX) return showMsg(setUsernameError, `Username too long (max ${USERNAME_MAX} characters).`);
+    if (!USERNAME_REGEX.test(val)) return showMsg(setUsernameError, USERNAME_ERROR_MESSAGE);
     setUsernameError('');
     setDialog({
       isOpen: true,
@@ -158,7 +158,7 @@ export default function ProfilePage({ onProfileUpdate }: { onProfileUpdate?: (up
           onProfileUpdate?.({ username: tempUsername });
           showMsg(setUsernameMsg, "Username updated successfully.");
         } else {
-          setUsernameError(result.message || "Failed to update username.");
+          showMsg(setUsernameError, result.message || "Failed to update username.");
         }
         setEditingUsername(false);
       }
@@ -167,8 +167,8 @@ export default function ProfilePage({ onProfileUpdate }: { onProfileUpdate?: (up
   
   const handleSaveEmail = () => {
     const val = tempEmail.trim();
-    if (!val) return setEmailError("Enter an email address.");
-    if (!EMAIL_REGEX.test(val)) return setEmailError("Invalid email format.");
+    if (!val) return showMsg(setEmailError, "Enter an email address.");
+    if (!EMAIL_REGEX.test(val)) return showMsg(setEmailError, "Invalid email format.");
     setEmailError('');
     confirmPwdRef.current = '';
     setConfirmPwdDisplay('');
@@ -191,7 +191,7 @@ export default function ProfilePage({ onProfileUpdate }: { onProfileUpdate?: (up
           confirmPwdRef.current = '';
           setConfirmPwdDisplay('');
         } else {
-          setEmailError(result.message || "Request failed");
+          showMsg(setEmailError, result.message || "Request failed");
         }
       }
     });
@@ -202,7 +202,7 @@ export default function ProfilePage({ onProfileUpdate }: { onProfileUpdate?: (up
     const providerName = provider.charAt(0) + provider.slice(1).toLowerCase();
 
     if (!sec.hasLocalAccount) {
-      setUnlinkError(`You can't unlink ${providerName} because it's your only login method. Set a password first in the settings above.`);
+      showMsg(setUnlinkError, `You can't unlink ${providerName} because it's your only login method. Set a password first in the settings above.`);
       return;
     }
 
@@ -217,7 +217,7 @@ export default function ProfilePage({ onProfileUpdate }: { onProfileUpdate?: (up
           setSettings(prev => prev ? { ...prev, linkedProviders: prev.linkedProviders.filter(p => p !== provider) } : null);
           showMsg(setLinkedMsg, `${providerName} account unlinked.`);
         } else {
-          setUnlinkError(result.message || `Failed to unlink ${providerName}.`);
+          showMsg(setUnlinkError, result.message || `Failed to unlink ${providerName}.`);
         }
       },
     });
@@ -225,9 +225,9 @@ export default function ProfilePage({ onProfileUpdate }: { onProfileUpdate?: (up
 
   const handleSavePassword = () => {
     setPwdError('');
-    if (sec.hasLocalAccount && !pwdData.old) return setPwdError("Enter your current password.");
-    if (pwdData.new !== pwdData.confirm) return setPwdError("Passwords do not match.");
-    if (!PASSWORD_REGEX.test(pwdData.new)) return setPwdError(PASSWORD_ERROR_MESSAGE);
+    if (sec.hasLocalAccount && !pwdData.old) return showMsg(setPwdError, "Enter your current password.");
+    if (pwdData.new !== pwdData.confirm) return showMsg(setPwdError, "Passwords do not match.");
+    if (!PASSWORD_REGEX.test(pwdData.new)) return showMsg(setPwdError, PASSWORD_ERROR_MESSAGE);
 
     const isFirstTimeSet = !sec.hasLocalAccount;
     setDialog({
@@ -250,7 +250,7 @@ export default function ProfilePage({ onProfileUpdate }: { onProfileUpdate?: (up
             showMsg(setPwdMsg, "Password set successfully! You can now log in with email and password.");
           }
         } else {
-          setPwdError(result.message || "Failed to change password.");
+          showMsg(setPwdError, result.message || "Failed to change password.");
         }
       }
     });
@@ -263,13 +263,13 @@ export default function ProfilePage({ onProfileUpdate }: { onProfileUpdate?: (up
       setQrCodeUrl(data.qrCode);
       setIsSettingUp2fa(true);
     } else {
-      setError2fa("Error generating QR Code.");
+      showMsg(setError2fa, "Error generating QR Code.");
     }
   };
 
   const handleConfirm2fa = async () => {
     setError2fa('');
-    if (setupCode.length !== 6 || !/^\d{6}$/.test(setupCode)) return setError2fa("The 2FA code must be exactly 6 digits.");
+    if (setupCode.length !== 6 || !/^\d{6}$/.test(setupCode)) return showMsg(setError2fa, "The 2FA code must be exactly 6 digits.");
     const result = await turnOn2fa(setupCode);
     if (result.ok) {
       setIsSettingUp2fa(false);
@@ -278,7 +278,7 @@ export default function ProfilePage({ onProfileUpdate }: { onProfileUpdate?: (up
       setSettings(prev => prev ? { ...prev, is2faEnabled: true } : null);
       showMsg(setTwoFaMsg, "Two-factor authentication enabled.");
     } else {
-      setError2fa(result.message || "Incorrect code. Please try again.");
+      showMsg(setError2fa, result.message || "Incorrect code. Please try again.");
     }
   };
 
@@ -810,18 +810,21 @@ export default function ProfilePage({ onProfileUpdate }: { onProfileUpdate?: (up
             setDeleteError('');
             confirmPwdRef.current = '';
             setConfirmPwdDisplay('');
+            const hasLocal = sec.hasLocalAccount;
             setDialog({
               isOpen: true,
               title: "Delete Account",
-              msg: "Are you sure? This action is irreversible. Enter your password to confirm.",
-              needsPassword: true,
+              msg: hasLocal
+                ? "Are you sure? This action is irreversible. Enter your password to confirm."
+                : "Are you sure? This action is irreversible and cannot be undone.",
+              needsPassword: hasLocal,
               action: async () => {
-                if (!confirmPwdRef.current) {
+                if (hasLocal && !confirmPwdRef.current) {
                   setDialog(prev => prev ? { ...prev, error: "Please enter your password to confirm." } : null);
                   return;
                 }
                 setDialog(null);
-                const result = await api.deleteAccount(confirmPwdRef.current);
+                const result = await api.deleteAccount(hasLocal ? confirmPwdRef.current : undefined);
                 confirmPwdRef.current = '';
                 setConfirmPwdDisplay('');
                 if (result.ok) {

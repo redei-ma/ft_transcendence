@@ -37,6 +37,8 @@ export function useGameSocket() {
 
     const handleGameOver = (payload: any) => {
       logger.debug('GameSocket', 'Game over payload:', JSON.stringify(payload));
+      const sock = socketService.getSocket();
+      if (sock) sock.io.opts.reconnection = false;
       const finalData = payload.entities || payload.finalData || undefined;
       useGameStore.getState().setGameOver({ finalData, time: payload.time || 0 });
     };

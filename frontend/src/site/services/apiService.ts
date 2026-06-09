@@ -609,7 +609,7 @@ export async function getMyMatches(page = 1, limit = 10, mode?: string): Promise
 // DELETE ACCOUNT
 // ==========================================
 
-export async function deleteAccount(password: string): Promise<{ ok: boolean; message?: string }> {
+export async function deleteAccount(password?: string): Promise<{ ok: boolean; message?: string }> {
     try {
         const res = await fetchWithAuthRetry("/api/auth/account", {
             method: "DELETE",

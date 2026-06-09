@@ -82,7 +82,7 @@ export class TokenQueryDto {
  * Input DTO for actions that require password confirmation (e.g. delete account).
  */
 export class ConfirmPasswordDto {
+  @IsOptional()
   @IsString()
-  @MinLength(1)
-  password: string;
+  password?: string;
 }
