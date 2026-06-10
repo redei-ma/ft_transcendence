@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useGameStore } from '../../../storage/gameStore';
-import { CharacterName, GameConfig } from '@transcendence/types';
+import { CharacterName, GameConfig, PlayerSnapshot } from '@transcendence/types';
 import { theme } from '../../../configs/theme';
 
 import zeusBox from '../../../assets/images/ZeusHUD.png';
@@ -52,6 +52,10 @@ const CHARACTER_STATS = {
   },
 } as const;
 
+type SkillStats = { damage?: number; cooldown?: number; speed?: number };
+type SkillId = 'spell' | 'melee' | 'defence';
+const STATS_MAP = CHARACTER_STATS as Record<CharacterName, Record<SkillId, SkillStats>>;
+
 // nome del campo cooldown nello snapshot, per skill
 const CD_FIELD: Record<string, string> = {
   melee:   'meleeAttackCooldown',
@@ -84,19 +88,19 @@ const HUD: Record<string, { box: string; skills: SkillDef[] }> = {
 const SKILL_TEXT: Record<string, Record<string, { name: string; desc: string }>> = {
   [CharacterName.ZEUS]: {
     spell:   { name: 'Thunder-bolt', desc: 'Una saetta viene scagliata con violenza dall\u2019aura di Zeus verso il punto scelto.' },
-    melee:   { name: 'Thunderstorm',   desc: 'L\u2019aura di Zeus inizia a dilatarsi violentemente facendo danni a qualsiasi bersaglio rientri nella sua area.' },
+    melee:   { name: 'Thunderstorm',   desc: 'L\u2019aura di Zeus inizia a espandersi violentemente facendo danni a qualsiasi bersaglio nella sua area.' },
     defence: { name: 'Thunder Shell',   desc: 'I fulmini di Zeus si raggruppano in un impenetrabile groviglio elettrico che lo isola completamente dai danni.' },
   },
   [CharacterName.ADE]: {
     spell:   { name: 'Fire-ball',   desc: 'Una sfera infuocata si stacca dall\u2019aura di Ade per essere scagliata sul bersaglio.' },
     melee:   { name: 'Fire explosion',   desc: 'L\u2019aura di Ade diventa un turbine di fuoco che colpisce tutto intorno a se.' },
-    defence: { name: 'Fire Shell',    desc: 'Il fuoco di Ade si solidifica intorno a lui e annulla tutti i danni subiti per un breve periodo di tempo.' },
+    defence: { name: 'Crystallization',    desc: 'Il fuoco di Ade si solidifica intorno a lui e annulla tutti i danni subiti per un breve periodo di tempo.' },
   },
 };
 
 // righe statistiche del tooltip, condizionali per tipo di skill (valori dal config)
 function skillRows(character: CharacterName, id: string): { label: string; value: string }[] {
-  const s: any = (CHARACTER_STATS as any)[character]?.[id] ?? {};
+  const s: SkillStats = STATS_MAP[character]?.[id as SkillId] ?? {};
   const C = GameConfig.COMBAT;
   if (id === 'melee')
     return [
@@ -131,8 +135,8 @@ export default function SkillHud({ character, myUserId, myUsername, teamId, side
   const cfg = HUD[character];
   const players = useGameStore((s) => s.gameState?.players) || [];
   const me = teamId !== undefined
-    ? players.find((p) => (p as any).teamId === teamId)
-    : players.find((p) => (p as any).userName === myUsername || p.id === myUserId);
+    ? players.find((p) => p.teamId === teamId)
+    : players.find((p) => p.userName === myUsername || p.id === myUserId);
   const k = HUD_SCALE;
   const [hovered, setHovered] = useState<string | null>(null);
 
@@ -160,23 +164,23 @@ export default function SkillHud({ character, myUserId, myUsername, teamId, side
   // Cooldown reale: lo snapshot manda il tempo TRASCORSO dall'ultimo uso (sale da 0).
   // ready quando trascorso >= totale; remaining = totale - trascorso.
   const readCooldown = (id: string) => {
-    const total = (CHARACTER_STATS as any)[character]?.[id]?.cooldown ?? 1;
+    const total = STATS_MAP[character]?.[id as SkillId]?.cooldown ?? 1;
     if (DEBUG_COOLDOWN) {
       const rem = Math.max(0, ((cdEnd.current[id] || 0) - Date.now()) / 1000);
       return { remaining: rem, total: SIM_CD[id] || 5 };
     }
-    const elapsed = Number((me as any)?.[CD_FIELD[id]] ?? total); // default = pronto
+    const elapsed = Number(me?.[CD_FIELD[id] as keyof PlayerSnapshot] ?? total); // default = pronto
     return { remaining: Math.max(0, total - elapsed), total };
   };
 
   // HP / Kill / Death dallo snapshot live
-  const hpRaw = (me as any)?.hp ?? (me as any)?.health;
+  const hpRaw = me?.hp;
   const hp = Math.max(0, Math.min(HP_MAX, hpRaw ?? HP_MAX));
   const hpRatio = HP_MAX > 0 ? hp / HP_MAX : 0;
   const hpColor = hpRatio > 0.5 ? '#46c66b' : hpRatio > 0.25 ? '#e0a32e' : '#e84057';
 
-  const kills = (me as any)?.kill ?? 0;
-  const deaths = (me as any)?.dead ?? 0;
+  const kills = me?.kill ?? 0;
+  const deaths = me?.dead ?? 0;
 
   return (
     <>
@@ -292,7 +296,7 @@ export default function SkillHud({ character, myUserId, myUsername, teamId, side
                 color: theme.colors.goldBright, marginBottom: 6,
               }}>{txt.name}</div>
               <div style={{
-                fontFamily: (theme.fonts as any).body ?? 'serif', fontSize: 13,
+                fontFamily: theme.fonts.mono, fontSize: 13,
                 color: 'rgba(230,220,200,0.85)', lineHeight: 1.45, marginBottom: 10,
               }}>{txt.desc}</div>
               <div style={{

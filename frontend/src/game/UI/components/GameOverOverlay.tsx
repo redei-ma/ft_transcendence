@@ -1,5 +1,5 @@
 import { GameOverPayload } from '../../../types/game.types';
-import { PlayerSnapshot } from '@transcendence/types';
+import { PlayerSnapshot, FinalPlayerStats } from '@transcendence/types';
 import { theme } from '../../../configs/theme';
 
 interface GameOverOverlayProps {
@@ -11,11 +11,11 @@ interface GameOverOverlayProps {
 }
 
 export function GameOverOverlay({ gameOver, players, onPlayAgain, onQuit, myUserId }: GameOverOverlayProps) {
-  const winnerStats: any[] = gameOver.finalData?.winnerPlayerStats || [];
-  const loserStats: any[] = gameOver.finalData?.loserPlayerStats || [];
+  const winnerStats: FinalPlayerStats[] = gameOver.finalData?.winnerPlayerStats || [];
+  const loserStats: FinalPlayerStats[] = gameOver.finalData?.loserPlayerStats || [];
 
   const isDraw = winnerStats.length === 0;
-  const amIWinner = winnerStats.some((s: any) => s.userName === myUserId);
+  const amIWinner = winnerStats.some((s) => s.userName === myUserId);
 
   const resultText = isDraw ? 'Draw' : (amIWinner ? 'You Win' : 'You Lose');
   const resultColor = isDraw ? theme.colors.textSecondary : (amIWinner ? theme.colors.zeus : theme.colors.dead);
@@ -78,8 +78,8 @@ export function GameOverOverlay({ gameOver, players, onPlayAgain, onQuit, myUser
           <HeaderCell center>DEATHS</HeaderCell>
         </div>
 
-        {winnerStats.map((s: any, i: number) => {
-          const player = players.find(p => (p as any).userName === s.userName);
+        {winnerStats.map((s, i) => {
+          const player = players.find(p => p.userName === s.userName);
           const isMe = s.userName === myUserId;
           return (
             <div key={`w-${i}`} style={{
@@ -106,8 +106,8 @@ export function GameOverOverlay({ gameOver, players, onPlayAgain, onQuit, myUser
           <div style={{ height: '1px', backgroundColor: theme.colors.border }} />
         )}
 
-        {loserStats.map((s: any, i: number) => {
-          const player = players.find(p => (p as any).userName === s.userName);
+        {loserStats.map((s, i) => {
+          const player = players.find(p => p.userName === s.userName);
           const isMe = s.userName === myUserId;
           return (
             <div key={`l-${i}`} style={{
