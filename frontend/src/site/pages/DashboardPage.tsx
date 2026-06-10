@@ -3,6 +3,7 @@ import { theme } from '../../configs/theme';
 import { NAVBAR_HEIGHT } from '../components/Navbar';
 import { useState } from 'react';
 import * as Icons from '../components/Icons';
+import { useResponsive } from '../../hooks/useResponsive';
 import zeusDescImg from '../../assets/images/ZeusDescription.png';
 import adeDescImg from '../../assets/images/AdeDescription.png';
 import zeusDetailImg from '../../assets/images/ZeusDetail.png';
@@ -45,6 +46,7 @@ const ControlRow = ({ keys, action, stacked = false }: { keys: string[], action:
 
 
 export default function DashboardPage({ onNavigate }: DashboardPageProps) {
+  const { isMobile, isTablet } = useResponsive();
   const [footerModal, setFooterModal] = useState<'privacy' | 'terms' | null>(null);
   const [charModal, setCharModal] = useState<string | null>(null);
   return (
@@ -164,7 +166,7 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
 
       {/* ================= CHARACTERS SECTION ===================== */}
       <div id="section-characters" style={{
-        padding: "80px 48px",
+        padding: isTablet ? "40px 16px" : "80px 48px",
         background: `linear-gradient(180deg, ${theme.colors.bgDark} 0%, ${theme.colors.bg} 100%)`,
         borderTop: `1px solid ${theme.colors.border}`,
         scrollMarginTop: `${NAVBAR_HEIGHT}px`,
@@ -245,9 +247,9 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
 
       {/* ================= CONTROLS SECTION ===================== */}
       <div id="section-commands" style={{
-        padding: "80px 48px",
+        padding: isTablet ? "40px 16px" : "80px 48px",
         borderTop: `1px solid ${theme.colors.border}`,
-        maxWidth: "1100px", // ⚡ Allargato per fare spazio a 2 colonne
+        maxWidth: "1100px",
         margin: "0 auto",
         scrollMarginTop: `${NAVBAR_HEIGHT}px`,
       }}>
@@ -342,8 +344,13 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
 
     {/* Footer */}
       <footer style={{
-        padding: "24px 48px", borderTop: `1px solid ${theme.colors.border}`,
-        display: "flex", justifyContent: "space-between", alignItems: "center",
+        padding: isTablet ? "24px 16px" : "24px 48px",
+        borderTop: `1px solid ${theme.colors.border}`,
+        display: "flex",
+        flexDirection: isMobile ? "column" : "row",
+        justifyContent: "space-between",
+        alignItems: "center",
+        gap: isMobile ? "12px" : undefined,
       }}>
         <div style={{ display: "flex", gap: "24px" }}>
           <span onClick={() => setFooterModal('privacy')} style={{

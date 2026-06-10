@@ -4,7 +4,7 @@ import * as Icons from './Icons';
 import { theme } from '../../configs/theme';
 import { matchmakingSocket } from '../../services/matchmakingSocket';
 import { GameEvents } from '@transcendence/types';
-
+import { useResponsive } from '../../hooks/useResponsive';
 
 const SIDEBAR_WIDTH = 300;
 
@@ -30,6 +30,7 @@ interface FriendsSidebarProps {
 }
 
 export default function FriendsSidebar({ onGameInviteAccepted, gameInvites, onAcceptInvite, onDeclineInvite }: FriendsSidebarProps) {
+  const { isMobile } = useResponsive();
   const [isOpen, setIsOpen] = useState(false);
   const [tab, setTab] = useState<Tab>('friends');
   const [friends, setFriends] = useState<api.FriendEntry[]>([]);
@@ -204,19 +205,21 @@ const handleRejectInvite = (invite: api.GameInvite) => onDeclineInvite(invite);
     </button>
   );
 
-  // ─── Toggle button ───
+  // ─── Toggle button (hidden on mobile when sidebar is open full-screen) ───
   const toggleBtn = (
     <button onClick={() => setIsOpen(!isOpen)} style={{
-      position: 'fixed', right: isOpen ? SIDEBAR_WIDTH : 0,
+      position: 'fixed',
+      right: isOpen ? SIDEBAR_WIDTH : 0,
       top: '50%', transform: 'translateY(-50%)',
       width: 36, height: 72, border: `1px solid ${theme.colors.border}`,
       borderRight: isOpen ? 'none' : `1px solid ${theme.colors.border}`,
       borderLeft: isOpen ? `1px solid ${theme.colors.border}` : 'none',
       borderRadius: '8px 0 0 8px',
       background: theme.colors.bgPanel, color: theme.colors.goldDim,
-      cursor: 'pointer', display: 'flex', flexDirection: 'column',
+      cursor: 'pointer', display: isMobile && isOpen ? 'none' : 'flex',
+      flexDirection: 'column',
       alignItems: 'center', justifyContent: 'center', gap: '4px',
-      zIndex: 2001, transition: 'right 0.3s ease',
+      zIndex: 2002, transition: 'right 0.3s ease',
       backdropFilter: 'blur(8px)',
     }}>
       <Icons.Users size={16} />
@@ -237,11 +240,11 @@ const handleRejectInvite = (invite: api.GameInvite) => onDeclineInvite(invite);
 
       <div style={{
         position: 'fixed', top: 0, right: 0, bottom: 0,
-        width: SIDEBAR_WIDTH,
+        width: isMobile ? '100vw' : SIDEBAR_WIDTH,
         background: `linear-gradient(180deg, ${theme.colors.bgPanel} 0%, ${theme.colors.bgDark} 100%)`,
         borderLeft: `1px solid ${theme.colors.border}`,
         zIndex: 2001,
-        transform: isOpen ? 'translateX(0)' : `translateX(${SIDEBAR_WIDTH}px)`,
+        transform: isOpen ? 'translateX(0)' : isMobile ? 'translateX(100vw)' : `translateX(${SIDEBAR_WIDTH}px)`,
         transition: 'transform 0.3s ease',
         display: 'flex', flexDirection: 'column',
         fontFamily: theme.fonts.mono,
@@ -254,9 +257,19 @@ const handleRejectInvite = (invite: api.GameInvite) => onDeclineInvite(invite);
           <span style={{ fontFamily: theme.fonts.heading, fontSize: '14px', fontWeight: 700, color: theme.colors.goldBright, letterSpacing: '2px', textTransform: 'uppercase' }}>
             Friends
           </span>
-          <span style={{ fontFamily: theme.fonts.mono, fontSize: '11px', color: theme.colors.hpHigh }}>
-            {onlineCount} online
-          </span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <span style={{ fontFamily: theme.fonts.mono, fontSize: '11px', color: theme.colors.hpHigh }}>
+              {onlineCount} online
+            </span>
+            {isMobile && (
+              <button onClick={() => setIsOpen(false)} style={{
+                background: 'none', border: 'none', color: theme.colors.textMuted,
+                cursor: 'pointer', display: 'flex', padding: '4px',
+              }}>
+                <Icons.X size={20} />
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Tabs */}

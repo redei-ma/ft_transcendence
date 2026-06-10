@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { inputStyle, sectionTitleStyle } from '../styles/shared';
 import * as Icons from '../components/Icons';
 import * as api from '../services/apiService';
+import { useResponsive } from '../../hooks/useResponsive';
 import * as authService from '../services/authService';
 import { UserProfile, UserStats, UserSettings, UserAchievementsResponse, MatchHistoryResponse, generate2fa, turnOn2fa, turnOff2fa } from '../services/apiService';
 import { theme } from '../../configs/theme';
@@ -68,6 +69,7 @@ function EditableField({ label, value, isEditing, onEdit, onSave, onCancel, temp
 }
 
 export default function ProfilePage() {
+  const { isMobile, isTablet } = useResponsive();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [stats, setStats] = useState<UserStats | null>(null);
   const [settings, setSettings] = useState<UserSettings | null>(null);
@@ -361,13 +363,13 @@ export default function ProfilePage() {
       {/* Statistics */}
       <div id="profile-stats" style={{ paddingTop: '80px', scrollMarginTop: `${NAVBAR_HEIGHT}px` }}>
         <h2 style={{ ...sectionTitleStyle, fontSize: '22px', marginBottom: '24px' }}>Statistics</h2>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px', marginBottom: '24px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: isTablet ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)', gap: '12px', marginBottom: '24px' }}>
           <StatBox label="ELO" value={s.eloCurrent} />
           <StatBox label="PEAK ELO" value={s.eloPeak} color={theme.colors.goldBright} />
           <StatBox label="WIN RATE" value={`${winRate}%`} color={theme.colors.zeus} />
           <StatBox label="K/D RATIO" value={s.totalDeaths > 0 ? (s.totalKills / s.totalDeaths).toFixed(2) : '0'} />
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px', marginBottom: '32px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: isTablet ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)', gap: '12px', marginBottom: '32px' }}>
           <StatBox label="WINS" value={s.totalWins} color={theme.colors.hpHigh} />
           <StatBox label="LOSSES" value={s.totalLosses} color={theme.colors.dead} />
           <StatBox label="BEST STREAK" value={s.bestWinStreak} color={theme.colors.zeus} />
@@ -377,7 +379,7 @@ export default function ProfilePage() {
         {s.characterStats && s.characterStats.length > 0 && (
           <>
             <h3 style={{ fontFamily: theme.fonts.heading, fontSize: '14px', color: theme.colors.textSecondary, letterSpacing: '2px', marginBottom: '16px', textTransform: 'uppercase' }}>By Champion</h3>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '16px' }}>
               {s.characterStats.map((cs) => (
                 <div key={cs.characterName} style={{ padding: '20px', background: theme.colors.bgPanel, border: `1px solid ${theme.colors.border}`, borderRadius: '4px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
@@ -439,39 +441,44 @@ export default function ProfilePage() {
         return (
           <div key={m.matchId} style={{
             display: 'flex',
-            alignItems: 'center',
-            gap: '12px',
-            padding: '14px 20px',
+            flexDirection: isMobile ? 'column' : 'row',
+            alignItems: isMobile ? 'flex-start' : 'center',
+            gap: isMobile ? '8px' : '12px',
+            padding: isMobile ? '12px 14px' : '14px 20px',
             background: theme.colors.bgPanel,
             border: `1px solid ${theme.colors.border}`,
             borderRadius: '4px',
             borderLeft: `3px solid ${resultColor}`,
           }}>
-            {/* Result */}
-            <div style={{
-              fontFamily: theme.fonts.heading,
-              fontSize: '13px',
-              fontWeight: 700,
-              color: resultColor,
-              letterSpacing: '1px',
-              width: '40px',
-              textAlign: 'center',
-            }}>
-              {m.result}
+            {/* Riga principale: risultato + combattenti */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: isMobile ? undefined : 1, minWidth: 0 }}>
+              <div style={{
+                fontFamily: theme.fonts.heading,
+                fontSize: '13px',
+                fontWeight: 700,
+                color: resultColor,
+                letterSpacing: '1px',
+                width: '40px',
+                textAlign: 'center',
+                flexShrink: 0,
+              }}>
+                {m.result}
+              </div>
+              <img src={myIcon} alt="" style={{ width: 28, height: 28, borderRadius: '4px', flexShrink: 0 }} />
+              <span style={{ fontFamily: theme.fonts.heading, fontSize: '13px', fontWeight: 600, color: theme.colors.textPrimary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {me?.username || profile?.username || '?'}
+              </span>
+              <span style={{ fontFamily: theme.fonts.mono, fontSize: '10px', color: theme.colors.textMuted, flexShrink: 0 }}>
+                vs
+              </span>
+              <span style={{ fontFamily: theme.fonts.heading, fontSize: '13px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {opponent?.username || 'Deleted User'}
+              </span>
+              <img src={oppIcon} alt="" style={{ width: 28, height: 28, borderRadius: '4px', flexShrink: 0 }} />
             </div>
-            <img src={myIcon} alt="" style={{ width: 28, height: 28, borderRadius: '4px' }} />
-            <span style={{ fontFamily: theme.fonts.heading, fontSize: '13px', fontWeight: 600, color: theme.colors.textPrimary }}>
-              {me?.username || profile?.username || '?'}
-            </span>
-            <span style={{ fontFamily: theme.fonts.mono, fontSize: '10px', color: theme.colors.textMuted }}>
-              vs
-            </span>
-            <span style={{ fontFamily: theme.fonts.heading, fontSize: '13px' }}>
-              {opponent?.username || 'Deleted User'}
-            </span>
-            <img src={oppIcon} alt="" style={{ width: 28, height: 28, borderRadius: '4px' }} />
-            <div style={{ flex: 1 }} />
-           <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+
+            {/* Riga meta + K/D */}
+            <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexShrink: 0, marginLeft: isMobile ? '50px' : undefined }}>
               <span style={{ fontFamily: theme.fonts.mono, fontSize: '10px', color: theme.colors.textSecondary }}>{m.mode}</span>
               <span style={{ fontFamily: theme.fonts.mono, fontSize: '10px' }}>
                 {mins}:{secs.toString().padStart(2, '0')}
@@ -479,13 +486,12 @@ export default function ProfilePage() {
               <span style={{ fontFamily: theme.fonts.mono, fontSize: '10px' }}>
                 {new Date(m.playedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
               </span>
-            </div>
-
-            <div style={{ textAlign: 'center' }}>
-              <div style={{ fontFamily: theme.fonts.mono, fontSize: '14px', fontWeight: 700, color: theme.colors.textSecondary }}>
-                {me?.kills || 0}/{me?.deaths || 0}
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ fontFamily: theme.fonts.mono, fontSize: '14px', fontWeight: 700, color: theme.colors.textSecondary }}>
+                  {me?.kills || 0}/{me?.deaths || 0}
+                </div>
+                <div style={{ fontFamily: theme.fonts.heading, fontSize: '9px' }}>K/D</div>
               </div>
-              <div style={{ fontFamily: theme.fonts.heading, fontSize: '9px' }}>K/D</div>
             </div>
           </div>
         );
@@ -525,7 +531,7 @@ export default function ProfilePage() {
             </p>
           </div>
         ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '12px' }}>
             {achievements.unlocked.map((ach, i) => {
               const tierColor = ach.tier === 'PLATINUM' ? '#a8e6cf'
                 : ach.tier === 'GOLD' ? theme.colors.gold

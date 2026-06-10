@@ -7,6 +7,7 @@ import welcomeScene from '../../assets/images/welcomeScene.png';
 import { theme } from '../../configs/theme';
 import { PASSWORD_REGEX, PASSWORD_ERROR_MESSAGE, EMAIL_REGEX, RATE_LIMIT_ERROR_MESSAGE } from '@transcendence/types';
 import LeaderboardPage from './LeaderboardPage';
+import { useResponsive } from '../../hooks/useResponsive';
 
 interface LoginPageProps {
   onLogin: () => void;
@@ -17,6 +18,7 @@ const USERNAME_MIN = 3;
 const USERNAME_MAX = 20;
 
 export default function LoginPage({ onLogin }: LoginPageProps) {
+  const { isMobile, isTablet } = useResponsive();
   const [mode, setMode] = useState<"login" | "register" | "forgot" | "reset">("login");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -208,11 +210,15 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
       }} />
 
       <div style={{
-        width: "440px", borderRadius: "50%",
+        width: isTablet ? "min(440px, calc(100% - 32px))" : "440px",
+        borderRadius: isTablet ? "16px" : "50%",
         background: `radial-gradient(circle at center, ${theme.colors.bgPanel}00 20%, ${theme.colors.bgDark}00 70%)`,
-        transform: 'translateY(70px)', border: `1px solid ${theme.colors.border}`,
+        transform: isTablet ? 'none' : 'translateY(70px)',
+        border: `1px solid ${theme.colors.border}`,
         animation: "orbPulse 4s ease-in-out infinite", display: "flex", flexDirection: "column",
-        alignItems: "center", justifyContent: "center", padding: "60px 50px", position: "relative",
+        alignItems: "center", justifyContent: "center",
+        padding: isMobile ? "32px 20px" : "60px 50px",
+        position: "relative",
       }}>
         <h1 style={{
           fontSize: "20px", fontWeight: 700, fontFamily: theme.fonts.heading,
