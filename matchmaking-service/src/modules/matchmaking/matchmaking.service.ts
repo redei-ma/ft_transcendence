@@ -5,6 +5,7 @@ import { InjectRedis } from "@nestjs-modules/ioredis";
 import { EventEmitter2 } from "@nestjs/event-emitter";
 import { Cron } from "@nestjs/schedule";
 import { CharacterName, MatchType, MatchMode, GameEvents, UserStatus } from "@transcendence/types";
+import { getInternalHeaders } from "@transcendence/auth";
 
 const INGAME = "ingame";
 const INQUEUE = "searching";
@@ -108,7 +109,7 @@ export class MatchmakingService implements OnModuleDestroy {
 
 			await fetch(url, {
 				method: 'PATCH',
-				headers: { 'Content-Type': 'application/json' },
+				headers: { 'Content-Type': 'application/json', ...getInternalHeaders() },
 				body: JSON.stringify({ status: dbStatus }),
 			});
 		} catch (error) {
@@ -125,7 +126,7 @@ export class MatchmakingService implements OnModuleDestroy {
 	): Promise<number | null> {
 		try {
 			const url = `${this.USER_SERVICE_URL}/internal/users/${userId}/elo`;
-			const response = await fetch(url);
+			const response = await fetch(url, { headers: { ...getInternalHeaders() } });
 			if (!response.ok) throw new Error(`HTTP ${response.status}`);
 			const data = await response.json() as { eloCurrent: number };
 			this.logger.log(`ELO fetched for player ${userId}: ${data.eloCurrent}`);
@@ -396,7 +397,7 @@ export class MatchmakingService implements OnModuleDestroy {
 			this.logger.debug(`[ExecuteMatch] Invio payload: ${JSON.stringify(payload)}`);
 			const res = await fetch(`${this.GAME_SERVICE_URL}/matchmaking/create-match`, {
 				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
+				headers: { 'Content-Type': 'application/json', ...getInternalHeaders() },
 				body: JSON.stringify(payload),
 			});
 			if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -657,7 +658,7 @@ export class MatchmakingService implements OnModuleDestroy {
 		try {
 			const res = await fetch(`${this.GAME_SERVICE_URL}/matchmaking/create-match`, {
 				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
+				headers: { 'Content-Type': 'application/json', ...getInternalHeaders() },
 				body: JSON.stringify(payload),
 			});
 			if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -793,7 +794,7 @@ export class MatchmakingService implements OnModuleDestroy {
 		try {
 			const res = await fetch(`${this.GAME_SERVICE_URL}/matchmaking/create-match`, {
 				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
+				headers: { 'Content-Type': 'application/json', ...getInternalHeaders() },
 				body: JSON.stringify(payload),
 			});
 			if (!res.ok) throw new Error(`HTTP ${res.status}`);

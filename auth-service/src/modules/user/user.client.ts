@@ -1,5 +1,6 @@
 
 import { Injectable, HttpException, HttpStatus } from '@nestjs/common';
+import { getInternalHeaders } from '@transcendence/auth';
 import {
   CreateLocalUserDto,
   CreateOAuthUserDto,
@@ -35,6 +36,7 @@ export class UserClient {
       ...options,
       headers: {
         'Content-Type': 'application/json',
+        ...getInternalHeaders(),
         ...options.headers,
       },
     });

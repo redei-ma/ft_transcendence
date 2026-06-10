@@ -11,6 +11,7 @@ import {
 	ParseEnumPipe,
 	HttpCode,
 	HttpStatus,
+	UseGuards,
 } from "@nestjs/common";
 import {
 	ApiTags,
@@ -32,6 +33,7 @@ import {
 	UpdateEmailDto,
 	UpdateStatusDto,
 } from "@transcendence/dto";
+import { InternalGuard } from "@transcendence/auth";
 import { InternalUserService } from "../services/internal-user.service";
 import { ProfileService } from "../services/profile.service";
 import {
@@ -45,6 +47,7 @@ import { NotificationService } from "../services/notification.service";
  * These are intended for use by other backend services (e.g. auth-service) and are not exposed to the frontend.
  */
 @ApiTags("Internal Users")
+@UseGuards(InternalGuard)
 @Controller("internal/users")
 export class InternalUserController {
 	constructor(

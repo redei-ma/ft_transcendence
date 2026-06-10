@@ -3,6 +3,7 @@ import * as Joi from "joi";
 export const envValidationSchema = Joi.object({
 	// Security
 	JWT_ACCESS_SECRET: Joi.string().min(32).required(),
+	INTERNAL_SERVICE_SECRET: Joi.string().required(),
 
 	// CORS
 	FRONTEND_URL: Joi.string().uri().required(),

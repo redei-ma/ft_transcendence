@@ -1,5 +1,6 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { NotificationType } from "@transcendence/types";
+import { getInternalHeaders } from "@transcendence/auth";
 
 /**
  * HTTP client for sending notifications to users via user-service internal API.
@@ -23,7 +24,7 @@ export class UserNotificationClient {
 				`${this.baseUrl}/internal/users/${userId}/notifications`,
 				{
 					method: "POST",
-					headers: { "Content-Type": "application/json" },
+					headers: { "Content-Type": "application/json", ...getInternalHeaders() },
 					body: JSON.stringify({ type, message }),
 				},
 			);

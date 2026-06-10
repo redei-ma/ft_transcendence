@@ -2,16 +2,15 @@ import { BadRequestException, Body, Controller, Logger, Post, UseGuards } from "
 import { GameService } from "../game.service";
 import { CreateMatchDto } from "../dto/matchMaking.dto";
 import { ExitStatus, SuccessCode, NetworkConfig } from "@transcendence/types";
-import { ConfigService } from '@nestjs/config';
-//import { MatchmakingGuard } from "../guards/game.matchmaking-guard";
+import { InternalGuard } from "@transcendence/auth";
 
 @Controller('matchmaking')
-//@UseGuards(MatchmakingGuard)
+@UseGuards(InternalGuard)
 export class MatchMakingController{
 
 	private logger: Logger = new Logger(MatchMakingController.name);
 
-	constructor(private readonly gameService: GameService, private readonly configService: ConfigService) {}
+	constructor(private readonly gameService: GameService) {}
 
 	@Post(NetworkConfig.MATCHMAKING.MATCH_EVENTS.CREATE_MATCH)
 	async handleMatchCreation(

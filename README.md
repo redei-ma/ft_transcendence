@@ -301,7 +301,7 @@ User ──< Notification     (persistent, typed: FRIEND_REQ / GAME_INVITE / ACH
 
 - Designed the complete Prisma database schema (11 models, all enums, relations, indexes)
 - Built the entire `user-service` microservice: user CRUD, profile management, avatar upload with Sharp, friend system, notifications, achievements, match history, leaderboard
-- Implemented internal API endpoints for service-to-service communication (protected by API key)
+- Implemented internal API endpoints for service-to-service communication (protected by shared secret)
 - Set up the migration system (db-migration one-shot container)
 - Coordinated team meetings, tracked progress, managed task distribution
 - Led Docker infrastructure: multi-stage Dockerfiles for all services, docker-compose orchestration, Makefile automation
@@ -409,7 +409,6 @@ POSTGRES_PASSWORD=
 
 JWT_ACCESS_SECRET=
 JWT_REFRESH_SECRET=
-INTERNAL_SERVICE_SECRET=
 
 EMAIL_USER=
 EMAIL_PASS=
