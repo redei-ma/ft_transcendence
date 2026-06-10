@@ -10,6 +10,8 @@ import { theme } from '../../configs/theme';
 
 type GameScene = 'mode-select' | 'character-select' | 'queue' | 'game';
 
+type MatchFoundData = { status?: string; message?: string; matchId?: string };
+
 interface GameFlowProps {
   userId: number;
   username: string;
@@ -41,7 +43,7 @@ export default function GameFlow({ userId, username, onExit, sessionId: initialS
 
   useEffect(() => {
     matchmakingSocket.connect();
-    const handleMatchFound = (data: any) => {
+    const handleMatchFound = (data: MatchFoundData) => {
       console.log("[GameFlow] MATCH_FOUND data:", JSON.stringify(data));
       if (hasResignedRef.current) return;
         
@@ -76,7 +78,7 @@ export default function GameFlow({ userId, username, onExit, sessionId: initialS
     };
 
     // SENDER: Matchamking ci avvisa che l'invitato ha accettato
-    const handleDirectSessionReady = (data: any) => {
+    const handleDirectSessionReady = (data: { sessionId?: string }) => {
       console.log("[GameFlow] DIRECT_SESSION_READY:", data);
       if (data?.sessionId) {
         setSessionId(data.sessionId);

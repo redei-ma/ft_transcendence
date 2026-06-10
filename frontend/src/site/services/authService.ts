@@ -7,7 +7,7 @@ export interface AuthResponseData {
   requires2fa?: boolean;
   message?: string;
   error?: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 export interface AuthResult {
@@ -20,7 +20,7 @@ export function toErrorString(val: unknown): string {
   if (!val) return '';
   if (typeof val === 'string') return val;
   if (Array.isArray(val)) return val.join(', ');
-  if (typeof val === 'object' && val !== null && 'message' in val) return toErrorString((val as any).message);
+  if (typeof val === 'object' && val !== null && 'message' in val) return toErrorString((val as { message: unknown }).message);
   return String(val);
 }
 

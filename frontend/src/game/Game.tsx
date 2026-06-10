@@ -1,8 +1,9 @@
 import { CharacterName, MatchMode, GameConfig } from '@transcendence/types';
+import { GameOverPayload, MapEmitPayload } from '../types/game.types';
 import { theme } from '../configs/theme';
 
 import { useEffect, useRef, useMemo, useState} from 'react';
-import { Canvas } from '@react-three/fiber';
+import { Canvas, ThreeEvent } from '@react-three/fiber';
 import { useThree, useFrame } from '@react-three/fiber';
 import { EffectComposer, Bloom } from '@react-three/postprocessing';
 import mapTexture from '../assets/images/mapTexture1.png';
@@ -55,14 +56,14 @@ function CameraController({ mapWidth, mapDepth }: { mapWidth: number; mapDepth: 
 function AimPlane({ inputManagerRef, myUserId }: { inputManagerRef: React.RefObject<InputManager | null>; myUserId: string }) {
   useFrame(() => {
     const player = useGameStore.getState().gameState?.players.find(
-      p => (p as any).userName === myUserId || p.id === myUserId
+      p => p.userName === myUserId || p.id === myUserId
     );
     if (player && inputManagerRef.current) {
       inputManagerRef.current.setPlayerPosition(player.position.x, player.position.z);
     }
   });
 
-  const handleClick = (e: any) => {
+  const handleClick = (e: ThreeEvent<MouseEvent>) => {
     if (!inputManagerRef.current) return;
     if (!e.nativeEvent.shiftKey) return;
     if (inputManagerRef.current.getIsLocal()) return; // Blocca in local
@@ -236,7 +237,7 @@ export default function Game({ selectedCharacter, selectedMode, p1Character, p2C
            );
          })} */}
 
-         {world?.map?.walls?.map((w: any, i: number) => {
+         {world?.map?.walls?.map((w: MapEmitPayload['map']['walls'][number], i: number) => {
            const wx = w.position?.x ?? 0;
            const wz = w.position?.z ?? 0;
            return (
@@ -346,7 +347,7 @@ export default function Game({ selectedCharacter, selectedMode, p1Character, p2C
 }
 
 function GameOverOverlayWrapper({ gameOver, onPlayAgain, onQuit, myUserId }: {
-  gameOver: any; onPlayAgain: () => void; onQuit: () => void; myUserId: string;
+  gameOver: GameOverPayload; onPlayAgain: () => void; onQuit: () => void; myUserId: string;
 }) {
   const players = useGameStore((state) => state.gameState?.players) || [];
   return <GameOverOverlay gameOver={gameOver} players={players} onPlayAgain={onPlayAgain} onQuit={onQuit} myUserId={myUserId} />;

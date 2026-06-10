@@ -4,7 +4,7 @@ import { refreshToken } from "../site/services/authService";
 
 class MatchmakingSocket {
 	private socket: Socket | null = null;
-	private listenerMap = new Map<(data: any) => void, (data: any) => void>();
+	private listenerMap = new Map<(data: unknown) => void, (data: unknown) => void>();
 	private onMatchError: ((code: string, message: string) => void) | null = null;
 
 	setOnMatchError(handler: ((code: string, message: string) => void) | null) {
@@ -96,7 +96,7 @@ class MatchmakingSocket {
 		}
 	}
 
-	emit(event: GameEvents, data?: any) {
+	emit(event: GameEvents, data?: unknown): void {
 		if (!this.socket) {
 			console.error(`⚠️ [Matchmaking] Cannot emit '${event}': not connected.`);
 			return;
@@ -105,23 +105,24 @@ class MatchmakingSocket {
 		this.socket.emit(event, data);
 	}
 
-	on(event: GameEvents | string, callback: (data: any) => void) {
+	on<T = unknown>(event: GameEvents | string, callback: (data: T) => void): void {
 		if (!this.socket) return;
-		const wrapper = (data: any) => {
+		const wrapper = (data: unknown) => {
 			console.log(`↙️ [Matchmaking] Received [${event}]:`, data);
-			callback(data);
+			callback(data as T);
 		};
-		this.listenerMap.set(callback, wrapper);
+		this.listenerMap.set(callback as unknown as (data: unknown) => void, wrapper);
 		this.socket.on(event, wrapper);
 	}
 
-	off(event: GameEvents | string, callback?: (data: any) => void) {
+	off<T = unknown>(event: GameEvents | string, callback?: (data: T) => void): void {
 		if (!this.socket) return;
 		if (callback) {
-			const wrapper = this.listenerMap.get(callback);
+			const key = callback as unknown as (data: unknown) => void;
+			const wrapper = this.listenerMap.get(key);
 			if (wrapper) {
 				this.socket.off(event, wrapper);
-				this.listenerMap.delete(callback);
+				this.listenerMap.delete(key);
 			}
 		} else {
 			this.socket.off(event);
@@ -133,7 +134,7 @@ class MatchmakingSocket {
 		return this.socket;
 	}
 
-	connectAndEmit(event: GameEvents, data?: any): void {
+	connectAndEmit(event: GameEvents, data?: unknown): void {
 	  const socket = this.connect();
 	  if (socket.connected) {
 	    this.emit(event, data);

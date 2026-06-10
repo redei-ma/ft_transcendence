@@ -1,4 +1,4 @@
-import { MapEmitPayload } from '../../types/game.types';
+import { MapEmitPayload, GameOverPayload } from '../../types/game.types';
 import { theme } from '../../configs/theme';
 import { CharacterName } from '@transcendence/types';
 import { useGameStore } from '../../storage/gameStore';
@@ -9,7 +9,7 @@ interface GameUIProps {
   isConnected: boolean;
   mapData: MapEmitPayload | null;
   maxPlayers: number;
-  gameOver: any;
+  gameOver: GameOverPayload | null;
 }
 
 export default function GameUI({
