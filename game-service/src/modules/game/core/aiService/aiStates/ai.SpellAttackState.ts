@@ -20,9 +20,17 @@ export class SpellAttackState implements IAiStates{
 
     onEnter(bot: Player): void {
         this.logger.debug('ai in spellAttackState');
-
         let dx: number = this.victim.position.x - bot.position.x;
         let dz: number = this.victim.position.z - bot.position.z;
+        const distance = Math.sqrt((dx * dx) + (dz * dz));
+
+        const timeToHit = distance / bot.spellAttackspeed;
+        
+        const predX = this.victim.position.x + (this.victim.displacement.x * this.victim.speed * timeToHit);
+        const predZ = this.victim.position.z + (this.victim.displacement.z * this.victim.speed * timeToHit);
+        
+        dx = predX - bot.position.x;
+        dz = predZ - bot.position.z;
 
         const baseAngle: number = Math.atan2(dz, dx);
 
@@ -30,10 +38,10 @@ export class SpellAttackState implements IAiStates{
         const randomSpread: number = (Math.random() - 0.5) * 2 * maxSpreadRadiants;
         const finalAngle: number = baseAngle + randomSpread;
 
-        dx = Math.cos(finalAngle);
-        dz = Math.sin(finalAngle);
+        const inputX = Math.cos(finalAngle);
+        const inputZ = Math.sin(finalAngle);
 
-        this.moveInput.set(dx, dz);
+        this.moveInput.set(inputX, inputZ);
         this.moveInput.normalize();
 
         bot.inputQueue.push({
