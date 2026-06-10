@@ -324,7 +324,7 @@ export default function Game({ selectedCharacter, selectedMode, p1Character, p2C
           character={p1Character}
           myUserId={myUserId}
           myUsername={myUsername}
-          teamId={isLocal ? 0 : undefined}
+          teamId={doubleHUD ? 0 : undefined}
           side="left"
         />
         {doubleHUD && (                                  //Se si e' in local abilita la doppia HUD
