@@ -1,6 +1,6 @@
 import { Vector } from '../../../types/game.types';
 import { theme } from '../../../configs/theme';
-import { CharacterName } from '@transcendence/types';
+import { CharacterName, GameConfig } from '@transcendence/types';
 
 interface HPBarProps {
   characterName: string;
@@ -73,7 +73,7 @@ export default function HPBar({
           color: theme.colors.afk, fontSize: '11px', fontWeight: 'bold',
           marginTop: '4px', textAlign: 'center', animation: 'pulse 1s infinite',
         }}>
-          ⚠️ AFK {Math.ceil(disconnectionTimer)}s
+          RECONNECTING... {Math.ceil(GameConfig.SERVER.MAX_DISCONNECTION_TIMER - disconnectionTimer)}s
         </div>
       )}
 

@@ -359,6 +359,8 @@ export class AuthService {
       }
     }
 
+    const newTokenVersion = await this.usersService.invalidateRefreshTokens(user.id);
+
     const accessToken = this.jwtService.sign(
       { sub: user.id, username: user.username },
       {
@@ -368,7 +370,7 @@ export class AuthService {
     );
 
     const refreshToken = this.jwtService.sign(
-      { sub: user.id, tokenVersion: user.tokenVersion },
+      { sub: user.id, tokenVersion: newTokenVersion },
       {
         secret: this.config.getOrThrow('JWT_REFRESH_SECRET'),
         expiresIn: '7d',

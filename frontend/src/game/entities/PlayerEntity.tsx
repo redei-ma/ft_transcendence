@@ -41,6 +41,7 @@ export function PlayerEntity({ playerId }: PlayerEntityProps) {
   const currentHP = (reactivePlayer as any).health ?? (reactivePlayer as any).hp ?? 100;
   const maxHP = (reactivePlayer as any).maxHealth ?? (reactivePlayer as any).maxHp ?? 100;
   const isDisconnected = (reactivePlayer as any).isDisconnected;
+  const disconnectionTimer = (reactivePlayer as any).disconnectionTimer ?? 0;
 
   return (
     <group ref={groupRef}>
@@ -58,6 +59,7 @@ export function PlayerEntity({ playerId }: PlayerEntityProps) {
             currentHP={currentHP}
             maxHP={maxHP}
             isDisconnected={isDisconnected}
+            disconnectionTimer={disconnectionTimer}
             isFloating={true}
           />
         </div>
