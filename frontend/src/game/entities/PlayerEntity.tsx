@@ -37,11 +37,10 @@ export function PlayerEntity({ playerId }: PlayerEntityProps) {
 
   if (!initialPlayer || !reactivePlayer) return null;
 
-  // Lettura delle variabili (Forzata per bypassare TS)
-  const currentHP = (reactivePlayer as any).health ?? (reactivePlayer as any).hp ?? 100;
-  const maxHP = (reactivePlayer as any).maxHealth ?? (reactivePlayer as any).maxHp ?? 100;
-  const isDisconnected = (reactivePlayer as any).isDisconnected;
-  const disconnectionTimer = (reactivePlayer as any).disconnectionTimer ?? 0;
+  const currentHP = reactivePlayer.hp ?? 100;
+  const maxHP = GameConfig.PLAYER.DEFAULT_HP;
+  const isDisconnected = reactivePlayer.isDisconnected;
+  const disconnectionTimer = reactivePlayer.disconnectionTimer ?? 0;
 
   return (
     <group ref={groupRef}>
@@ -55,7 +54,7 @@ export function PlayerEntity({ playerId }: PlayerEntityProps) {
         <div style={{ transform: 'scale(0.8)' }}>
           <HPBar 
             characterName={initialPlayer.characterName}
-            displayName={(initialPlayer as any).userName}
+            displayName={initialPlayer.userName}
             currentHP={currentHP}
             maxHP={maxHP}
             isDisconnected={isDisconnected}
@@ -65,7 +64,7 @@ export function PlayerEntity({ playerId }: PlayerEntityProps) {
         </div>
       </Html>
       {/* 2. IL TIMER DI RESPAWN */}
-      {(reactivePlayer as any).isDead && (
+      {reactivePlayer.isDead && (
         <Html position={[0, 12, 0]} center zIndexRange={[100, 0]}>
           <div style={{
             pointerEvents: 'none',
@@ -84,7 +83,7 @@ export function PlayerEntity({ playerId }: PlayerEntityProps) {
               color: '#e0a32e', fontSize: '12px', fontWeight: 'bold',
               textShadow: '2px 2px 4px rgba(0,0,0,1)',
             }}>
-              Respawn in: {Math.ceil(GameConfig.PLAYER.RESPAWN_TIMER - (reactivePlayer as any).respawnTimer)}s
+              Respawn in: {Math.ceil(GameConfig.PLAYER.RESPAWN_TIMER - reactivePlayer.respawnTimer)}s
             </div>
           </div>
         </Html>

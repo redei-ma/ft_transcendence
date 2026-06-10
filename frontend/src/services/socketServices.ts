@@ -127,25 +127,26 @@ export class SocketService {
 		}
 	}
 
-	on(event: GameEvents, callback: (data: unknown) => void) {
+	on<T = unknown>(event: GameEvents, callback: (data: T) => void): void {
 		if (!this.socket) return;
 		const wrapper = (data: unknown) => {
 			if (event !== GameEvents.GAME_STATE) {
 				logger.debug('GameSocket', `Received [${event}]:`, data);
 			}
-			callback(data);
+			callback(data as T);
 		};
-		this.listenerMap.set(callback, wrapper);
+		this.listenerMap.set(callback as unknown as (data: unknown) => void, wrapper);
 		this.socket.on(event, wrapper);
 	}
 
-	off(event: GameEvents, callback?: (data: unknown) => void) {
+	off<T = unknown>(event: GameEvents, callback?: (data: T) => void): void {
 		if (!this.socket) return;
 		if (callback) {
-			const wrapper = this.listenerMap.get(callback);
+			const key = callback as unknown as (data: unknown) => void;
+			const wrapper = this.listenerMap.get(key);
 			if (wrapper) {
 				this.socket.off(event, wrapper);
-				this.listenerMap.delete(callback);
+				this.listenerMap.delete(key);
 			}
 		} else {
 			this.socket.off(event);

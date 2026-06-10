@@ -97,7 +97,7 @@ class MatchmakingSocket {
 		}
 	}
 
-	emit(event: GameEvents, data?: unknown) {
+	emit(event: GameEvents, data?: unknown): void {
 		if (!this.socket) {
 			logger.error('Matchmaking', `Cannot emit '${event}': not connected.`);
 			return;
@@ -106,23 +106,24 @@ class MatchmakingSocket {
 		this.socket.emit(event, data);
 	}
 
-	on(event: GameEvents | string, callback: (data: unknown) => void) {
+	on<T = unknown>(event: GameEvents | string, callback: (data: T) => void): void {
 		if (!this.socket) return;
 		const wrapper = (data: unknown) => {
 			logger.debug('Matchmaking', `Received [${event}]:`, data);
-			callback(data);
+			callback(data as T);
 		};
-		this.listenerMap.set(callback, wrapper);
+		this.listenerMap.set(callback as unknown as (data: unknown) => void, wrapper);
 		this.socket.on(event, wrapper);
 	}
 
-	off(event: GameEvents | string, callback?: (data: unknown) => void) {
+	off<T = unknown>(event: GameEvents | string, callback?: (data: T) => void): void {
 		if (!this.socket) return;
 		if (callback) {
-			const wrapper = this.listenerMap.get(callback);
+			const key = callback as unknown as (data: unknown) => void;
+			const wrapper = this.listenerMap.get(key);
 			if (wrapper) {
 				this.socket.off(event, wrapper);
-				this.listenerMap.delete(callback);
+				this.listenerMap.delete(key);
 			}
 		} else {
 			this.socket.off(event);

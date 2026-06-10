@@ -209,29 +209,29 @@ export default function Game({ selectedCharacter, selectedMode, p1Character, p2C
           <PlayerEntity key={id} playerId={id} />
         ))}
 
-        {/* {world?.map?.pillars?.map((p: any, i: number) => {
-        const px = p.position?.x ?? p.x ?? 0;
-        const pz = p.position?.z ?? p.z ?? 0;
+        {/* {world?.map?.pillars?.map((p: MapEmitPayload['map']['pillars'][number], i: number) => {
+        const px = p.position?.x ?? 0;
+        const pz = p.position?.z ?? 0;
         return (
-          <mesh 
-            key={`pillar-${i}`} 
+          <mesh
+            key={`pillar-${i}`}
             position={[px, 2.5, pz]}
           >
             <cylinderGeometry args={[p.radius, p.radius, 5, 16]} />
-            <meshStandardMaterial 
-              color="#1a1a2e" 
-              emissive="#d4af37" 
+            <meshStandardMaterial
+              color="#1a1a2e"
+              emissive="#d4af37"
               emissiveIntensity={0.1}
-              transparent 
-              opacity={0.7} 
+              transparent
+              opacity={0.7}
             />
           </mesh>
         );
         })} */}
 
-        {/* {world?.map?.pillars?.map((p: any, i: number) => {
-           const px = p.position?.x ?? p.x ?? 0;
-           const pz = p.position?.z ?? p.z ?? 0;
+        {/* {world?.map?.pillars?.map((p: MapEmitPayload['map']['pillars'][number], i: number) => {
+           const px = p.position?.x ?? 0;
+           const pz = p.position?.z ?? 0;
            return (
              <PillarModel key={`pillar-${i}`} position={[px, 0, pz]} radius={p.radius} />
            );
@@ -304,7 +304,7 @@ export default function Game({ selectedCharacter, selectedMode, p1Character, p2C
         </div>
       )}
 
-      {!gameOver && (
+      {/* {!gameOver && (
         <GameUI
           character={selectedCharacter}
           isConnected={isConnected}
@@ -312,7 +312,7 @@ export default function Game({ selectedCharacter, selectedMode, p1Character, p2C
           maxPlayers={world?.map?.maxPlayers || 2}
           gameOver={gameOver}
         />
-      )}
+      )} */}
 
       {!gameOver && (selectedMode === MatchMode.RANKED || selectedMode === MatchMode.UNRANKED) && (
         <GameChat myUserId={myUserId} isVisible={true} />
