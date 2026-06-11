@@ -609,6 +609,17 @@ export async function getMyMatches(page = 1, limit = 10, mode?: string): Promise
 // DELETE ACCOUNT
 // ==========================================
 
+export async function getEloPreview(player1Id: number, player2Id: number): Promise<import('../../types/game.types').EloPreview | null> {
+    try {
+        const res = await fetchWithAuthRetry(`/api/users/elo-preview?player1Id=${player1Id}&player2Id=${player2Id}`);
+        if (!res || !res.ok) return null;
+        return res.json();
+    } catch (error) {
+        logger.error("ApiService", "Error fetching ELO preview:", error);
+        return null;
+    }
+}
+
 export async function deleteAccount(password?: string): Promise<{ ok: boolean; message?: string }> {
     try {
         const res = await fetchWithAuthRetry("/api/auth/account", {

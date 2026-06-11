@@ -1,5 +1,6 @@
 import { CharacterName, MatchMode, GameConfig } from '@transcendence/types';
-import { GameOverPayload, MapEmitPayload } from '../types/game.types';
+import { GameOverPayload, MapEmitPayload, EloPreview } from '../types/game.types';
+import { getEloPreview } from '../site/services/apiService';
 import { theme } from '../configs/theme';
 
 import { useEffect, useRef, useMemo, useState} from 'react';
@@ -16,6 +17,7 @@ import { PlayerEntity } from './entities/PlayerEntity';
 import { BulletEntity } from './entities/BulletEntity';
 import { InputManager } from './input/inputManager';
 import { GameOverOverlay } from './UI/components/GameOverOverlay';
+import { EloWidget } from './UI/components/EloWidget';
 import GameChat from './UI/components/GameChat';
 import GameUI from './UI/gameUI';
 import { PillarModel, WallModel } from './entities/mapModels';
@@ -104,13 +106,37 @@ export default function Game({ selectedCharacter, selectedMode, p1Character, p2C
   const bulletIds = useMemo(() => bulletIdsStr ? bulletIdsStr.split(',') : [], [bulletIdsStr]);
 
   const [showLeaveDialog, setShowLeaveDialog] = useState(false);
+  const [eloPreview, setEloPreview] = useState<EloPreview | null>(null);
   const isLocal = selectedMode === MatchMode.LOCAL || selectedMode === MatchMode.AI;
+  const isRanked = selectedMode === MatchMode.RANKED || selectedMode === MatchMode.UNRANKED;
   const doubleHUD = selectedMode === MatchMode.LOCAL;
   
   const { isFullscreen, enter } = useFullscreenGuard(
     !gameOver,
     () => handleQuitInternal(false),
   );
+
+  useEffect(() => {
+    if (!isRanked) return;
+    const myDbId = parseInt(myUserId, 10);
+    let fetched = false;
+
+    const unsubscribe = useGameStore.subscribe((state) => {
+      if (fetched || !state.gameState) return;
+      const players = state.gameState.players;
+      if (players.length < 2) return;
+      const opponent = players.find(p => p.userDbId !== null && p.userDbId !== myDbId);
+      if (!opponent?.userDbId) return;
+
+      fetched = true;
+      unsubscribe();
+      getEloPreview(myDbId, opponent.userDbId).then(preview => {
+        if (preview) setEloPreview(preview);
+      });
+    });
+
+    return () => unsubscribe();
+  }, [isRanked, myUserId]);
 
   useEffect(() => {
     const inputManager = new InputManager(selectedMode === MatchMode.LOCAL);
@@ -304,7 +330,7 @@ export default function Game({ selectedCharacter, selectedMode, p1Character, p2C
         </div>
       )}
 
-      {/* {!gameOver && (
+      {!gameOver && (
         <GameUI
           character={selectedCharacter}
           isConnected={isConnected}
@@ -312,7 +338,11 @@ export default function Game({ selectedCharacter, selectedMode, p1Character, p2C
           maxPlayers={world?.map?.maxPlayers || 2}
           gameOver={gameOver}
         />
-      )} */}
+      )}
+
+      {!gameOver && isRanked && eloPreview && (
+        <EloWidget preview={eloPreview} myDbId={parseInt(myUserId, 10)} showOutcome={selectedMode === MatchMode.RANKED} />
+      )}
 
       {!gameOver && (selectedMode === MatchMode.RANKED || selectedMode === MatchMode.UNRANKED) && (
         <GameChat myUserId={myUserId} isVisible={true} />
@@ -340,15 +370,15 @@ export default function Game({ selectedCharacter, selectedMode, p1Character, p2C
     )}
 
       {gameOver && (
-        <GameOverOverlayWrapper gameOver={gameOver} onPlayAgain={handlePlayAgainInternal} onQuit={ () => handleQuitInternal(true)} myUserId={myUsername} />
+        <GameOverOverlayWrapper gameOver={gameOver} onPlayAgain={handlePlayAgainInternal} onQuit={() => handleQuitInternal(true)} myUserId={myUsername} eloPreview={selectedMode === MatchMode.RANKED ? eloPreview : null} />
       )}
     </div>
   );
 }
 
-function GameOverOverlayWrapper({ gameOver, onPlayAgain, onQuit, myUserId }: {
-  gameOver: GameOverPayload; onPlayAgain: () => void; onQuit: () => void; myUserId: string;
+function GameOverOverlayWrapper({ gameOver, onPlayAgain, onQuit, myUserId, eloPreview }: {
+  gameOver: GameOverPayload; onPlayAgain: () => void; onQuit: () => void; myUserId: string; eloPreview: EloPreview | null;
 }) {
   const players = useGameStore((state) => state.gameState?.players) || [];
-  return <GameOverOverlay gameOver={gameOver} players={players} onPlayAgain={onPlayAgain} onQuit={onQuit} myUserId={myUserId} />;
+  return <GameOverOverlay gameOver={gameOver} players={players} onPlayAgain={onPlayAgain} onQuit={onQuit} myUserId={myUserId} eloPreview={eloPreview} />;
 }

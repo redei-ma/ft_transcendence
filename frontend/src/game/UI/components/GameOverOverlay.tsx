@@ -1,4 +1,4 @@
-import { GameOverPayload } from '../../../types/game.types';
+import { GameOverPayload, EloPreview } from '../../../types/game.types';
 import { PlayerSnapshot, FinalPlayerStats } from '@transcendence/types';
 import { theme } from '../../../configs/theme';
 
@@ -8,14 +8,24 @@ interface GameOverOverlayProps {
   onPlayAgain: () => void;
   onQuit: () => void;
   myUserId?: string;
+  eloPreview?: EloPreview | null;
 }
 
-export function GameOverOverlay({ gameOver, players, onPlayAgain, onQuit, myUserId }: GameOverOverlayProps) {
+export function GameOverOverlay({ gameOver, players, onPlayAgain, onQuit, myUserId, eloPreview }: GameOverOverlayProps) {
   const winnerStats: FinalPlayerStats[] = gameOver.finalData?.winnerPlayerStats || [];
   const loserStats: FinalPlayerStats[] = gameOver.finalData?.loserPlayerStats || [];
 
   const isDraw = winnerStats.length === 0;
   const amIWinner = winnerStats.some((s) => s.userName === myUserId);
+
+  const getEloDelta = (userName: string, result: 'win' | 'draw' | 'loss'): number | null => {
+    if (!eloPreview) return null;
+    if (userName === eloPreview.player1.username) return eloPreview.preview.player1[result];
+    if (userName === eloPreview.player2.username) return eloPreview.preview.player2[result];
+    return null;
+  };
+
+  const fmtDelta = (n: number) => (n > 0 ? `+${n}` : `${n}`);
 
   const resultText = isDraw ? 'Draw' : (amIWinner ? 'You Win' : 'You Lose');
   const resultColor = isDraw ? theme.colors.textSecondary : (amIWinner ? theme.colors.zeus : theme.colors.dead);
@@ -68,7 +78,7 @@ export function GameOverOverlay({ gameOver, players, onPlayAgain, onQuit, myUser
       }}>
         <div style={{
           display: 'grid',
-          gridTemplateColumns: '1fr 80px 80px',
+          gridTemplateColumns: eloPreview ? '1fr 80px 80px 90px' : '1fr 80px 80px',
           padding: '14px 24px',
           backgroundColor: 'rgba(255, 255, 255, 0.03)',
           borderBottom: `1px solid ${theme.colors.border}`,
@@ -76,14 +86,16 @@ export function GameOverOverlay({ gameOver, players, onPlayAgain, onQuit, myUser
           <HeaderCell>PLAYER</HeaderCell>
           <HeaderCell center>KILLS</HeaderCell>
           <HeaderCell center>DEATHS</HeaderCell>
+          {eloPreview && <HeaderCell center>ELO</HeaderCell>}
         </div>
 
         {winnerStats.map((s, i) => {
           const player = players.find(p => p.userName === s.userName);
           const isMe = s.userName === myUserId;
+          const delta = isDraw ? getEloDelta(s.userName, 'draw') : getEloDelta(s.userName, 'win');
           return (
             <div key={`w-${i}`} style={{
-              display: 'grid', gridTemplateColumns: '1fr 80px 80px',
+              display: 'grid', gridTemplateColumns: eloPreview ? '1fr 80px 80px 90px' : '1fr 80px 80px',
               padding: '12px 24px', backgroundColor: 'rgba(255,255,255,0.02)',
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -98,6 +110,15 @@ export function GameOverOverlay({ gameOver, players, onPlayAgain, onQuit, myUser
               </div>
               <StatCell>{String(s.kill)}</StatCell>
               <StatCell>{String(s.dead)}</StatCell>
+              {eloPreview && (
+                <span style={{
+                  color: delta !== null && delta > 0 ? theme.colors.zeus : delta !== null && delta < 0 ? theme.colors.dead : theme.colors.textMuted,
+                  fontSize: '16px', fontWeight: 'bold', fontFamily: theme.fonts.mono,
+                  textAlign: 'center',
+                }}>
+                  {delta !== null ? fmtDelta(delta) : '—'}
+                </span>
+              )}
             </div>
           );
         })}
@@ -109,9 +130,10 @@ export function GameOverOverlay({ gameOver, players, onPlayAgain, onQuit, myUser
         {loserStats.map((s, i) => {
           const player = players.find(p => p.userName === s.userName);
           const isMe = s.userName === myUserId;
+          const delta = isDraw ? getEloDelta(s.userName, 'draw') : getEloDelta(s.userName, 'loss');
           return (
             <div key={`l-${i}`} style={{
-              display: 'grid', gridTemplateColumns: '1fr 80px 80px',
+              display: 'grid', gridTemplateColumns: eloPreview ? '1fr 80px 80px 90px' : '1fr 80px 80px',
               padding: '12px 24px',
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -125,6 +147,15 @@ export function GameOverOverlay({ gameOver, players, onPlayAgain, onQuit, myUser
               </div>
               <StatCell>{String(s.kill)}</StatCell>
               <StatCell>{String(s.dead)}</StatCell>
+              {eloPreview && (
+                <span style={{
+                  color: delta !== null && delta > 0 ? theme.colors.zeus : delta !== null && delta < 0 ? theme.colors.dead : theme.colors.textMuted,
+                  fontSize: '16px', fontWeight: 'bold', fontFamily: theme.fonts.mono,
+                  textAlign: 'center',
+                }}>
+                  {delta !== null ? fmtDelta(delta) : '—'}
+                </span>
+              )}
             </div>
           );
         })}
