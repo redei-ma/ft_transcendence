@@ -21,10 +21,17 @@ export class InputManager {
   private isAiming: boolean = false;
   private pendingSpellDirection: { x: number; z: number } | null = null;
 
+  private enabled: boolean = true;
+
   constructor(isLocalGame: boolean = true) {
     this.isLocalGame = isLocalGame;
     log.input('InputManager initialized, local:', isLocalGame);
     this.setupListeners();
+  }
+
+  public setEnabled(enabled: boolean): void {
+    this.enabled = enabled;
+    if (!enabled) this.keys.clear();
   }
 
   private setupListeners(): void {
@@ -34,6 +41,7 @@ export class InputManager {
   }
 
   private handleKeyDown = (e: KeyboardEvent): void => {
+    if (!this.enabled) return;
     const key = e.code.startsWith('Shift') ? e.code.toLowerCase() : e.key.toLowerCase();
 
     if (e.ctrlKey || e.metaKey) {
@@ -100,7 +108,7 @@ export class InputManager {
   }
   
   private sendInputs(): void {
-    if (!socketService.isConnected()) return;
+    if (!this.enabled || !socketService.isConnected()) return;
     
     const p0 = this.buildPayload(
       'w', 's', 'a', 'd',
