@@ -111,7 +111,7 @@ export default function Game({ selectedCharacter, selectedMode, p1Character, p2C
   const isRanked = selectedMode === MatchMode.RANKED || selectedMode === MatchMode.UNRANKED;
   const doubleHUD = selectedMode === MatchMode.LOCAL;
   
-  const { isFullscreen, enter } = useFullscreenGuard(
+  const { isFullscreen, enter, kickAt } = useFullscreenGuard(
     !gameOver,
     () => handleQuitInternal(false),
   );
@@ -175,12 +175,12 @@ export default function Game({ selectedCharacter, selectedMode, p1Character, p2C
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [gameOver]);
 
-  if (!isFullscreen) {
+  if (!isFullscreen && !gameOver) {
     return (
         <FullscreenGate
           onEnter={enter}
           onLeave={() => handleQuitInternal(false)}
-          kickSeconds={15}
+          kickAt={kickAt}
         />
       );
     }

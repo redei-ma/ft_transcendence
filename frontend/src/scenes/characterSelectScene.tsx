@@ -56,7 +56,7 @@ export default function CharacterSelectScene({
   const activeP1 = CHARACTERS[p1Hover ?? p1Index];
   const activeP2 = CHARACTERS[p2Hover ?? p2Index];
 
-  const { isFullscreen, enter } = useFullscreenGuard(false, () => {});
+  const { isFullscreen, enter, kickAt } = useFullscreenGuard(false, () => {});
 
   useEffect(() => {
     if (!isSplitScreen) setP2Confirmed(true);
@@ -668,6 +668,7 @@ export default function CharacterSelectScene({
         <FullscreenGate
           onEnter={enter}
           onLeave={onBack}
+          kickAt={kickAt}
         />
       )}
 

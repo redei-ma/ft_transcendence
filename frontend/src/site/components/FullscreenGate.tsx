@@ -4,24 +4,30 @@ import { theme } from '../../configs/theme';
 export function FullscreenGate({
   onEnter,
   onLeave,
-  kickSeconds,
+  kickAt,
 }: {
   onEnter: () => void;
   onLeave: () => void;
-  kickSeconds?: number;
+  kickAt?: number | null;
 }) {
     const [hoverEnter, setHoverEnter] = useState(false);
     const [hoverLeave, setHoverLeave] = useState(false);
-    const [remaining, setRemaining] = useState(kickSeconds ?? 0);
+    // Il countdown è solo una proiezione di kickAt, calcolata localmente.
+    // Niente setTimeout indipendenti: l'unico timer reale vive nell'hook.
+    const [remaining, setRemaining] = useState(
+      kickAt ? Math.max(0, Math.ceil((kickAt - Date.now()) / 1000)) : 0
+    );
 
     useEffect(() => {
-      if (!kickSeconds) return;
-      setRemaining(kickSeconds);
-      const interval = setInterval(() => {
-        setRemaining((prev) => Math.max(0, prev - 1));
-      }, 1000);
+      if (!kickAt) {
+        setRemaining(0);
+        return;
+      }
+      const tick = () => setRemaining(Math.max(0, Math.ceil((kickAt - Date.now()) / 1000)));
+      tick();
+      const interval = setInterval(tick, 250);
       return () => clearInterval(interval);
-    }, [kickSeconds]);
+    }, [kickAt]);
     
   return (
     <div className="animate-fadeIn" style={{
@@ -57,7 +63,7 @@ export function FullscreenGate({
           WAIT A MINUTE!
         </h1>
 
-        {kickSeconds && (
+        {kickAt && (
           <p style={{
             fontFamily: theme.fonts.heading,
             fontSize: "clamp(18px, 4vw, 28px)",

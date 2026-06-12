@@ -28,13 +28,13 @@ _This project has been created as part of the 42 curriculum by redei-ma, gpirozz
 
 ## Team Information
 
-| Member        | 42 Login   | Role                | Service                        | Focus Area                                                  |
-| :------------ | :--------- | :------------------ | :----------------------------- | :---------------------------------------------------------- |
-| **Renato**    | `redei-ma` | **Project Manager** | `user-service`                 | API, Friends, Stats, Achievements, Docker, Nginx            |
-| **Giovanni**  | `gpirozzi` | **Tech Lead**       | `game-service`                 | Game engine, Physics, WebSocket, ELO, Match results, AI bot |
-| **Francesco** | `fzuccaro` | **Product Owner**   | `frontend`                     | React, Three.js, UI/UX, Visual Effects, Game scenes         |
-| **Alessandro**       | `ade-ross` | **Architect**       | `auth-service`                 | JWT, OAuth, 2FA, Email, Auth flow & external integrations   |
-| **Leonardo**  | `lacerbi`  | **Developer**       | `matchmaking-service`          | Matchmaking queue, WebSocket                                |
+| Member         | 42 Login   | Role                | Service               | Focus Area                                                  |
+| :------------- | :--------- | :------------------ | :-------------------- | :---------------------------------------------------------- |
+| **Francesco**  | `fzuccaro` | **Product Owner**   | `frontend`            | React, Three.js, UI/UX, Visual Effects, Game scenes         |
+| **Renato**     | `redei-ma` | **Project Manager** | `user-service`        | API, Friends, Stats, Achievements, Docker, Nginx            |
+| **Giovanni**   | `gpirozzi` | **Tech Lead**       | `game-service`        | Game engine, Physics, WebSocket, ELO, Match results, AI bot |
+| **Alessandro** | `ade-ross` | **Developer**       | `auth-service`        | JWT, OAuth, 2FA, Email, Auth flow & external integrations   |
+| **Leonardo**   | `lacerbi`  | **Developer**       | `matchmaking-service` | Matchmaking queue, WebSocket                                |
 
 ---
 
@@ -140,32 +140,32 @@ Redis is **not** a shared datastore across all services. Only `game-service` and
 
 ### Frontend
 
-| Technology                        | Version | Why                                                                       |
-| --------------------------------- | ------- | ------------------------------------------------------------------------- |
-| **React**                         | 19      | Component-based UI, large ecosystem, team familiarity                     |
-| **Vite**                          | 7       | Fast HMR for development, optimized production builds                     |
-| **Three.js** + React Three Fiber  | 0.182   | 3D isometric rendering in the browser with declarative React syntax       |
-| **@react-three/drei**             | 10      | Three.js helper components for loading 3D models (GLTF/OBJ) and scene utilities |
-| **Tailwind CSS**                  | 3.4     | Utility-first styling, fast prototyping, consistent design system         |
-| **Zustand**                       | 5       | Lightweight state management without boilerplate                          |
-| **Socket.io-client**              | 4.8     | Real-time bidirectional communication with the game server                           |
-| **socket.io-msgpack-parser**      | 3.0     | Binary msgpack serialization on both client and server for reduced payload size      |
-| **@react-three/postprocessing**   | 3.0     | Post-processing effects (Bloom/glow) applied to the 3D game scene via EffectComposer |
+| Technology                       | Version | Why                                                                                  |
+| -------------------------------- | ------- | ------------------------------------------------------------------------------------ |
+| **React**                        | 19      | Component-based UI, large ecosystem, team familiarity                                |
+| **Vite**                         | 7       | Fast HMR for development, optimized production builds                                |
+| **Three.js** + React Three Fiber | 0.182   | 3D isometric rendering in the browser with declarative React syntax                  |
+| **@react-three/drei**            | 10      | Three.js helper components for loading 3D models (GLTF/OBJ) and scene utilities      |
+| **Tailwind CSS**                 | 3.4     | Utility-first styling, fast prototyping, consistent design system                    |
+| **Zustand**                      | 5       | Lightweight state management without boilerplate                                     |
+| **Socket.io-client**             | 4.8     | Real-time bidirectional communication with the game server                           |
+| **socket.io-msgpack-parser**     | 3.0     | Binary msgpack serialization on both client and server for reduced payload size      |
+| **@react-three/postprocessing**  | 3.0     | Post-processing effects (Bloom/glow) applied to the 3D game scene via EffectComposer |
 
 ### Backend
 
-| Technology      | Version    | Why                                                                                                                               |
-| --------------- | ---------- | --------------------------------------------------------------------------------------------------------------------------------- |
-| **NestJS**      | 11         | Modular, TypeScript-native framework with built-in dependency injection, guards, pipes, and interceptors. Ideal for microservices |
-| **Socket.io**   | 4.8        | Real-time game state broadcasting at 60fps with automatic reconnection and room management                                        |
-| **Prisma**      | 6.19       | Type-safe ORM with auto-generated client, migration system, and excellent PostgreSQL support                                      |
-| **ioredis**     | 5.9        | Redis client for matchmaking queues, player status tracking, and game/matchmaking inter-service communication                     |
-| **Sharp**       | 0.34       | Server-side image processing for avatar uploads (resize, compress, format conversion)                                             |
-| **Passport**    | 0.7        | Authentication middleware for JWT and Google OAuth strategies                                                                     |
-| **bcryptjs**    | 3.0        | Password hashing with salt rounds for secure local authentication                                                                 |
-| **Nodemailer**  | 8.0        | Transactional email sending for account verification and password reset                                                           |
-| **Speakeasy**   | 2.0        | TOTP generation and verification for Two-Factor Authentication                                                                    |
-| **qrcode**      | 1.5        | QR code generation for 2FA setup in the authenticator app flow                                                                   |
+| Technology     | Version | Why                                                                                                                               |
+| -------------- | ------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| **NestJS**     | 11      | Modular, TypeScript-native framework with built-in dependency injection, guards, pipes, and interceptors. Ideal for microservices |
+| **Socket.io**  | 4.8     | Real-time game state broadcasting at 60fps with automatic reconnection and room management                                        |
+| **Prisma**     | 6.19    | Type-safe ORM with auto-generated client, migration system, and excellent PostgreSQL support                                      |
+| **ioredis**    | 5.9     | Redis client for matchmaking queues, player status tracking, and game/matchmaking inter-service communication                     |
+| **Sharp**      | 0.34    | Server-side image processing for avatar uploads (resize, compress, format conversion)                                             |
+| **Passport**   | 0.7     | Authentication middleware for JWT and Google OAuth strategies                                                                     |
+| **bcryptjs**   | 3.0     | Password hashing with salt rounds for secure local authentication                                                                 |
+| **Nodemailer** | 8.0     | Transactional email sending for account verification and password reset                                                           |
+| **Speakeasy**  | 2.0     | TOTP generation and verification for Two-Factor Authentication                                                                    |
+| **qrcode**     | 1.5     | QR code generation for 2FA setup in the authenticator app flow                                                                    |
 
 ### Database
 
@@ -223,34 +223,34 @@ User ──< Notification     (persistent, typed: FRIEND_REQ / GAME_INVITE / ACH
 
 ## Features List
 
-| Feature                          | Description                                                                                     | Implemented by                                        |
-| -------------------------------- | ----------------------------------------------------------------------------------------------- | ----------------------------------------------------- |
-| Frontend UI                      | All pages, components, and visual design — Login, Dashboard, Profile, Leaderboard, Game flow, HUD | Francesco (frontend)                                |
-| User registration & login        | Email + password with bcrypt hashing, email verification                                        | Alessandro (auth-service), Renato (user-service)      |
-| Google OAuth 2.0                 | Login and account linking via Google                                                            | Alessandro (auth-service)                             |
-| Two-Factor Authentication        | TOTP setup with QR code, enable/disable flow                                                    | Alessandro (auth-service)                             |
-| JWT authentication               | Stateless access tokens (15min) + refresh tokens (7d) in HTTP-only cookies                      | Alessandro (auth-service)                             |
-| User profiles                    | Edit username, email, avatar. Public profile pages                                              | Renato (user-service)                                 |
-| Avatar upload                    | Image processing with Sharp (512x512 JPEG), DiceBear default avatars                           | Renato (user-service)                                 |
-| Friend system                    | Send/accept/reject/remove friend requests, friends list with online status                      | Renato (user-service)                                 |
-| Game invites                     | Challenge friends to a match with expiration timer                                              | Renato (user-service)                                 |
-| Notification system              | Persistent DB notifications via SSE + toast feedback on all CRUD actions                        | Renato (user-service), Francesco (frontend)           |
-| ELO ranking & leaderboard        | Chess.com-style ELO calculation (K=32), paginated leaderboard                                   | Renato (user-service)                                 |
-| Match history                    | Paginated match records with mode filter, per-player stats                                      | Renato (user-service)                                 |
-| Achievement system               | 13 achievements across 4 tiers, automatic unlock check after each match                         | Renato (user-service)                                 |
-| Real-time game engine            | Server-authoritative game loop at 60fps with physics simulation                                 | Giovanni (game-service)                               |
-| 3D isometric arena               | Three.js rendering with React Three Fiber, GLB models, character auras, particle effects        | Francesco (frontend)                                  |
-| WebSocket multiplayer            | Socket.io with msgpack serialization for low-latency game state sync                            | Giovanni (game-service), Francesco (frontend)         |
-| In-game chat                     | Real-time message exchange between players during a match                                       | Giovanni (game-service), Francesco (frontend)         |
-| AI opponent                      | Bot with human-like behavior for single-player mode                                             | Giovanni (game-service)                               |
-| Ranked matchmaking               | ELO-based queue with progressive tolerance range                                                | Leonardo (matchmaking-service)                        |
-| Unranked & local modes           | Quick play without ELO impact, same-device local multiplayer                                    | Leonardo (matchmaking-service)                        |
-| Private challenges               | Invite a specific player to a match with expiration timer                                       | Leonardo (matchmaking-service), Renato (user-service) |
-| Docker infrastructure            | Multi-stage Dockerfiles, docker-compose orchestration, Makefile automation                      | Renato, Alessandro                                    |
-| HTTPS & security                 | Nginx reverse proxy with SSL, rate limiting, security headers                                   | Renato, Alessandro                                    |
-| Health checks                    | Every service exposes /health, Docker healthchecks with dependency ordering                     | Renato                                                |
-| Swagger API docs                 | Auto-generated API documentation at /api/docs                                                   | Renato (user-service)                                 |
-| Privacy Policy & Terms of Service| GDPR-compliant legal pages, accepted on first login and accessible from the dashboard footer    | Alessandro (auth-service), Francesco (frontend)       |
+| Feature                           | Description                                                                                       | Implemented by                                        |
+| --------------------------------- | ------------------------------------------------------------------------------------------------- | ----------------------------------------------------- |
+| Frontend UI                       | All pages, components, and visual design — Login, Dashboard, Profile, Leaderboard, Game flow, HUD | Francesco (frontend)                                  |
+| User registration & login         | Email + password with bcrypt hashing, email verification                                          | Alessandro (auth-service), Renato (user-service)      |
+| Google OAuth 2.0                  | Login and account linking via Google                                                              | Alessandro (auth-service)                             |
+| Two-Factor Authentication         | TOTP setup with QR code, enable/disable flow                                                      | Alessandro (auth-service)                             |
+| JWT authentication                | Stateless access tokens (15min) + refresh tokens (7d) in HTTP-only cookies                        | Alessandro (auth-service)                             |
+| User profiles                     | Edit username, email, avatar. Public profile pages                                                | Renato (user-service)                                 |
+| Avatar upload                     | Image processing with Sharp (512x512 JPEG), DiceBear default avatars                              | Renato (user-service)                                 |
+| Friend system                     | Send/accept/reject/remove friend requests, friends list with online status                        | Renato (user-service)                                 |
+| Game invites                      | Challenge friends to a match with expiration timer                                                | Renato (user-service)                                 |
+| Notification system               | Persistent DB notifications via SSE + toast feedback on all CRUD actions                          | Renato (user-service), Francesco (frontend)           |
+| ELO ranking & leaderboard         | Chess.com-style ELO calculation (K=32), paginated leaderboard                                     | Renato (user-service)                                 |
+| Match history                     | Paginated match records with mode filter, per-player stats                                        | Renato (user-service)                                 |
+| Achievement system                | 13 achievements across 4 tiers, automatic unlock check after each match                           | Renato (user-service)                                 |
+| Real-time game engine             | Server-authoritative game loop at 60fps with physics simulation                                   | Giovanni (game-service)                               |
+| 3D isometric arena                | Three.js rendering with React Three Fiber, GLB models, character auras, particle effects          | Francesco (frontend)                                  |
+| WebSocket multiplayer             | Socket.io with msgpack serialization for low-latency game state sync                              | Giovanni (game-service), Francesco (frontend)         |
+| In-game chat                      | Real-time message exchange between players during a match                                         | Giovanni (game-service), Francesco (frontend)         |
+| AI opponent                       | Bot with human-like behavior for single-player mode                                               | Giovanni (game-service)                               |
+| Ranked matchmaking                | ELO-based queue with progressive tolerance range                                                  | Leonardo (matchmaking-service)                        |
+| Unranked & local modes            | Quick play without ELO impact, same-device local multiplayer                                      | Leonardo (matchmaking-service)                        |
+| Private challenges                | Invite a specific player to a match with expiration timer                                         | Leonardo (matchmaking-service), Renato (user-service) |
+| Docker infrastructure             | Multi-stage Dockerfiles, docker-compose orchestration, Makefile automation                        | Renato, Alessandro                                    |
+| HTTPS & security                  | Nginx reverse proxy with SSL, rate limiting, security headers                                     | Renato, Alessandro                                    |
+| Health checks                     | Every service exposes /health, Docker healthchecks with dependency ordering                       | Renato                                                |
+| Swagger API docs                  | Auto-generated API documentation at /api/docs                                                     | Renato (user-service)                                 |
+| Privacy Policy & Terms of Service | GDPR-compliant legal pages, accepted on first login and accessible from the dashboard footer      | Alessandro (auth-service), Francesco (frontend)       |
 
 ---
 
@@ -258,23 +258,23 @@ User ──< Notification     (persistent, typed: FRIEND_REQ / GAME_INVITE / ACH
 
 ### Chosen Modules
 
-| #   | Module                              | Category  | Type  | Points | Implemented by      | How it was implemented                                                                                     |
-| --- | ----------------------------------- | --------- | ----- | ------ | ------------------- | ---------------------------------------------------------------------------------------------------------- |
-| 1   | **Frontend + Backend Framework**    | Web       | Major | 2      | Francesco, All      | React 19 (frontend) + NestJS 11 (backend). Each microservice is a standalone NestJS app                    |
-| 2   | **Real-time (WebSockets)**          | Web       | Major | 2      | Giovanni, Leonardo, Francesco | Socket.io for game state (Giovanni), matchmaking queue (Leonardo), frontend client (Francesco). Msgpack serialization |
-| 3   | **User Interaction**                | Web       | Major | 2      | Renato, Giovanni    | Friend system (add/remove/accept/reject), user profiles, in-game chat via WebSocket                  |
-| 4   | **ORM**                             | Web       | Minor | 1      | Renato              | Prisma ORM with shared schema, typed queries, migration system                                             |
-| 5   | **Notification System**             | Web       | Minor | 1      | Renato, Francesco   | Persistent DB notifications (friend requests, game invites, achievements) via SSE + visual toast feedback on all CRUD actions |
-| 6   | **Standard User Management**        | User Mgmt | Major | 2      | Renato              | Profile editing, avatar upload (Sharp), friends with online status, profile pages                          |
-| 7   | **Game Statistics & Match History** | User Mgmt | Minor | 1      | Renato              | ELO tracking, win/loss/draw, K/D ratio, per-character stats, paginated match history, leaderboard          |
-| 8   | **OAuth 2.0**                       | User Mgmt | Minor | 1      | Alessandro                 | Google OAuth via Passport with account linking/unlinking                                                   |
-| 9   | **2FA**                             | User Mgmt | Minor | 1      | Alessandro                 | TOTP via Speakeasy, QR code generation, setup/enable/disable flow                                          |
-| 10  | **AI Opponent**                     | AI        | Major | 2      | Giovanni            | Bot AI integrated into game engine, simulates human-like play                                              |
-| 11  | **Web-based Game**                  | Gaming    | Major | 2      | Giovanni            | 1v1 arena brawler with combat mechanics (melee, spell, defense), win/loss conditions                       |
-| 12  | **Remote Players**                  | Gaming    | Major | 2      | Giovanni, Francesco | Two players on separate computers via WebSocket, reconnection handling, delta-time compensation and client-side interpolation for smooth remote gameplay |
-| 13  | **Advanced 3D Graphics**            | Gaming    | Major | 2      | Francesco           | Three.js + React Three Fiber isometric arena, character auras, particle effects, post-processing           |
-| 14  | **Gamification**                    | Gaming    | Minor | 1      | Renato              | 13 achievements (4 tiers), ELO leaderboard, win streak tracking                                            |
-| 15  | **Microservices**                   | DevOps    | Major | 2      | Renato, Alessandro         | 4 independent NestJS services (auth, user, game, matchmaking), each with single responsibility, communicating via REST and Redis pub/sub |
+| #   | Module                              | Category  | Type  | Points | Implemented by                | How it was implemented                                                                                                                                   |
+| --- | ----------------------------------- | --------- | ----- | ------ | ----------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | **Frontend + Backend Framework**    | Web       | Major | 2      | Francesco, All                | React (frontend) + NestJS (backend). Each microservice is a standalone NestJS app                                                                        |
+| 2   | **Real-time (WebSockets)**          | Web       | Major | 2      | Giovanni, Leonardo, Francesco | Socket.io for game state (Giovanni), matchmaking queue (Leonardo), frontend client (Francesco). Msgpack serialization                                    |
+| 3   | **User Interaction**                | Web       | Major | 2      | Renato, Giovanni              | Friend system (add/remove/accept/reject), user profiles, in-game chat via WebSocket                                                                      |
+| 4   | **ORM**                             | Web       | Minor | 1      | Renato                        | Prisma ORM with shared schema, typed queries, migration system                                                                                           |
+| 5   | **Notification System**             | Web       | Minor | 1      | Renato, Francesco             | Persistent DB notifications (friend requests, game invites, achievements) via SSE + visual toast feedback on all CRUD actions                            |
+| 6   | **Standard User Management**        | User Mgmt | Major | 2      | Renato                        | Profile editing, avatar upload (Sharp), friends with online status, profile pages                                                                        |
+| 7   | **Game Statistics & Match History** | User Mgmt | Minor | 1      | Renato                        | ELO tracking, win/loss/draw, K/D ratio, per-character stats, paginated match history, leaderboard                                                        |
+| 8   | **OAuth 2.0**                       | User Mgmt | Minor | 1      | Alessandro                    | Google OAuth via Passport with account linking/unlinking                                                                                                 |
+| 9   | **2FA**                             | User Mgmt | Minor | 1      | Alessandro                    | TOTP via Speakeasy, QR code generation, setup/enable/disable flow                                                                                        |
+| 10  | **AI Opponent**                     | AI        | Major | 2      | Giovanni                      | Bot AI integrated into game engine, simulates human-like play                                                                                            |
+| 11  | **Web-based Game**                  | Gaming    | Major | 2      | Giovanni                      | 1v1 arena brawler with combat mechanics (melee, spell, defense), win/loss conditions                                                                     |
+| 12  | **Remote Players**                  | Gaming    | Major | 2      | Giovanni, Francesco           | Two players on separate computers via WebSocket, reconnection handling, delta-time compensation and client-side interpolation for smooth remote gameplay |
+| 13  | **Advanced 3D Graphics**            | Gaming    | Major | 2      | Francesco                     | Three.js + React Three Fiber isometric arena, character auras, particle effects, post-processing                                                         |
+| 14  | **Gamification**                    | Gaming    | Minor | 1      | Renato                        | 13 achievements (4 tiers), ELO leaderboard, win streak tracking                                                                                          |
+| 15  | **Microservices**                   | DevOps    | Major | 2      | Renato, Alessandro            | 4 independent NestJS services (auth, user, game, matchmaking), each with single responsibility, communicating via REST and Redis pub/sub                 |
 
 **Total: 24 points** — 9 Major × 2pts + 6 Minor × 1pt
 
@@ -320,7 +320,7 @@ User ──< Notification     (persistent, typed: FRIEND_REQ / GAME_INVITE / ACH
 
 **Challenge:** > TODO — Giovanni: descrivi una sfida tecnica che hai affrontato e come l'hai risolta.
 
-### Alessandro (Architect - Auth Service & Infrastructure)
+### Alessandro (Developer - Auth Service & Infrastructure)
 
 - Built the `auth-service`: local login (bcrypt), Google OAuth (Passport), JWT tokens (access + refresh), email verification, password reset, 2FA (Speakeasy TOTP)
 - Set up Nginx as reverse proxy with SSL termination, rate limiting per endpoint, security headers, WebSocket upgrade
@@ -329,13 +329,15 @@ User ──< Notification     (persistent, typed: FRIEND_REQ / GAME_INVITE / ACH
 
 **Challenge: Authentication Architecture Decision**
 
-One of the key architectural decisions I faced was choosing the right authentication strategy for our platform: **Session-based authentication** vs. **Token-based authentication (JWT)**. 
+One of the key architectural decisions I faced was choosing the right authentication strategy for our platform: **Session-based authentication** vs. **Token-based authentication (JWT)**.
 
 To make an informed choice, I evaluated both approaches based on our project requirements:
-* **Session-Based Authentication:** Offers high security and immediate token revocation capabilities, but requires the server to maintain state, increasing database overhead and limiting horizontal scalability.
-* **Token-Based Authentication (JWT):** Provides a completely stateless architecture, drastically reducing server overhead—ideal for a real-time browser game. The trade-off is a minor delay in immediate revocation, as valid access tokens must be short-lived to minimize abuse.
+
+- **Session-Based Authentication:** Offers high security and immediate token revocation capabilities, but requires the server to maintain state, increasing database overhead and limiting horizontal scalability.
+- **Token-Based Authentication (JWT):** Provides a completely stateless architecture, drastically reducing server overhead—ideal for a real-time browser game. The trade-off is a minor delay in immediate revocation, as valid access tokens must be short-lived to minimize abuse.
 
 ##### **The Resolution**
+
 Given that our project is a lightweight, browser-based game, the scalability and performance benefits of a stateless architecture far outweighed the need for heavy, server-side session tracking. Therefore, I implemented a robust **Token-Based Auth System** using short-lived access tokens, refresh tokens, and 2FA, proving that we could achieve high scalability without compromising on the security standards required for our gaming platform.
 
 ### Leonardo (Developer - Matchmaking)
@@ -345,7 +347,19 @@ Given that our project is a lightweight, browser-based game, the scalability and
 - Implemented the private challenge system (invite a specific player to a match with expiration)
 - Coordinated with Giovanni on game-service integration (match start/end signaling via Redis pub/sub)
 
-**Challenge:** > TODO — Leonardo: descrivi una sfida tecnica che hai affrontato e come l'hai risolta.
+**Challenge: Real-Time State Consistency & Scalable ELO Matching**
+
+One of the key technical hurdles in the matchmaking-service was designing a fast, race-condition-free queue that could dynamically expand ELO tolerance without locking up the server or mismatching players.
+
+To achieve a seamless real-time experience, I had to evaluate how to store and query the active matchmaking queue:
+
+* **Relational Database Polling:** Simple to query for specific ELO ranges, but highly inefficient for real-time queue management. Continuous polling would lead to high latency, database bottlenecks, and noticeable delays for the players.
+* **In-Memory Redis Architecture:** Extremely fast and supports atomic operations, making it ideal for concurrent queue management and real-time player status tracking. The trade-off is the added complexity of managing distributed states and handling unexpected disconnects to avoid "ghost" players in the queue.
+
+##### **The Resolution**
+
+Since Transcendence requires split-second match pairing, I chose the Redis-based architecture. I utilized Redis Sorted Sets (ZSETs) to map players to their ELO scores, which allowed me to run highly efficient, progressive range queries as the matchmaking tolerance window expanded over time.
+To prevent race conditions—such as a player being pulled into a ranked match and a private challenge simultaneously—I implemented atomic Redis operations. Once a valid pair was found, the system atomically removed them from the queue and utilized Redis Pub/Sub to instantly broadcast the match data to the game-service. This ensured a perfectly synchronized, state-consistent transition from the waiting room directly into the game arena.
 
 ---
 
@@ -353,10 +367,10 @@ Given that our project is a lightweight, browser-based game, the scalability and
 
 ## Prerequisites
 
-* **Docker** and **Docker Compose** (v2)
-* **Git LFS** — required for 3D model assets (GLB files)
-* **Make**
-* A modern desktop browser (latest stable Google Chrome recommended)
+- **Docker** and **Docker Compose** (v2)
+- **Git LFS** — required for 3D model assets (GLB files)
+- **Make**
+- A modern desktop browser (latest stable Google Chrome recommended)
 
 > **Note:** The game requires a desktop browser with keyboard and mouse input — mobile and tablet devices are not supported.
 
@@ -434,8 +448,8 @@ Use different values for each secret.
 
 The application uses Gmail SMTP for:
 
-* email verification
-* password reset emails
+- email verification
+- password reset emails
 
 ###### Enable 2FA on your Google account
 
@@ -445,8 +459,7 @@ Before generating an App Password, you must enable 2-Factor Authentication:
    https://myaccount.google.com/security
 
 2. Enable:
-
-   * "2-Step Verification"
+   - "2-Step Verification"
 
 ---
 
@@ -460,9 +473,8 @@ After enabling 2FA:
 2. Create a new App Password
 
 3. Select:
-
-   * App → "Mail"
-   * Device → "Other"
+   - App → "Mail"
+   - Device → "Other"
 
 4. Copy the generated password
 
@@ -484,10 +496,10 @@ EMAIL_PASS=generated_app_password
 
 The application requires a public HTTPS URL for:
 
-* Google OAuth callbacks
-* email verification links
-* password reset links
-* other external/public redirects
+- Google OAuth callbacks
+- email verification links
+- password reset links
+- other external/public redirects
 
 ###### Create an ngrok account
 
@@ -552,18 +564,15 @@ Google login is optional but supported.
 2. Create a project
 
 3. Enable:
-
-   * "Google Identity Services"
-   * "OAuth consent screen"
+   - "Google Identity Services"
+   - "OAuth consent screen"
 
 4. Create OAuth credentials:
-
-   * APIs & Services → Credentials
-   * Create Credentials → OAuth Client ID
+   - APIs & Services → Credentials
+   - Create Credentials → OAuth Client ID
 
 5. Select:
-
-   * Application Type → Web Application
+   - Application Type → Web Application
 
 ---
 
@@ -638,29 +647,28 @@ API documentation:
 https://localhost:2443/api/docs
 ```
 
-
 ### Makefile reference
 
-| Command | Description |
-| ------- | ----------- |
-| `make up` | Build and start all services in **dev mode** (hot reload) |
-| `make up-prod` | Build and start in **production mode** (no hot reload) |
-| `make down` | Stop all containers (data preserved) |
-| `make restart` | Stop + start in **dev mode** |
-| `make rebuild` | Force rebuild without cache in **dev mode** (data preserved) |
-| `make re` | **Full wipe** — destroys DB and rebuilds from scratch in **dev mode** |
-| `make clean` | Stop containers only (volumes and images preserved) |
-| `make clean-data` | Stop + remove DB/Redis volumes (images preserved) |
-| `make fclean` | Remove containers, volumes, and project images |
-| `make prune` | Wipe entire Docker system (affects all projects) |
-| `make logs` | Stream all service logs |
-| `make logs-auth` | Logs for a specific service (auth / user / game / matchmaking / frontend / ...) |
-| `make ps` | Show container status |
-| `make shell-user` | Shell into a container (auth / user / game / matchmaking / postgres / redis / ...) |
-| `make generate` | Rebuild shared packages (run after modifying `shared/`) |
-| `make migrate NAME=x` | Create a new Prisma migration |
-| `make certs` | (Re)generate self-signed TLS certificates |
-| `make help` | Show all available commands with descriptions |
+| Command               | Description                                                                        |
+| --------------------- | ---------------------------------------------------------------------------------- |
+| `make up`             | Build and start all services in **dev mode** (hot reload)                          |
+| `make up-prod`        | Build and start in **production mode** (no hot reload)                             |
+| `make down`           | Stop all containers (data preserved)                                               |
+| `make restart`        | Stop + start in **dev mode**                                                       |
+| `make rebuild`        | Force rebuild without cache in **dev mode** (data preserved)                       |
+| `make re`             | **Full wipe** — destroys DB and rebuilds from scratch in **dev mode**              |
+| `make clean`          | Stop containers only (volumes and images preserved)                                |
+| `make clean-data`     | Stop + remove DB/Redis volumes (images preserved)                                  |
+| `make fclean`         | Remove containers, volumes, and project images                                     |
+| `make prune`          | Wipe entire Docker system (affects all projects)                                   |
+| `make logs`           | Stream all service logs                                                            |
+| `make logs-auth`      | Logs for a specific service (auth / user / game / matchmaking / frontend / ...)    |
+| `make ps`             | Show container status                                                              |
+| `make shell-user`     | Shell into a container (auth / user / game / matchmaking / postgres / redis / ...) |
+| `make generate`       | Rebuild shared packages (run after modifying `shared/`)                            |
+| `make migrate NAME=x` | Create a new Prisma migration                                                      |
+| `make certs`          | (Re)generate self-signed TLS certificates                                          |
+| `make help`           | Show all available commands with descriptions                                      |
 
 > **Warning:** `make prune` deletes ALL Docker images, volumes, and cache system-wide — not just this project.
 

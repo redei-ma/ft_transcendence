@@ -6,11 +6,11 @@ COPY shared/prisma/schema.prisma ./prisma/schema.prisma
 
 WORKDIR /app/shared/types
 COPY shared/types/ .
-RUN npm install && npm run build
+RUN npm ci && npm run build
 
 WORKDIR /app/frontend
 COPY frontend/package*.json ./
-RUN npm install
+RUN npm ci
 
 COPY frontend/ .
 RUN npm run build

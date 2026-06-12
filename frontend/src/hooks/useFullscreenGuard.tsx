@@ -6,6 +6,9 @@ import { logger } from '../configs/logger';
  * Requisito "schermo intero" durante la partita.
  * - enter(): va a schermo intero (chiamala da un onClick).
  * - isFullscreen: stato corrente.
+ * - kickAt: epoch ms a cui scatterà il kick, oppure null se nessun kick è armato.
+ *   La gate lo usa per visualizzare il countdown — singola fonte di verità,
+ *   nessun timer parallelo che possa desincronizzarsi.
  * - se esci dal fullscreen mentre `active` è true, dopo `graceMs` parte onViolation (il kick).
  */
 export function useFullscreenGuard(
@@ -16,6 +19,7 @@ export function useFullscreenGuard(
   const [isFullscreen, setIsFullscreen] = useState(
     () => document.fullscreenElement !== null
   );
+  const [kickAt, setKickAt] = useState<number | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const onViolationRef = useRef(onViolation);
   onViolationRef.current = onViolation;
@@ -33,6 +37,15 @@ export function useFullscreenGuard(
   useEffect(() => {
     const clear = () => {
       if (timer.current) { clearTimeout(timer.current); timer.current = null; }
+      setKickAt(null);
+    };
+
+    const arm = () => {
+      timer.current = setTimeout(() => {
+        setKickAt(null);
+        onViolationRef.current();
+      }, graceMs);
+      setKickAt(Date.now() + graceMs);
     };
 
     const onChange = () => {
@@ -40,8 +53,14 @@ export function useFullscreenGuard(
       setIsFullscreen(fs);
       if (!active) return;
       if (fs) clear();
-      else timer.current = setTimeout(() => onViolationRef.current(), graceMs);
+      else arm();
     };
+
+    // Stato iniziale: se la guard è attiva e siamo già fuori dal fullscreen,
+    // l'evento `fullscreenchange` non scatterà mai → bisogna armare subito.
+    if (active && document.fullscreenElement === null) {
+      arm();
+    }
 
     document.addEventListener('fullscreenchange', onChange);
     return () => {
@@ -50,5 +69,5 @@ export function useFullscreenGuard(
     };
   }, [active, graceMs]);
 
-  return { isFullscreen, enter };
+  return { isFullscreen, enter, kickAt };
 }
