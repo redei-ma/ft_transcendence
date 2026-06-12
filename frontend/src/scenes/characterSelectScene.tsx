@@ -63,6 +63,7 @@ export default function CharacterSelectScene({
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (!isFullscreen) return;
       const key = e.key.toLowerCase();
 
       if (isSplitScreen) {
@@ -104,7 +105,7 @@ export default function CharacterSelectScene({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [p1Confirmed, p2Confirmed, p2Selectable, isSplitScreen, onBack]);
+  }, [p1Confirmed, p2Confirmed, p2Selectable, isSplitScreen, onBack, isFullscreen]);
   
   // Launch — emit to Leonardo via matchmaking socket
   useEffect(() => {

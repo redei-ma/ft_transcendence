@@ -140,10 +140,6 @@ export default function Game({ selectedCharacter, selectedMode, p1Character, p2C
   handleQuitRef.current = handleQuitInternal;
 
   useEffect(() => {
-    inputManagerRef.current?.setEnabled(isFullscreen);
-  }, [isFullscreen]);
-
-  useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
       if (!gameOver) {
         e.preventDefault();
