@@ -7,8 +7,11 @@ import { socketService } from '../../services/socketServices';
 import { matchmakingSocket } from '../../services/matchmakingSocket';
 import { CharacterName, MatchMode, GameEvents } from '@transcendence/types';
 import { theme } from '../../configs/theme';
+import { logger } from '../../configs/logger';
 
 type GameScene = 'mode-select' | 'character-select' | 'queue' | 'game';
+
+type MatchFoundData = { status?: string; message?: string; matchId?: string };
 
 interface GameFlowProps {
   userId: number;
@@ -41,8 +44,8 @@ export default function GameFlow({ userId, username, onExit, sessionId: initialS
 
   useEffect(() => {
     matchmakingSocket.connect();
-    const handleMatchFound = (data: any) => {
-      console.log("[GameFlow] MATCH_FOUND data:", JSON.stringify(data));
+    const handleMatchFound = (data: MatchFoundData) => {
+      logger.debug("GameFlow", "MATCH_FOUND data:", JSON.stringify(data));
       if (hasResignedRef.current) return;
         
       if (data?.status === 'MATCH_CANCELLED') {
@@ -76,8 +79,8 @@ export default function GameFlow({ userId, username, onExit, sessionId: initialS
     };
 
     // SENDER: Matchamking ci avvisa che l'invitato ha accettato
-    const handleDirectSessionReady = (data: any) => {
-      console.log("[GameFlow] DIRECT_SESSION_READY:", data);
+    const handleDirectSessionReady = (data: { sessionId?: string }) => {
+      logger.debug("GameFlow", "DIRECT_SESSION_READY:", data);
       if (data?.sessionId) {
         setSessionId(data.sessionId);
         setSelectedMode(MatchMode.UNRANKED);
@@ -98,7 +101,7 @@ export default function GameFlow({ userId, username, onExit, sessionId: initialS
   useEffect(() => {
     const handleError = (code: string, message: string) => {
       if (code === 'INVALID_INPUT') {
-        console.warn(`[GameFlow] Invalid input: ${message}`);
+        logger.warn('GameFlow', `Invalid input: ${message}`);
         return;
       }
       const display = ERROR_MESSAGES[code] || message || 'Unknown error';
@@ -155,7 +158,7 @@ export default function GameFlow({ userId, username, onExit, sessionId: initialS
     }
   
     const safetyTimeout = setTimeout(() => {
-      console.warn('[GameFlow] LEAVE_GAME ack timeout — cleanup forzato');
+      logger.warn('GameFlow', 'LEAVE_GAME ack timeout — cleanup forzato');
       cleanup();
     }, 1000);
   
@@ -165,9 +168,9 @@ export default function GameFlow({ userId, username, onExit, sessionId: initialS
       (response) => {
         clearTimeout(safetyTimeout);
         if (response.status === 'success') {
-          console.log('[GameFlow] Leave confermato:', response.message);
+          logger.debug('GameFlow', 'Leave confermato:', response.message);
         } else {
-          console.warn(`[GameFlow] Leave fallito [${response.errorCode}]:`, response.message);
+          logger.warn('GameFlow', `Leave fallito [${response.errorCode}]:`, response.message);
         }
         cleanup();
       }

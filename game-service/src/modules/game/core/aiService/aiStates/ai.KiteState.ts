@@ -6,9 +6,10 @@ import { CHARACTER_DATA } from "src/modules/game/factories";
 import { SpellAttackState } from "./ai.SpellAttackState";
 import { World } from "../../game.world";
 import { PathFinder } from "../pathFinder/ai.PathFinder";
+import { MeleeAttackState } from "./ai.MeleeAttackState";
 
 export class KiteState implements IAiStates{
-    logger: Logger = new Logger(KiteState.name);
+    private readonly logger: Logger = new Logger(KiteState.name);
     name: string = 'KiteState';
     private murderer: Player;
     private moveInput: Vector = new Vector(0, 0);
@@ -47,6 +48,18 @@ export class KiteState implements IAiStates{
             this.findEscapePosition(bot, gameWorld);
             this.pathTimer = 0;
         }
+
+        if (this.path.length === 0) {
+            const dx: number = bot.position.x - this.murderer.position.x;
+            const dz: number = bot.position.z - this.murderer.position.z;
+            const distanceSq: number = (dx * dx) + (dz * dz);
+            
+            const meleeDistanceSq = (bot.meleeAttackHitboxRadius + this.murderer.radius) * (bot.meleeAttackHitboxRadius + this.murderer.radius);
+            if (distanceSq <= meleeDistanceSq && bot.meleeAttackCooldown >= stats.COOLDOWN_MELEE_ATTACK) {
+                return new MeleeAttackState(this.murderer);
+            }
+        }
+
         executePathMovement(bot, this.path, gameWorld);
         
         return (undefined);

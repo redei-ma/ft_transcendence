@@ -1,16 +1,27 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { theme } from '../../configs/theme';
-import welcomeScene from '../../assets/images/welcomeScene.png';
 
 export function FullscreenGate({
   onEnter,
   onLeave,
+  kickSeconds,
 }: {
   onEnter: () => void;
   onLeave: () => void;
+  kickSeconds?: number;
 }) {
     const [hoverEnter, setHoverEnter] = useState(false);
     const [hoverLeave, setHoverLeave] = useState(false);
+    const [remaining, setRemaining] = useState(kickSeconds ?? 0);
+
+    useEffect(() => {
+      if (!kickSeconds) return;
+      setRemaining(kickSeconds);
+      const interval = setInterval(() => {
+        setRemaining((prev) => Math.max(0, prev - 1));
+      }, 1000);
+      return () => clearInterval(interval);
+    }, [kickSeconds]);
     
   return (
     <div className="animate-fadeIn" style={{
@@ -46,6 +57,21 @@ export function FullscreenGate({
           WAIT A MINUTE!
         </h1>
 
+        {kickSeconds && (
+          <p style={{
+            fontFamily: theme.fonts.heading,
+            fontSize: "clamp(18px, 4vw, 28px)",
+            fontWeight: 700,
+            letterSpacing: "3px",
+            textTransform: "uppercase",
+            color: remaining <= 5 ? theme.colors.dead : theme.colors.gold,
+            marginBottom: "12px",
+            transition: "color 0.3s ease",
+          }}>
+            YOU WILL BE REMOVED IN {remaining}s
+          </p>
+        )}
+
         <p style={{
           fontFamily: theme.fonts.heading,
           color: theme.colors.gold,
@@ -54,7 +80,7 @@ export function FullscreenGate({
           textTransform: "uppercase",
           marginBottom: "40px"
         }}>
-          You need to eneble the full-screen mode to continue in the game. Click the button below
+          You need to enable the full-screen mode to continue in the game. Click the button below
         </p>
 
         {/* CTA: il click qui è ciò che il browser richiede per il fullscreen */}

@@ -8,7 +8,7 @@ import { World } from '../game.world';
 
 @Injectable()
 export class AiService{
-    private logger: Logger = new Logger(AiService.name);
+    private readonly logger: Logger = new Logger(AiService.name);
     private botToState: Map<string, IAiStates> = new Map();
     private reactionTimers: Map<string, number> = new Map();
     constructor(){}

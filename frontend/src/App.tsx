@@ -8,6 +8,7 @@ import ProfilePage from './site/pages/ProfilePage';
 import GameFlow from './site/pages/GameFlow';
 import Navbar from './site/components/Navbar';
 import { logout, refreshToken } from './site/services/authService';
+import { logger } from './configs/logger';
 import { theme } from './configs/theme';
 import DesktopOnlyGuard from './site/components/desktopOnlyGuard';
 import FriendsSidebar from './site/components/FriendSidebar';
@@ -23,7 +24,7 @@ export default function App() {
   const [pendingInviterId, setPendingInviterId] = useState<number | null>(null);
   const [gameInvites, setGameInvites] = useState<GameInvite[]>([]);
 
-  type EmailCallback = { type: 'verified' | 'email-changed'; status: 'success' | 'error'; message: string } | null;
+  type EmailCallback = { type: 'verified' | 'email-changed' | 'provider-linked'; status: 'success' | 'error'; message: string } | null;
   const [emailCallback, setEmailCallback] = useState<EmailCallback>(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.has('verified')) {
@@ -37,6 +38,11 @@ export default function App() {
       const message = decodeURIComponent(params.get('msg') ?? '');
       window.history.replaceState({}, document.title, '/');
       return { type: 'email-changed', status, message };
+    }
+    if (params.has('linked')) {
+      const provider = params.get('linked') ?? '';
+      window.history.replaceState({}, document.title, '/');
+      return { type: 'provider-linked', status: 'success', message: provider };
     }
     return null;
   });
@@ -178,7 +184,7 @@ export default function App() {
       setIsLoggedIn(true);
       setCurrentPage('dashboard');
     } else {
-      console.error('Login riuscito, ma impossibile recuperare il profilo.');
+      logger.error('App', 'Login riuscito, ma impossibile recuperare il profilo.');
       await logout();
       setIsLoggedIn(false);
     }
@@ -204,7 +210,7 @@ export default function App() {
       case 'leaderboard':
         return <LeaderboardPage />;
       case 'profile':
-        return <ProfilePage />;
+        return <ProfilePage onProfileUpdate={(updates) => setUser(prev => prev ? { ...prev, ...updates } : null)} />;
       default:
         return <DashboardPage onNavigate={setCurrentPage} />;
     }

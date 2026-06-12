@@ -3,10 +3,13 @@ import { theme } from '../../configs/theme';
 import { NAVBAR_HEIGHT } from '../components/Navbar';
 import { useState } from 'react';
 import * as Icons from '../components/Icons';
+import { useResponsive } from '../../hooks/useResponsive';
 import zeusDescImg from '../../assets/images/ZeusDescription.png';
 import adeDescImg from '../../assets/images/AdeDescription.png';
 import zeusDetailImg from '../../assets/images/ZeusDetail.png';
 import adeDetailImg from '../../assets/images/AdeDetail.png';
+import rulesImg from '../../assets/images/Rules.png';
+import rulesOnImg from '../../assets/images/RulesOn.png';
 
 interface DashboardPageProps {
   onNavigate: (page: string) => void;
@@ -43,6 +46,7 @@ const ControlRow = ({ keys, action, stacked = false }: { keys: string[], action:
 
 
 export default function DashboardPage({ onNavigate }: DashboardPageProps) {
+  const { isMobile, isTablet } = useResponsive();
   const [footerModal, setFooterModal] = useState<'privacy' | 'terms' | null>(null);
   const [charModal, setCharModal] = useState<string | null>(null);
   return (
@@ -162,12 +166,12 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
 
       {/* ================= CHARACTERS SECTION ===================== */}
       <div id="section-characters" style={{
-        padding: "80px 48px",
+        padding: isTablet ? "40px 16px" : "80px 48px",
         background: `linear-gradient(180deg, ${theme.colors.bgDark} 0%, ${theme.colors.bg} 100%)`,
         borderTop: `1px solid ${theme.colors.border}`,
         scrollMarginTop: `${NAVBAR_HEIGHT}px`,
       }}>
-        <h2 style={sectionTitleStyle}>CHARACTERS</h2>
+        <h2 style={sectionTitleStyle}>CHARACTERS and RULES</h2>
 
         <div style={{
           display: "grid",
@@ -214,14 +218,38 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
             </div>
           ))}
         </div>
+
+      {/* Rules — cliccabile ed espandibile, stessa identica posizione */}
+        <img
+          src={rulesImg}
+          alt="Match rules and ELO system"
+          onClick={() => setCharModal('RULES')}
+          style={{
+            display: "block",
+            width: "100%",
+            maxWidth: "900px",
+            height: "auto",
+            margin: "48px auto 0",   // stacco dalle card sopra, centrata
+            border: "none",
+            background: "none",
+            borderRadius: 0,
+            boxShadow: "none",
+            userSelect: "none",
+            cursor: "pointer",
+            transition: "filter 0.3s ease",
+          }}
+          draggable={false}
+          onMouseEnter={(e) => { e.currentTarget.style.filter = `drop-shadow(0 0 16px ${theme.colors.goldGlow})`; }}
+          onMouseLeave={(e) => { e.currentTarget.style.filter = "none"; }}
+        />
       </div>
       {/* ========================================================================= */}
 
       {/* ================= CONTROLS SECTION ===================== */}
       <div id="section-commands" style={{
-        padding: "80px 48px",
+        padding: isTablet ? "40px 16px" : "80px 48px",
         borderTop: `1px solid ${theme.colors.border}`,
-        maxWidth: "1100px", // ⚡ Allargato per fare spazio a 2 colonne
+        maxWidth: "1100px",
         margin: "0 auto",
         scrollMarginTop: `${NAVBAR_HEIGHT}px`,
       }}>
@@ -278,7 +306,7 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
       </div>
       {/* ========================================================================= */}
 
-      {/* Character Detail Modal */}
+      {/* Character / Rules Detail Modal */}
       {charModal && (
         <div style={{
           position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)",
@@ -286,7 +314,9 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
         }} onClick={() => setCharModal(null)}>
           <div onClick={(e) => e.stopPropagation()} style={{
             background: theme.colors.bgPanel, border: `1px solid ${theme.colors.gold}`,
-            borderRadius: "4px", padding: "24px", maxWidth: "700px", width: "90%",
+            borderRadius: "4px", padding: "24px",
+            maxWidth: charModal === "RULES" ? "1800px" : "700px",   // più largo per la pergamena orizzontale delle Rules
+            width: "90%",
             maxHeight: "85vh", overflowY: "auto",
             boxShadow: `0 0 40px ${theme.colors.goldGlow}`,
             textAlign: "center",
@@ -300,7 +330,11 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
               }}><Icons.X size={20} /></button>
             </div>
             <img
-              src={charModal === "ZEUS" ? zeusDetailImg : adeDetailImg}
+              src={
+                charModal === "RULES" ? rulesOnImg
+                : charModal === "ZEUS" ? zeusDetailImg
+                : adeDetailImg
+              }
               alt={charModal}
               style={{ width: "100%", borderRadius: "4px" }}
             />
@@ -310,8 +344,13 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
 
     {/* Footer */}
       <footer style={{
-        padding: "24px 48px", borderTop: `1px solid ${theme.colors.border}`,
-        display: "flex", justifyContent: "space-between", alignItems: "center",
+        padding: isTablet ? "24px 16px" : "24px 48px",
+        borderTop: `1px solid ${theme.colors.border}`,
+        display: "flex",
+        flexDirection: isMobile ? "column" : "row",
+        justifyContent: "space-between",
+        alignItems: "center",
+        gap: isMobile ? "12px" : undefined,
       }}>
         <div style={{ display: "flex", gap: "24px" }}>
           <span onClick={() => setFooterModal('privacy')} style={{
@@ -365,8 +404,9 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
 }
 
 const EMAIL_USER = import.meta.env.VITE_EMAIL_USER || 'email not currently available';
-// Costanti contenenti il testo per il Modal Footer
 
+
+// Costanti contenenti il testo per il Modal Footer
 const PRIVACY_TEXT =
 
 `1. Introduction

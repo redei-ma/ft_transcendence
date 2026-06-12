@@ -1,4 +1,4 @@
-import { IsString, MinLength, IsNotEmpty } from 'class-validator';
+import { IsString, MinLength, IsNotEmpty, IsOptional } from 'class-validator';
 import { IsEmailField, IsPasswordField, IsEmailOrUsernameField, IsTotpField } from '@transcendence/dto';
 
 
@@ -42,9 +42,9 @@ export class NewEmailDto {
  * Password must not be hased yet
  */
 export class ChangePasswordDto {
+  @IsOptional()
   @IsString()
-  @MinLength(1)
-  oldPass: string;
+  oldPass?: string;
 
   @IsPasswordField()
   newPass: string;
@@ -82,7 +82,7 @@ export class TokenQueryDto {
  * Input DTO for actions that require password confirmation (e.g. delete account).
  */
 export class ConfirmPasswordDto {
+  @IsOptional()
   @IsString()
-  @MinLength(1)
-  password: string;
+  password?: string;
 }

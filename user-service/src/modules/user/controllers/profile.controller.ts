@@ -173,27 +173,6 @@ export class ProfileController {
 		return this.profileService.updateUsername(userId, dto);
 	}
 
-	// ─── Privacy policy ───────────────────────────────────────────────────────
-
-	/**
-	 * Record acceptance of the privacy policy for the currently authenticated user.
-	 */
-	@Patch("me/privacy-policy")
-	@UseGuards(JwtAuthGuard)
-	@ApiBearerAuth()
-	@ApiOperation({ summary: "Accept the privacy policy" })
-	@ApiResponse({
-		status: HttpStatus.OK,
-		description: "Privacy policy accepted, timestamp recorded",
-		type: UserProfileResponseDto,
-	})
-	@ApiResponse({ status: HttpStatus.UNAUTHORIZED })
-	async acceptPrivacyPolicy(
-		@CurrentUser("sub") userId: number,
-	): Promise<UserProfileResponseDto> {
-		return this.profileService.acceptPrivacyPolicy(userId);
-	}
-
 	// ─── Check availability ────────────────────────────────────────────────────────────────────────
 
 	/**

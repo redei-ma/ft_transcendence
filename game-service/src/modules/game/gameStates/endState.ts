@@ -6,7 +6,7 @@ import { MatchResult } from "src/types/match-result.interface";
 import { MatchMakingData } from "../game-interfaces";
 
 export class EndState implements IGameState{
-	logger: Logger = new Logger(EndState.name);
+	private readonly logger: Logger = new Logger(EndState.name);
 	name = 'END';
 	private shutdownTimer: number = 0.0;
 	public isReadyToClose: boolean = false;

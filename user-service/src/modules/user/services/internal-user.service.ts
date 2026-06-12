@@ -58,7 +58,7 @@ export class InternalUserService {
 			where: { id: userId },
 			select: { status: true },
 		});
-		if (user?.status !== UserStatus.ONLINE) return;
+		if (user?.status === UserStatus.OFFLINE) return;
 		await this.updateStatus(userId, { status: UserStatus.OFFLINE });
 		this.logger.log(`userId=${userId} marked OFFLINE after grace period`);
 	}

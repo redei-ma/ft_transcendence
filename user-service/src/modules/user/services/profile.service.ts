@@ -191,22 +191,6 @@ export class ProfileService {
 		});
 	}
 
-	// ─── Privacy policy ───────────────────────────────────────────────────────
-
-	/**
-	 * Records the timestamp at which the user accepted the privacy policy.
-	 *
-	 * @param userId - ID of the authenticated user (from JWT).
-	 * @returns UserProfileResponseDto — updated profile with privacyPolicyAcceptedAt set.
-	 */
-	async acceptPrivacyPolicy(userId: number): Promise<UserProfileResponseDto> {
-		return this.prisma.user.update({
-			where: { id: userId },
-			data: { privacyPolicyAcceptedAt: new Date() },
-			select: USER_PROFILE_SELECT,
-		});
-	}
-
 	// ─── Delete account ────────────────────────────────────────────────────────
 
 	/**

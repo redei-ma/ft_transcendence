@@ -5,4 +5,9 @@ export const PASSWORD_ERROR_MESSAGE = `Password must be at least ${PASSWORD_MIN_
 
 export const EMAIL_REGEX = /^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$/;
 
+export const USERNAME_MIN = 3;
+export const USERNAME_MAX = 20;
+export const USERNAME_REGEX = /^[a-z0-9_]+$/;
+export const USERNAME_ERROR_MESSAGE = 'Username can only contain lowercase letters, numbers, and underscores.';
+
 export const RATE_LIMIT_ERROR_MESSAGE = 'Too many attempts. Please wait a moment and try again.';

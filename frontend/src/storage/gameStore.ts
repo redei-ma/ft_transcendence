@@ -27,4 +27,5 @@ export const useGameStore = create<GameStore>((set) => ({
   resetGame: () => set({ world: null, gameState: null, gameOver: null }),
 }));
 
-if (typeof window !== 'undefined') (window as any).gameStore = useGameStore;
+declare global { interface Window { gameStore: typeof useGameStore; } }
+if (typeof window !== 'undefined') window.gameStore = useGameStore;

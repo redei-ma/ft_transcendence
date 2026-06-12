@@ -2,6 +2,7 @@ import { io, Socket } from "socket.io-client";
 import * as msgpackParser from "socket.io-msgpack-parser";
 import { GameEvents } from '@transcendence/types';
 import { refreshToken } from "../site/services/authService";
+import { logger } from "../configs/logger";
 
 export interface AckResponse {
   status: 'success' | 'error';
@@ -11,7 +12,7 @@ export interface AckResponse {
 
 export class SocketService {
 	private socket: Socket | null = null;
-	private listenerMap = new Map<(data: any) => void, (data: any) => void>();
+	private listenerMap = new Map<(data: unknown) => void, (data: unknown) => void>();
 
 	private onGameError: ((code: string, message: string) => void) | null = null;
 
@@ -26,19 +27,16 @@ export class SocketService {
 	connect(url: string, userDbId?: string): Socket {
 		if (this.socket) {
 			if (this.socket.connected) {
-				console.log("🔵 [GameSocket] Already connected.");
+				logger.debug('GameSocket', 'Already connected.');
 				return this.socket;
 			}
-			// Socket esiste ma non connesso → cleanup prima di ricreare
 			this.socket.removeAllListeners();
 			this.socket.disconnect();
 			this.socket = null;
 			this.listenerMap.clear();
 		}
 
-		console.log(
-			`🟡 [GameSocket] Initiating connection for UserDB ID: ${userDbId || "None"}...`,
-		);
+		logger.log('GameSocket', `Initiating connection for UserDB ID: ${userDbId ?? 'None'}...`);
 		this.socket = io(url, {
 			path: "/ws/game/socket.io",
 			transports: ["websocket", "polling"],
@@ -51,59 +49,58 @@ export class SocketService {
 		});
 
 		this.socket.on("connect", () =>
-			console.log(`🟢 [GameSocket] Connected! Socket ID: ${this.socket?.id}`),
+			logger.log('GameSocket', `Connected. Socket ID: ${this.socket?.id}`),
 		);
 		this.socket.on("disconnect", (reason) =>
-			console.warn(`🔴 [GameSocket] Disconnected. Reason: ${reason}`),
+			logger.warn('GameSocket', `Disconnected. Reason: ${reason}`),
 		);
 		this.socket.on("reconnect_attempt", (attempt) =>
-			console.log(`🔄 [GameSocket] Reconnect attempt #${attempt}...`),
+			logger.debug('GameSocket', `Reconnect attempt #${attempt}...`),
 		);
 		this.socket.on("reconnect", (attempt) =>
-			console.log(`✅ [GameSocket] Reconnected successfully after ${attempt} attempts`),
+			logger.log('GameSocket', `Reconnected after ${attempt} attempts`),
 		);
 		this.socket.on("reconnect_error", (error) =>
-			console.error(`❌ [GameSocket] Reconnect error:`, error.message),
+			logger.error('GameSocket', `Reconnect error: ${error.message}`),
 		);
 		this.socket.on("reconnect_failed", () =>
-			console.error(`💀 [GameSocket] Reconnection totally failed.`),
+			logger.error('GameSocket', 'Reconnection totally failed.'),
 		);
 		this.socket.on("connect_error", (err) => {
-  			console.error(`❌ [GameSocket] Connect Error:`, err.message);
+			logger.error('GameSocket', `Connect error: ${err.message}`);
 		});
 
 		this.socket.on("exception", async (data: { status: string; errorCode: string; message: string }) => {
-    		console.error(`🚨 [GameSocket] Exception from server: [${data.errorCode}] ${data.message}`);
+			logger.error('GameSocket', `Exception from server: [${data.errorCode}] ${data.message}`);
 
-    		if (data.errorCode === "UNAUTHORIZED_TOKEN") {
-    		    console.log("🔄 [GameSocket] Token expired, attempting refresh...");
-    		    const refreshed = await refreshToken();
-    		    if (refreshed) {
-    		        console.log("✅ [GameSocket] Token refreshed, reconnecting...");
-    		        this.socket?.disconnect();
-    		        this.socket?.connect();
-    		    } else {
-    		        console.error("🚫 [GameSocket] Refresh failed, bubbling to handler.");
-    		        this.onGameError?.(data.errorCode, data.message);
-    		    }
-    		    return;
-    		}
-		
-    		if (data.errorCode === "INVALID_INPUT") {
-    		    console.warn(`[GameSocket] Invalid input: ${data.message}`);
-    		    return;
-    		}
-		
-    		// Tutti gli altri errori → notifica GameFlow
-    		this.onGameError?.(data.errorCode, data.message);
+			if (data.errorCode === "UNAUTHORIZED_TOKEN") {
+				logger.debug('GameSocket', 'Token expired, attempting refresh...');
+				const refreshed = await refreshToken();
+				if (refreshed) {
+					logger.log('GameSocket', 'Token refreshed, reconnecting...');
+					this.socket?.disconnect();
+					this.socket?.connect();
+				} else {
+					logger.error('GameSocket', 'Refresh failed, bubbling to handler.');
+					this.onGameError?.(data.errorCode, data.message);
+				}
+				return;
+			}
+
+			if (data.errorCode === "INVALID_INPUT") {
+				logger.warn('GameSocket', `Invalid input: ${data.message}`);
+				return;
+			}
+
+			this.onGameError?.(data.errorCode, data.message);
 		});
 
 		return this.socket;
 	}
 
 	disconnect() {
-			if (this.socket) {
-			console.log("🟠 [GameSocket] Manual disconnect triggered.");
+		if (this.socket) {
+			logger.log('GameSocket', 'Manual disconnect triggered.');
 			this.socket.removeAllListeners();
 			this.socket.disconnect();
 			this.socket = null;
@@ -115,47 +112,47 @@ export class SocketService {
 		return !!this.socket?.connected;
 	}
 
-	emit(event: GameEvents, data?: any, ack?: (response: AckResponse) => void) {
-	  if (!this.socket?.connected) {
-	    console.error(`⚠️ [GameSocket] Cannot emit '${event}': not connected.`);
-	    return;
-	  }
-	  if (event !== GameEvents.INPUT) {
-	    console.log(`↗️ [GameSocket] Emitting [${event}]:`, data);
-	  }
-	  if (ack) {
-	    this.socket.emit(event, data, ack);
-	  } else {
-	    this.socket.emit(event, data);
-	  }
+	emit(event: GameEvents, data?: unknown, ack?: (response: AckResponse) => void) {
+		if (!this.socket?.connected) {
+			logger.error('GameSocket', `Cannot emit '${event}': not connected.`);
+			return;
+		}
+		if (event !== GameEvents.INPUT) {
+			logger.debug('GameSocket', `Emitting [${event}]:`, data);
+		}
+		if (ack) {
+			this.socket.emit(event, data, ack);
+		} else {
+			this.socket.emit(event, data);
+		}
 	}
 
-	on(event: GameEvents, callback: (data: any) => void) {
+	on<T = unknown>(event: GameEvents, callback: (data: T) => void): void {
 		if (!this.socket) return;
-		const wrapper = (data: any) => {
+		const wrapper = (data: unknown) => {
 			if (event !== GameEvents.GAME_STATE) {
-				console.log(`↙️ [GameSocket] Received [${event}]:`, data);
+				logger.debug('GameSocket', `Received [${event}]:`, data);
 			}
-			callback(data);
+			callback(data as T);
 		};
-		this.listenerMap.set(callback, wrapper);
+		this.listenerMap.set(callback as unknown as (data: unknown) => void, wrapper);
 		this.socket.on(event, wrapper);
 	}
 
-	off(event: GameEvents, callback?: (data: any) => void) {
+	off<T = unknown>(event: GameEvents, callback?: (data: T) => void): void {
 		if (!this.socket) return;
 		if (callback) {
-			const wrapper = this.listenerMap.get(callback);
+			const key = callback as unknown as (data: unknown) => void;
+			const wrapper = this.listenerMap.get(key);
 			if (wrapper) {
 				this.socket.off(event, wrapper);
-				this.listenerMap.delete(callback);
+				this.listenerMap.delete(key);
 			}
 		} else {
 			this.socket.off(event);
 		}
-		console.log(`🔇 [GameSocket] Removing listener for [${event}]`);
+		logger.debug('GameSocket', `Removing listener for [${event}]`);
 	}
-	
 }
 
 export const socketService = new SocketService();

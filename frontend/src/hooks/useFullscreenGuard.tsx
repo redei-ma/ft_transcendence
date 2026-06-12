@@ -1,5 +1,6 @@
 // src/hooks/useFullscreenGuard.ts
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { logger } from '../configs/logger';
 
 /**
  * Requisito "schermo intero" durante la partita.
@@ -10,12 +11,15 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 export function useFullscreenGuard(
   active: boolean,
   onViolation: () => void,
-  graceMs = 5000
+  graceMs = 15000
 ) {
   const [isFullscreen, setIsFullscreen] = useState(
     () => document.fullscreenElement !== null
   );
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const onViolationRef = useRef(onViolation);
+  onViolationRef.current = onViolation;
+
   const enter = useCallback(() => {
     if (document.fullscreenElement) {   // già a schermo intero → sincronizza e basta
       setIsFullscreen(true);
@@ -23,7 +27,7 @@ export function useFullscreenGuard(
     }
     document.documentElement
       .requestFullscreen()
-      .catch((e) => console.warn('Fullscreen negato dal browser', e));
+      .catch((e) => logger.warn('FullscreenGuard', 'Fullscreen negato dal browser', e));
   }, []);
 
   useEffect(() => {
@@ -36,7 +40,7 @@ export function useFullscreenGuard(
       setIsFullscreen(fs);
       if (!active) return;
       if (fs) clear();
-      else timer.current = setTimeout(onViolation, graceMs);
+      else timer.current = setTimeout(() => onViolationRef.current(), graceMs);
     };
 
     document.addEventListener('fullscreenchange', onChange);
@@ -44,7 +48,7 @@ export function useFullscreenGuard(
       document.removeEventListener('fullscreenchange', onChange);
       clear();
     };
-  }, [active, onViolation, graceMs]);
+  }, [active, graceMs]);
 
   return { isFullscreen, enter };
 }

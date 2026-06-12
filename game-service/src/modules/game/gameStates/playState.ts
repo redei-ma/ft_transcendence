@@ -14,7 +14,7 @@ import { Logger } from "@nestjs/common";
 import { GameEndEvents, GameStateEvents, MatchMakingData } from "../game-interfaces";
 
 export class PlayState implements IGameState {
-	logger: Logger = new Logger(PlayState.name);
+	private readonly logger: Logger = new Logger(PlayState.name);
 
 	name = "PLAY";
 
@@ -163,7 +163,7 @@ export class PlayState implements IGameState {
 		}
 
 		this.logger
-			.log(`Reconnecting player - event map emit sended - map: ${this.session.gameWorld},
+			.debug(`Reconnecting player - event map emit sended - map: ${this.session.gameWorld},
 			PlayerRadius:${GameConfig.PLAYER.RADIUS} PlayerSpeed: ${GameConfig.PLAYER.SPEED}`);
 	}
 }

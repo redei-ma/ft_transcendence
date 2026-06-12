@@ -201,7 +201,7 @@ export class GameSession {
 	}
 
 	sendMessage(author: Player, message: string): void {
-		this.logger.log(`message author ${author}, message: ${message}`);
+		this.logger.debug(`message author ${author}, message: ${message}`);
 		this.server.to(this.gameId).emit(GameEvents.GAME_MESSAGE, {
 			author: author.userDbId,
 			message: message,

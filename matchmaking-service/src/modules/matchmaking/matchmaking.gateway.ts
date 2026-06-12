@@ -44,7 +44,7 @@ export class MatchmakingGateway
         client.disconnect();
     }
 
-	private emitMatchmakingResponse(client: Socket, action: string, payload: any) {
+	private emitMatchmakingResponse(client: Socket, action: string, payload: { status: string; message?: string }) {
 		const responseEvent = `${action}_RESPONSE`;
 
 		if (payload.status && payload.status.startsWith("ERROR_")) {
@@ -88,24 +88,10 @@ export class MatchmakingGateway
 		}
 	}
 
-	/*async handleDisconnect(client: Socket) {
-		console.log(`Client disconnected: ${client.id}`);
-	}
-
-	async handleDisconnect(client: Socket) {
-        const userId = this.socketToUser.get(client.id);
-        if (userId) {
-            console.log(`[Disconnect] Pulizia per utente ${userId} (Socket: ${client.id})`);
-            // Chiamiamo una funzione di cleanup nel service
-            await this.matchmakingService.cleanupUserOnDisconnect(userId);
-            this.socketToUser.delete(client.id);
-        }
-    }*/
-
 	async handleDisconnect(client: Socket) {
 		const userId = this.socketToUser.get(client.id);
 		if (userId) {
-			this.logger.log(`[Disconnect] Pulizia per utente ${userId} (Socket: ${client.id})`);
+			this.logger.debug(`[Disconnect] Pulizia per utente ${userId} (Socket: ${client.id})`);
 			
 			// Avviamo la logica di pulizia nel service (se era in pre_match annullerà la partita)
 			await this.matchmakingService.handleUserDisconnect(userId);
@@ -113,7 +99,7 @@ export class MatchmakingGateway
 			// Rimuoviamo il mapping
 			this.socketToUser.delete(client.id);
 		} else {
-			this.logger.log(`Client disconnected without active session mapping: ${client.id}`);
+			this.logger.debug(`Client disconnected without active session mapping: ${client.id}`);
 		}
 	}
 
@@ -122,13 +108,9 @@ export class MatchmakingGateway
 		const clientSocket = this.server.sockets.sockets.get(payload.socketId);
 		if (clientSocket) {
 			clientSocket.emit(GameEvents.MATCH_FOUND, payload.data);
-			console.log(
-				`[Socket] Notifica inviata al socket: ${payload.socketId}`,
-			);
+			this.logger.debug(`[Socket] Notifica inviata al socket: ${payload.socketId}`);
 		} else {
-			console.warn(
-				`[Socket] Impossibile trovare il socket ${payload.socketId} per inviare il match`,
-			);
+			this.logger.warn(`[Socket] Impossibile trovare il socket ${payload.socketId} per inviare il match`);
 		}
 	}
 
@@ -192,7 +174,7 @@ export class MatchmakingGateway
 		if (clientSocket) {
 
 			clientSocket.emit(GameEvents.DIRECT_SESSION_READY, payload.data);
-			this.logger.log(`[Socket] JOIN_DIRECT_SESSION inviato al socket: ${payload.socketId}`);
+			this.logger.debug(`[Socket] JOIN_DIRECT_SESSION inviato al socket: ${payload.socketId}`);
 		}
 	}
 	

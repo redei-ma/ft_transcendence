@@ -1,5 +1,6 @@
-import { ApiPropertyOptional } from "@nestjs/swagger";
-import { IsOptional, IsString } from "class-validator";
+import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
+import { IsBoolean, IsOptional, IsString } from "class-validator";
+import { Equals } from "class-validator";
 import { Provider } from "@transcendence/types";
 import {
 	IsEmailField,
@@ -22,6 +23,11 @@ export class CreateLocalUserNoHashDto {
 
 	@IsPasswordField()
 	password: string;
+
+	@ApiProperty({ description: "User must have accepted the Terms of Service and Privacy Policy", example: true })
+	@IsBoolean()
+	@Equals(true, { message: "You must accept the Terms of Service and Privacy Policy to register." })
+	termsAccepted: boolean;
 }
 
 /**

@@ -117,7 +117,7 @@ export class SseService {
 	 * Pushes a `notification` SSE event to all active connections of the given user.
 	 */
 	pushNotification(userId: number, data: NotificationSseData): void {
-		this.logger.log(`Pushing notification SSE to userId=${userId}`);
+		this.logger.debug(`Pushing notification SSE to userId=${userId}`);
 		this.pushToUser(userId, { type: "notification", data });
 	}
 
@@ -125,7 +125,7 @@ export class SseService {
 	 * Pushes a `game_invite` SSE event to the invite receiver.
 	 */
 	pushGameInvite(receiverId: number, data: GameInviteSseData): void {
-		this.logger.log(`Pushing game_invite SSE to userId=${receiverId}`);
+		this.logger.debug(`Pushing game_invite SSE to userId=${receiverId}`);
 		this.pushToUser(receiverId, { type: "game_invite", data });
 	}
 
@@ -144,7 +144,7 @@ export class SseService {
 	 * Pushes a `friend_removed` SSE event to userId, carrying the ID of who was removed.
 	 */
 	pushFriendRemoved(userId: number, removedUserId: number): void {
-		this.logger.log(`Pushing friend_removed SSE to userId=${userId}`);
+		this.logger.debug(`Pushing friend_removed SSE to userId=${userId}`);
 		this.pushToUser(userId, { type: "friend_removed", data: { userId: removedUserId } });
 	}
 
@@ -170,7 +170,7 @@ export class SseService {
 	 * Pushes a `game_invite_declined` SSE event to the invite sender.
 	 */
 	pushGameInviteDeclined(senderId: number, inviteId: number, receiverId: number): void {
-		this.logger.log(`Pushing game_invite_declined SSE to userId=${senderId}`);
+		this.logger.debug(`Pushing game_invite_declined SSE to userId=${senderId}`);
 		this.pushToUser(senderId, { type: "game_invite_declined", data: { inviteId, receiverId } });
 	}
 
@@ -184,7 +184,7 @@ export class SseService {
 				sent++;
 			}
 		}
-		this.logger.log(`pushToUser userId=${userId} type=${event.type} connections=${sent}`);
+		this.logger.debug(`pushToUser userId=${userId} type=${event.type} connections=${sent}`);
 	}
 
 	private hasConnections(userId: number): boolean {

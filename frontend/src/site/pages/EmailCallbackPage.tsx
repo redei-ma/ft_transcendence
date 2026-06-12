@@ -2,7 +2,7 @@ import { theme } from '../../configs/theme';
 import * as Icons from '../components/Icons';
 import welcomeScene from '../../assets/images/welcomeScene.png';
 
-type CallbackType = 'verified' | 'email-changed';
+type CallbackType = 'verified' | 'email-changed' | 'provider-linked';
 type CallbackStatus = 'success' | 'error';
 
 interface EmailCallbackPageProps {
@@ -21,6 +21,10 @@ const TITLES: Record<CallbackType, Record<CallbackStatus, string>> = {
     success: 'Email Updated',
     error: 'Email Update Failed',
   },
+  'provider-linked': {
+    success: 'Account Linked',
+    error: 'Link Failed',
+  },
 };
 
 const MESSAGES: Record<CallbackType, Record<CallbackStatus, string>> = {
@@ -30,6 +34,10 @@ const MESSAGES: Record<CallbackType, Record<CallbackStatus, string>> = {
   },
   'email-changed': {
     success: 'Your email address has been updated successfully.',
+    error: '',
+  },
+  'provider-linked': {
+    success: 'Your Google account has been linked to your existing profile.',
     error: '',
   },
 };
@@ -104,7 +112,7 @@ export default function EmailCallbackPage({ type, status, message, onDone }: Ema
             textTransform: 'uppercase', cursor: 'pointer',
           }}
         >
-          Go to Login
+          {type === 'provider-linked' ? 'Continue' : 'Go to Login'}
         </button>
       </div>
     </div>

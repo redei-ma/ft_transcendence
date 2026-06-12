@@ -1,4 +1,4 @@
-import { MapEmitPayload } from '../../types/game.types';
+import { MapEmitPayload, GameOverPayload } from '../../types/game.types';
 import { theme } from '../../configs/theme';
 import { CharacterName } from '@transcendence/types';
 import { useGameStore } from '../../storage/gameStore';
@@ -9,7 +9,7 @@ interface GameUIProps {
   isConnected: boolean;
   mapData: MapEmitPayload | null;
   maxPlayers: number;
-  gameOver: any;
+  gameOver: GameOverPayload | null;
 }
 
 export default function GameUI({
@@ -22,6 +22,7 @@ export default function GameUI({
   
   const players = useGameStore((state) => state.gameState?.players) || [];
   const playersCount = players.length;
+  const hasGameState = useGameStore((state) => state.gameState !== null);
   const gameTime = useGameStore((state) => state.gameState?.time) || 0;
   const remaining = Math.max(0, gameTime);
   const mins = Math.floor(remaining / 60);
@@ -30,7 +31,7 @@ export default function GameUI({
   return (
     <>
       {/* Timer */}
-      <div style={{
+      {hasGameState && <div style={{
         position: 'absolute', top: 20, left: '50%', transform: 'translateX(-50%)',
         fontFamily: theme.fonts.heading, fontSize: '28px', fontWeight: 700,
         color: remaining <= 10 ? theme.colors.dead : theme.colors.gold,
@@ -39,11 +40,11 @@ export default function GameUI({
         transition: 'color 0.3s',
       }}>
         {mins}:{secs.toString().padStart(2, '0')}
-      </div>
+      </div>}
 
-      {/* riquadro di info sulla connessione */}
+      {/* {riquadro di info sulla connessione
       <div style={{
-        position: 'absolute', top: 20, right: 20, 
+        position: 'absolute', top: 20, right: 20,
         color: theme.colors.textPrimary, fontFamily: theme.fonts.mono,
         fontSize: '13px', backgroundColor: theme.colors.bgPanel,
         padding: '14px', borderRadius: '8px',
@@ -66,6 +67,7 @@ export default function GameUI({
           <div style={{ marginTop: '8px', color: theme.colors.dead, fontWeight: 'bold' }}>GAME OVER</div>
         )}
       </div>
+      } */}
 
       <style>{`
         @keyframes pulse {

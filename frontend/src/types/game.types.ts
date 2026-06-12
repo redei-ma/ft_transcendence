@@ -1,6 +1,27 @@
 import { CharacterName, EndReason, MatchMode, MatchType, Pillar, PlayerSnapshot, BulletSnapshot, FinalData } from '@transcendence/types';
 export { CharacterName, EndReason, MatchMode, MatchType };
 
+export interface EloPreviewPlayer {
+  id: number;
+  username: string;
+  eloCurrent: number;
+}
+
+export interface EloPreviewOutcome {
+  win: number;
+  draw: number;
+  loss: number;
+}
+
+export interface EloPreview {
+  player1: EloPreviewPlayer;
+  player2: EloPreviewPlayer;
+  preview: {
+    player1: EloPreviewOutcome;
+    player2: EloPreviewOutcome;
+  };
+}
+
 export interface Vector {
   x: number;
   z: number;
