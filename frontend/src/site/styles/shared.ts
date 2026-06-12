@@ -17,24 +17,6 @@ export const navLinkBase: React.CSSProperties = {
   height: "100%",
 };
 
-export const dropdownItemBase: React.CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  gap: theme.spacing.sm,
-  padding: "10px 16px",
-  color: theme.colors.textSecondary,
-  fontFamily: theme.fonts.heading,
-  fontSize: "12px",
-  fontWeight: 500,
-  letterSpacing: "0.5px",
-  cursor: "pointer",
-  transition: "all 0.15s ease-in-out",
-  border: "none",
-  background: "none",
-  width: "100%",
-  textAlign: "left",
-};
-
 export const inputStyle: React.CSSProperties = {
   width: "100%",
   padding: "12px 16px",
