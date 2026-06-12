@@ -180,6 +180,7 @@ export default function Game({ selectedCharacter, selectedMode, p1Character, p2C
         <FullscreenGate
           onEnter={enter}
           onLeave={() => handleQuitInternal(false)}
+          kickSeconds={15}
         />
       );
     }

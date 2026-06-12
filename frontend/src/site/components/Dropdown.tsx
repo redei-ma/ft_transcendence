@@ -1,6 +1,4 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { dropdownItemBase } from '../styles/shared';
-import { theme } from '../../configs/theme';
 
 /* ─── Hook ─── */
 export function useDropdown() {
@@ -22,15 +20,21 @@ export function useDropdown() {
 export function DropdownPanel({ isOpen, right = 0, minWidth = "220px", children }: {
   isOpen: boolean; right?: number; minWidth?: string; children: React.ReactNode;
 }) {
+  const stateCls = isOpen
+    ? "opacity-100 translate-y-0 pointer-events-auto"
+    : "opacity-0 -translate-y-2 pointer-events-none";
+
   return (
-    <div style={{
-      position: "absolute", top: "calc(100% + 4px)", right,
-      minWidth, background: theme.colors.bgDark, border: `1px solid ${theme.colors.border}`,
-      borderRadius: "4px", padding: "8px 0",
-      opacity: isOpen ? 1 : 0, transform: isOpen ? "translateY(0)" : "translateY(-8px)",
-      pointerEvents: isOpen ? "all" : "none", transition: "all 0.2s ease",
-      zIndex: 1000, boxShadow: "0 8px 32px rgba(0,0,0,0.6)",
-    }}>
+    <div
+      style={{ right, minWidth }}
+      className={
+        "absolute top-[calc(100%+4px)] z-[1000] py-2 rounded " +
+        "bg-[#060e14] border border-[rgba(200,170,100,0.15)] " +
+        "shadow-[0_8px_32px_rgba(0,0,0,0.6)] " +
+        "transition-all duration-200 " +
+        stateCls
+      }
+    >
       {children}
     </div>
   );
@@ -42,16 +46,15 @@ export function DropdownItem({ icon: Icon, label, onClick }: {
 }) {
   return (
     <button
-      style={dropdownItemBase}
       onClick={onClick}
-      onMouseEnter={(e) => { 
-        e.currentTarget.style.background = theme.colors.bgPanel; 
-        e.currentTarget.style.color = theme.colors.gold; 
-      }}
-      onMouseLeave={(e) => { 
-        e.currentTarget.style.background = "none"; 
-        e.currentTarget.style.color = theme.colors.textSecondary; 
-      }}
+      className={
+        "flex w-full items-center gap-2 px-4 py-2.5 text-left " +
+        "font-[Cinzel,Palatino,serif] text-xs font-medium tracking-[0.5px] " +
+        "cursor-pointer border-0 bg-transparent " +
+        "text-[rgba(200,170,100,0.6)] " +
+        "hover:bg-[#0d1a25] hover:text-[#e8d5a3] " +
+        "transition-all duration-150 ease-in-out"
+      }
     >
       <Icon size={16} /> {label}
     </button>

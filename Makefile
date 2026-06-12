@@ -36,7 +36,7 @@ BOLD   := \033[1m
 
 # --- Default target ------------------------------------------
 
-all: up
+all: up-prod
 
 # --- Shared packages build -----------------------------------
 
