@@ -331,7 +331,23 @@ To keep this flexibility safe across services without introducing the latency of
 - Built the AI bot for single-player mode (decision-making, pathfinding, human-like behavior)
 - Contributed to matchmaking service (ranked queue, ELO matching algorithm)
 
-**Challenge:** > TODO — Giovanni: descrivi una sfida tecnica che hai affrontato e come l'hai risolta.
+**Challenge:** Escaping "Spaghetti Code" with State Machines
+
+As the lead developer of the real-time Game Service, the biggest architectural threat I faced was managing complexity. A multiplayer game loop, physics collision, and dynamic AI decision-making can quickly deteriorate into a tangled web of nested if/else statements and boolean flags (isLobby, isPlaying, isAttacking, isDefending, isFleeing).
+
+If I had hardcoded the game flow and the AI logic into giant, centralized controller functions, the codebase would have become extremely fragile. Adding a single new game phase or a new bot behavior would have required modifying hundreds of lines of interconnected logic, making it a nightmare to test and extend. I needed an architecture that allowed behaviors to be isolated, independent, and easily interchangeable.
+
+##### **The Resolution**
+
+To keep the engine clean, modular, and future-proof, I heavily leveraged the State Design Pattern throughout the entire Game Service. Instead of letting a single monolithic class juggle all the rules, I encapsulated distinct behaviors into self-contained state classes sharing a common interface (IGameState, IAiStates, IPlayerState).
+
+   - **Game Flow Management:** The lifecycle of a match smoothly transitions between LobbyState, PlayState, and EndState. The main GameSession doesn't need to know the specific rules of each phase; it simply delegates the update() and processInput() calls to the currently active state. This means the LobbyState handles player connections without worrying about physics, while the PlayState manages the 60fps loop without caring about matchmaking.
+
+   - **AI Decision-Making:** To create challenging bots without massive decision trees, the AI evaluates threats and swaps between states like WanderState, ChaseState, KiteState, DefendState, and specific attack states. Each class contains only the logic relevant to that behavior—for instance, ChaseState runs the A* PathFinder, while DefendState focuses on blocking projectiles. If we want to introduce a new "Patrol" behavior tomorrow, we simply write a new class without touching the existing AI core.
+
+   - **Player Combat:** I applied this same principle of encapsulation to the player's action loop. Actions that take time—like casting a spell or holding a shield—are managed by SpellAttackState, MeleeAttackState, and DefenceAttackState. This gracefully prevents players from performing conflicting actions simultaneously and keeps the PlayerManager incredibly clean.
+
+By committing to this pattern, I transformed what could have been a chaotic, hard-to-debug monolith into a decoupled, highly scalable architecture. Each component has a single responsibility, making the game engine not only robust under concurrent loads but also incredibly easy to maintain and expand.
 
 ### Alessandro (Developer - Auth Service & Infrastructure)
 
