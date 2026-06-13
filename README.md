@@ -250,7 +250,7 @@ User ──< Notification     (persistent, typed: FRIEND_REQ / GAME_INVITE / ACH
 | HTTPS & security                  | Nginx reverse proxy with SSL, rate limiting, security headers                                     | Renato, Alessandro                                    |
 | Health checks                     | Every service exposes /health, Docker healthchecks with dependency ordering                       | Renato                                                |
 | Swagger API docs                  | Auto-generated API documentation at /api/docs                                                     | Renato (user-service)                                 |
-| Privacy Policy & Terms of Service | GDPR-compliant legal pages, accepted on first login and accessible from the dashboard footer      | Alessandro (auth-service), Francesco (frontend)       |
+| Privacy Policy & Terms of Service | Legal pages with explicit user acceptance on first login, accessible from the dashboard footer    | Alessandro (auth-service), Francesco (frontend)       |
 
 ---
 
@@ -306,7 +306,20 @@ User ──< Notification     (persistent, typed: FRIEND_REQ / GAME_INVITE / ACH
 - Coordinated team meetings, tracked progress, managed task distribution
 - Led Docker infrastructure: multi-stage Dockerfiles for all services, docker-compose orchestration, Makefile automation
 
-**Challenge:** > TODO — Renato: descrivi una sfida tecnica che hai affrontato e come l'hai risolta.
+**Challenge: Future-Proof Schema Design**
+
+As owner of the database schema, the hardest decision I faced was how much to model for today versus how much to anticipate future growth. The schema is the foundation that four microservices share, so every wrong assumption baked into it would ripple out as a multi-service migration and a real risk to live data integrity.
+
+To make an informed choice, I evaluated both approaches based on our project requirements:
+
+- **Schema mirroring the current product:** Fast to model and quick to query, with every existing feature wired directly into columns and enums. The trade-off is that every product evolution — a new OAuth provider, a new achievement, a different team composition — becomes a schema migration touching multiple services, with non-trivial risk on a live database.
+- **Normalized, extension-friendly schema:** The dimensions of variation become rows in dedicated tables rather than columns or hardcoded keys, and any write that spans multiple tables is wrapped in an atomic transaction so a partial failure cannot corrupt user stats or rankings. The cost is more JOINs and a steeper initial design effort.
+
+##### **The Resolution**
+
+I chose the normalized model and invested significant upfront time on it. Authentication identities and achievements live as rows keyed by foreign keys, so adding a new provider or a new achievement is data — not a migration. The same shape absorbed AI matches and team modes without any schema change.
+
+To keep this flexibility safe across services without introducing the latency of an event-driven system, the multi-table write at match end — where match record, participants, ELO, per-character stats, and achievement unlocks are all updated together — runs inside a single Prisma transaction. Either everything is committed or nothing is, and the database is never left in an inconsistent state between services. The result is a schema that absorbs new product ideas as data and protects its invariants under concurrent writes.
 
 ### Giovanni (Tech Lead - Game Service)
 
