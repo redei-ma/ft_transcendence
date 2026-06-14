@@ -13,6 +13,8 @@ interface PillarModelProps {
   radius: number;
 }
 
+// Clone di drei: copia la mesh GLTF senza skinning — a differenza di SkeletonUtils.clone, qui va bene scene.clone()
+// perché pillar e wall sono geometrie statiche senza rig.
 export function WallModel({ position, width, depth }: WallModelProps) {
   const { scene } = useGLTF(wallModelUrl);
   const cloned = scene.clone();

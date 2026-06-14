@@ -1,6 +1,8 @@
 import * as THREE from 'three';
 import { GameConfig } from '@transcendence/types';
 
+// Camera ortografica isometrica: posizionata a 45° su entrambi gli assi.
+// Questa rotazione è il motivo per cui l'InputManager ruota l'input WASD di π/4 prima di inviarlo al server.
 export class GameCamera {
   public camera: THREE.OrthographicCamera;
 

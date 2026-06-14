@@ -16,19 +16,24 @@ interface PlayerEntityProps {
 }
 
 export function PlayerEntity({ playerId }: PlayerEntityProps) {
-  const groupRef = useRef<THREE.Group>(null);
-  
-  const initialPlayer = useGameStore(state => state.gameState?.players.find(p => p.id === playerId));
+  const groupRef = useRef<THREE.Group>(null); // useRef: riferimento mutabile all'oggetto Three.js Group; modificarlo non causa re-render
+
+  // initialPlayer: selettore reattivo — ri-renderizza il componente quando la lista player cambia (aggiunta/rimozione)
+  const initialPlayer = useGameStore(state => state.gameState?.players.find(p => p.id === playerId)); // useGameStore(selector): si abbona — re-render se il valore ritornato cambia
+  // reactivePlayer: selettore reattivo — ri-renderizza quando cambiano HP, isDead, ecc. (valori mostrati in DOM)
   const reactivePlayer = useGameStore(state => state.gameState?.players.find(p => p.id === playerId));
 
-  useFrame((_, delta) => {
+  // useFrame: loop R3F eseguito ogni frame (~60fps).
+  // Usa getState() direttamente per leggere lo snapshot senza triggerare re-render React.
+  // Interpola la posizione con lerp frame-rate-independent: 1 - 0.001^delta compensa qualsiasi deltaTime.
+  useFrame((_, delta) => { // useFrame: sostituisce requestAnimationFrame in R3F; viene chiamato dentro il render loop di Three.js
     if (!groupRef.current) return;
 
-    const currentPlayer = useGameStore.getState().gameState?.players.find(p => p.id === playerId);
+    const currentPlayer = useGameStore.getState().gameState?.players.find(p => p.id === playerId); // getState(): lettura istantanea senza abbonamento — non causa re-render
     if (!currentPlayer) return;
 
     const targetPos = new THREE.Vector3(currentPlayer.position.x, 0, currentPlayer.position.z);
-    groupRef.current.position.lerp(targetPos, 1 - Math.pow(0.001, delta));
+    groupRef.current.position.lerp(targetPos, 1 - Math.pow(0.001, delta)); // lerp frame-rate-independent: alpha = 1 - 0.001^delta; a 60fps ≈ 0.064 per frame
 
     if (currentPlayer.rotation !== undefined) {
       groupRef.current.rotation.y = -currentPlayer.rotation;
@@ -44,12 +49,14 @@ export function PlayerEntity({ playerId }: PlayerEntityProps) {
 
   return (
     <group ref={groupRef}>
-      
-      {/* 1. LA HP BAR FLUTTUANTE */}
-      <Html 
-        position={[0, 20, 0]} 
-        center 
-        zIndexRange={[100, 0]} 
+
+      {/* 1. LA HP BAR FLUTTUANTE
+          Html di @react-three/drei: inietta un elemento DOM dentro il Canvas, ancorato in coordinate 3D.
+          Questa è la tecnica che permette la HP bar "flottante" sopra il personaggio rimanendo nel Canvas WebGL. */}
+      <Html
+        position={[0, 20, 0]}
+        center
+        zIndexRange={[100, 0]}
       >
         <div style={{ transform: 'scale(0.8)' }}>
           <HPBar 

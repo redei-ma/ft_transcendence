@@ -48,15 +48,15 @@ export default function FriendsSidebar({
   onDeclineInvite,
 }: FriendsSidebarProps) {
   const { isMobile } = useResponsive();
-  const [isOpen, setIsOpen] = useState(false);
-  const [tab, setTab] = useState<Tab>('friends');
-  const [friends, setFriends] = useState<api.FriendEntry[]>([]);
+  const [isOpen, setIsOpen] = useState(false);               // useState: visibilità sidebar — causa re-render per aprire/chiudere
+  const [tab, setTab] = useState<Tab>('friends');             // useState: tab attiva — causa re-render per cambiare vista
+  const [friends, setFriends] = useState<api.FriendEntry[]>([]); // useState: lista amici — causa re-render quando cambia
   const [requests, setRequests] = useState<api.FriendRequestsResponse | null>(
     null,
   );
   const [loading, setLoading] = useState(true);
 
-  const [now, setNow] = useState(Date.now());
+  const [now, setNow] = useState(Date.now()); // useState: timestamp aggiornato ogni secondo — il re-render aggiorna il countdown degli inviti
 
   // Add friend
   const [addUser, setAddUser] = useState('');
@@ -66,7 +66,7 @@ export default function FriendsSidebar({
   // Invite feedback
   const [inviteMsg, setInviteMsg] = useState<Record<number, string>>({});
 
-  const fetchFriends = useCallback(async () => {
+  const fetchFriends = useCallback(async () => { // useCallback con deps=[]: funzione stabile — non ricreata ad ogni render, sicura da mettere come dipendenza di useEffect
     const [friendsData, reqData] = await Promise.all([
       api.getFriends(),
       api.getFriendRequests(),
@@ -201,6 +201,8 @@ export default function FriendsSidebar({
   const handleSendInvite = async (targetId: number) => {
     const socket = matchmakingSocket.connect();
 
+    // Registra DIRECT_SESSION_READY prima di inviare l'invito per evitare la race condition
+    // in cui il server risponde prima che il listener sia attivo.
     const registerListener = () => {
       socket.once(
         GameEvents.DIRECT_SESSION_READY,

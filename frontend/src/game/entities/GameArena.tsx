@@ -15,6 +15,7 @@ interface GameArenaProps {
   };
 }
 
+// Rappresentazione visiva (placeholder) dei muri fisici del server: box rossi corrispondenti ai dati di collisione.
 export function GameArena({ mapData }: GameArenaProps) {
   const walls = mapData?.walls;
   if (!walls || !Array.isArray(walls)) {

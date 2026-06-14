@@ -28,13 +28,17 @@ export function PlayerModel({ characterName, playerId }: PlayerModelProps) {
   const { scene, animations } = useGLTF(MODEL_PATHS[characterName]);
   const currentOpacity = useRef(1);
 
-  const { clonedScene, computedScale, offsetY } = useMemo(() => {
+  // useMemo: clona la scena GLTF una sola volta per istanza.
+  // SkeletonUtils.clone è necessario per i modelli con skinning: clone() standard non copia il rig correttamente.
+  // I materiali vengono clonati individualmente per permettere opacità indipendente per ogni giocatore.
+  const { clonedScene, computedScale, offsetY } = useMemo(() => { // useMemo: eseguito una sola volta (deps=[scene]); ricalcola solo se il file GLTF cambia
     const clone = SkeletonUtils.clone(scene);
 
     clone.traverse((child) => {
       if ((child as THREE.Mesh).isMesh) {
         const mesh = child as THREE.Mesh;
         mesh.frustumCulled = false;
+        // Clone del materiale: senza questo tutti i modelli condividono lo stesso materiale
         if (Array.isArray(mesh.material)) {
           mesh.material = mesh.material.map(m => m.clone());
         } else {
@@ -60,11 +64,12 @@ export function PlayerModel({ characterName, playerId }: PlayerModelProps) {
 
   // 2. Agganciamo le animazioni al clone
   const { actions } = useAnimations(animations, groupRef);
-  const isCurrentlyMoving = useRef(false);
-  const lastVisualPos = useRef(new THREE.Vector3());
+  const isCurrentlyMoving = useRef(false); // useRef: stato booleano che NON deve triggerare re-render quando cambia
+  const lastVisualPos = useRef(new THREE.Vector3()); // useRef: valore mutabile persistente tra frame; aggiornato in useFrame senza re-render
 
-  // Logica di Animazione e Opacità
-  useFrame(() => {
+  // useFrame: per-frame — gestisce opacità (lerp su morte) e attivazione/disattivazione animazione walk.
+  // Legge lo store con getState() senza ri-renderizzare il componente React.
+  useFrame(() => { // nessun delta qui: l'opacità usa un fattore fisso 0.1 (dipendente dal frame rate, accettabile per estetica)
     const player = useGameStore.getState().gameState?.players.find(p => p.id === playerId);
     if (!player || !groupRef.current) return;
 
@@ -79,11 +84,10 @@ export function PlayerModel({ characterName, playerId }: PlayerModelProps) {
     }
 
     // --- GESTIONE ANIMAZIONI ---
-    // Otteniamo la posizione globale reale del modello nel mondo 3D
+    // Rileva il movimento confrontando la posizione world reale del Group (già interpolata) frame per frame
     const currentWorldPos = new THREE.Vector3();
     groupRef.current.getWorldPosition(currentWorldPos);
 
-    // Calcoliamo quanto si è spostato dall'ultimo frame
     const dist = lastVisualPos.current.distanceTo(currentWorldPos);
     const isMovingNow = dist > 0.005 && !player.isDead; // Non animiamo i fantasmi morti!
 

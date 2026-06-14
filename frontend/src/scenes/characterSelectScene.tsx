@@ -73,6 +73,7 @@ export default function CharacterSelectScene({
   const [p2Hover, setP2Hover] = useState<number | null>(null);
   const [launching, setLaunching] = useState(false);
   
+  // Ref (non state): guardia contro doppio launch in React StrictMode o doppio-click
   const launchingRef = useRef(false);
   const p2Selectable = isLocal || isAI;
 
@@ -132,7 +133,8 @@ export default function CharacterSelectScene({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [p1Confirmed, p2Confirmed, p2Selectable, isSplitScreen, onBack, isFullscreen]);
   
-  // Launch — emit to Leonardo via matchmaking socket
+  // Launch: si attiva quando entrambi i giocatori confermano.
+  // sessionId presente → invito diretto (JOIN_DIRECT_SESSION); assente → coda pubblica (JOIN_QUEUE).
   useEffect(() => {
     if (!p1Confirmed) return;
     if (isSplitScreen && !p2Confirmed) return;

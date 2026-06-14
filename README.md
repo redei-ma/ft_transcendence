@@ -295,7 +295,18 @@ User ──< Notification     (persistent, typed: FRIEND_REQ / GAME_INVITE / ACH
 - Built WebSocket client integration for game state and matchmaking
 - Styled the application with Tailwind CSS (dark Greek-mythology theme)
 
-**Challenge:** > TODO — Francesco: descrivi una sfida tecnica che hai affrontato e come l'hai risolta.
+**Challenge: HUD Architecture — DOM Overlay vs. In-Canvas Rendering**
+
+The game world renders at 60fps inside a single WebGL canvas through Three.js and React Three Fiber. The HUD — HP bars, skill slots with live cooldown sweeps, kill/death counters — has to update in perfect sync with that loop, yet it is fundamentally a UI layer, not a 3D one. The core decision was where this UI should live, because the wrong choice would either cripple iteration speed or wreck performance.
+
+I evaluated two approaches against our requirements:
+
+- In-canvas (WebGL) HUD: Build every HUD element as Three.js sprites and geometry inside the same canvas. This guarantees frame-perfect sync and a single render pipeline, but text rendering in WebGL is painful, styling is rigid, and every visual tweak becomes a 3D-engineering task — coupling fast-changing UI work to the slowest part of the stack.
+- DOM overlay (HTML/CSS) HUD: Position HTML/CSS layers absolutely over the canvas, driven by the Zustand store that consumes the snapshot stream. This unlocks real typography, instant restyling, and rapid iteration. The trade-off is twofold: the overlay must never trigger React re-renders at 60fps, and it must not intercept the pointer events meant for the game underneath.
+
+#### **The Resolution**
+
+I chose the DOM overlay and engineered around its two risks. The decorative chrome is a static PNG frame per character (AdeUI.png, ZeusUI.png), and the dynamic layers — HP, cooldown sweeps, slots — are absolutely-positioned HTML whose coordinates I extracted programmatically from the PNGs, so they align pixel-perfect with the art instead of being hand-tuned. To protect performance, the game loop stays inside R3F's useFrame, outside React's reconciliation entirely; cooldown sweeps interpolate through a dedicated requestAnimationFrame loop that writes to the DOM directly, so React only re-renders the HUD on discrete state changes (a skill fired, an HP threshold crossed) rather than every frame. Finally, the overlay is pointer-events: none, letting every click fall through to the game. The result is a HUD that iterates at the speed of CSS while costing the render loop almost nothing.
 
 ### Renato (Project Manager - User Service & Database)
 

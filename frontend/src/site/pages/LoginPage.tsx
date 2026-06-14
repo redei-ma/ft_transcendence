@@ -255,7 +255,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
           </div>
         )}
 
-        {/* ⚡ Da un normale DIV a un FORM con onSubmit collegato */}
+        {/*  Da un normale DIV a un FORM con onSubmit collegato */}
         <form onSubmit={handleSubmit} style={{ width: "100%", display: "flex", flexDirection: "column", gap: "12px" }}>
 
           {/* LOGIN: campo identifier (username o email) */}

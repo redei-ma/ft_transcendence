@@ -11,12 +11,15 @@ interface GameInputPayload {
   playerIndex: number;
 }
 
+// Gestisce l'input da tastiera (e mouse per lo spell) e invia i payload al server ogni 50ms via socket.
+// Supporta due giocatori in modalità LOCAL (P1: WASD, P2: frecce).
 export class InputManager {
   private keys: Set<string> = new Set();
   private intervalId: ReturnType<typeof setInterval> | null = null;
   private isLocalGame: boolean;
+  // Flag one-shot: impedisce di inviare lo stesso attacco più volte tenendo premuto il tasto
   private attackSent: { [playerIndex: number]: boolean } = { 0: false, 1: false };
-  
+
   // Mouse aim
   private isAiming: boolean = false;
   private pendingSpellDirection: { x: number; z: number } | null = null;
@@ -30,6 +33,7 @@ export class InputManager {
   private setupListeners(): void {
     window.addEventListener('keydown', this.handleKeyDown);
     window.addEventListener('keyup', this.handleKeyUp);
+    // Polling a 50ms: invia lo stato attuale dei tasti al server a 20fps
     this.intervalId = setInterval(() => this.sendInputs(), 50);
   }
 
@@ -147,6 +151,7 @@ export class InputManager {
     if (this.keys.has(leftKey))  screenX -= 1;
     if (this.keys.has(rightKey)) screenX += 1;
 
+    // Ruota l'input di 45° per allineare WASD alla camera isometrica (asse Y ruotato di 45°)
     const angle = Math.PI / 4;
     const mapX = screenX * Math.cos(angle) + screenZ * Math.sin(angle);
     const mapZ = -screenX * Math.sin(angle) + screenZ * Math.cos(angle);

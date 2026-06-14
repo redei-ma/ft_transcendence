@@ -32,18 +32,28 @@ const ERROR_MESSAGES: Record<string, string> = {
   MAP_LOAD_FAILED: 'Failed to load the game map.',
 };
 
+// GameFlow: state machine delle scene pre-partita (mode-select → character-select → queue → game).
+// Gestisce il ciclo di vita completo dei due socket: matchmakingSocket (connesso qui)
+// e socketService (connesso solo quando MATCH_FOUND arriva, non prima).
 export default function GameFlow({ userId, username, onExit, sessionId: initialSessionId, inviterId }: GameFlowProps) {
-  const [scene, setScene] = useState<GameScene>(initialSessionId ? 'character-select' : 'mode-select');
+  // Se si arriva con sessionId (invito accettato), si salta mode-select e si va direttamente a character-select
+  // Se si arriva con sessionId (invito accettato), si salta mode-select e si va direttamente a character-select
+  const [scene, setScene] = useState<GameScene>(initialSessionId ? 'character-select' : 'mode-select'); // useState: controlla quale scena renderizzare — ogni cambio causa re-render
   const [selectedMode, setSelectedMode] = useState<MatchMode>(initialSessionId ? MatchMode.UNRANKED : MatchMode.RANKED);
   const [p1Character, setP1Character] = useState<CharacterName>(CharacterName.ZEUS);
   const [p2Character, setP2Character] = useState<CharacterName>(CharacterName.ADE);
   const [sessionId, setSessionId] = useState<string | null>(initialSessionId || null);
-  const [isReconnecting, setIsReconnecting] = useState(false);
-  const hasResignedRef = useRef(false);
+  const [isReconnecting, setIsReconnecting] = useState(false); // useState: mostra/nasconde l'overlay di riconnessione — deve causare re-render
+  // Ref (non state): impedisce che un MATCH_FOUND in ritardo riconnetta alla partita dopo LEAVE_GAME
+  const hasResignedRef = useRef(false); // useRef: flag booleano letto dentro callback socket — non serve un re-render quando cambia
   const [cancelMessage, setCancelMessage] = useState<string | null>(null);
 
+  // Monta il socket matchmaking e ascolta MATCH_FOUND / DIRECT_SESSION_READY.
+  // socketService (game socket) viene connesso solo all'interno di handleMatchFound, non al mount.
   useEffect(() => {
     matchmakingSocket.connect();
+    // MATCH_FOUND: avvia il game socket e transita a 'game'.
+    // Se si era già in 'game' (ricarica pagina), ignora. Se non si era in 'queue' (riconnessione), attende 3s.
     const handleMatchFound = (data: MatchFoundData) => {
       logger.debug("GameFlow", "MATCH_FOUND data:", JSON.stringify(data));
       if (hasResignedRef.current) return;
@@ -157,11 +167,12 @@ export default function GameFlow({ userId, username, onExit, sessionId: initialS
       return;
     }
   
+    // Invia LEAVE_GAME con callback ack per cleanup ordinato; safety timeout di 1s in caso di ack perso.
     const safetyTimeout = setTimeout(() => {
       logger.warn('GameFlow', 'LEAVE_GAME ack timeout — cleanup forzato');
       cleanup();
     }, 1000);
-  
+
     socketService.emit(
       GameEvents.LEAVE_GAME,
       { userId: String(userId) },

@@ -57,6 +57,7 @@ export default function Navbar({ currentPage, onNavigate, onLogout, username, av
     fetchNotifications();
   }, [username]);
 
+  // Ascolta 'new-notification' dall'event bus (CustomEvent emesso da App.tsx quando arriva un evento SSE).
   useEffect(() => {
     const handler = (e: Event) => {
       const newNotif = (e as CustomEvent<NotificationItem>).detail;

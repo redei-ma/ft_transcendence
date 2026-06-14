@@ -15,10 +15,14 @@ import FriendsSidebar from './site/components/FriendSidebar';
 import GameInviteToast from './site/components/GameInviteToast';
 import EmailCallbackPage from './site/pages/EmailCallbackPage';
 
+// App: radice dell'applicazione.
+// Gestisce auth (refreshToken al mount), routing a stato (currentPage, senza router esterno),
+// SSE per notifiche/amici/inviti, e l'event bus via window.dispatchEvent + CustomEvent.
 export default function App() {
   const [isAuthLoading, setIsAuthLoading] = useState(true);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [user, setUser] = useState<UserProfile | null>(null);
+  // Routing basato su stato: nessun router esterno — la navigazione è solo setCurrentPage(pageName)
   const [currentPage, setCurrentPage] = useState('dashboard');
   const [pendingSessionId, setPendingSessionId] = useState<string | null>(null);
   const [pendingInviterId, setPendingInviterId] = useState<number | null>(null);
@@ -47,12 +51,14 @@ export default function App() {
     return null;
   });
 
-  const fetchGameInvites = useCallback(async () => {
+  const fetchGameInvites = useCallback(async () => { // useCallback: funzione stabile — evita che useEffect che dipende da essa si esegua a ogni render
     const data = await getGameInvites();
     if (data) setGameInvites(data.invites);
   }, []);
 
-  // SSE — connessione persistente per notifiche, status amici, inviti
+  // SSE — connessione persistente per notifiche, status amici, inviti.
+  // Usa EventSource (HTTP/1.1 streaming): alla disconnessione riprova con backoff esponenziale (3s → 30s max).
+  // Gli eventi SSE vengono ritrasmessi via window.dispatchEvent + CustomEvent come event bus cross-componente.
   const sseRetryDelayRef = useRef(3000);
   const sseRetryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -70,6 +76,7 @@ export default function App() {
       es.addEventListener('notification', (event: MessageEvent) => {
         try {
           const data = JSON.parse(event.data);
+          // Invia l'evento come CustomEvent su window — i componenti interessati (Navbar, FriendSidebar) lo ascoltano
           window.dispatchEvent(new CustomEvent('new-notification', { detail: data }));
           if (data.type === 'FRIEND_ACCEPTED' || data.type === 'FRIEND_REQ') {
             window.dispatchEvent(new CustomEvent('friend-list-changed'));
@@ -107,8 +114,8 @@ export default function App() {
         es = null;
         if (destroyed) return;
         const delay = sseRetryDelayRef.current;
-        sseRetryDelayRef.current = Math.min(delay * 2, 30000);
-        sseRetryTimerRef.current = setTimeout(connect, delay);
+        sseRetryDelayRef.current = Math.min(delay * 2, 30000); // backoff esponenziale: 3s → 6s → 12s → ... max 30s
+        sseRetryTimerRef.current = setTimeout(connect, delay); // ri-tenta la connessione SSE dopo il delay
       };
 
       es.onopen = () => {
@@ -139,7 +146,7 @@ export default function App() {
     return () => window.removeEventListener('game-invite-received', handler);
   }, [isLoggedIn, fetchGameInvites]);
 
-  const handleAcceptInvite = useCallback(async (invite: GameInvite) => {
+  const handleAcceptInvite = useCallback(async (invite: GameInvite) => { // useCallback: passato come prop a FriendSidebar e GameInviteToast — stabile evita re-render inutili dei figli
     const result = await respondGameInvite(invite.id, 'ACCEPTED');
     if (result.ok && result.sessionId) {
       setGameInvites(prev => prev.filter(i => i.id !== invite.id));
@@ -149,13 +156,15 @@ export default function App() {
     }
   }, []);
 
-  const handleDeclineInvite = useCallback(async (invite: GameInvite) => {
+  const handleDeclineInvite = useCallback(async (invite: GameInvite) => { // useCallback: stesso motivo — prop stabile per i componenti figli
     const result = await respondGameInvite(invite.id, 'REJECTED');
     if (result.ok) {
       setGameInvites(prev => prev.filter(i => i.id !== invite.id));
     }
   }, []);
 
+  // Al mount: refreshToken verifica il cookie httpOnly e ottiene un nuovo access token.
+  // Solo se valido, carica il profilo utente — altrimenti mostra LoginPage.
   useEffect(() => {
     const initAuth = async () => {
       const hasSession = await refreshToken();

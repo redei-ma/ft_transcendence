@@ -10,9 +10,12 @@ export interface AckResponse {
   errorCode?: string;
 }
 
+// Singleton che gestisce il socket WebSocket di gioco (path /ws/game/socket.io).
+// Usa il parser msgpack per ridurre il payload degli snapshot ad alta frequenza.
 export class SocketService {
 	private socket: Socket | null = null;
-	private listenerMap = new Map<(data: unknown) => void, (data: unknown) => void>();
+	// Mappa callback originali → wrapper con logging: necessaria per poter chiamare off() con la stessa referenza
+	private listenerMap = new Map<(data: unknown) => void, (data: unknown) => void>(); // Map: struttura O(1) per lookup — socket.off() richiede la referenza ESATTA della funzione passata a on()
 
 	private onGameError: ((code: string, message: string) => void) | null = null;
 
@@ -30,6 +33,7 @@ export class SocketService {
 				logger.debug('GameSocket', 'Already connected.');
 				return this.socket;
 			}
+			// Pulisce listener e stato prima di riconnettersi
 			this.socket.removeAllListeners();
 			this.socket.disconnect();
 			this.socket = null;
@@ -40,7 +44,7 @@ export class SocketService {
 		this.socket = io(url, {
 			path: "/ws/game/socket.io",
 			transports: ["websocket", "polling"],
-			parser: msgpackParser,
+			parser: msgpackParser,         // msgpack: più compatto di JSON per snapshot frequenti
 			withCredentials: true,
 			reconnection: true,
 			reconnectionAttempts: 5,
@@ -70,6 +74,7 @@ export class SocketService {
 			logger.error('GameSocket', `Connect error: ${err.message}`);
 		});
 
+		// Evento centralizzato per gli errori lato server: gestisce token scaduto con refresh automatico
 		this.socket.on("exception", async (data: { status: string; errorCode: string; message: string }) => {
 			logger.error('GameSocket', `Exception from server: [${data.errorCode}] ${data.message}`);
 
@@ -127,6 +132,7 @@ export class SocketService {
 		}
 	}
 
+	// Registra un listener wrappandolo in un logger; salva la coppia originale→wrapper per poter fare off() corretto
 	on<T = unknown>(event: GameEvents, callback: (data: T) => void): void {
 		if (!this.socket) return;
 		const wrapper = (data: unknown) => {
@@ -135,17 +141,18 @@ export class SocketService {
 			}
 			callback(data as T);
 		};
-		this.listenerMap.set(callback as unknown as (data: unknown) => void, wrapper);
-		this.socket.on(event, wrapper);
+		this.listenerMap.set(callback as unknown as (data: unknown) => void, wrapper); // chiave=callback originale, valore=wrapper — per recuperarlo in off()
+		this.socket.on(event, wrapper); // il socket ascolta il wrapper, non la callback originale
 	}
 
+	// Rimuove il listener recuperando il wrapper dalla map (necessario perché socket.off richiede la stessa referenza)
 	off<T = unknown>(event: GameEvents, callback?: (data: T) => void): void {
 		if (!this.socket) return;
 		if (callback) {
 			const key = callback as unknown as (data: unknown) => void;
-			const wrapper = this.listenerMap.get(key);
+			const wrapper = this.listenerMap.get(key); // lookup O(1): recupera il wrapper registrato per questa callback
 			if (wrapper) {
-				this.socket.off(event, wrapper);
+				this.socket.off(event, wrapper); // CRITICO: socket.off con referenza diversa dal wrapper è un no-op silenzioso → memory leak
 				this.listenerMap.delete(key);
 			}
 		} else {
@@ -155,4 +162,5 @@ export class SocketService {
 	}
 }
 
+// Istanza singleton: condivisa da Game.tsx, useGameSocket e GameChat
 export const socketService = new SocketService();

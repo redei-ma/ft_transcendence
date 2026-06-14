@@ -13,6 +13,9 @@ interface HPBarProps {
   isFloating?: boolean; // ⚡ NUOVA PROP: Se true, non si attacca agli angoli
 }
 
+// HPBar: componente puro (nessun hook Zustand). Riceve i valori come props.
+// isFloating=true: montato via Html di drei dentro il Canvas (posizione relativa 3D).
+// isFloating=false: montato nel DOM overlay con position:absolute agli angoli dello schermo.
 export default function HPBar({
   characterName,
   displayName,
@@ -20,7 +23,7 @@ export default function HPBar({
   currentHP,
   isDisconnected = false,
   disconnectionTimer = 0,
-  isFloating = false, // Di base è false così non rompiamo nulla
+  isFloating = false,
 }: HPBarProps) {
   const clampedHP = Math.max(0, currentHP);
   const hpPercent = (clampedHP / maxHP) * 100;

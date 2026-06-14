@@ -3,8 +3,11 @@ import { GameEvents } from '@transcendence/types';
 import { refreshToken } from "../site/services/authService";
 import { logger } from "../configs/logger";
 
+// Socket di matchmaking (path /ws/matchmaking/socket.io) — usa JSON standard, senza msgpack.
+// Differisce da socketServices: reconnection disabilitata, nessun parser binario.
 class MatchmakingSocket {
 	private socket: Socket | null = null;
+	// Stessa tecnica di SocketService: mappa callback→wrapper per off() corretto
 	private listenerMap = new Map<(data: unknown) => void, (data: unknown) => void>();
 	private onMatchError: ((code: string, message: string) => void) | null = null;
 
@@ -135,6 +138,7 @@ class MatchmakingSocket {
 		return this.socket;
 	}
 
+	// Utility: connette e aspetta il 'connect' prima di emettere, evitando race condition
 	connectAndEmit(event: GameEvents, data?: unknown): void {
 		const socket = this.connect();
 		if (socket.connected) {
@@ -147,4 +151,5 @@ class MatchmakingSocket {
 	}
 }
 
+// Istanza singleton: condivisa da GameFlow, CharacterSelectScene e FriendsSidebar
 export const matchmakingSocket = new MatchmakingSocket();

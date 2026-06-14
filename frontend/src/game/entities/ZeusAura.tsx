@@ -16,17 +16,19 @@ const BOLT_RADIUS = AURA_RADIUS * 1.36;
 const SPARK_SPAWN_RADIUS = AURA_RADIUS * 0.55;
 
 export function ZeusAura({ playerId }: ZeusAuraProps) {
-  const groupRef = useRef<THREE.Group>(null);
+  const groupRef = useRef<THREE.Group>(null);  // useRef: accesso diretto all'oggetto Three.js senza causare re-render
   const boltsRef = useRef<THREE.Group>(null);
   const sparksRef = useRef<THREE.Points>(null);
-  const timeAccum = useRef(0);
-  const currentScale = useRef(1.0);
+  const timeAccum = useRef(0);         // useRef: accumulatore temporale tra frame — useState causerebbe un re-render ad ogni frame (~60fps)
+  const currentScale = useRef(1.0);   // useRef: valore interpolato frame per frame, non deve mai causare re-render
 
   const boltCount = 8;
   const segmentsPerBolt = 10;
   const sparkCount = 300;
 
-  const boltLines = useMemo(() => {
+  // useMemo: alloca le geometrie delle linee (fulmini) e il buffer scintille una sola volta al mount.
+  // Tutto il sistema particellare è imperativo: i Float32Array vengono mutati direttamente in useFrame.
+  const boltLines = useMemo(() => { // useMemo con deps=[]: equivalente a un costruttore — eseguito una sola volta al mount
     const lines: THREE.BufferGeometry[] = [];
     for (let i = 0; i < boltCount; i++) {
       const geo = new THREE.BufferGeometry();
@@ -45,10 +47,12 @@ export function ZeusAura({ playerId }: ZeusAuraProps) {
     return { positions: pos, directions: dir, lifetimes: life, speeds: speed };
   }, []);
 
-  useFrame((_, delta) => {
+  // useFrame: aggiorna scala, velocità fulmini e posizioni scintille ogni frame.
+  // Tutto avviene in modo imperativo: nessun useState/setState — evita re-render React ad ogni frame.
+  useFrame((_, delta) => { // delta: tempo in secondi dall'ultimo frame; usato per rendere il movimento frame-rate-independent
     if (!groupRef.current) return;
 
-    const player = useGameStore.getState().gameState?.players.find(p => p.id === playerId);
+    const player = useGameStore.getState().gameState?.players.find(p => p.id === playerId); // getState(): non crea abbonamento Zustand — sicuro da usare dentro useFrame
     if (!player || player.isDead) {
       groupRef.current.visible = false;
       return;
@@ -62,8 +66,8 @@ export function ZeusAura({ playerId }: ZeusAuraProps) {
     if (isDefending) targetScale = 0.85;
     else if (isMelee) targetScale = 1.6;
 
-    currentScale.current = THREE.MathUtils.lerp(currentScale.current, targetScale, 1 - Math.pow(0.001, delta));
-    groupRef.current.scale.setScalar(currentScale.current);
+    currentScale.current = THREE.MathUtils.lerp(currentScale.current, targetScale, 1 - Math.pow(0.001, delta)); // lerp su ref, non su state — zero re-render
+    groupRef.current.scale.setScalar(currentScale.current); // mutazione diretta dell'oggetto Three.js tramite ref
 
     const speedMult = isDefending ? 0.4 : isMelee ? 3.0 : 1.0;
     const jitterMult = isDefending ? 0.3 : isMelee ? 1.5 : 1.0;
@@ -79,6 +83,7 @@ export function ZeusAura({ playerId }: ZeusAuraProps) {
       const posAttr = sparksRef.current.geometry.getAttribute('position') as THREE.BufferAttribute;
       const { positions, directions, lifetimes, speeds } = sparkData;
 
+      // Loop imperativo: aggiorna ogni particella e scrive direttamente nel Float32Array del buffer GPU
       for (let i = 0; i < sparkCount; i++) {
         lifetimes[i] -= delta * 1.2 * speedMult;
         if (lifetimes[i] <= 0) respawnSpark(positions, directions, lifetimes, speeds, i);
@@ -95,7 +100,7 @@ export function ZeusAura({ playerId }: ZeusAuraProps) {
         posAttr.array[i * 3 + 1] = positions[i * 3 + 1];
         posAttr.array[i * 3 + 2] = positions[i * 3 + 2];
       }
-      posAttr.needsUpdate = true;
+      posAttr.needsUpdate = true; // segnala alla GPU che il buffer è cambiato e va ricaricato nel prossimo frame
     }
   });
 

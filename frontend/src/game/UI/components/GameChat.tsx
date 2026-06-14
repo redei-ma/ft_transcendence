@@ -34,7 +34,8 @@ export default function GameChat({ myUserId, isVisible }: GameChatProps) {
   const fadeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isActiveRef = useRef(false);
 
-  // Keep ref in sync for use in event listeners
+  // Ref sincronizzata con lo state per evitare stale closures negli event listener:
+  // i listener catturano la ref al mount, la ref contiene sempre il valore corrente.
   isActiveRef.current = isActive;
 
   const resetFadeTimer = useCallback(() => {

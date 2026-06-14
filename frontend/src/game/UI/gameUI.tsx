@@ -12,6 +12,8 @@ interface GameUIProps {
   gameOver: GameOverPayload | null;
 }
 
+// GameUI: overlay DOM sopra il Canvas — timer centrale, counter giocatori.
+// Legge gameState dallo store Zustand con selettori reattivi (nessun useFrame).
 export default function GameUI({
   character,
   isConnected,
@@ -19,7 +21,8 @@ export default function GameUI({
   maxPlayers,
   gameOver,
 }: GameUIProps) {
-  
+
+  // Selettori separati per evitare ri-render inutili: ogni stato ha il suo abbonamento Zustand
   const players = useGameStore((state) => state.gameState?.players) || [];
   const playersCount = players.length;
   const hasGameState = useGameStore((state) => state.gameState !== null);

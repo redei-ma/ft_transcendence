@@ -131,14 +131,18 @@ interface SkillHudProps {
   side?: 'left' | 'right';      // angolo dello schermo
 }
 
+// SkillHud è un overlay DOM puro — nessun Canvas, nessun useFrame.
+// Legge lo store Zustand tramite selettore reattivo: si ri-renderizza solo quando cambia gameState.players.
+// L'orologio cooldown è implementato con CSS conic-gradient, non con canvas o requestAnimationFrame.
 export default function SkillHud({ character, myUserId, myUsername, teamId, side = 'left' }: SkillHudProps) {
   const cfg = HUD[character];
-  const players = useGameStore((s) => s.gameState?.players) || [];
+  // Selettore reattivo: ri-renderizza quando cambia l'array players (HP, cooldown, kill, ecc.)
+  const players = useGameStore((s) => s.gameState?.players) || []; // useGameStore(selector): ri-renderizza l'intero componente ogni volta che players cambia — ~60fps durante la partita
   const me = teamId !== undefined
     ? players.find((p) => p.teamId === teamId)
     : players.find((p) => p.userName === myUsername || p.id === myUserId);
   const k = HUD_SCALE;
-  const [hovered, setHovered] = useState<string | null>(null);
+  const [hovered, setHovered] = useState<string | null>(null); // useState: tooltip hover — causa re-render per mostrare/nascondere il tooltip
 
   // ── DEBUG_COOLDOWN: timer locali per testare la lancetta senza partita ──
   const cdEnd = useRef<Record<string, number>>({});
@@ -161,16 +165,16 @@ export default function SkillHud({ character, myUserId, myUsername, teamId, side
 
   if (!cfg) return null;
 
-  // Cooldown reale: lo snapshot manda il tempo TRASCORSO dall'ultimo uso (sale da 0).
-  // ready quando trascorso >= totale; remaining = totale - trascorso.
+  // readCooldown: converte il campo elapsed dello snapshot (tempo trascorso dall'ultimo uso)
+  // nel remaining mostrato nell'HUD. Il totale viene dalla config locale CHARACTER_STATS.
   const readCooldown = (id: string) => {
     const total = STATS_MAP[character]?.[id as SkillId]?.cooldown ?? 1;
     if (DEBUG_COOLDOWN) {
       const rem = Math.max(0, ((cdEnd.current[id] || 0) - Date.now()) / 1000);
       return { remaining: rem, total: SIM_CD[id] || 5 };
     }
-    const elapsed = Number(me?.[CD_FIELD[id] as keyof PlayerSnapshot] ?? total); // default = pronto
-    return { remaining: Math.max(0, total - elapsed), total };
+    const elapsed = Number(me?.[CD_FIELD[id] as keyof PlayerSnapshot] ?? total); // lettura diretta dallo snapshot Zustand — nessun timer locale, nessun setInterval
+    return { remaining: Math.max(0, total - elapsed), total }; // remaining calcolato a ogni render (ogni volta che lo snapshot aggiorna players)
   };
 
   // HP / Kill / Death dallo snapshot live
@@ -253,6 +257,7 @@ export default function SkillHud({ character, myUserId, myUsername, teamId, side
               filter: onCd ? 'grayscale(0.6) brightness(0.7)' : 'none',
             }} />
 
+            {/* Orologio cooldown: CSS conic-gradient con angolo calcolato da remaining/total — zero JavaScript animato */}
             {onCd && (
               <div style={{
                 position: 'absolute', inset: 0,

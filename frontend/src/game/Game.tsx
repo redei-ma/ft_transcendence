@@ -37,6 +37,7 @@ interface GameProps {
   myUsername: string;
 }
 
+// Componente R3F (dentro Canvas): aggiorna lo zoom ortografico quando cambia la dimensione del viewport o della mappa
 function CameraController({ mapWidth, mapDepth }: { mapWidth: number; mapDepth: number }) {
   const { camera, size } = useThree();
 
@@ -55,8 +56,11 @@ function CameraController({ mapWidth, mapDepth }: { mapWidth: number; mapDepth: 
   return null;
 }
 
+// Piano invisibile dentro il Canvas: cattura i click del mouse per lo spell aim.
+// useFrame aggiorna ogni frame la posizione del giocatore nell'InputManager (necessario per il calcolo direzione spell)
 function AimPlane({ inputManagerRef, myUserId }: { inputManagerRef: React.RefObject<InputManager | null>; myUserId: string }) {
   useFrame(() => {
+    // Lettura diretta da getState(): nessun re-render React, solo aggiornamento imperativo
     const player = useGameStore.getState().gameState?.players.find(
       p => p.userName === myUserId || p.id === myUserId
     );
@@ -90,38 +94,44 @@ function AimPlane({ inputManagerRef, myUserId }: { inputManagerRef: React.RefObj
 }
 
 export default function Game({ selectedCharacter, selectedMode, p1Character, p2Character, onPlayAgain, onQuit, myUserId, myUsername }: GameProps) {
-  const inputManagerRef = useRef<InputManager | null>(null);
-  
+  const inputManagerRef = useRef<InputManager | null>(null); // useRef: mantiene l'istanza di InputManager senza triggerare re-render quando cambia
+
+  // Monta i listener socket e li collega allo store Zustand (una sola volta)
   useGameSocket();
 
-  const isConnected = useGameStore((state) => state.isConnected);
+  // Subscriptions Zustand: ogni selector produce un re-render solo quando il proprio valore cambia
+  const isConnected = useGameStore((state) => state.isConnected); // selettore: si abbona solo a isConnected, non all'intero store
   const world = useGameStore((state) => state.world);
   const gameOver = useGameStore((state) => state.gameOver);
   const resetGame = useGameStore((state) => state.resetGame);
 
-  const playerIdsStr = useGameStore((state) => state.gameState?.players.map(p => p.id).join(',') || '');
+  // Pattern di ottimizzazione: serializza gli ID in stringa per evitare re-render ad ogni snapshot.
+  // Il Canvas ricrea un PlayerEntity/BulletEntity solo se la lista di ID cambia, non ad ogni aggiornamento posizione.
+  const playerIdsStr = useGameStore((state) => state.gameState?.players.map(p => p.id).join(',') || ''); // stringa "id1,id2": confronto ===, stabile se i giocatori non cambiano
   const bulletIdsStr = useGameStore((state) => state.gameState?.bullets.map(b => b.id).join(',') || '');
 
-  const playerIds = useMemo(() => playerIdsStr ? playerIdsStr.split(',') : [], [playerIdsStr]);
+  const playerIds = useMemo(() => playerIdsStr ? playerIdsStr.split(',') : [], [playerIdsStr]); // useMemo: ricalcola l'array solo se la stringa di ID cambia
   const bulletIds = useMemo(() => bulletIdsStr ? bulletIdsStr.split(',') : [], [bulletIdsStr]);
 
-  const [showLeaveDialog, setShowLeaveDialog] = useState(false);
-  const [eloPreview, setEloPreview] = useState<EloPreview | null>(null);
+  const [showLeaveDialog, setShowLeaveDialog] = useState(false); // useState: aggiorna l'UI (dialog) — deve causare re-render
+  const [eloPreview, setEloPreview] = useState<EloPreview | null>(null); // useState: dato UI fetchato una sola volta, deve causare re-render quando arriva
   const isLocal = selectedMode === MatchMode.LOCAL || selectedMode === MatchMode.AI;
   const isRanked = selectedMode === MatchMode.RANKED || selectedMode === MatchMode.UNRANKED;
   const doubleHUD = selectedMode === MatchMode.LOCAL;
   
+  // Guard fullscreen: attiva durante la partita, chiama handleQuitInternal se il giocatore esce senza rientrare entro graceMs
   const { isFullscreen, enter, kickAt } = useFullscreenGuard(
     !gameOver,
     () => handleQuitInternal(false),
   );
 
+  // Recupera l'anteprima ELO una sola volta: si sottoscrive allo store finché non identifica l'avversario
   useEffect(() => {
     if (!isRanked) return;
     const myDbId = parseInt(myUserId, 10);
     let fetched = false;
 
-    const unsubscribe = useGameStore.subscribe((state) => {
+    const unsubscribe = useGameStore.subscribe((state) => { // .subscribe: ascolta ogni cambio di state senza causare re-render React; alternativa imperativa ai selettori
       if (fetched || !state.gameState) return;
       const players = state.gameState.players;
       if (players.length < 2) return;
@@ -162,8 +172,8 @@ export default function Game({ selectedCharacter, selectedMode, p1Character, p2C
     onQuit(isGameOver);
   };
 
-  const handleQuitRef = useRef(handleQuitInternal);
-  handleQuitRef.current = handleQuitInternal;
+  const handleQuitRef = useRef(handleQuitInternal); // useRef come "ref stabile": il listener beforeunload cattura la ref, non la funzione — così legge sempre la versione aggiornata
+  handleQuitRef.current = handleQuitInternal; // aggiornato ogni render senza mai ri-creare il listener
 
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
@@ -206,6 +216,9 @@ export default function Game({ selectedCharacter, selectedMode, p1Character, p2C
     );
   }
 
+  // Pattern HUD: il div radice è position:fixed e contiene sia il Canvas 3D sia gli overlay DOM.
+  // Il Canvas R3F gestisce rendering e animazioni 3D; GameUI, SkillHud, EloWidget, GameChat
+  // sono elementi HTML assoluti sovrapposti al Canvas via CSS z-index — due layer distinti.
   return (
     <div style={{
       position: 'fixed', inset: 0,
@@ -215,6 +228,7 @@ export default function Game({ selectedCharacter, selectedMode, p1Character, p2C
       backgroundSize: 'cover', backgroundPosition: 'center',
       backgroundRepeat: 'no-repeat', overflow: 'hidden',
     }}>
+      {/* Layer 1: Canvas WebGL (Three.js/R3F) — mondo 3D, player, bullet, aure */}
       <Canvas
         orthographic
         camera={{
@@ -331,6 +345,7 @@ export default function Game({ selectedCharacter, selectedMode, p1Character, p2C
         </div>
       )}
 
+      {/* Layer 2: overlay DOM — timer, chat, HUD, ELO widget, posizionati in assoluto sopra il Canvas */}
       {!gameOver && (
         <GameUI
           character={selectedCharacter}

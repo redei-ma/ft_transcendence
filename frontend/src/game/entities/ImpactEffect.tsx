@@ -28,12 +28,14 @@ function createImpactBolt(segments: number, color: THREE.Color): THREE.Line {
   );
 }
 
+// Effetto esplosione one-shot: vive per DURATION secondi poi si auto-smonta via useState.
+// useState(expired) è l'unico caso in cui si usa setState dentro useFrame — serve per triggerare l'unmount React al termine.
 export function ImpactEffect({ snapshot }: ImpactEffectProps) {
   const groupRef = useRef<THREE.Group>(null);
   const particlesRef = useRef<THREE.Points>(null);
   const flashRef = useRef<THREE.Mesh>(null);
-  const [expired, setExpired] = useState(false);
-  const age = useRef(0);
+  const [expired, setExpired] = useState(false); // useState: usato eccezionalmente dentro useFrame — l'unico modo per dire a React di smontare il componente
+  const age = useRef(0); // useRef: accumulatore temporale — aggiornato in useFrame senza causare re-render
 
   const isZeus = snapshot.characterName === CharacterName.ZEUS;
 
@@ -45,6 +47,7 @@ export function ImpactEffect({ snapshot }: ImpactEffectProps) {
     ? new THREE.Color(0, 8, 20)
     : new THREE.Color(15, 5, 0);
 
+  // useMemo: alloca velocità iniziali randomiche una sola volta; le posizioni vengono integrate in useFrame.
   const particleData = useMemo(() => {
     const pos = new Float32Array(PARTICLE_COUNT * 3);
     const vel = new Float32Array(PARTICLE_COUNT * 3);
@@ -72,13 +75,14 @@ export function ImpactEffect({ snapshot }: ImpactEffectProps) {
     return objs;
   }, [isZeus]);
 
+  // useFrame: integra particelle e scala il flash per DURATION secondi, poi setExpired(true) → unmount React.
   useFrame((_, delta) => {
-    if (expired) return;
+    if (expired) return; // se già scaduto, il componente è in attesa di unmount — non eseguire nulla
     const dt = Math.min(delta, 0.05);
-    age.current += dt;
+    age.current += dt; // ref: nessun re-render
 
     if (age.current >= DURATION) {
-      setExpired(true);
+      setExpired(true); // setState dentro useFrame: React accoda il re-render → componente ritorna null → smontato
       return;
     }
 

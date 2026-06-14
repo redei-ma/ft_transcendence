@@ -17,14 +17,14 @@ export function useFullscreenGuard(
   graceMs = 15000
 ) {
   const [isFullscreen, setIsFullscreen] = useState(
-    () => document.fullscreenElement !== null
+    () => document.fullscreenElement !== null // lazy initializer useState: eseguito una sola volta al mount — legge lo stato reale del DOM
   );
-  const [kickAt, setKickAt] = useState<number | null>(null);
-  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const onViolationRef = useRef(onViolation);
-  onViolationRef.current = onViolation;
+  const [kickAt, setKickAt] = useState<number | null>(null); // useState: epoch ms del kick futuro — causa re-render per aggiornare il countdown nella FullscreenGate
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null); // useRef: handle del timeout — clearTimeout non deve causare re-render
+  const onViolationRef = useRef(onViolation); // useRef come "latest ref": cattura sempre la versione aggiornata della callback senza ri-registrare il listener
+  onViolationRef.current = onViolation; // aggiornato a ogni render — il setTimeout leggerà sempre la callback corrente
 
-  const enter = useCallback(() => {
+  const enter = useCallback(() => { // useCallback con deps=[]: funzione stabile — il bottone "Entra" non causa re-render inutili dei figli
     if (document.fullscreenElement) {   // già a schermo intero → sincronizza e basta
       setIsFullscreen(true);
       return;
@@ -34,18 +34,18 @@ export function useFullscreenGuard(
       .catch((e) => logger.warn('FullscreenGuard', 'Fullscreen negato dal browser', e));
   }, []);
 
-  useEffect(() => {
+  useEffect(() => { // deps=[active, graceMs]: si ri-registra solo se cambiano le condizioni della guard
     const clear = () => {
       if (timer.current) { clearTimeout(timer.current); timer.current = null; }
       setKickAt(null);
     };
 
     const arm = () => {
-      timer.current = setTimeout(() => {
+      timer.current = setTimeout(() => { // setTimeout: fuori da React — al termine chiama onViolationRef.current() (sempre aggiornato)
         setKickAt(null);
         onViolationRef.current();
       }, graceMs);
-      setKickAt(Date.now() + graceMs);
+      setKickAt(Date.now() + graceMs); // setState: causa re-render di FullscreenGate per mostrare il countdown
     };
 
     const onChange = () => {

@@ -13,6 +13,8 @@ interface BulletEntityProps {
 const BULLET_RADIUS = 1.0;
 
 // --- Fire shader ---
+// Stesso approccio di AdeAura: Simplex Noise in vertex shader per displacement sferico.
+// uDeform è basso (0.15) per mantenere la forma sferica del proiettile.
 
 const bulletFireVertex = `
   uniform float uTime;
@@ -122,6 +124,8 @@ function createLinePrimitive(geo: THREE.BufferGeometry, color: THREE.Color, opac
 
 // --- Entry ---
 
+// Selettore reattivo: ri-renderizza il componente quando cambia lo snapshot del bullet (posizione, hit).
+// Quando il bullet colpisce (hit !== NONE), sostituisce il proiettile con ImpactEffect (esplosione).
 export function BulletEntity({ bulletId }: BulletEntityProps) {
   const snapshot = useGameStore((state) => state.gameState?.bullets.find(b => b.id === bulletId));
 
@@ -152,6 +156,7 @@ function ZeusBullet({ bulletId, initialSnapshot }: { bulletId: string, initialSn
   const trailBoltCount = 4;
   const trailSegments = 5;
 
+  // useMemo: crea le geometrie Line (fulmini orbitali) e Trail una sola volta — i buffer vengono mutati in useFrame.
   const boltObjects = useMemo(() => {
     const objs: THREE.Line[] = [];
     for (let i = 0; i < boltCount; i++) {
@@ -176,9 +181,11 @@ function ZeusBullet({ bulletId, initialSnapshot }: { bulletId: string, initialSn
     return objs;
   }, []);
 
+  // useFrame: lerp frame-rate-independent sulla posizione del bullet, poi rigenera bolt e trail imperativamente.
+  // I bolt vengono rigenerati ogni 25ms (~40fps) scrivendo direttamente nei posAttr.array[] delle Line.
   useFrame((_, delta) => {
     if (!groupRef.current) return;
-    
+
     const currentGameState = useGameStore.getState().gameState;
     const currentBullet = currentGameState?.bullets.find(b => b.id === bulletId);
     if (!currentBullet) return;
@@ -277,12 +284,12 @@ const TRAIL_COUNT = 50;
 
 function AdeBullet({ bulletId, initialSnapshot }: { bulletId: string, initialSnapshot: BulletSnapshot }) {
   const groupRef = useRef<THREE.Group>(null);
-  const fireMatRef = useRef<THREE.ShaderMaterial>(null);
-  const time = useRef(0);
-  const spawnTimer = useRef(0);
-  const nextIdx = useRef(0);
+  const fireMatRef = useRef<THREE.ShaderMaterial>(null); // useRef su ShaderMaterial: aggiornamento uniform diretto senza ri-creare il materiale
+  const time = useRef(0);            // useRef: timer cumulativo per uTime — aggiornato ogni frame
+  const spawnTimer = useRef(0);      // useRef: accumulatore per il rate di spawn particelle scia
+  const nextIdx = useRef(0);         // useRef: indice ring buffer scia — si avvolge su TRAIL_COUNT
   const historyLen = 20;
-  const posHistory = useRef<THREE.Vector3[]>([]);
+  const posHistory = useRef<THREE.Vector3[]>([]); // useRef: array di posizioni passate del bullet — base per lo spawn della scia
 
   const fireUniforms = useMemo(() => ({
     uTime: { value: 0 },
@@ -290,7 +297,8 @@ function AdeBullet({ bulletId, initialSnapshot }: { bulletId: string, initialSna
     uDeform: { value: 0.15 },
   }), []);
 
-  // Sistema scia completamente imperativo
+  // Sistema scia completamente imperativo: Float32Array pre-allocato, nessun useState.
+  // Le particelle vengono spawnate in posizioni passate del bullet (posHistory) per creare la scia visiva.
   const trailSystem = useMemo(() => {
     const pos = new Float32Array(TRAIL_COUNT * 3);
     const vel = new Float32Array(TRAIL_COUNT * 3);
@@ -332,6 +340,8 @@ function AdeBullet({ bulletId, initialSnapshot }: { bulletId: string, initialSna
     };
   }, [trailSystem]);
 
+  // useFrame: lerp posizione, aggiorna uniform uTime del fire shader, accoda posizione in posHistory.
+  // posHistory (ring buffer di Vector3) serve per spawnare le particelle della scia su posizioni passate del proiettile.
   useFrame((_, delta) => {
     if (!groupRef.current) return;
 

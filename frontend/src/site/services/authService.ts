@@ -30,6 +30,9 @@ export function toErrorString(val: unknown): string {
   return String(val);
 }
 
+// fetchWithAuthRetry: wrapper che gestisce il refresh automatico del token.
+// Su 401, tenta refreshToken() una sola volta e reinvia la richiesta; su 429 lancia RateLimitError.
+// Tutte le fetch usano credentials:'include' (cookie httpOnly) e no-store per sicurezza multi-utente.
 export async function fetchWithAuthRetry(
   url: string,
   options: RequestInit = {},

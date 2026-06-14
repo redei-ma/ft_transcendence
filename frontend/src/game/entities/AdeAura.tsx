@@ -18,6 +18,9 @@ const EMBER_COUNT_IDLE = 60;
 const EMBER_COUNT_ATTACK = 120;
 const EMBER_COUNT_MAX = 120;
 
+// Vertex shader GLSL: applica Simplex Noise 3D (snoise) alla superficie della sfera per simulare le fiamme.
+// uTime muove il noise verso l'alto ogni frame; uDeform controlla l'intensità del displacement.
+// uRotation introduce un "lag" visivo: la sfera deformata ruota in ritardo rispetto al gruppo padre.
 const fireVertexShader = `
   uniform float uTime;
   uniform float uDeform;
@@ -87,6 +90,8 @@ const fireVertexShader = `
   }
 `;
 
+// Fragment shader: mappa il valore di noise interpolato su una palette di colori fuoco (rosso scuro → bianco caldo).
+// uHeatBias sposta la soglia del calore verso il rosso (difesa) o il bianco (attacco).
 const fireFragmentShader = `
   uniform float uTime;
   uniform float uIntensity;
@@ -114,14 +119,16 @@ const fireFragmentShader = `
 
 export function AdeAura({ playerId }: AdeAuraProps) {
   const groupRef = useRef<THREE.Group>(null);
-  const innerFireRef = useRef<THREE.ShaderMaterial>(null);
+  const innerFireRef = useRef<THREE.ShaderMaterial>(null); // useRef su ShaderMaterial: permette di aggiornare gli uniform direttamente in useFrame senza ri-creare il materiale
   const outerFireRef = useRef<THREE.ShaderMaterial>(null);
-  const currentScale = useRef(1.0);
-  const rotation = useRef(0);
-  const time = useRef(0);
-  const activeEmbers = useRef(EMBER_COUNT_IDLE);
+  const currentScale = useRef(1.0); // useRef: valore interpolato — non deve mai causare re-render React
+  const rotation = useRef(0);       // useRef: accumulatore angolare — aggiornato ogni frame, mai mostrato in JSX
+  const time = useRef(0);           // useRef: timer cumulativo — passato come uniform uTime al GLSL
+  const activeEmbers = useRef(EMBER_COUNT_IDLE); // useRef: contatore interpolato — aggiornato in useFrame, non in stato React
 
-  const embersSystem = useMemo(() => {
+  // useMemo: alloca buffers Float32Array e la Points geometry una sola volta al mount.
+  // Il sistema braci è completamente imperativo: nessun useState, tutti gli aggiornamenti avvengono in useFrame.
+  const embersSystem = useMemo(() => { // useMemo: alloca oggetti Three.js pesanti una sola volta — ri-crearli ad ogni render causerebbe memory leak GPU
     const positions = new Float32Array(EMBER_COUNT_MAX * 3);
     const velocities = new Float32Array(EMBER_COUNT_MAX * 3);
     const lifetimes = new Float32Array(EMBER_COUNT_MAX);
@@ -151,7 +158,9 @@ export function AdeAura({ playerId }: AdeAuraProps) {
     };
   }, [embersSystem]);
 
-  const innerUniforms = useMemo(() => ({
+  // useMemo: gli oggetti uniform vengono creati una sola volta e mutati imperativam. in useFrame tramite .value.
+  // React non deve mai ri-creare questi oggetti; farlo invaliderebbe il link GPU del materiale.
+  const innerUniforms = useMemo(() => ({ // useMemo con deps=[]: oggetti stabili — aggiornati mutando .value, mai ricreati
     uTime: { value: 0 }, uIntensity: { value: 2.0 }, uDeform: { value: 0.3 },
     uOpacity: { value: 0.35 }, uRotation: { value: 0 }, uHeatBias: { value: 0.05 },
   }), []);
@@ -161,6 +170,9 @@ export function AdeAura({ playerId }: AdeAuraProps) {
     uOpacity: { value: 0.15 }, uRotation: { value: 0 }, uHeatBias: { value: 0.05 },
   }), []);
 
+  // useFrame: aggiorna ogni frame scala, rotazione e uniform degli shader direttamente sulle ref.
+  // getState() legge lo snapshot Zustand senza triggerare re-render React.
+  // Le braci vengono aggiornate con un loop imperativo che muta posAttr.array[] e segna needsUpdate=true.
   useFrame((_, delta) => {
     if (!groupRef.current) return;
 
@@ -197,7 +209,7 @@ export function AdeAura({ playerId }: AdeAuraProps) {
     const heatBias = isDefending ? -0.02 : isMelee ? 0.1 : 0.05;
 
     if (innerFireRef.current) {
-      innerFireRef.current.uniforms.uTime.value = time.current * timeSpeed;
+      innerFireRef.current.uniforms.uTime.value = time.current * timeSpeed; // mutazione diretta dell'uniform: Three.js la carica alla GPU nel prossimo drawcall
       innerFireRef.current.uniforms.uDeform.value = innerDeform;
       innerFireRef.current.uniforms.uIntensity.value = innerIntensity;
       innerFireRef.current.uniforms.uRotation.value = rotation.current;
