@@ -3,8 +3,13 @@ import { matchmakingSocket } from '../services/matchmakingSocket';
 import { CharacterName, MatchMode, MatchType, GameEvents } from '@transcendence/types';
 import { theme } from '../configs/theme';
 import { logger } from '../configs/logger';
-import zeusImg from '../assets/images/ZeusSelection.png';
-import adeImg from '../assets/images/AdeSelection.png'; // Cambia in .png se necessario
+
+// Bottoni centrali
+import zeusBtn from '../assets/images/ZeusButton.png';
+import adeBtn from '../assets/images/AdeButton.png';
+// Sfondi
+import zeusBg from '../assets/images/ZeusSelection.png';
+import adeBg from '../assets/images/AdeSelection.png';
 
 import { useFullscreenGuard } from '../hooks/useFullscreenGuard';
 import { FullscreenGate } from '../site/components/FullscreenGate';
@@ -20,10 +25,29 @@ interface CharacterSelectSceneProps {
 }
 
 const CHARACTERS: Character[] = [CharacterName.ZEUS, CharacterName.ADE];
-const CHARACTER_IMAGES: Record<Character, string> = {
-  [CharacterName.ZEUS]: zeusImg,
-  [CharacterName.ADE]: adeImg,
+
+// Bottoni centrali
+const CHARACTER_BUTTONS: Record<Character, string> = {
+  [CharacterName.ZEUS]: zeusBtn,
+  [CharacterName.ADE]: adeBtn,
 };
+
+// Sfondi
+const CHARACTER_BACKGROUNDS: Record<Character, string> = {
+  [CharacterName.ZEUS]: zeusBg,
+  [CharacterName.ADE]: adeBg,
+};
+
+// Split mode: spazio libero al centro e card laterali.
+const CENTER_GAP = '150px';
+const CARD_HEIGHT = '75%';
+const CARD_TOP = `calc((100% - ${CARD_HEIGHT}) / 2)`;
+
+// Single mode: una sola card centrata (più bassa per fare spazio ai bottoni sotto).
+const SINGLE_CARD_HEIGHT = '64%';
+const SINGLE_CARD_WIDTH = 'clamp(320px, 38vw, 520px)';
+const SINGLE_CARD_TOP = `calc((100% - ${SINGLE_CARD_HEIGHT}) / 2)`;
+const SINGLE_CARD_BOTTOM = `calc((100% + ${SINGLE_CARD_HEIGHT}) / 2)`;
 
 const P1_COLOR = theme.colors.zeus;
 const P1_GLOW = theme.colors.zeusGlow;
@@ -182,33 +206,72 @@ export default function CharacterSelectScene({
       <div style={{ position: 'absolute', inset: 0, display: 'flex', zIndex: 0 }}>
         {isSplitScreen ? (
           <>
-            {/* Sfondo Metà Sinistra (P1) */}
+            {/* Card P1 — riempie quasi la metà sinistra, spinta verso l'esterno */}
             <div style={{
               flex: 1,
-              backgroundImage: `url(${CHARACTER_IMAGES[activeP1]})`,
-              backgroundSize: 'cover',
-              backgroundPosition: 'center',
-              transition: 'background-image 0.4s ease-in-out',
-              borderRight: `2px solid ${theme.colors.borderHover}`
-            }} />
-            {/* Sfondo Metà Destra (P2) */}
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'flex-start',
+              paddingLeft: '32px',
+              paddingRight: CENTER_GAP, // lascia spazio libero al centro
+              boxSizing: 'border-box',
+            }}>
+              <div style={{
+                width: '100%',
+                height: CARD_HEIGHT,
+                backgroundImage: `url(${CHARACTER_BACKGROUNDS[activeP1]})`,
+                backgroundSize: 'cover',
+                backgroundPosition: 'center',
+                borderRadius: '12px',
+                border: `2px solid ${theme.colors.goldSubtle}`,
+                boxShadow: `0 0 50px ${P1_GLOW}, inset 0 0 80px rgba(0,0,0,0.5)`,
+                transition: 'background-image 0.4s ease-in-out',
+              }} />
+            </div>
+
+            {/* Card P2 — riempie quasi la metà destra, spinta verso l'esterno */}
             <div style={{
               flex: 1,
-              backgroundImage: `url(${CHARACTER_IMAGES[activeP2]})`,
-              backgroundSize: 'cover',
-              backgroundPosition: 'center',
-              transition: 'background-image 0.4s ease-in-out',
-            }} />
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'flex-end',
+              paddingRight: '32px',
+              paddingLeft: CENTER_GAP,
+              boxSizing: 'border-box',
+            }}>
+              <div style={{
+                width: '100%',
+                height: CARD_HEIGHT,
+                backgroundImage: `url(${CHARACTER_BACKGROUNDS[activeP2]})`,
+                backgroundSize: 'cover',
+                backgroundPosition: 'center',
+                borderRadius: '12px',
+                border: `2px solid ${theme.colors.goldSubtle}`,
+                boxShadow: `0 0 50px ${P2_GLOW}, inset 0 0 80px rgba(0,0,0,0.5)`,
+                transition: 'background-image 0.4s ease-in-out',
+              }} />
+            </div>
           </>
         ) : (
-          /* Sfondo Intero (Single Player) */
+          /* Single Player — una sola card centrata */
           <div style={{
             flex: 1,
-            backgroundImage: `url(${CHARACTER_IMAGES[activeP1]})`,
-            backgroundSize: 'cover',
-            backgroundPosition: 'center top',
-            transition: 'background-image 0.4s ease-in-out',
-          }} />
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}>
+            <div style={{
+              width: SINGLE_CARD_WIDTH,
+              height: SINGLE_CARD_HEIGHT,
+              backgroundImage: `url(${CHARACTER_BACKGROUNDS[activeP1]})`,
+              backgroundSize: 'cover',
+              backgroundPosition: 'center',
+              borderRadius: '12px',
+              border: `2px solid ${theme.colors.goldSubtle}`,
+              boxShadow: `0 0 50px ${theme.colors.goldGlow}, inset 0 0 80px rgba(0,0,0,0.5)`,
+              transition: 'background-image 0.4s ease-in-out',
+            }} />
+          </div>
         )}
       </div>
 
@@ -216,7 +279,7 @@ export default function CharacterSelectScene({
       <div style={{
         position: 'absolute',
         inset: 0,
-        backgroundColor: 'rgba(5, 10, 20, 0.75)', // Modifica l'opacità per vedere più o meno lo sfondo
+        backgroundColor: 'rgba(5, 10, 20, 0)', // Modifica l'opacità per vedere più o meno lo sfondo
         zIndex: 1,
         pointerEvents: 'none'
       }} />
@@ -286,72 +349,46 @@ export default function CharacterSelectScene({
               W, S + SPACE
             </p>
 
+            {/* Spacer (il personaggio è mostrato dalla card sfondo) */}
+            <div style={{ flex: 1 }} />
+
+            {/* Nome P1 — appena sopra la card, a destra (verso il centro) */}
             <div style={{
-              flex: 1,
+              position: 'absolute',
+              top: CARD_TOP,
+              right: '24px',
               display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              width: '100%',
-              position: 'relative',
+              flexDirection: 'column',
+              alignItems: 'flex-end',
+              zIndex: 3,
+              transform: `translateY(calc(-100% - 8px)) scale(${p1Confirmed ? 1.05 : 1})`,
+              transformOrigin: 'bottom right',
+              transition: 'all 0.3s ease',
             }}>
-              <div style={{
-                position: 'absolute',
-                width: '200px',
-                height: '200px',
-                borderRadius: '50%',
-                background: `radial-gradient(circle, ${P1_GLOW} 0%, transparent 70%)`,
-                transition: 'all 0.5s ease',
-              }} />
-              <div style={{
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                zIndex: 2,
-                transform: p1Confirmed ? 'scale(1.05)' : 'scale(1)',
+              <span style={{
+                fontFamily: theme.fonts.heading,
+                fontSize: 'clamp(22px, 2.6vw, 34px)',
+                fontWeight: 700,
+                color: theme.colors.gold,
+                textShadow: `0 0 20px ${theme.colors.goldGlow}`,
+                textTransform: 'uppercase',
+                letterSpacing: '4px',
                 transition: 'all 0.3s ease',
               }}>
-                <span style={{
-                  fontFamily: theme.fonts.heading,
-                  fontSize: 'clamp(36px, 5vw, 56px)',
-                  fontWeight: 700,
-                  color: theme.colors.gold,
-                  textShadow: `0 0 30px ${theme.colors.goldGlow}`,
-                  textTransform: 'uppercase',
-                  letterSpacing: '6px',
-                  transition: 'all 0.3s ease',
-                }}>
-                  {activeP1}
-                </span>
+                {activeP1}
+              </span>
+              {p1Confirmed && (
                 <div style={{
-                  marginTop: '20px',
-                  width: '120px',
-                  height: '160px',
-                  border: `1px dashed ${theme.colors.goldSubtle}`,
-                  borderRadius: '4px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: theme.colors.textPrimary,
-                  fontFamily: theme.fonts.mono,
-                  fontSize: '10px',
-                  backgroundColor: 'rgba(0,0,0,0.4)', // Sfondo semi-scuro per il box modello
-                  backdropFilter: 'blur(2px)'
+                  marginTop: '8px',
+                  fontFamily: theme.fonts.heading,
+                  fontSize: '11px',
+                  color: theme.colors.gold,
+                  letterSpacing: '4px',
+                  animation: 'fadeIn 0.3s ease-out',
                 }}>
-                  3D MODEL
+                  READY
                 </div>
-                {p1Confirmed && (
-                  <div style={{
-                    marginTop: '16px',
-                    fontFamily: theme.fonts.heading,
-                    fontSize: '12px',
-                    color: theme.colors.gold,
-                    letterSpacing: '4px',
-                    animation: 'fadeIn 0.3s ease-out',
-                  }}>
-                    READY
-                  </div>
-                )}
-              </div>
+              )}
             </div>
           </div>
 
@@ -380,7 +417,7 @@ export default function CharacterSelectScene({
                   }}
                 >
                   <img
-                    src={CHARACTER_IMAGES[char]}
+                    src={CHARACTER_BUTTONS[char]}
                     alt={char}
                     style={{
                       width: '120px',
@@ -448,195 +485,159 @@ export default function CharacterSelectScene({
               {p2Selectable ? '↑, ↓ + ENTER' : 'AUTO'}
             </p>
 
+            {/* Spacer (il personaggio è mostrato dalla card sfondo) */}
+            <div style={{ flex: 1 }} />
+
+            {/* Nome P2 — appena sopra la card, a sinistra (verso il centro) */}
             <div style={{
-              flex: 1,
+              position: 'absolute',
+              top: CARD_TOP,
+              left: '24px',
               display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              width: '100%',
-              position: 'relative',
+              flexDirection: 'column',
+              alignItems: 'flex-start',
+              zIndex: 3,
+              transform: `translateY(calc(-100% - 8px)) scale(${p2Confirmed ? 1.05 : 1})`,
+              transformOrigin: 'bottom left',
+              transition: 'all 0.3s ease',
             }}>
-              <div style={{
-                position: 'absolute',
-                width: '200px',
-                height: '200px',
-                borderRadius: '50%',
-                background: `radial-gradient(circle, ${P2_GLOW} 0%, transparent 70%)`,
-                transition: 'all 0.5s ease',
-              }} />
-              <div style={{
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                zIndex: 2,
-                transform: p2Confirmed ? 'scale(1.05)' : 'scale(1)',
+              <span style={{
+                fontFamily: theme.fonts.heading,
+                fontSize: 'clamp(22px, 2.6vw, 34px)',
+                fontWeight: 700,
+                color: theme.colors.gold,
+                textShadow: `0 0 20px ${theme.colors.goldGlow}`,
+                textTransform: 'uppercase',
+                letterSpacing: '4px',
                 transition: 'all 0.3s ease',
               }}>
-                <span style={{
-                  fontFamily: theme.fonts.heading,
-                  fontSize: 'clamp(36px, 5vw, 56px)',
-                  fontWeight: 700,
-                  color: theme.colors.gold,
-                  textShadow: `0 0 30px ${theme.colors.goldGlow}`,
-                  textTransform: 'uppercase',
-                  letterSpacing: '6px',
-                  transition: 'all 0.3s ease',
-                }}>
-                  {activeP2}
-                </span>
+                {activeP2}
+              </span>
+              {p2Confirmed && (
                 <div style={{
-                  marginTop: '20px',
-                  width: '120px',
-                  height: '160px',
-                  border: `1px dashed ${theme.colors.goldSubtle}`,
-                  borderRadius: '4px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: theme.colors.textPrimary,
-                  fontFamily: theme.fonts.mono,
-                  fontSize: '10px',
-                  backgroundColor: 'rgba(0,0,0,0.4)',
-                  backdropFilter: 'blur(2px)'
+                  marginTop: '8px',
+                  fontFamily: theme.fonts.heading,
+                  fontSize: '11px',
+                  color: theme.colors.gold,
+                  letterSpacing: '4px',
+                  animation: 'fadeIn 0.3s ease-out',
                 }}>
-                  3D MODEL
+                  READY
                 </div>
-                {p2Confirmed && (
-                  <div style={{
-                    marginTop: '16px',
-                    fontFamily: theme.fonts.heading,
-                    fontSize: '12px',
-                    color: theme.colors.gold,
-                    letterSpacing: '4px',
-                    animation: 'fadeIn 0.3s ease-out',
-                  }}>
-                    READY
-                  </div>
-                )}
-              </div>
+              )}
             </div>
           </div>
         </>
       ) : (
-        /* SINGLE SELECT */
+        /* SINGLE SELECT — una sola card centrata, logica come la doppia */
         <div style={{
           flex: 1,
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          padding: '40px',
+          width: '100%',
+          position: 'relative',
           zIndex: 2,
         }}>
-          <span style={{
-            fontFamily: theme.fonts.heading,
-            fontSize: '16px', // Leggermente più grande per visibilità
-            fontWeight: 700,
-            color: theme.colors.goldBright,
-            textTransform: 'uppercase',
-            letterSpacing: '8px',
-            transition: 'all 0.3s ease',
-            textShadow: `0 0 20px ${theme.colors.goldGlow}`
-          }}>
-            {activeP1}
-          </span>
-
+          {/* Nome — appena sopra la card (centrato) */}
           <div style={{
-            marginTop: '16px',
-            width: '180px',
-            height: '260px',
-            border: `1px dashed ${theme.colors.goldSubtle}`,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            color: theme.colors.textPrimary,
-            fontFamily: theme.fonts.mono,
-            fontSize: '10px',
-            position: 'relative',
-            backgroundColor: 'rgba(0,0,0,0.4)',
-            backdropFilter: 'blur(4px)',
-            borderRadius: '8px',
+            position: 'absolute',
+            top: SINGLE_CARD_TOP,
+            left: '50%',
+            transform: 'translate(-50%, calc(-100% - 12px))',
+            textAlign: 'center',
+            zIndex: 3,
           }}>
-            3D MODEL
-            <div style={{
-              position: 'absolute',
-              width: '280px',
-              height: '280px',
-              borderRadius: '50%',
-              background: `radial-gradient(circle, ${theme.colors.goldGlow} 0%, transparent 70%)`,
-              pointerEvents: 'none',
-            }} />
-          </div>
-
-          {p1Confirmed && (
-            <div style={{
-              marginTop: '16px',
+            <span style={{
               fontFamily: theme.fonts.heading,
-              fontSize: '14px',
-              color: theme.colors.gold,
+              fontSize: 'clamp(24px, 3vw, 40px)',
+              fontWeight: 700,
+              color: theme.colors.goldBright,
+              textShadow: `0 0 20px ${theme.colors.goldGlow}`,
+              textTransform: 'uppercase',
               letterSpacing: '6px',
-              animation: 'fadeIn 0.3s ease-out',
+              transition: 'all 0.3s ease',
             }}>
-              READY
-            </div>
-          )}
-
-          <div style={{
-            display: 'flex',
-            gap: '24px',
-            marginTop: '32px',
-          }}>
-            {CHARACTERS.map((char, index) => {
-              const isSelected = p1Index === index;
-              const isHov = p1Hover === index;
-              const active = isSelected || isHov;
-
-              return (
-                <div
-                  key={char}
-                  onClick={() => { if (!p1Confirmed) setP1Index(index); }}
-                  onMouseEnter={() => { if (!p1Confirmed) setP1Hover(index); }}
-                  onMouseLeave={() => { if (!p1Confirmed) setP1Hover(null); }}
-                  onDoubleClick={() => { if (!p1Confirmed) { setP1Index(index); setP1Confirmed(true); } }}
-                  style={{
-                    cursor: p1Confirmed ? 'default' : 'pointer',
-                    opacity: p1Confirmed && !isSelected ? 0.25 : 1,
-                    transition: 'all 0.3s ease',
-                  }}
-                >
-                  <img
-                    src={CHARACTER_IMAGES[char]}
-                    alt={char}
-                    style={{
-                      width: '140px', // Leggermente più larghi in single player
-                      height: '69px',
-                      objectFit: 'cover',
-                      borderRadius: '4px',
-                      transition: 'all 0.3s ease',
-                      opacity: active ? 1 : 0.5,
-                      filter: active ? 'none' : 'grayscale(0.8)',
-                      border: `1px solid ${active ? theme.colors.gold : theme.colors.goldSubtle}`,
-                      boxShadow: active ? `0 0 20px ${theme.colors.goldGlow}` : 'none',
-                      transform: active ? 'scale(1.05)' : 'scale(1)'
-                    }}
-                  />
-                </div>
-              );
-            })}
+              {activeP1}
+            </span>
           </div>
 
-          <p style={{
-            marginTop: '24px',
-            fontFamily: theme.fonts.mono,
-            fontSize: '11px',
-            color: theme.colors.textPrimary,
-            letterSpacing: '2px',
-            backgroundColor: 'rgba(0,0,0,0.6)',
-            padding: '8px 16px',
-            borderRadius: '4px'
+          {/* Selezione + comandi — appena sotto la card (centrati) */}
+          <div style={{
+            position: 'absolute',
+            top: SINGLE_CARD_BOTTOM,
+            left: '50%',
+            transform: 'translateX(-50%)',
+            marginTop: '20px',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            zIndex: 3,
           }}>
-            A / D or ← / → — SPACE or ENTER
-          </p>
+            {p1Confirmed && (
+              <div style={{
+                marginBottom: '16px',
+                fontFamily: theme.fonts.heading,
+                fontSize: '14px',
+                color: theme.colors.gold,
+                letterSpacing: '6px',
+                animation: 'fadeIn 0.3s ease-out',
+              }}>
+                READY
+              </div>
+            )}
+
+            <div style={{ display: 'flex', gap: '24px' }}>
+              {CHARACTERS.map((char, index) => {
+                const isSelected = p1Index === index;
+                const isHov = p1Hover === index;
+                const active = isSelected || isHov;
+
+                return (
+                  <div
+                    key={char}
+                    onClick={() => { if (!p1Confirmed) setP1Index(index); }}
+                    onMouseEnter={() => { if (!p1Confirmed) setP1Hover(index); }}
+                    onMouseLeave={() => { if (!p1Confirmed) setP1Hover(null); }}
+                    onDoubleClick={() => { if (!p1Confirmed) { setP1Index(index); setP1Confirmed(true); } }}
+                    style={{
+                      cursor: p1Confirmed ? 'default' : 'pointer',
+                      opacity: p1Confirmed && !isSelected ? 0.25 : 1,
+                      transition: 'all 0.3s ease',
+                    }}
+                  >
+                    <img
+                      src={CHARACTER_BUTTONS[char]}
+                      alt={char}
+                      style={{
+                        width: '140px',
+                        height: '69px',
+                        objectFit: 'cover',
+                        borderRadius: '4px',
+                        transition: 'all 0.3s ease',
+                        opacity: active ? 1 : 0.5,
+                        filter: active ? 'none' : 'grayscale(0.8)',
+                        border: `1px solid ${active ? theme.colors.gold : theme.colors.goldSubtle}`,
+                        boxShadow: active ? `0 0 20px ${theme.colors.goldGlow}` : 'none',
+                        transform: active ? 'scale(1.05)' : 'scale(1)'
+                      }}
+                    />
+                  </div>
+                );
+              })}
+            </div>
+
+            <p style={{
+              marginTop: '24px',
+              fontFamily: theme.fonts.mono,
+              fontSize: '11px',
+              color: theme.colors.textPrimary,
+              letterSpacing: '2px',
+              backgroundColor: 'rgba(0,0,0,0.6)',
+              padding: '8px 16px',
+              borderRadius: '4px',
+              whiteSpace: 'nowrap',
+            }}>
+              A / D or ← / → — SPACE or ENTER
+            </p>
+          </div>
         </div>
       )}
 

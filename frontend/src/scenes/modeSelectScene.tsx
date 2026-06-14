@@ -33,7 +33,7 @@ const MODES: ModeOption[] = [
   {
     mode: MatchMode.RANKED,
     label: 'RANKED',
-    description: 'Fight with a player based on your rank and compete for be the master of olympus.',
+    description: 'Fight with a player based on your rank, earn ELO points and reach the top of the Leaderboard.',
   },
 ];
 
