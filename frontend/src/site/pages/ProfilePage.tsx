@@ -300,7 +300,7 @@ export default function ProfilePage({ onProfileUpdate }: { onProfileUpdate?: (up
 
   const username = profile?.username || 'Unknown';
   const email = profile?.email || '';
-  const avatarUrl = profile?.avatarUrl || `https://api.dicebear.com/9.x/pixel-art/svg?seed=${username}`;
+  const avatarUrl = profile?.avatarUrl || '';
   const userStatus = profile?.status || 'OFFLINE';
   const createdAt = profile?.createdAt || new Date().toISOString();
   

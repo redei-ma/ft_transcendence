@@ -483,10 +483,7 @@ export default function FriendsSidebar({
                   >
                     <div style={{ position: 'relative', flexShrink: 0 }}>
                       <img
-                        src={
-                          f.friend.avatarUrl ||
-                          `https://api.dicebear.com/9.x/pixel-art/svg?seed=${f.friend.username}`
-                        }
+                        src={f.friend.avatarUrl}
                         alt=""
                         style={{
                           width: 32,
@@ -668,10 +665,7 @@ export default function FriendsSidebar({
                           }}
                         >
                           <img
-                            src={
-                              inv.sender.avatarUrl ||
-                              `https://api.dicebear.com/9.x/pixel-art/svg?seed=${inv.sender.username}`
-                            }
+                            src={inv.sender.avatarUrl}
                             alt=""
                             style={{
                               width: 28,
@@ -833,10 +827,7 @@ export default function FriendsSidebar({
                     }}
                   >
                     <img
-                      src={
-                        r.friend.avatarUrl ||
-                        `https://api.dicebear.com/9.x/pixel-art/svg?seed=${r.friend.username}`
-                      }
+                      src={r.friend.avatarUrl}
                       alt=""
                       style={{
                         width: 28,
@@ -939,10 +930,7 @@ export default function FriendsSidebar({
                     }}
                   >
                     <img
-                      src={
-                        r.friend.avatarUrl ||
-                        `https://api.dicebear.com/9.x/pixel-art/svg?seed=${r.friend.username}`
-                      }
+                      src={r.friend.avatarUrl}
                       alt=""
                       style={{
                         width: 28,

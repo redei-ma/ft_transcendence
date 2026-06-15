@@ -85,7 +85,7 @@ export default function GameInviteToast({ invites, onAccept, onDecline }: GameIn
             {/* Sender info */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
               <img
-                src={inv.sender.avatarUrl || `https://api.dicebear.com/9.x/pixel-art/svg?seed=${inv.sender.username}`}
+                src={inv.sender.avatarUrl}
                 alt="" style={{ width: 40, height: 40, borderRadius: '50%', border: `2px solid ${theme.colors.gold}` }}
               />
               <div>

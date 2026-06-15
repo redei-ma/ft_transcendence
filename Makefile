@@ -107,7 +107,7 @@ rebuild: certs ##@Docker — Force rebuild without cache in DEV mode (DB preserv
 	@$(COMPOSE) up -d
 	@printf "$(GREEN)>>> Rebuild complete.$(RESET)\n"
 
-re: fclean up ##@Docker — Full wipe (DB included) + fresh build in DEV mode
+re: fclean all ##@Docker — Full wipe (DB included) + fresh build
 
 # --- Cleanup -------------------------------------------------
 

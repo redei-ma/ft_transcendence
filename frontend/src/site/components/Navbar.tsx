@@ -322,7 +322,7 @@ export default function Navbar({ currentPage, onNavigate, onLogout, username, av
                 display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer',
                 padding: '4px 8px', borderRadius: '4px', transition: 'background 0.2s',
               }}>
-                <img src={avatarUrl || `https://api.dicebear.com/9.x/pixel-art/svg?seed=${username}`} alt="Avatar"
+                <img src={avatarUrl} alt="Avatar"
                   style={{ width: 28, height: 28, borderRadius: '50%', border: `2px solid ${theme.colors.border}` }} />
                 <span style={{ fontFamily: theme.fonts.heading, fontSize: '12px', color: theme.colors.textSecondary, letterSpacing: '0.5px' }}>
                   {username}
@@ -356,7 +356,7 @@ export default function Navbar({ currentPage, onNavigate, onLogout, username, av
             display: 'flex', alignItems: 'center', gap: '16px', paddingBottom: '24px', 
             borderBottom: `1px solid ${theme.colors.border}`, cursor: 'pointer'
           }}>
-            <img src={avatarUrl || `https://api.dicebear.com/9.x/pixel-art/svg?seed=${username}`} alt="Avatar"
+            <img src={avatarUrl} alt="Avatar"
               style={{ width: 48, height: 48, borderRadius: '50%', border: `2px solid ${theme.colors.gold}` }} />
             <div>
               <div style={{ fontFamily: theme.fonts.heading, fontSize: '18px', color: theme.colors.goldBright, fontWeight: 700 }}>
