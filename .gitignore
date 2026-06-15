@@ -48,6 +48,7 @@ certs/
 # AI Assistants
 .claude/
 CLAUDE.md
+GEMINI.md
 
 # OS
 .DS_Store
