@@ -1,20 +1,18 @@
 import { applyDecorators } from "@nestjs/common";
 import { ApiProperty } from "@nestjs/swagger";
 import { IsEmail, IsEnum, IsString, MinLength, MaxLength, Matches, IsOptional } from "class-validator";
-import { Provider } from "@transcendence/types";
+import { Provider, PASSWORD_MIN_LENGTH, PASSWORD_REGEX, PASSWORD_ERROR_MESSAGE, PASSWORD_SPECIAL_CHARS } from "@transcendence/types";
 
 export function IsPasswordField() {
     return applyDecorators(
         ApiProperty({
             example: "StrongP@ss123",
-            minLength: 10,
-            description: "At least 10 chars, 1 uppercase, 1 lowercase, 1 number, and 1 special char: @$!%*?&  "
+            minLength: PASSWORD_MIN_LENGTH,
+            description: `At least ${PASSWORD_MIN_LENGTH} chars, 1 uppercase, 1 lowercase, 1 number, and 1 special char: ${PASSWORD_SPECIAL_CHARS}`
         }),
         IsString(),
-        MinLength(10, { message: "Password must be at least 10 characters long" }),
-        Matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]*$/, {
-            message: "Password is too weak. It must contain at least one uppercase letter, one lowercase letter, one number, and one special character: @$!%*?& ",
-        }),
+        MinLength(PASSWORD_MIN_LENGTH, { message: `Password must be at least ${PASSWORD_MIN_LENGTH} characters long` }),
+        Matches(PASSWORD_REGEX, { message: PASSWORD_ERROR_MESSAGE }),
     );
 }
 

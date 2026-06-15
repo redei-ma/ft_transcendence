@@ -29,7 +29,7 @@ erDiagram
     %% ============ STATISTICS ============
     UserStats {
         int id PK
-        int user_id FK UK
+        int user_id FK
         int elo_current "Default 500"
         int elo_peak "Default 500"
         int total_wins "Default 0"

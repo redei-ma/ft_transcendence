@@ -36,7 +36,7 @@ BOLD   := \033[1m
 
 # --- Default target ------------------------------------------
 
-all: up
+all: up-prod
 
 # --- Shared packages build -----------------------------------
 
@@ -56,7 +56,7 @@ generate: ##@Setup — Build shared packages (@transcendence/types + @transcende
 
 migrate: ##@DB — Create a new Prisma migration (usage: make migrate NAME=my_migration)
 	@test -n "$(NAME)" || (printf "$(RED)>>> ERROR: NAME is required. Usage: make migrate NAME=my_migration$(RESET)\n" && exit 1)
-	@$(COMPOSE) ps postgres | grep -q "running" || \
+	@$(COMPOSE) ps postgres | grep -qE "running|healthy|Up" || \
 		(printf "$(RED)>>> ERROR: postgres is not running. Run 'make up' first.$(RESET)\n" && exit 1)
 	@printf "$(CYAN)>>> Creating migration: $(NAME)...$(RESET)\n"
 	@$(COMPOSE) run --rm --entrypoint "" \
@@ -98,16 +98,16 @@ down: ##@Docker — Stop and remove containers (volumes preserved)
 	@printf "$(YELLOW)>>> Stopping services...$(RESET)\n"
 	@$(COMPOSE) down
 
-restart: down up ##@Docker — Full stop + start (dev mode)
+restart: down up ##@Docker — Full stop + start in DEV mode
 
-rebuild: certs ##@Docker — Force rebuild without cache (DB preserved), then start
+rebuild: certs ##@Docker — Force rebuild without cache in DEV mode (DB preserved), then start
 	@printf "$(CYAN)>>> Rebuilding without cache...$(RESET)\n"
 	@$(COMPOSE) down --remove-orphans
 	@$(COMPOSE) build --no-cache
 	@$(COMPOSE) up -d
 	@printf "$(GREEN)>>> Rebuild complete.$(RESET)\n"
 
-re: fclean up ##@Docker — Full wipe (DB included) + fresh build
+re: fclean up ##@Docker — Full wipe (DB included) + fresh build in DEV mode
 
 # --- Cleanup -------------------------------------------------
 

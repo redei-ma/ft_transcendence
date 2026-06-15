@@ -7,7 +7,7 @@ import { tacticsHelper } from "../ai.tactics.helper";
 import { WanderState } from "./ai.WanderState";
 
 export class DefendState implements IAiStates{
-    logger: Logger = new Logger(DefendState.name);
+    private readonly logger: Logger = new Logger(DefendState.name);
     name: string = 'DefendState';
     private threat: Player | Bullet;
     private hasStartedToDefend: boolean = false;
@@ -31,11 +31,10 @@ export class DefendState implements IAiStates{
         bot.inputQueue.length = 0;
 
         if ('isAttacking' in this.threat){
-            // is player
-            if (!this.hasStartedToDefend && bot.isAttacking) {
+            if (!this.hasStartedToDefend && bot.isDefending) {
                 this.hasStartedToDefend = true;
             }
-            if ((this.hasStartedToDefend && !bot.isAttacking) || this.stuckTimer >= GameConfig.COMBAT.DEFENCE_DURATION * 2) {
+            if ((this.hasStartedToDefend && !bot.isDefending) || this.stuckTimer >= GameConfig.COMBAT.DEFENCE_DURATION * 2) {
                 return tacticsHelper(bot, this.threat);
             }
             this.handlePlayerDefend(bot, stats, dx, dz);
@@ -71,7 +70,7 @@ export class DefendState implements IAiStates{
         const distanceSq: number = (dx * dx) + (dz * dz);
         const threatBullet = this.threat as Bullet;
 
-        if (!threatBullet || distanceSq > GameConfig.BOT.BULLET_DANGER_ZONE ||
+        if (!threatBullet || !threatBullet.isActive || distanceSq > GameConfig.BOT.BULLET_DANGER_ZONE ||
             this.stuckTimer >= 2.0 || distanceSq > this.lastDistanceSq) { 
             return new WanderState();
         }
@@ -80,10 +79,17 @@ export class DefendState implements IAiStates{
         this.moveInput.normalize();
         this.lastDistanceSq = distanceSq;
 
-        bot.inputQueue.push({
-            attackType: undefined,
-            input: new Vector(this.moveInput.x, this.moveInput.z),
-        })
+		if (bot.defenceAttackCooldown >= stats.COOLDOWN_DEFENCE_ATTACK) {
+            bot.inputQueue.push({
+                attackType: AttackType.DEFENCE_ATTACK,
+                input: new Vector(this.moveInput.x, this.moveInput.z),
+            });
+        } else {
+            bot.inputQueue.push({
+                attackType: undefined,
+                input: new Vector(this.moveInput.x, this.moveInput.z),
+            });
+        }
         return (undefined);
     }
     

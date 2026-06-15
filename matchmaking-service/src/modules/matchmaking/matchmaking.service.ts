@@ -1,4 +1,4 @@
-import { Injectable, Logger } from "@nestjs/common";
+import { Injectable, Logger, OnModuleDestroy } from "@nestjs/common";
 import { JoinQueueDto } from "./dto/join-queue.dto";
 import Redis from "ioredis";
 import { InjectRedis } from "@nestjs-modules/ioredis";
@@ -56,13 +56,22 @@ interface RedisUserStatus {
 }
 
 @Injectable()
-export class MatchmakingService {
+export class MatchmakingService implements OnModuleDestroy {
 	private readonly logger = new Logger(MatchmakingService.name);
+	private readonly GAME_SERVICE_URL = 'http://game-service:3000';
+	private readonly USER_SERVICE_URL = 'http://user-service:3001';
 
 	constructor(
 		@InjectRedis() private readonly redis: Redis,
 		private readonly eventEmitter: EventEmitter2,
 	) {}
+
+	async onModuleDestroy(): Promise<void> {
+		this.logger.warn('Matchmaking service shutting down, clearing queues...');
+		await this.redis.del('matchmaking_queue');
+		await this.redis.del('matchmaking_queue_unranked');
+		this.logger.warn('Queues cleared.');
+	}
 
 	/* ---------------------------------------------------------------------------------------------------------------- */
 
@@ -95,7 +104,7 @@ export class MatchmakingService {
 				dbStatus = UserStatus.ONLINE;
 			}
 
-			const url = `http://user-service:3001/internal/users/${userId}/status`;
+			const url = `${this.USER_SERVICE_URL}/internal/users/${userId}/status`;
 
 			await fetch(url, {
 				method: 'PATCH',
@@ -115,7 +124,7 @@ export class MatchmakingService {
 		userId: string | number,
 	): Promise<number | null> {
 		try {
-			const url = `http://user-service:3001/internal/users/${userId}/elo`;
+			const url = `${this.USER_SERVICE_URL}/internal/users/${userId}/elo`;
 			const response = await fetch(url);
 			if (!response.ok) throw new Error(`HTTP ${response.status}`);
 			const data = await response.json() as { eloCurrent: number };
@@ -195,7 +204,7 @@ export class MatchmakingService {
 					socketId: player.socketId,
 					data: matchFoundData,
 				});
-				this.logger.log(
+				this.logger.debug(
 					`[ProcessQueue] Notifica RECONNECTED inviata al socket ${player.socketId}`,
 				);
 			}
@@ -241,7 +250,7 @@ export class MatchmakingService {
 		const playersInQueue = await this.redis.zrange(QUEUE_KEY, 0, -1);
 		if (playersInQueue.length < 2) return;
 
-		this.logger.log(
+		this.logger.debug(
 			`[Worker] --- Inizio Ciclo Scansione --- (${playersInQueue.length} in coda)`,
 		);
 
@@ -384,8 +393,8 @@ export class MatchmakingService {
 		};
 
 		try {
-			this.logger.log(`[ExecuteMatch] Invio payload: ${JSON.stringify(payload)}`);
-			const res = await fetch("http://game-service:3000/matchmaking/create-match", {
+			this.logger.debug(`[ExecuteMatch] Invio payload: ${JSON.stringify(payload)}`);
+			const res = await fetch(`${this.GAME_SERVICE_URL}/matchmaking/create-match`, {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify(payload),
@@ -646,7 +655,7 @@ export class MatchmakingService {
 		};
 
 		try {
-			const res = await fetch("http://game-service:3000/matchmaking/create-match", {
+			const res = await fetch(`${this.GAME_SERVICE_URL}/matchmaking/create-match`, {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify(payload),
@@ -691,7 +700,7 @@ export class MatchmakingService {
 		const statusData = currentStatusRaw
 			? JSON.parse(currentStatusRaw)
 			: null;
-		this.logger.log(`[Logic] Matchmode attuale: ${statusData?.matchMode}`);
+		this.logger.debug(`[Logic] Matchmode attuale: ${statusData?.matchMode}`);
 		if (
 			statusData &&
 			statusData.state === INGAME &&
@@ -782,7 +791,7 @@ export class MatchmakingService {
 		};
 
 		try {
-			const res = await fetch("http://game-service:3000/matchmaking/create-match", {
+			const res = await fetch(`${this.GAME_SERVICE_URL}/matchmaking/create-match`, {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify(payload),
@@ -821,60 +830,53 @@ export class MatchmakingService {
 
 	/* ---------------------------------------------------------------------------------------------------------------- */
 
-	async createDirectSession(inviterId: number, acceptorId: number) {
-		const [rawP1, rawP2] = await Promise.all([
-			this.redis.get(`status:${inviterId}`),
-			this.redis.get(`status:${acceptorId}`)
-		]);
-
+	/**
+	 * Creates a direct session from a REST call (user-service).
+	 * The receiver is not yet connected to the matchmaking WS, so their socketId is null.
+	 * When the receiver connects, checkAndReconnectUser will register their socketId.
+	 */
+	async createDirectSessionFromRest(inviterId: number, receiverId: number): Promise<{ sessionId: string; status: string } | { status: string; message: string }> {
+		const rawP1 = await this.redis.get(`status:${inviterId}`);
 		const statusP1 = rawP1 ? JSON.parse(rawP1) : null;
-		const statusP2 = rawP2 ? JSON.parse(rawP2) : null;
 
-		if (!statusP1 || !statusP2 || !statusP1.socketId || !statusP2.socketId) {
-			this.logger.warn(`[DirectSession] Impossibile creare: uno dei player è offline.`);
-			return { 
-				status: "ERROR_PLAYERS_OFFLINE", 
-				message: "Uno dei giocatori si è disconnesso." 
-			};
+		if (!statusP1 || !statusP1.socketId) {
+			this.logger.warn(`[DirectSession] Inviter ${inviterId} non connesso al matchmaking.`);
+			return { status: "ERROR_INVITER_OFFLINE", message: "Il mittente non è connesso." };
 		}
 
-		if (statusP1.state === INGAME || statusP2.state === INGAME) {
-			return { status: "ERROR_PLAYERS_BUSY", message: "Qualcuno è già in partita." };
+		if (statusP1.state === INGAME) {
+			return { status: "ERROR_PLAYERS_BUSY", message: "Il mittente è già in partita." };
 		}
 
 		const sessionId = `direct_${Math.random().toString(36).substring(7)}`;
 		const sessionData = {
 			sessionId,
-			p1: { id: inviterId, ready: false, characterName: null, socketId: null },
-			p2: { id: acceptorId, ready: false, characterName: null, socketId: null },
-			createdAt: Date.now()
+			p1: { id: inviterId, ready: false, characterName: null, socketId: statusP1.socketId },
+			p2: { id: receiverId, ready: false, characterName: null, socketId: null },
+			createdAt: Date.now(),
 		};
 		await this.redis.set(`direct_session:${sessionId}`, JSON.stringify(sessionData), "EX", 300);
 
+		// Sender: set to character_selection immediately
 		await this.setUserStatus(inviterId, {
 			state: "character_selection",
-			sessionId: sessionId,
-			socketId: statusP1.socketId
+			sessionId,
+			socketId: statusP1.socketId,
 		}, 300);
 
-		await this.setUserStatus(acceptorId, {
+		// Receiver: reserve character_selection without socketId (updated on WS connect)
+		await this.setUserStatus(receiverId, {
 			state: "character_selection",
-			sessionId: sessionId,
-			socketId: statusP2.socketId
+			sessionId,
 		}, 300);
 
+		// Notify sender via socket
 		this.eventEmitter.emit(GameEvents.INTERNAL_DIRECT_SESSION_READY, {
 			socketId: statusP1.socketId,
-			data: { status: "SESSION_CREATED", sessionId: sessionId }
+			data: { status: "SESSION_CREATED", sessionId },
 		});
 
-		this.eventEmitter.emit(GameEvents.INTERNAL_DIRECT_SESSION_READY, {
-			socketId: statusP2.socketId,
-			data: { status: "SESSION_CREATED", sessionId: sessionId }
-		});
-
-		this.logger.log(`[DirectSession] Notifiche inviate a ${inviterId} e ${acceptorId} per la sessione ${sessionId}`);
-
+		this.logger.log(`[DirectSession REST] Sessione ${sessionId} creata per ${inviterId} → ${receiverId}`);
 		return { sessionId, status: "SUCCESS" };
 	}
 
@@ -1120,13 +1122,28 @@ export class MatchmakingService {
     	    return null;
     	}
 		if (statusData && (statusData.state === "pre_match" || statusData.state === "character_selection") && statusData.sessionId) {
+			// If socketId was null, this is the receiver connecting for the first time (session created via REST).
+			// Just register their socket and update the session — do NOT cancel.
+			if (!statusData.socketId) {
+				this.logger.log(`[DirectSession] Receiver ${userId} si connette per la prima volta alla sessione ${statusData.sessionId}.`);
+				await this.setUserStatus(userId, { ...statusData, socketId }, 300);
+				const sessionRaw = await this.redis.get(`direct_session:${statusData.sessionId}`);
+				if (sessionRaw) {
+					const session = JSON.parse(sessionRaw);
+					if (String(session.p1.id) === String(userId)) session.p1.socketId = socketId;
+					else if (String(session.p2.id) === String(userId)) session.p2.socketId = socketId;
+					await this.redis.set(`direct_session:${statusData.sessionId}`, JSON.stringify(session), "EX", 300);
+				}
+				return null;
+			}
+
 			this.logger.log(`[Auto-Reconnect] Utente ${userId} disconnesso/ricaricato in pre_match. Annullamento sessione ${statusData.sessionId}.`);
 
 			const sessionRaw = await this.redis.get(`direct_session:${statusData.sessionId}`);
 			if (sessionRaw) {
 				const session = JSON.parse(sessionRaw);
 				const opponentId = session.p1.id === userId ? session.p2.id : session.p1.id;
-				
+
 				const opponentStatusRaw = await this.redis.get(`status:${opponentId}`);
 				if (opponentStatusRaw) {
 					const opponentData = JSON.parse(opponentStatusRaw);
@@ -1136,16 +1153,16 @@ export class MatchmakingService {
 							data: { status: "MATCH_CANCELLED", message: "L'avversario si è disconnesso. Partita annullata." }
 						});
 					}
-					await this.setUserStatus(opponentId, { 
-						state: LOBBY, 
-						socketId: opponentData.socketId 
+					await this.setUserStatus(opponentId, {
+						state: LOBBY,
+						socketId: opponentData.socketId
 					}, 3600);
 				}
 				await this.redis.del(`direct_session:${statusData.sessionId}`);
 			}
 
 			await this.setUserStatus(userId, { state: LOBBY, socketId: socketId }, 3600);
-			
+
 			setTimeout(() => {
 				this.eventEmitter.emit(GameEvents.INTERNAL_MATCH_FOUND, {
 					socketId: socketId,
@@ -1153,7 +1170,7 @@ export class MatchmakingService {
 				});
 			}, 1000);
 
-			return null; 
+			return null;
 		}
 
 		if (statusData && statusData.state === INGAME && statusData.matchId) {
@@ -1204,7 +1221,7 @@ export class MatchmakingService {
 						socketId: socketId,
 						data: matchFoundData,
 					});
-					this.logger.log(`[Delayed Reconnect] Evento interno emesso per il match ${statusData.matchId}`);
+					this.logger.debug(`[Delayed Reconnect] Evento interno emesso per il match ${statusData.matchId}`);
 				}, 1000);
 			}
 			
@@ -1233,7 +1250,7 @@ export class MatchmakingService {
 
 		for (const userId of playerIds) {
 			if (userId.includes("ai_bot") || userId.includes("guest_")) {
-				this.logger.log(
+				this.logger.debug(
 					`[Cleanup] Skippato ripristino per entità non-user: ${userId}`,
 				);
 				continue;

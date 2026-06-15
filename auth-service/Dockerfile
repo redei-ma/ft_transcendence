@@ -3,22 +3,22 @@ FROM node:20.20.2-alpine3.23 AS build
 
 WORKDIR /app/shared/auth
 COPY shared/auth/ .
-RUN npm install && npm run build
+RUN npm ci && npm run build
 
 WORKDIR /app/shared
 COPY shared/prisma/schema.prisma ./prisma/schema.prisma
 
 WORKDIR /app/shared/types
 COPY shared/types/ .
-RUN npm install && npm run build
+RUN npm ci && npm run build
 
 WORKDIR /app/shared/dto
 COPY shared/dto/ .
-RUN npm install && npm run build
+RUN npm ci && npm run build
 
 WORKDIR /app/auth-service
 COPY auth-service/package*.json ./
-RUN npm install --install-links
+RUN npm ci --install-links
 COPY auth-service/. .
 RUN npm run build
 

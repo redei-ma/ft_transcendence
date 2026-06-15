@@ -1,13 +1,21 @@
-import { Injectable, Logger } from "@nestjs/common";
+import { Injectable, Logger, OnModuleInit } from "@nestjs/common";
 import { Cron, CronExpression } from "@nestjs/schedule";
 import { PrismaService } from "../prisma/prisma.service";
-import { InviteStatus } from "@transcendence/types";
+import { InviteStatus, UserStatus } from "@transcendence/types";
 
 @Injectable()
-export class CleanupService {
+export class CleanupService implements OnModuleInit {
 	private readonly logger = new Logger(CleanupService.name);
 
 	constructor(private readonly prisma: PrismaService) {}
+
+	async onModuleInit(): Promise<void> {
+		const result = await this.prisma.user.updateMany({
+			where: { status: { not: UserStatus.OFFLINE } },
+			data: { status: UserStatus.OFFLINE },
+		});
+		this.logger.log(`Startup: reset ${result.count} users to OFFLINE`);
+	}
 
 	@Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
 	async deleteUnverifiedUsers(): Promise<void> {

@@ -5,7 +5,7 @@ import * as THREE from 'three';
 import { useGameStore } from '../../storage/gameStore';
 import { PlayerModel } from './PlayerModel';
 import HPBar from '../UI/components/HPBar'; 
-import { CharacterName } from '@transcendence/types'; // ⚡ Serve per controllare il nome
+import { CharacterName, GameConfig } from '@transcendence/types'; // ⚡ Serve per controllare il nome
 
 // ⚡ RE-IMPORTIAMO LE TUE AURE
 import { ZeusAura } from './ZeusAura';
@@ -37,10 +37,10 @@ export function PlayerEntity({ playerId }: PlayerEntityProps) {
 
   if (!initialPlayer || !reactivePlayer) return null;
 
-  // Lettura delle variabili (Forzata per bypassare TS)
-  const currentHP = (reactivePlayer as any).health ?? (reactivePlayer as any).hp ?? 100;
-  const maxHP = (reactivePlayer as any).maxHealth ?? (reactivePlayer as any).maxHp ?? 100;
-  const isDisconnected = (reactivePlayer as any).isDisconnected;
+  const currentHP = reactivePlayer.hp ?? 100;
+  const maxHP = GameConfig.PLAYER.DEFAULT_HP;
+  const isDisconnected = reactivePlayer.isDisconnected;
+  const disconnectionTimer = reactivePlayer.disconnectionTimer ?? 0;
 
   return (
     <group ref={groupRef}>
@@ -54,22 +54,48 @@ export function PlayerEntity({ playerId }: PlayerEntityProps) {
         <div style={{ transform: 'scale(0.8)' }}>
           <HPBar 
             characterName={initialPlayer.characterName}
-            displayName={(initialPlayer as any).userName}
+            displayName={initialPlayer.userName}
             currentHP={currentHP}
             maxHP={maxHP}
             isDisconnected={isDisconnected}
+            disconnectionTimer={disconnectionTimer}
             isFloating={true}
           />
         </div>
       </Html>
+      {/* 2. IL TIMER DI RESPAWN */}
+      {reactivePlayer.isDead && (
+        <Html position={[0, 12, 0]} center zIndexRange={[100, 0]}>
+          <div style={{
+            pointerEvents: 'none',
+            textAlign: 'center',
+            fontFamily: 'JetBrains Mono, monospace',
+            whiteSpace: 'nowrap',
+          }}>
+            <div style={{
+              color: '#e84057', fontSize: '16px', fontWeight: 'bold',
+              textShadow: '2px 2px 6px rgba(0,0,0,1)',
+              animation: 'pulse 1s infinite',
+            }}>
+              DEAD
+            </div>
+            <div style={{
+              color: '#e0a32e', fontSize: '12px', fontWeight: 'bold',
+              textShadow: '2px 2px 4px rgba(0,0,0,1)',
+            }}>
+              Respawn in: {Math.ceil(GameConfig.PLAYER.RESPAWN_TIMER - reactivePlayer.respawnTimer)}s
+            </div>
+          </div>
+        </Html>
+      )}
 
-      {/* 2. IL MODELLO ANIMATO */}
+      {/* 3. IL MODELLO ANIMATO */}
       <PlayerModel 
         characterName={initialPlayer.characterName} 
         playerId={playerId} 
       />
 
-      {/* 3. ⚡ LE AURE RIPRISTINATE */}
+      {/* 4.  LE AURE  */}
       {initialPlayer.characterName === CharacterName.ZEUS ? (
         <ZeusAura playerId={playerId} />
       ) : (

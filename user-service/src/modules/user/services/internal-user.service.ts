@@ -58,7 +58,7 @@ export class InternalUserService {
 			where: { id: userId },
 			select: { status: true },
 		});
-		if (user?.status !== UserStatus.ONLINE) return;
+		if (user?.status === UserStatus.OFFLINE) return;
 		await this.updateStatus(userId, { status: UserStatus.OFFLINE });
 		this.logger.log(`userId=${userId} marked OFFLINE after grace period`);
 	}
@@ -324,12 +324,14 @@ export class InternalUserService {
 	 * @param id - ID of the user.
 	 * @throws NotFoundException (404) — if the user does not exist.
 	 */
-	async incrementTokenVersion(id: number): Promise<void> {
+	async incrementTokenVersion(id: number): Promise<number> {
 		await ensureUserExists(this.prisma, id);
-		await this.prisma.user.update({
+		const updated = await this.prisma.user.update({
 			where: { id },
 			data: { tokenVersion: { increment: 1 } },
+			select: { tokenVersion: true },
 		});
+		return updated.tokenVersion;
 	}
 
 	/**

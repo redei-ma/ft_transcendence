@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { getMyProfile, UserProfile, getGameInvites, GameInvite, respondGameInvite } from './site/services/apiService';
 import './site/styles/site.css';
 import LoginPage from './site/pages/LoginPage';
@@ -8,10 +8,12 @@ import ProfilePage from './site/pages/ProfilePage';
 import GameFlow from './site/pages/GameFlow';
 import Navbar from './site/components/Navbar';
 import { logout, refreshToken } from './site/services/authService';
+import { logger } from './configs/logger';
 import { theme } from './configs/theme';
 import DesktopOnlyGuard from './site/components/desktopOnlyGuard';
 import FriendsSidebar from './site/components/FriendSidebar';
 import GameInviteToast from './site/components/GameInviteToast';
+import EmailCallbackPage from './site/pages/EmailCallbackPage';
 
 export default function App() {
   const [isAuthLoading, setIsAuthLoading] = useState(true);
@@ -22,10 +24,106 @@ export default function App() {
   const [pendingInviterId, setPendingInviterId] = useState<number | null>(null);
   const [gameInvites, setGameInvites] = useState<GameInvite[]>([]);
 
+  type EmailCallback = { type: 'verified' | 'email-changed' | 'provider-linked'; status: 'success' | 'error'; message: string } | null;
+  const [emailCallback, setEmailCallback] = useState<EmailCallback>(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.has('verified')) {
+      const status = params.get('verified') as 'success' | 'error';
+      const message = decodeURIComponent(params.get('msg') ?? '');
+      window.history.replaceState({}, document.title, '/');
+      return { type: 'verified', status, message };
+    }
+    if (params.has('email-changed')) {
+      const status = params.get('email-changed') as 'success' | 'error';
+      const message = decodeURIComponent(params.get('msg') ?? '');
+      window.history.replaceState({}, document.title, '/');
+      return { type: 'email-changed', status, message };
+    }
+    if (params.has('linked')) {
+      const provider = params.get('linked') ?? '';
+      window.history.replaceState({}, document.title, '/');
+      return { type: 'provider-linked', status: 'success', message: provider };
+    }
+    return null;
+  });
+
   const fetchGameInvites = useCallback(async () => {
     const data = await getGameInvites();
     if (data) setGameInvites(data.invites);
   }, []);
+
+  // SSE — connessione persistente per notifiche, status amici, inviti
+  const sseRetryDelayRef = useRef(3000);
+  const sseRetryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (!isLoggedIn) return;
+
+    const SSE_URL = '/api/users/me/notifications/stream';
+    let es: EventSource | null = null;
+    let destroyed = false;
+
+    const connect = () => {
+      if (destroyed) return;
+      es = new EventSource(SSE_URL, { withCredentials: true });
+
+      es.addEventListener('notification', (event: MessageEvent) => {
+        try {
+          const data = JSON.parse(event.data);
+          window.dispatchEvent(new CustomEvent('new-notification', { detail: data }));
+          if (data.type === 'FRIEND_ACCEPTED' || data.type === 'FRIEND_REQ') {
+            window.dispatchEvent(new CustomEvent('friend-list-changed'));
+          }
+        } catch {}
+      });
+
+      es.addEventListener('friend_status', (event: MessageEvent) => {
+        try {
+          const data = JSON.parse(event.data);
+          window.dispatchEvent(new CustomEvent('friend-status-update', { detail: data }));
+        } catch {}
+      });
+
+      es.addEventListener('game_invite', (event: MessageEvent) => {
+        try {
+          const data = JSON.parse(event.data);
+          window.dispatchEvent(new CustomEvent('game-invite-received', { detail: data }));
+        } catch {}
+      });
+
+      es.addEventListener('friend_removed', () => {
+        window.dispatchEvent(new CustomEvent('friend-list-changed'));
+      });
+
+      es.addEventListener('game_invite_declined', (event: MessageEvent) => {
+        try {
+          const data = JSON.parse(event.data);
+          window.dispatchEvent(new CustomEvent('game-invite-declined', { detail: data }));
+        } catch {}
+      });
+
+      es.onerror = () => {
+        es?.close();
+        es = null;
+        if (destroyed) return;
+        const delay = sseRetryDelayRef.current;
+        sseRetryDelayRef.current = Math.min(delay * 2, 30000);
+        sseRetryTimerRef.current = setTimeout(connect, delay);
+      };
+
+      es.onopen = () => {
+        sseRetryDelayRef.current = 3000;
+      };
+    };
+
+    connect();
+
+    return () => {
+      destroyed = true;
+      if (sseRetryTimerRef.current) clearTimeout(sseRetryTimerRef.current);
+      es?.close();
+    };
+  }, [isLoggedIn]);
 
   useEffect(() => {
     if (!isLoggedIn) return;
@@ -86,7 +184,7 @@ export default function App() {
       setIsLoggedIn(true);
       setCurrentPage('dashboard');
     } else {
-      console.error('Login riuscito, ma impossibile recuperare il profilo.');
+      logger.error('App', 'Login riuscito, ma impossibile recuperare il profilo.');
       await logout();
       setIsLoggedIn(false);
     }
@@ -112,11 +210,22 @@ export default function App() {
       case 'leaderboard':
         return <LeaderboardPage />;
       case 'profile':
-        return <ProfilePage />;
+        return <ProfilePage onProfileUpdate={(updates) => setUser(prev => prev ? { ...prev, ...updates } : null)} />;
       default:
         return <DashboardPage onNavigate={setCurrentPage} />;
     }
   };
+
+  if (emailCallback) {
+    return (
+      <EmailCallbackPage
+        type={emailCallback.type}
+        status={emailCallback.status}
+        message={emailCallback.message}
+        onDone={() => setEmailCallback(null)}
+      />
+    );
+  }
 
   if (isAuthLoading) return null;
 

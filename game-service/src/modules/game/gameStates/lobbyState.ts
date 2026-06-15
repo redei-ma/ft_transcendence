@@ -1,4 +1,4 @@
-import { GameEvents } from "@transcendence/types";
+import { GameEvents,MatchMode } from "@transcendence/types";
 import { GameSession } from "../core";
 import { getNewPlayer } from "../factories";
 import { IGameState, PlayState } from "../gameStates";
@@ -16,7 +16,7 @@ import {
 import { MatchMakingData } from "../game-interfaces";
 
 export class LobbyState implements IGameState {
-	logger: Logger = new Logger(LobbyState.name);
+	private readonly logger: Logger = new Logger(LobbyState.name);
 
 	name = "LOBBY";
 
@@ -45,6 +45,19 @@ export class LobbyState implements IGameState {
 		socketId: string | undefined,
 		username: string
 	): ExitStatus {
+
+		if (this.session.matchMode !== MatchMode.LOCAL){
+			for (const existingPlayer of this.session.players.values()){
+				const isSameUser = player.userDbId ? existingPlayer.userDbId === player.userDbId : existingPlayer.userName === username;
+				if (isSameUser) {
+					this.logger.warn(`Player ${username} (DB ID: ${player.userDbId}) is already in the lobby.`);
+					return {
+						status: ErrorCode.MATCH_ALREADY_STARTED,
+						message: "You are already in this game.",
+					};
+				}
+			}
+		}
 		const entityId: string = randomUUID();
 
 		let spawnIndex: number = this.session.gameRules.getSpawnPoint(
@@ -200,7 +213,7 @@ export class LobbyState implements IGameState {
 		});
 
 		this.logger
-			.log(`Transitioning to Play State - event map emit sended - map: ${this.session.gameWorld},
+			.debug(`Transitioning to Play State - event map emit sended - map: ${this.session.gameWorld},
 			PlayerRadius:${GameConfig.PLAYER.RADIUS} PlayerSpeed: ${GameConfig.PLAYER.SPEED}`);
 	}
 }

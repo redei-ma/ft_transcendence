@@ -2,6 +2,7 @@ import { Player, GameConfig, Bullet, Vector} from '@transcendence/types'
 import { IAiStates } from './aiInterfaces';
 import { ChaseState, KiteState, WanderState } from './aiStates';
 import { World } from '../game.world';
+import { CHARACTER_DATA } from '../../factories';
 
 
 export function tacticsHelper(bot: Player, victim: Player): IAiStates{
@@ -26,8 +27,15 @@ export function tacticsHelper(bot: Player, victim: Player): IAiStates{
 }
 
 export function checkVisualForDefend(bot: Player, allPlayers: Readonly<Map<string, Player>>): Player | undefined{
+    const stats = CHARACTER_DATA[bot.characterName];
+    if (bot.defenceAttackCooldown < stats.COOLDOWN_DEFENCE_ATTACK) {
+        return undefined;
+    }
+
     let distanceSqRecord: number = Infinity;
     let murderer: Player | undefined = undefined;
+    
+
     for (const targetPlayer of allPlayers.values()){
         if (targetPlayer.entityId !== bot.entityId && targetPlayer.teamId !== bot.teamId && targetPlayer.isAttacking){
             if (!targetPlayer.isDead && !targetPlayer.isGhost){
@@ -72,12 +80,16 @@ export function threatDetector(bot: Player, allPlayers: Map<string, Player>, gam
     for (const bullet of gameWorld.bullets){
         if (bot.teamId === bullet.teamId || !bullet.isActive) continue;
 
-        const dx: number = bullet.position.x - bot.position.x;
-        const dz: number = bullet.position.z - bot.position.z;
+        const dx: number = bot.position.x - bullet.position.x;
+        const dz: number = bot.position.z - bullet.position.z;
 
         const distanceSq: number = (dx * dx) + (dz * dz);
-        if (distanceSq <= GameConfig.BOT.BULLET_DANGER_ZONE)
-            return bullet;
+        if (distanceSq <= GameConfig.BOT.BULLET_DANGER_ZONE) {
+            const dotProduct = (bullet.displacement.x * dx) + (bullet.displacement.z * dz);
+            if (dotProduct > 0) {
+                return bullet;
+            }
+        }
     }
 
     const murderer: Player | undefined = checkVisualForDefend(bot, allPlayers);

@@ -3,11 +3,17 @@
  * Gestisce: login, register, logout, refresh, forgot/reset password, 2FA, OAuth
  */
 
+import { logger } from '../../configs/logger';
+
+export class RateLimitError extends Error {
+  constructor() { super('rate_limited'); }
+}
+
 export interface AuthResponseData {
   requires2fa?: boolean;
   message?: string;
   error?: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 export interface AuthResult {
@@ -20,7 +26,7 @@ export function toErrorString(val: unknown): string {
   if (!val) return '';
   if (typeof val === 'string') return val;
   if (Array.isArray(val)) return val.join(', ');
-  if (typeof val === 'object' && val !== null && 'message' in val) return toErrorString((val as any).message);
+  if (typeof val === 'object' && val !== null && 'message' in val) return toErrorString((val as { message: unknown }).message);
   return String(val);
 }
 
@@ -43,16 +49,19 @@ export async function fetchWithAuthRetry(
 
     let res = await fetch(url, fetchOptions);
 
-    // If we get a 401, we try to refresh ONLY if we think we have a session
+    if (res.status === 429) throw new RateLimitError();
+
     if (res.status === 401) {
-      const success = await refreshToken(); // This now uses our safe check
+      const success = await refreshToken();
       if (!success) return null;
 
       res = await fetch(url, fetchOptions);
+      if (res.status === 429) throw new RateLimitError();
     }
 
     return res;
   } catch (error) {
+    if (error instanceof RateLimitError) throw error;
     return null;
   }
 }
@@ -73,9 +82,10 @@ export async function login(
       body: JSON.stringify(payload),
     });
 
+    if (res.status === 429) return { ok: false, data: { error: 'rate_limited' } };
     return { ok: res.ok, data: await res.json() };
   } catch (error) {
-    console.error("[Auth] Login error:", error);
+    logger.error("AuthService", "Login error:", error);
     return { ok: false, data: { error: "Network error" } };
   }
 }
@@ -84,18 +94,20 @@ export async function register(
   username: string,
   email: string,
   password: string,
+  termsAccepted: boolean,
 ): Promise<AuthResult> {
   try {
     const res = await fetch("/api/auth/register", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       credentials: "include",
-      body: JSON.stringify({ username, email, password }),
+      body: JSON.stringify({ username, email, password, termsAccepted }),
     });
 
+    if (res.status === 429) return { ok: false, data: { error: 'rate_limited' } };
     return { ok: res.ok, data: await res.json() };
   } catch (error) {
-    console.error("[Auth] Register error:", error);
+    logger.error("AuthService", "Register error:", error);
     return { ok: false, data: { error: "Network error" } };
   }
 }
@@ -107,21 +119,22 @@ export async function logout(): Promise<void> {
       credentials: "include",
     });
   } catch (error) {
-    console.error("[Auth] Logout error:", error);
+    logger.error("AuthService", "Logout error:", error);
   }
 }
 
-export async function forgotPassword(email: string): Promise<boolean> {
+export async function forgotPassword(email: string): Promise<'ok' | 'rate_limited' | 'error'> {
   try {
     const res = await fetch("/api/auth/forgot-password", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email }),
     });
-    return res.ok;
+    if (res.status === 429) return 'rate_limited';
+    return 'ok';
   } catch (error) {
-    console.error("[Auth] Forgot password error:", error);
-    return false;
+    logger.error("AuthService", "Forgot password error:", error);
+    return 'error';
   }
 }
 
@@ -129,20 +142,28 @@ export function redirectToGoogle(): void {
   window.location.href = "/api/auth/google";
 }
 
-export async function refreshToken(): Promise<boolean> {
-  try {
-    const checkRes = await fetch("/api/auth/session-check");
-    const { hasSession } = await checkRes.json();
-    if (!hasSession) return false;
+let refreshPromise: Promise<boolean> | null = null;
 
-    const res = await fetch("/api/auth/refresh", {
-      method: "POST",
-      credentials: "include",
-    });
-    return res.ok;
-  } catch {
-    return false;
-  }
+export async function refreshToken(): Promise<boolean> {
+  if (refreshPromise) return refreshPromise;
+  refreshPromise = (async () => {
+    try {
+      const checkRes = await fetch("/api/auth/session-check");
+      const { hasSession } = await checkRes.json();
+      if (!hasSession) return false;
+
+      const res = await fetch("/api/auth/refresh", {
+        method: "POST",
+        credentials: "include",
+      });
+      return res.ok;
+    } catch {
+      return false;
+    } finally {
+      refreshPromise = null;
+    }
+  })();
+  return refreshPromise;
 }
 
 export async function resendVerification(email: string): Promise<{ ok: boolean; message?: string }> {

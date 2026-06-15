@@ -37,8 +37,18 @@ body {
   cursor: url('/src/assets/images/Cursor.png') 2 2, auto;
 }
 
+body {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+img {
+  -webkit-user-drag: none;
+  user-drag: none;
+}
+
 a, button, [onclick], input, select, textarea,
 input[type="submit"], [role="button"], .btn-press,
 [style*="cursor: pointer"], [style*="cursor:pointer"] {
-  cursor: url('/src/assets/images/SelectCursor.png') 16 16, pointer !important;
+  cursor: url('/src/assets/images/SelectCursor.png') 2 2, pointer !important;
 }

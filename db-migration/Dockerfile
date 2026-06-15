@@ -11,7 +11,7 @@ COPY shared/prisma ./prisma
 
 WORKDIR /app/shared/types
 COPY shared/types/ .
-RUN npm install && npm run build
+RUN npm ci && npm run build
 
 WORKDIR /app/db-migration
 COPY db-migration/package*.json ./

@@ -5,6 +5,7 @@ import * as api from '../services/apiService';
 import { theme } from '../../configs/theme';
 import { NAVBAR_HEIGHT } from '../components/Navbar';
 import { LeaderboardEntry } from '../services/apiService';
+import { useResponsive } from '../../hooks/useResponsive';
 
 const rankColor = (r: number) => 
   r === 1 ? '#FFD700' : 
@@ -14,27 +15,16 @@ const rankColor = (r: number) =>
 
 
 export default function LeaderboardPage() {
+  const { isMobile } = useResponsive();
   const [search, setSearch] = useState('');
   const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
   const [loading, setLoading] = useState(true);
-  
-  // STATO PER LA RESPONSIVITÀ
-  const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
     api.getLeaderboard(1, 50).then((data) => {
       if (data?.entries) setEntries(data.entries);
       setLoading(false);
     });
-
-    // CONTROLLO LARGHEZZA (Gestisce in automatico la rotazione del telefono!)
-    const handleResize = () => {
-      setIsMobile(window.innerWidth < 650); // Sotto i 650px nascondiamo vittorie e sconfitte
-    };
-    
-    handleResize(); // Controllo iniziale
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
   }, []);
 
   const filtered = entries.filter((p) => p.username.toLowerCase().includes(search.toLowerCase()));

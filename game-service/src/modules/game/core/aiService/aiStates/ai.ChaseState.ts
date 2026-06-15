@@ -10,7 +10,7 @@ import { PathFinder } from "../pathFinder/ai.PathFinder";
 import { World } from "../../game.world";
 
 export class ChaseState implements IAiStates{
-    logger: Logger = new Logger(ChaseState.name);
+    private readonly logger: Logger = new Logger(ChaseState.name);
     name: string = 'ChaseState';
     private victim: Player;
     private path: Vector[] = [];

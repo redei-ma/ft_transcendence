@@ -1,4 +1,4 @@
-import { MapEmitPayload } from '../../types/game.types';
+import { MapEmitPayload, GameOverPayload } from '../../types/game.types';
 import { theme } from '../../configs/theme';
 import { CharacterName } from '@transcendence/types';
 import { useGameStore } from '../../storage/gameStore';
@@ -9,7 +9,7 @@ interface GameUIProps {
   isConnected: boolean;
   mapData: MapEmitPayload | null;
   maxPlayers: number;
-  gameOver: any;
+  gameOver: GameOverPayload | null;
 }
 
 export default function GameUI({
@@ -22,6 +22,7 @@ export default function GameUI({
   
   const players = useGameStore((state) => state.gameState?.players) || [];
   const playersCount = players.length;
+  const hasGameState = useGameStore((state) => state.gameState !== null);
   const gameTime = useGameStore((state) => state.gameState?.time) || 0;
   const remaining = Math.max(0, gameTime);
   const mins = Math.floor(remaining / 60);
@@ -29,40 +30,8 @@ export default function GameUI({
 
   return (
     <>
-      {players.map((player) => {
-        if (!player.isDead) return null;
-        return (
-          <div
-            key={`death-${player.id}`}
-            style={{
-              position: 'absolute',
-              top: player.characterName === CharacterName.ZEUS ? '60px' : 'auto',
-              bottom: player.characterName === CharacterName.ADE ? '60px' : 'auto',
-              left: '20px',
-              pointerEvents: 'none',
-              zIndex: 1001,
-              fontFamily: theme.fonts.mono,
-            }}
-          >
-            <div style={{
-              color: theme.colors.dead, fontSize: '20px', fontWeight: 'bold',
-              textShadow: '2px 2px 6px rgba(0,0,0,1)',
-              animation: 'pulse 1s infinite', marginBottom: '4px',
-            }}>
-              {player.characterName} DEAD
-            </div>
-            <div style={{
-              color: theme.colors.afk, fontSize: '14px', fontWeight: 'bold',
-              textShadow: '2px 2px 4px rgba(0,0,0,1)', textAlign: 'center',
-            }}>
-              Respawn in: {Math.ceil(5 - player.respawnTimer)}s
-            </div>
-          </div>
-        );
-      })}
-
       {/* Timer */}
-      <div style={{
+      {hasGameState && <div style={{
         position: 'absolute', top: 20, left: '50%', transform: 'translateX(-50%)',
         fontFamily: theme.fonts.heading, fontSize: '28px', fontWeight: 700,
         color: remaining <= 10 ? theme.colors.dead : theme.colors.gold,
@@ -71,11 +40,11 @@ export default function GameUI({
         transition: 'color 0.3s',
       }}>
         {mins}:{secs.toString().padStart(2, '0')}
-      </div>
+      </div>}
 
-      {/* ⚡ SPOSTATO: Messo a right: 20 per non accavallarsi con i testi a sinistra */}
+      {/* {riquadro di info sulla connessione
       <div style={{
-        position: 'absolute', top: 20, right: 20, 
+        position: 'absolute', top: 20, right: 20,
         color: theme.colors.textPrimary, fontFamily: theme.fonts.mono,
         fontSize: '13px', backgroundColor: theme.colors.bgPanel,
         padding: '14px', borderRadius: '8px',
@@ -98,6 +67,7 @@ export default function GameUI({
           <div style={{ marginTop: '8px', color: theme.colors.dead, fontWeight: 'bold' }}>GAME OVER</div>
         )}
       </div>
+      } */}
 
       <style>{`
         @keyframes pulse {

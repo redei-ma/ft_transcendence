@@ -91,6 +91,14 @@ export class PathFinder{
             if (closedList.has(neighborKey)) continue;
 
             const isDiagonal: boolean = direction.dx !== 0 && direction.dz !== 0;
+            if (isDiagonal) {
+                const index1 = (currentNode.gridX + direction.dx) + (currentNode.gridZ * gameWorld.gridWidth);
+                const index2 = currentNode.gridX + ((currentNode.gridZ + direction.dz) * gameWorld.gridWidth);
+                
+                if (gameWorld.grid[index1] === 1 || gameWorld.grid[index2] === 1) {
+                    continue; 
+                }
+            }
             let stepCost: number = isDiagonal ? 1.414 : 1;
             let newDistanceTravelled: number = currentNode.distanceTravelled + stepCost;
             let newEstimatedDistance: number = PathFinder.getEstimatedDistance(targetX, targetZ, neighborX, neighborZ);

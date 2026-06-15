@@ -10,7 +10,7 @@ export const envValidationSchema = Joi.object({
 	FRONTEND_URL: Joi.string().uri().required(),
 
 	// Server
-	PORT: Joi.number().default(3000),
+	GAME_SERVICE_PORT: Joi.number().required(),
 	NODE_ENV: Joi.string()
 		.valid("development", "production", "test")
 		.default("development"),

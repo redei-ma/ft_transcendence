@@ -19,7 +19,6 @@ import {
 } from "@nestjs/swagger";
 import { FileInterceptor } from "@nestjs/platform-express";
 import { memoryStorage } from "multer";
-import { Throttle } from "@nestjs/throttler";
 import { JwtAuthGuard, CurrentUser } from "@transcendence/auth";
 import { AvatarService } from "../services/avatar.service";
 import { UserProfileResponseDto } from "../dto";
@@ -39,7 +38,6 @@ export class AvatarController {
 	@HttpCode(HttpStatus.OK)
 	@UseGuards(JwtAuthGuard)
 	@ApiBearerAuth()
-	@Throttle({ global: { limit: 5, ttl: 60_000 } })
 	@ApiOperation({
 		summary: "Upload a custom avatar image (max 5MB, jpeg/png/webp)",
 	})

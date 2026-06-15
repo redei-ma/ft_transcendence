@@ -243,6 +243,11 @@ export class GameService implements OnModuleInit, OnModuleDestroy{
 
 	prepareMatch(gameId: string, players: MatchMakingData[], matchMode: MatchMode, matchType: MatchType): ExitStatus{
 
+		if (this.games.has(gameId)){
+			this.logger.warn(`game ${gameId} is already created`);
+			return {status: ErrorCode.MATCH_ALREADY_STARTED, message: `this game ${gameId} is already created`}
+		}
+
 		for (const player of players) {
 			if (player.userDbId !== null && this.userToGameData.has(player.userDbId)) {
 				const oldGameData: GameData | undefined = this.userToGameData.get(player.userDbId);
@@ -255,7 +260,7 @@ export class GameService implements OnModuleInit, OnModuleDestroy{
 				}
 				else{
 					this.userToGameData.delete(player.userDbId);
-					this.logger.log(`deleting userdbId=>${player.userDbId} from gameData`);
+					this.logger.debug(`deleting userdbId=>${player.userDbId} from gameData`);
 				}
 			}
 		}
@@ -360,14 +365,14 @@ export class GameService implements OnModuleInit, OnModuleDestroy{
 
 	public notifyMatchmakingPlayerLeft(userDbId: number, gameId: string){
 		this.redis.emit(NetworkConfig.MATCHMAKING.MATCH_EVENTS.PLAYER_LEFT_MATCH, { userDbId, gameId }).subscribe({
-			next: () => this.logger.log(`event PLAYER_LEFT_MATCH sent for user ${userDbId}`),
+			next: () => this.logger.debug(`event PLAYER_LEFT_MATCH sent for user ${userDbId}`),
 			error: (err) => this.logger.error(`error in sending PLAYER_LEFT_MATCH with Redis: ${err.message}`)
         });
 	}
 
 	public	notifyMatchmakingEndGame(gameId: string){
 		this.redis.emit(NetworkConfig.MATCHMAKING.MATCH_EVENTS.END_GAME, gameId).subscribe({
-			next: () => this.logger.log(`event END_GAME inviated for game with id ${gameId}`),
+			next: () => this.logger.debug(`event END_GAME inviated for game with id ${gameId}`),
 			error: (err) => this.logger.error(`error in sending the event END_GAME with Redis: ${err.message}`)
         });
 	}

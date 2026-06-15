@@ -9,7 +9,49 @@
     "depth": 250,
     "maxPlayers": 2
   },
-  "walls": [],
+  "walls": [
+    {
+      "id": "custom_wal_1",
+      "x": 141,
+      "z": 80,
+      "width": 5,
+      "depth": 5
+    },
+    {
+      "id": "custom_wal_2",
+      "x": 80,
+      "z": 142,
+      "width": 5,
+      "depth": 5
+    },
+    {
+      "id": "custom_wal_3",
+      "x": 105,
+      "z": 144,
+      "width": 5,
+      "depth": 5
+    },
+    {
+      "id": "custom_wal_4",
+      "x": 116,
+      "z": 80,
+      "width": 5,
+      "depth": 5
+    },
+    {
+      "id": "custom_wal_5",
+      "x": 142,
+      "z": 107,
+      "width": 5,
+      "depth": 5
+    },
+    {
+      "id": "custom_wal_6",
+      "x": 79,
+      "z": 116,
+      "width": 5,
+      "depth": 5
+    }],
   "pillars": [
     { "id": "pillar", "x": 54, "z": 82, "radius": 4 },
     { "id": "pillar", "x": 53, "z": 71, "radius": 4 },
@@ -87,7 +129,28 @@
     { "id": "pillar", "x": 192, "z": 35, "radius": 4 }
   ],
   "spawn_points": [
-    { "x": 125, "z": 60 },
-    { "x": 125, "z": 190 }
+    { "x": 125, "z": 190 },
+    { "x": 125, "z": 60 }
   ]
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

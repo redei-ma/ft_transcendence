@@ -14,6 +14,7 @@ export class Snapshot{
 
 			id: player.entityId,
 			userName: player.userName,
+			userDbId: player.userDbId,
 			teamId: player.teamId,
 			
 			meleeAttackCooldown: player.meleeAttackCooldown,

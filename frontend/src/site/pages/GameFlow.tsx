@@ -7,8 +7,11 @@ import { socketService } from '../../services/socketServices';
 import { matchmakingSocket } from '../../services/matchmakingSocket';
 import { CharacterName, MatchMode, GameEvents } from '@transcendence/types';
 import { theme } from '../../configs/theme';
+import { logger } from '../../configs/logger';
 
 type GameScene = 'mode-select' | 'character-select' | 'queue' | 'game';
+
+type MatchFoundData = { status?: string; message?: string; matchId?: string };
 
 interface GameFlowProps {
   userId: number;
@@ -40,19 +43,9 @@ export default function GameFlow({ userId, username, onExit, sessionId: initialS
   const [cancelMessage, setCancelMessage] = useState<string | null>(null);
 
   useEffect(() => {
-    const socket = matchmakingSocket.connect();
-    // RECEIVER
-    if (initialSessionId && inviterId) {
-      if (socket.id) {
-        matchmakingSocket.emit(GameEvents.ACCEPT_DIRECT_INVITE, {inviterId});
-      } else {
-        socket.once('connect', () => {
-          matchmakingSocket.emit(GameEvents.ACCEPT_DIRECT_INVITE, {inviterId});
-        });
-      }
-    }
-    const handleMatchFound = (data: any) => {
-      console.log("[GameFlow] MATCH_FOUND data:", JSON.stringify(data));
+    matchmakingSocket.connect();
+    const handleMatchFound = (data: MatchFoundData) => {
+      logger.debug("GameFlow", "MATCH_FOUND data:", JSON.stringify(data));
       if (hasResignedRef.current) return;
         
       if (data?.status === 'MATCH_CANCELLED') {
@@ -60,7 +53,6 @@ export default function GameFlow({ userId, username, onExit, sessionId: initialS
         setTimeout(() => onExit(), 3000);
         return;
       }
-    
       // Deduce il matchMode dal matchId per la riconnessione
       if (data?.matchId) {
         if (data.matchId.startsWith('local_')) {
@@ -69,7 +61,7 @@ export default function GameFlow({ userId, username, onExit, sessionId: initialS
           setSelectedMode(MatchMode.AI);
         }
       }
-    
+      
       setScene((prevScene) => {
         if (prevScene === 'game') return prevScene;
         if (prevScene !== 'queue') {
@@ -86,9 +78,9 @@ export default function GameFlow({ userId, username, onExit, sessionId: initialS
       });
     };
 
-    // SENDER: Leonardo ci avvisa che l'invitato ha accettato
-    const handleDirectSessionReady = (data: any) => {
-      console.log("[GameFlow] DIRECT_SESSION_READY:", data);
+    // SENDER: Matchamking ci avvisa che l'invitato ha accettato
+    const handleDirectSessionReady = (data: { sessionId?: string }) => {
+      logger.debug("GameFlow", "DIRECT_SESSION_READY:", data);
       if (data?.sessionId) {
         setSessionId(data.sessionId);
         setSelectedMode(MatchMode.UNRANKED);
@@ -109,7 +101,7 @@ export default function GameFlow({ userId, username, onExit, sessionId: initialS
   useEffect(() => {
     const handleError = (code: string, message: string) => {
       if (code === 'INVALID_INPUT') {
-        console.warn(`[GameFlow] Invalid input: ${message}`);
+        logger.warn('GameFlow', `Invalid input: ${message}`);
         return;
       }
       const display = ERROR_MESSAGES[code] || message || 'Unknown error';
@@ -150,12 +142,39 @@ export default function GameFlow({ userId, username, onExit, sessionId: initialS
     setScene('mode-select');
   };
 
-  const handleQuit = () => {
+  const handleQuit = (isGameOver = false) => {
     hasResignedRef.current = true;
-    socketService.emit(GameEvents.LEAVE_GAME, { userId: String(userId) });
-    socketService.disconnect();
-    matchmakingSocket.disconnect();
-    onExit();
+    
+    const cleanup = () => {
+      socketService.disconnect();
+      matchmakingSocket.disconnect();
+      onExit();
+    };
+  
+    // A game over la sessione è già in stato END: niente LEAVE_GAME, solo cleanup.
+    if (isGameOver) {
+      cleanup();
+      return;
+    }
+  
+    const safetyTimeout = setTimeout(() => {
+      logger.warn('GameFlow', 'LEAVE_GAME ack timeout — cleanup forzato');
+      cleanup();
+    }, 1000);
+  
+    socketService.emit(
+      GameEvents.LEAVE_GAME,
+      { userId: String(userId) },
+      (response) => {
+        clearTimeout(safetyTimeout);
+        if (response.status === 'success') {
+          logger.debug('GameFlow', 'Leave confermato:', response.message);
+        } else {
+          logger.warn('GameFlow', `Leave fallito [${response.errorCode}]:`, response.message);
+        }
+        cleanup();
+      }
+    );
   };
 
   return (

@@ -46,7 +46,7 @@ async function bootstrap() {
 	app.use(cookieParser());
 	app.useWebSocketAdapter(new MsgpackIoAdapter(app));
 
-	const port = configService.get<number>("PORT") ?? 3000;
+	const port = configService.get<number>("GAME_SERVICE_PORT")!
 	await app.listen(port, "0.0.0.0");
 	new Logger("Bootstrap").log(`Game Service running on port ${port}`);
 }

@@ -2,8 +2,12 @@ import { useState, useEffect, useRef } from 'react';
 import { matchmakingSocket } from '../services/matchmakingSocket';
 import { CharacterName, MatchMode, MatchType, GameEvents } from '@transcendence/types';
 import { theme } from '../configs/theme';
+import { logger } from '../configs/logger';
 import zeusImg from '../assets/images/ZeusSelection.png';
 import adeImg from '../assets/images/AdeSelection.png'; // Cambia in .png se necessario
+
+import { useFullscreenGuard } from '../hooks/useFullscreenGuard';
+import { FullscreenGate } from '../site/components/FullscreenGate';
 
 type Character = typeof CharacterName[keyof typeof CharacterName];
 
@@ -52,12 +56,15 @@ export default function CharacterSelectScene({
   const activeP1 = CHARACTERS[p1Hover ?? p1Index];
   const activeP2 = CHARACTERS[p2Hover ?? p2Index];
 
+  const { isFullscreen, enter, kickAt } = useFullscreenGuard(false, () => {});
+
   useEffect(() => {
     if (!isSplitScreen) setP2Confirmed(true);
   }, [isSplitScreen]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (!isFullscreen) return;
       const key = e.key.toLowerCase();
 
       if (isSplitScreen) {
@@ -99,7 +106,7 @@ export default function CharacterSelectScene({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [p1Confirmed, p2Confirmed, p2Selectable, isSplitScreen, onBack]);
+  }, [p1Confirmed, p2Confirmed, p2Selectable, isSplitScreen, onBack, isFullscreen]);
   
   // Launch — emit to Leonardo via matchmaking socket
   useEffect(() => {
@@ -116,7 +123,7 @@ export default function CharacterSelectScene({
       
     if (sessionId) {
         // Direct invite — join alla sessione privata
-        console.log(`[CharSelect] Emitting JOIN_DIRECT_SESSION:`, { sessionId, characterName: finalP1 });
+        logger.debug('CharSelect', 'Emitting JOIN_DIRECT_SESSION:', { sessionId, characterName: finalP1 });
         matchmakingSocket.emit(GameEvents.JOIN_DIRECT_SESSION, { sessionId, characterName: finalP1 });
       } else {
         // Flusso normale — coda pubblica
@@ -135,7 +142,7 @@ export default function CharacterSelectScene({
         else if (mode === MatchMode.RANKED) event = GameEvents.JOIN_RANKED;
         else event = GameEvents.JOIN_UNRANKED;
 
-        console.log(`[CharSelect] Emitting ${event}:`, payload);
+        logger.debug('CharSelect', `Emitting ${event}:`, payload);
         matchmakingSocket.emit(event, payload);
       }
 
@@ -170,7 +177,7 @@ export default function CharacterSelectScene({
       backgroundColor: theme.colors.bgDark, // Background di base
       overflow: 'hidden',
     }}>
-      
+
       {/* ─── DYNAMIC BACKGROUNDS ─── */}
       <div style={{ position: 'absolute', inset: 0, display: 'flex', zIndex: 0 }}>
         {isSplitScreen ? (
@@ -655,6 +662,14 @@ export default function CharacterSelectScene({
             FIGHT
           </h2>
         </div>
+      )}
+
+      {!isFullscreen && (
+        <FullscreenGate
+          onEnter={enter}
+          onLeave={onBack}
+          kickAt={kickAt}
+        />
       )}
 
       <style>{`
