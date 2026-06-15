@@ -64,6 +64,8 @@ services:
             - backend-network
         env_file:
             - .env.shared
+        environment:
+            NODE_ENV: production
         volumes:
             - ./shared/prisma:/app/prisma
 

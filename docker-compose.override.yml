@@ -27,6 +27,10 @@ x-healthcheck-dev: &healthcheck-dev
     start_period: 120s
 
 services:
+    db-migration:
+        environment:
+            NODE_ENV: development
+
     auth-service:
         build:
             target: build
