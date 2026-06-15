@@ -1,7 +1,7 @@
 export const GameConfig = {
   SERVER: {
     TICK_RATE: 16,
-    MAX_GAME_DURATION: 30.0,
+    MAX_GAME_DURATION: 300.0,
     MAX_LOBBY_DURATION: 500.0,
     MAX_GAME_KILLS: 3,
     SHUTDOWN_TIMER: 4.0,
