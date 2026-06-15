@@ -38,15 +38,20 @@ This means a request to `/api/users/me/avatar` is handled by
 
 | Location                                                | Upstream                                    | Notes                                                                                    |
 | ------------------------------------------------------- | ------------------------------------------- | ---------------------------------------------------------------------------------------- |
-| `/`                                                     | Static files (`/usr/share/nginx/html`)      | Frontend HTML/JS                                                                         |
-| `/uploads/`                                             | Static files (Docker volume `uploads_data`) | User avatar images                                                                       |
+| `/assets/`                                              | `frontend:5173`                             | Vite-hashed assets, immutable cache 1 year                                               |
+| `/`                                                     | `frontend:5173`                             | Vite SPA entry point, no-cache; HMR WebSocket upgrade in dev                             |
+| `/uploads/`                                             | Static files (Docker volume `uploads_data`) | User avatar images, 30-day cache                                                         |
 | `/internal/`                                            | `deny all`                                  | Blocked at gateway; internal routes are only reachable within the Docker backend network |
+| `/api/docs`                                             | `user-service:3001`                         | Swagger UI                                                                               |
 | `/api/auth/(login\|2fa/verify)`                         | `auth-service:3002`                         | Strict rate limit                                                                        |
 | `/api/auth/(register\|forgot-password\|reset-password)` | `auth-service:3002`                         | Strict rate limit                                                                        |
 | `/api/auth/resend-verification`                         | `auth-service:3002`                         | Very strict rate limit                                                                   |
-| `/api/`                                                 | `auth-service:3002`                         | General auth traffic                                                                     |
+| `/api/auth/`                                            | `auth-service:3002`                         | General auth traffic                                                                     |
+| `/api/users/me/notifications/stream`                    | `user-service:3001`                         | SSE — buffering disabled, 1h read timeout                                                |
 | `/api/users/me/avatar`                                  | `user-service:3001`                         | Strict rate limit                                                                        |
 | `/api/users/`                                           | `user-service:3001`                         | General user traffic                                                                     |
+| `/ws/game/socket.io/`                                   | `game-service:3000`                         | WebSocket upgrade, 24h read timeout                                                      |
+| `/ws/matchmaking/socket.io/`                            | `matchmaking-service:3500`                  | WebSocket upgrade, 24h read timeout                                                      |
 
 ### Internal routes
 
@@ -74,13 +79,16 @@ the application.
 
 ### Zones
 
-| Zone            | Rate        | Memory | Applied to                                                                    |
-| --------------- | ----------- | ------ | ----------------------------------------------------------------------------- |
-| `auth_login`    | 10 req/min  | 10 MB  | `/api/auth/login`, `/api/auth/2fa/verify`                                     |
-| `auth_write`    | 5 req/min   | 10 MB  | `/api/auth/register`, `/api/auth/forgot-password`, `/api/auth/reset-password` |
-| `auth_resend`   | 3 req/min   | 10 MB  | `/api/auth/resend-verification`                                               |
-| `avatar_upload` | 5 req/min   | 10 MB  | `/api/users/me/avatar`                                                        |
-| `api_general`   | 120 req/min | 10 MB  | All other `/api/` and `/api/users/` traffic                                   |
+| Zone              | Rate        | Memory | Applied to                                                                    |
+| ----------------- | ----------- | ------ | ----------------------------------------------------------------------------- |
+| `auth_login`      | 10 req/min  | 10 MB  | `/api/auth/login`, `/api/auth/2fa/verify`                                     |
+| `auth_write`      | 5 req/min   | 10 MB  | `/api/auth/register`, `/api/auth/forgot-password`, `/api/auth/reset-password` |
+| `auth_resend`     | 3 req/min   | 10 MB  | `/api/auth/resend-verification`                                               |
+| `avatar_upload`   | 5 req/min   | 10 MB  | `/api/users/me/avatar`                                                        |
+| `api_general`     | 120 req/min | 10 MB  | All other `/api/auth/` and `/api/users/` traffic                              |
+| `sse_stream`      | 20 req/min  | 10 MB  | `/api/users/me/notifications/stream` — persistent SSE, reconnects are rare    |
+| `ws_game`         | 20 req/min  | 10 MB  | `/ws/game/socket.io/` — initial connect + auto-reconnect attempts             |
+| `ws_matchmaking`  | 20 req/min  | 10 MB  | `/ws/matchmaking/socket.io/` — separate bucket from game socket               |
 
 10 MB of zone memory holds approximately 160,000 IP entries, which is more
 than sufficient for this project.
@@ -92,13 +100,16 @@ the `burst` allowance are rejected immediately with `429 Too Many Requests`
 rather than being queued. This prevents slow-drip attacks from consuming
 worker memory.
 
-| Zone            | Burst |
-| --------------- | ----- |
-| `auth_login`    | 3     |
-| `auth_write`    | 2     |
-| `auth_resend`   | 1     |
-| `avatar_upload` | 2     |
-| `api_general`   | 20    |
+| Zone              | Burst |
+| ----------------- | ----- |
+| `auth_login`      | 3     |
+| `auth_write`      | 2     |
+| `auth_resend`     | 1     |
+| `avatar_upload`   | 2     |
+| `api_general`     | 60    |
+| `sse_stream`      | 15    |
+| `ws_game`         | 10    |
+| `ws_matchmaking`  | 10    |
 
 ### Why Nginx and not only NestJS ThrottlerModule
 
@@ -152,19 +163,20 @@ visits.
 
 Restricts which resources the browser is allowed to load.
 
-| Directive         | Value                                   | Reason                                                             |
-| ----------------- | --------------------------------------- | ------------------------------------------------------------------ |
-| `default-src`     | `'self'`                                | All resource types default to same origin                          |
-| `script-src`      | `'self' 'unsafe-inline'`                | Vanilla JS frontend has no build step; inline scripts are required |
-| `style-src`       | `'self' 'unsafe-inline'`                | Inline styles used by the frontend                                 |
-| `img-src`         | `'self' data: https://api.dicebear.com` | DiceBear is the default avatar provider                            |
-| `font-src`        | `'self'`                                | No external font providers                                         |
-| `connect-src`     | `'self'`                                | All `fetch`/XHR calls go to the same origin                        |
-| `frame-ancestors` | `'none'`                                | Modern equivalent of `X-Frame-Options: DENY`                       |
+| Directive         | Value                                                                                  | Reason                                                                                              |
+| ----------------- | -------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| `default-src`     | `'self'`                                                                               | All resource types default to same origin                                                           |
+| `script-src`      | `'self' 'unsafe-inline' 'unsafe-eval' https://www.gstatic.com`                         | React + Vite require inline/eval; `gstatic.com` for Google OAuth widget                             |
+| `style-src`       | `'self' 'unsafe-inline' https://fonts.googleapis.com`                                  | Tailwind injects runtime styles; Google Fonts stylesheet                                            |
+| `img-src`         | `'self' data: blob: https://api.dicebear.com https://lh3.googleusercontent.com`        | DiceBear default avatars + Google OAuth profile pictures; `blob:` for Three.js textures             |
+| `font-src`        | `'self' https://fonts.gstatic.com`                                                     | Google Fonts asset hosts                                                                            |
+| `connect-src`     | `'self' blob: wss://$host:2443 https://www.gstatic.com`                                | Same-origin fetch + WebSocket upgrade on the HTTPS port; `gstatic.com` for OAuth                    |
+| `worker-src`      | `blob: 'self'`                                                                         | Three.js loads GLB models off-thread via blob-URL Web Workers                                       |
+| `frame-ancestors` | `'none'`                                                                               | Modern equivalent of `X-Frame-Options: DENY`                                                        |
 
-> `'unsafe-inline'` for scripts is a known trade-off for vanilla JS projects
-> without a bundler. A future migration to a build pipeline would allow
-> replacing it with per-request `nonce` values for stronger isolation.
+> `'unsafe-inline'` and `'unsafe-eval'` are required by Vite's dev runtime and
+> the Tailwind/CSS-in-JS pipeline; the project does not currently emit per-request
+> CSP nonces. A production build with a static bundler would allow tightening this.
 
 ---
 

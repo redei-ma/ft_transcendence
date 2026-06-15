@@ -125,20 +125,31 @@ Security hardening as the final migration. Adds two-factor authentication (`two_
 
 ---
 
+## 12 — `add_performance_indexes` _(performance fix)_
+
+**Problem:** Several hot query paths were doing inefficient lookups. Friendship queries filtered by `(sender_id, status)` or `(receiver_id, status)` together but only the single columns were indexed, so the database scanned all rows of a given user to find e.g. only PENDING requests. Game-invite outbox lookups had no sender-side index. The match-history page sorted by `played_at DESC` without an index, scanning the whole table.
+
+**Solution:** Replace the single-column friendship indexes with composite `(sender_id, status)` and `(receiver_id, status)` indexes. Add a sender-side index on `game_invites`. Add a descending index on `matches.played_at` for instant chronological sorts. Also drop the default from `matches.type` so every match is forced to declare its type explicitly.
+
+**Altered:** `friendships` (composite indexes replace single-column ones), `game_invites` (new sender index), `matches` (DESC index on `played_at`, `type` default removed)
+
+---
+
 ## Schema Evolution Summary
 
-| Migration | Type         | Key Decision                                         |
-| --------- | ------------ | ---------------------------------------------------- |
-| 01        | Init         | Auth fields on users — start simple                  |
-| 02        | Feature      | 1v1 match design — get gameplay working              |
-| 03        | **Refactor** | Fixed players → participant table (N players, teams) |
-| 04        | **Refactor** | Stats on users → dedicated table (clean separation)  |
-| 05        | Feature      | Per-character stat tracking                          |
-| 06        | Feature      | Friendship system with request flow                  |
-| 06b       | **Fix**      | Missing unique constraint on friendships             |
-| 07        | Feature      | Tiered achievement system                            |
-| 08        | **Refactor** | Auth on users → accounts table (N providers)         |
-| 09        | Feature      | Game invites and notification system                 |
-| 10        | Enhancement  | ELO rating and competitive streaks                   |
-| 10b       | **Fix**      | Leaderboard index for ELO sorting                    |
-| 11        | Enhancement  | 2FA, token versioning, email verification            |
+| Migration | Type            | Key Decision                                         |
+| --------- | --------------- | ---------------------------------------------------- |
+| 01        | Init            | Auth fields on users — start simple                  |
+| 02        | Feature         | 1v1 match design — get gameplay working              |
+| 03        | **Refactor**    | Fixed players → participant table (N players, teams) |
+| 04        | **Refactor**    | Stats on users → dedicated table (clean separation)  |
+| 05        | Feature         | Per-character stat tracking                          |
+| 06        | Feature         | Friendship system with request flow                  |
+| 06b       | **Fix**         | Missing unique constraint on friendships             |
+| 07        | Feature         | Tiered achievement system                            |
+| 08        | **Refactor**    | Auth on users → accounts table (N providers)         |
+| 09        | Feature         | Game invites and notification system                 |
+| 10        | Enhancement     | ELO rating and competitive streaks                   |
+| 10b       | **Fix**         | Leaderboard index for ELO sorting                    |
+| 11        | Enhancement     | 2FA, token versioning, email verification            |
+| 12        | **Performance** | Composite friendship indexes, game-invite/match indexes |

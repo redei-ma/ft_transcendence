@@ -14,7 +14,7 @@ erDiagram
         string two_factor_secret "Nullable"
         boolean is_2fa_enabled "Default false"
         int token_version "For session invalidation"
-        UserStatus status "ONLINE | OFFLINE | IN_GAME"
+        UserStatus status "ONLINE | OFFLINE | IN_GAME | IN_QUEUE"
         timestamp created_at
     }
 
@@ -113,7 +113,7 @@ erDiagram
     Notification {
         int id PK
         int user_id FK
-        NotificationType type "FRIEND_REQ | FRIEND_ACCEPTED | GAME_INVITE | ACHV_UNLOCKED"
+        NotificationType type "FRIEND_REQ | FRIEND_ACCEPTED | ACHV_UNLOCKED"
         string message
         boolean is_read "Default false"
         timestamp created_at
